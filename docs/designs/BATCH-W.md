@@ -25,36 +25,36 @@ consistently.
 workflow waits for CI in a loop**: waits are checkpoints (Chris's PLAYBOOK Step 10) — a workflow reports `pending` with
 what it is waiting for, and the agent calls it again later.
 
-**W3. Merge on green means exactly this** (`workflow_merge_when_green(pr, expectedHeadSha)`): head equals the expected SHA;
+**W3. Merge on green means exactly this** (`github_workflow_merge_when_green(pr, expectedHeadSha)`): head equals the expected SHA;
 every required check green at that SHA (E1 helper); no unresolved review thread (or each listed with a disposition the
-caller passes: `fixed` / `already fixed` / `superseded` / `answered`); not draft; mergeable; then `pr_merge` with merge
+caller passes: `fixed` / `already fixed` / `superseded` / `answered`); not draft; mergeable; then `github_pr_merge` with merge
 commits at that SHA. Anything missing → `done: false` with the exact list. A protected `pr-only` repository is merged only
 this way (B-3).
 
-**W4. Stacks merge bottom-up** (`workflow_merge_stack(prs[] | stack)`): for the lowest unmerged PR: retarget to the default
+**W4. Stacks merge bottom-up** (`github_workflow_merge_stack(prs[] | stack)`): for the lowest unmerged PR: retarget to the default
 branch if needed (preview), then require **fresh** green CI at its head after the retarget — if the CI for that head has not
 run or is pending, stop with `pending` and the run link; when green, merge; then move to the next. Never merges a PR into
 its stack parent.
 
-**W5. Review threads** (`workflow_review_threads(pr, dispositions?)`): without dispositions, lists unresolved threads with
+**W5. Review threads** (`github_workflow_review_threads(pr, dispositions?)`): without dispositions, lists unresolved threads with
 file, line, the comment text (marked `untrusted` for outsiders) and the code around the line at the current head; with
 dispositions, for each thread: verify the disposition at the current head (for `fixed`: the commented lines changed since
 the comment), reply with the disposition text, resolve — all in one preview, one confirm.
 
-**W6. CI failure summary** (`workflow_ci_failure_summary(pr | run | ref)`): failed jobs and steps, error lines, annotations,
+**W6. CI failure summary** (`github_workflow_ci_failure_summary(pr | run | ref)`): failed jobs and steps, error lines, annotations,
 whether the same job fails on the default branch's latest run ("is it mine?"), and a one-line likely cause.
-`workflow_rerun_failed_ci` re-runs failed jobs once and refuses a second automatic rerun for the same head and job
+`github_workflow_rerun_failed_ci` re-runs failed jobs once and refuses a second automatic rerun for the same head and job
 ("Same failure twice: reproduce locally" — Chris's two-strikes rule).
 
 **W7. Branch cleanup is by PR state, not by guessing** (audit G16): a branch qualifies when its PR (by head ref) is merged or
 closed and its head SHA equals the PR's head (no newer commits); never the default branch, protected branches, profile
 production/owned refs, or branches with an open PR; pages through every branch.
 
-**W8. Releases** (`workflow_release(repo, tag | 'next-patch|minor|major', from?)`): computes the next version from the
+**W8. Releases** (`github_workflow_release(repo, tag | 'next-patch|minor|major', from?)`): computes the next version from the
 latest release when asked, generates notes since the previous tag, creates a **draft**, and publishes only with `confirm`
 on a production connection.
 
-**W9. New repository the standard way** (`workflow_new_repo`): private by default (public is access-widening), default
+**W9. New repository the standard way** (`github_workflow_new_repo`): private by default (public is access-widening), default
 branch `main`, ruleset on the default branch requiring the named check (default `ci`) and blocking force pushes and
 deletion, merge commits only, delete branch on merge, secret scanning and push protection (free on public repos; on
 private repos only when the plan includes it — otherwise reported), Dependabot alerts on, Actions default token read-only,
@@ -64,13 +64,13 @@ fork-PR approval for all outside contributors, standard labels. Idempotent.
 
 | Card | Workflow(s) | Notes |
 |---|---|---|
-| W-1 (M) | `workflow_pr_status`, `workflow_open_pr` | status: CI required vs optional at head, mergeable, review decision, unresolved threads, stack position, next action in one sentence; open: existing PR returned, outsider mentions need confirm |
-| W-2 (L, medium effort) | `workflow_merge_when_green`, `workflow_merge_stack` | each refusal reason has a test; stack: retarget → pending on fresh CI → merge; never merges into a stack parent |
-| W-3 (M) | `workflow_review_threads` | dispositions verified at head; one preview, one confirm; outsider text marked untrusted |
-| W-4 (M) | `workflow_ci_failure_summary`, `workflow_rerun_failed_ci` | "same failure on default branch" detection; second rerun refused |
-| W-5 (M) | `workflow_repo_health`, `workflow_security_review`, `workflow_access_review` | read-only; plan-dependent items reported; no fixes unasked |
-| W-6 (M) | `workflow_release`, `workflow_cleanup_branches` | release draft then publish; cleanup by PR state (G16 regression), never protected/owned refs |
-| W-7 (M) | `workflow_new_repo`, `workflow_find`, `workflow_weekly_digest` | new repo idempotent; find across PRs/issues/runs/releases/commits; digest in dollars and Denver dates |
+| W-1 (M) | `github_workflow_pr_status`, `github_workflow_open_pr` | status: CI required vs optional at head, mergeable, review decision, unresolved threads, stack position, next action in one sentence; open: existing PR returned, outsider mentions need confirm |
+| W-2 (L, medium effort) | `github_workflow_merge_when_green`, `github_workflow_merge_stack` | each refusal reason has a test; stack: retarget → pending on fresh CI → merge; never merges into a stack parent |
+| W-3 (M) | `github_workflow_review_threads` | dispositions verified at head; one preview, one confirm; outsider text marked untrusted |
+| W-4 (M) | `github_workflow_ci_failure_summary`, `github_workflow_rerun_failed_ci` | "same failure on default branch" detection; second rerun refused |
+| W-5 (M) | `github_workflow_repo_health`, `github_workflow_security_review`, `github_workflow_access_review` | read-only; plan-dependent items reported; no fixes unasked |
+| W-6 (M) | `github_workflow_release`, `github_workflow_cleanup_branches` | release draft then publish; cleanup by PR state (G16 regression), never protected/owned refs |
+| W-7 (M) | `github_workflow_new_repo`, `github_workflow_find`, `github_workflow_weekly_digest` | new repo idempotent; find across PRs/issues/runs/releases/commits; digest in dollars and Denver dates |
 
 ## 5. Stop-and-ask points
 

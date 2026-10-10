@@ -917,7 +917,7 @@
     },
     {
       "id": "P-2",
-      "title": "workflow_app_readiness",
+      "title": "github_workflow_app_readiness",
       "batch": "P",
       "design": "docs/designs/BATCH-P.md",
       "dependencies": [
@@ -935,7 +935,7 @@
     },
     {
       "id": "P-3",
-      "title": "workflow_project_setup and project_draft_profile",
+      "title": "github_workflow_project_setup and github_project_draft_profile",
       "batch": "P",
       "design": "docs/designs/BATCH-P.md",
       "dependencies": [

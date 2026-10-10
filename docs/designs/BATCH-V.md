@@ -5,7 +5,7 @@ Batch V. Cards V-1 … V-5. Depends on Batches E and G (PR and Actions tools exi
 section Developer tools. Follows hub contract §10 (`devTools: true` in the manifest).
 
 These are the jobs an agent does while *building* something that uses GitHub — a bot, a GitHub App, a CI pipeline, a
-release process, another toolset — not the jobs of running Chris's repositories. **Preview only:** every `dev_*` tool
+release process, another toolset — not the jobs of running Chris's repositories. **Preview only:** every `github_dev_*` tool
 refuses a production target (B-2) before reading anything else, on any connection mode.
 
 ## 0. Verify before starting
@@ -19,7 +19,7 @@ refuses a production target (B-2) before reading anything else, on any connectio
 
 ## 1. Decisions
 
-**V1. Runs record everything they create.** Every `dev_*` write belongs to a run (`dev_runs`; a caller may pass its own
+**V1. Runs record everything they create.** Every `github_dev_*` write belongs to a run (`dev_runs`; a caller may pass its own
 `runId`, e.g. the hub's development environment) and every created object is recorded (`dev_run_objects`: type, owner,
 repo, id/name, created SHA). Objects are tagged where GitHub allows: repository topic `rtc-run-<id>` and description
 suffix `rtc_run=<id>`; branch name `rtc/<runId>/<name>`; PR/issue label `rtc-run` plus body footer
@@ -36,30 +36,30 @@ on a `pr-only` one exactly the conveyor set (B-3).
 labels), `failing-ci` (a branch whose workflow fails with a known error line — for testing log summaries and rerun
 logic), `pr-with-threads` (a PR with three review threads, one outdated), `stack-of-three` (three stacked PRs),
 `release-train` (tags v0.1.0..v0.3.0 and a draft release, scratch only), `protected-main` (ruleset requiring `ci`,
-scratch only), `webhook-target` (a scratch repo with a webhook to a forwarder). `dev_seed(scenario | description)`
+scratch only), `webhook-target` (a scratch repo with a webhook to a forwarder). `github_dev_seed(scenario | description)`
 matches a plain description to scenarios; the preview lists every object that will be created.
 
-**V4. Cleanup is precise** (`dev_cleanup(runId | 'all-runs')`, preview then `confirm`): close the run's PRs, delete its
+**V4. Cleanup is precise** (`github_dev_cleanup(runId | 'all-runs')`, preview then `confirm`): close the run's PRs, delete its
 branches, delete its webhooks and forwarders, close (reason "not planned") and label `rtc-cleaned` its issues outside
 scratch (GitHub cannot delete issues through the REST API with an installation token), delete its scratch repositories
 (scratch account only; destructive but confined). Reports per object; partial failures listed; a non-run object with
 the same tag is left alone.
 
-**V5. CI for testing.** `dev_dispatch_and_wait` dispatches a workflow on a test ref (the 2026-03-10 response gives the
+**V5. CI for testing.** `github_dev_dispatch_and_wait` dispatches a workflow on a test ref (the 2026-03-10 response gives the
 run ID), waits up to 45 s inside the Vercel budget, and returns the run state or a handle to check later — never a loop.
-`dev_set_check_run` creates or completes a check run on a run-created commit (`success`/`failure`/`neutral`, with
+`github_dev_set_check_run` creates or completes a check run on a run-created commit (`success`/`failure`/`neutral`, with
 optional annotations) so an agent can test merge gates, bots or the E-1 CI-state helper without real CI.
 
 **V6. Webhook deliveries replayed into apps under development** (the GitHub version of Stripe's event forwarding).
-`dev_create_forwarder(url, events?)` registers a target (HTTPS, public address only — private, loopback, link-local and
+`github_dev_create_forwarder(url, events?)` registers a target (HTTPS, public address only — private, loopback, link-local and
 metadata addresses refused after DNS resolution) and a new signing secret shown **once** on the setup page, which the
-developer sets in their app. `dev_forward_deliveries(forwarder, hook, deliveryIds | since | events)` reads real past
+developer sets in their app. `github_dev_forward_deliveries(forwarder, hook, deliveryIds | since | events)` reads real past
 deliveries (`GET …/hooks/{id}/deliveries/{delivery_id}` — payload and headers), re-sends each payload to the target with
 the original `X-GitHub-Event`, a fresh `X-GitHub-Delivery`, and `X-Hub-Signature-256` computed with the forwarder's
-secret, and reports each target status code. `dev_create_test_webhook` makes a webhook in a scratch repo pointing at a
-forwarder or app URL; `webhook_ping`/`webhook_redeliver` (H-2) then generate real deliveries.
+secret, and reports each target status code. `github_dev_create_test_webhook` makes a webhook in a scratch repo pointing at a
+forwarder or app URL; `github_webhook_ping`/`github_webhook_redeliver` (H-2) then generate real deliveries.
 
-**V7. Integration check** (`dev_check_integration(spec)`), read-only: given a spec for an app being built (needed App
+**V7. Integration check** (`github_dev_check_integration(spec)`), read-only: given a spec for an app being built (needed App
 permissions, webhook events, secrets/variables by name, workflows present, required checks, environments), reports per
 item ok / missing (with the exact tool call or `github_where_is_setting` steps).
 
@@ -78,22 +78,22 @@ CREATE TABLE IF NOT EXISTS dev_forwarders (id TEXT PRIMARY KEY, account TEXT NOT
 ## 4. Work units (each: production-refusal test; write-contract for every write)
 
 ### V-1 — Scenarios, seed, runs, scratch repositories (L, medium effort)
-Tools: `dev_list_scenarios`, `dev_seed`, `dev_list_runs`, `dev_create_scratch_repo`. Tests: each scenario's preview lists
+Tools: `github_dev_list_scenarios`, `github_dev_seed`, `github_dev_list_runs`, `github_dev_create_scratch_repo`. Tests: each scenario's preview lists
 exact objects; every created object recorded and tagged; same `requestKey` twice creates nothing new; scratch repos only
 in the scratch account; request shapes valid.
 ### V-2 — Cleanup (M, medium effort)
-Tools: `dev_cleanup`. Tests: only recorded objects touched; an untagged look-alike left alone; repos deleted only in
+Tools: `github_dev_cleanup`. Tests: only recorded objects touched; an untagged look-alike left alone; repos deleted only in
 scratch; per-object report with a partial failure.
 ### V-3 — Test branches, PRs, dispatch, check runs (M)
-Tools: `dev_create_test_branch`, `dev_open_test_pr`, `dev_dispatch_and_wait`, `dev_set_check_run`. Tests: branch names
+Tools: `github_dev_create_test_branch`, `github_dev_open_test_pr`, `github_dev_dispatch_and_wait`, `github_dev_set_check_run`. Tests: branch names
 always `rtc/<run>/…`; dispatch on a production ref refused; wait bounded at 45 s with a handle; check run only on
 run-created commits.
 ### V-4 — Webhooks and delivery forwarding (M, medium effort)
-Tools: `dev_create_test_webhook`, `dev_create_forwarder`, `dev_list_forwarders`, `dev_delete_forwarder`,
-`dev_forward_deliveries`. Tests: signature verifies with `@octokit/webhooks` `verify` and the forwarder secret; private,
+Tools: `github_dev_create_test_webhook`, `github_dev_create_forwarder`, `github_dev_list_forwarders`, `github_dev_delete_forwarder`,
+`github_dev_forward_deliveries`. Tests: signature verifies with `@octokit/webhooks` `verify` and the forwarder secret; private,
 loopback, link-local and metadata URLs refused (also after DNS); secret never in a result.
 ### V-5 — Integration check (S)
-Tools: `dev_check_integration`. Tests: each spec item ok / missing with the exact fix; no write requests at all.
+Tools: `github_dev_check_integration`. Tests: each spec item ok / missing with the exact fix; no write requests at all.
 
 ## 5. Stop-and-ask points
 

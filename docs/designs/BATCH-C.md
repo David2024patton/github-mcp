@@ -21,8 +21,8 @@ workflows, annotations.
 **C1. Two listing modes per connection.** `catalog` (default for claude.ai, whose client does tool search): every tool in
 the profile, listing description ≤160 characters starting with the action (`PRODUCTION:` first for `Prod` tools,
 `SPENDS MONEY:` first for `$` tools); longer guidance lives in property descriptions and `github_describe_tool`.
-`compact` (default for every other client): the meta-tools, `github_whoami`, `api_search`/`graphql_read` (once Batch U
-exists) and the `workflow_*` tools — about 25 tools, under 5,000 tokens, reaching everything.
+`compact` (default for every other client): the meta-tools, `github_whoami`, `github_api_search`/`github_graphql_read` (once Batch U
+exists) and the `github_workflow_*` tools — about 25 tools, under 5,000 tokens, reaching everything.
 
 **C2. Meta-tools.** `github_search_tools(query, area?, audience?, limit=10)` → names, one-line descriptions, safety marks;
 `github_describe_tool(name)` → full schema and guidance; `github_call(name, args)` → dispatches into the **wrapped**

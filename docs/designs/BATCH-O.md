@@ -53,14 +53,14 @@ and licensing, Emails, Password and authentication, Sessions, SSH and GPG keys, 
 Codespaces, Packages, Copilot, Pages, Saved replies, Code security, Applications, Scheduled reminders, Security log,
 Sponsorship log, Developer settings). O-1 walks GitHub's settings pages once in a browser (or from GitHub's docs when no
 browser is available) and records the date. Account-closing and org deletion are steps only.
-`admin_check_setting` reads a setting back after Chris changed it; a guided setting is never reported done unless read
+`github_admin_check_setting` reads a setting back after Chris changed it; a guided setting is never reported done unless read
 back or Chris says so.
 
 **O3. Members and access are owner actions** (contract §11): every membership, role, team, outside-collaborator and token
-approval change needs `confirm` and is access-widening where it widens (B-4). `org_invite_member` notifies (M).
-`org_remove_member` explains what the person loses (private repositories, team access, Copilot seat).
+approval change needs `confirm` and is access-widening where it widens (B-4). `github_org_invite_member` notifies (M).
+`github_org_remove_member` explains what the person loses (private repositories, team access, Copilot seat).
 
-**O4. Spend is explicit** (B-4): `copilot_add_seats`, `codespace_create`, starting a codespace, `codespace_set_org_access`
+**O4. Spend is explicit** (B-4): `github_copilot_add_seats`, `github_codespace_create`, starting a codespace, `github_codespace_set_org_access`
 (org pays), raising or removing a budget, paid security features — dollar estimate, confirm, monthly spend limit
 (default $0). Lowering spend (removing seats, stopping codespaces, adding a budget) never needs the spend limit.
 Plan changes and Marketplace purchases have no API: guided only, and buying is an implementer hard limit.
@@ -69,11 +69,11 @@ Plan changes and Marketplace purchases have no API: guided only, and buying is a
 page" with the link. Emails: adding one sends a verification email to that address (M, confirm). Keys: public keys only;
 a private key pasted by mistake is refused without echo (as H4).
 
-**O6. Notifications need the optional classic token** (`K`, IN-11); without it `notify_*` explain why GitHub offers no
+**O6. Notifications need the optional classic token** (`K`, IN-11); without it `github_notify_*` explain why GitHub offers no
 other way and point at the setup page.
 
 **O7. Plan-dependent items are reported, not faked:** audit log, SSO, custom repository roles, IP allow lists, private
-Pages, environment protection on private repos — `role_list` and the overview say "not available on <plan>".
+Pages, environment protection on private repos — `github_role_list` and the overview say "not available on <plan>".
 
 ## 2. Schema
 
@@ -83,28 +83,28 @@ None new (uses `gh_accounts`, `change_log`). The dashboard map is a data file.
 
 | Tool | Operation(s) |
 |---|---|
-| `org_get`, `org_update_settings` | `GET/PATCH /orgs/{org}` |
-| `org_list_members`, `org_set_member_role`, `org_remove_member` | `GET /orgs/{org}/members` (`filter=2fa_disabled`, `role`), `GET/PUT/DELETE /orgs/{org}/memberships/{username}`, `DELETE /orgs/{org}/members/{username}` |
-| `org_invite_member`, `org_list_invitations`, `org_cancel_invitation` | `POST/GET /orgs/{org}/invitations`, `GET …/failed_invitations`, `DELETE …/invitations/{id}` |
-| `org_set_outside_collaborator` | `GET /orgs/{org}/outside_collaborators`, `PUT/DELETE …/{username}` |
-| `org_set_blocked` | `GET/PUT/DELETE /orgs/{org}/blocks[/{username}]` |
-| `org_custom_properties` | `GET/PATCH /orgs/{org}/properties/schema`, `PUT/DELETE …/{name}` |
-| `org_set_immutable_releases` | `GET/PUT /orgs/{org}/settings/immutable-releases[/repositories…]` |
-| `team_*` | `GET/POST /orgs/{org}/teams`, `GET/PATCH/DELETE …/teams/{slug}`, `…/memberships/{username}`, `…/repos/{owner}/{repo}` |
-| `role_*` | `GET /orgs/{org}/organization-roles[/{id}/users\|/teams]`, `PUT/DELETE …/organization-roles/users/{username}/{role_id}`, `…/teams/{slug}/{role_id}` |
-| `billing_*` | `GET /organizations/{org}/settings/billing/usage[/summary]`, `…/premium_request/usage`, `GET/POST/PATCH/DELETE …/budgets[/{id}]`, `GET /users/{username}/settings/billing/usage` (U), `GET /user/marketplace_purchases` (U) |
-| `copilot_*` | `GET /orgs/{org}/copilot/billing`, `…/seats`, `POST/DELETE …/selected_users`, `…/selected_teams` |
-| `codespace_*` | `GET /user/codespaces`, `GET /orgs/{org}/codespaces`, `POST /repos/{o}/{r}/codespaces` (U), `POST /user/codespaces/{name}/start\|stop`, `DELETE /user/codespaces/{name}`, `PUT /orgs/{org}/codespaces/access[/selected_users]` |
-| `app_*` | `GET /orgs/{org}/installations`, `GET /user/installations` (U), `GET /user/installations/{id}/repositories` (U), `PUT/DELETE /user/installations/{id}/repositories/{repository_id}` (U) |
-| `pat_*` | `GET/POST /orgs/{org}/personal-access-token-requests[/{id}]`, `GET/POST /orgs/{org}/personal-access-tokens[/{id}]` |
-| `account_*` | `GET/PATCH /user`, `GET/POST/DELETE /user/emails`, `PATCH /user/email/visibility`, `GET/POST/DELETE /user/keys`, `/user/ssh_signing_keys`, `/user/gpg_keys`, `GET/PUT/DELETE /user/blocks/{username}`, `GET/PATCH/DELETE /user/repository_invitations[/{id}]` |
-| `notify_*` | `GET/PUT /notifications`, `PATCH/DELETE /notifications/threads/{id}`, `PUT/DELETE …/subscription`, `GET/PUT /repos/{o}/{r}/subscription` (K) |
-| `gist_*` | `GET/POST /gists`, `GET/PATCH/DELETE /gists/{id}` (U) |
+| `github_org_get`, `github_org_update_settings` | `GET/PATCH /orgs/{org}` |
+| `github_org_list_members`, `github_org_set_member_role`, `github_org_remove_member` | `GET /orgs/{org}/members` (`filter=2fa_disabled`, `role`), `GET/PUT/DELETE /orgs/{org}/memberships/{username}`, `DELETE /orgs/{org}/members/{username}` |
+| `github_org_invite_member`, `github_org_list_invitations`, `github_org_cancel_invitation` | `POST/GET /orgs/{org}/invitations`, `GET …/failed_invitations`, `DELETE …/invitations/{id}` |
+| `github_org_set_outside_collaborator` | `GET /orgs/{org}/outside_collaborators`, `PUT/DELETE …/{username}` |
+| `github_org_set_blocked` | `GET/PUT/DELETE /orgs/{org}/blocks[/{username}]` |
+| `github_org_custom_properties` | `GET/PATCH /orgs/{org}/properties/schema`, `PUT/DELETE …/{name}` |
+| `github_org_set_immutable_releases` | `GET/PUT /orgs/{org}/settings/immutable-releases[/repositories…]` |
+| `github_team_*` | `GET/POST /orgs/{org}/teams`, `GET/PATCH/DELETE …/teams/{slug}`, `…/memberships/{username}`, `…/repos/{owner}/{repo}` |
+| `github_role_*` | `GET /orgs/{org}/organization-roles[/{id}/users\|/teams]`, `PUT/DELETE …/organization-roles/users/{username}/{role_id}`, `…/teams/{slug}/{role_id}` |
+| `github_billing_*` | `GET /organizations/{org}/settings/billing/usage[/summary]`, `…/premium_request/usage`, `GET/POST/PATCH/DELETE …/budgets[/{id}]`, `GET /users/{username}/settings/billing/usage` (U), `GET /user/marketplace_purchases` (U) |
+| `github_copilot_*` | `GET /orgs/{org}/copilot/billing`, `…/seats`, `POST/DELETE …/selected_users`, `…/selected_teams` |
+| `github_codespace_*` | `GET /user/codespaces`, `GET /orgs/{org}/codespaces`, `POST /repos/{o}/{r}/codespaces` (U), `POST /user/codespaces/{name}/start\|stop`, `DELETE /user/codespaces/{name}`, `PUT /orgs/{org}/codespaces/access[/selected_users]` |
+| `github_app_*` | `GET /orgs/{org}/installations`, `GET /user/installations` (U), `GET /user/installations/{id}/repositories` (U), `PUT/DELETE /user/installations/{id}/repositories/{repository_id}` (U) |
+| `github_pat_*` | `GET/POST /orgs/{org}/personal-access-token-requests[/{id}]`, `GET/POST /orgs/{org}/personal-access-tokens[/{id}]` |
+| `github_account_*` | `GET/PATCH /user`, `GET/POST/DELETE /user/emails`, `PATCH /user/email/visibility`, `GET/POST/DELETE /user/keys`, `/user/ssh_signing_keys`, `/user/gpg_keys`, `GET/PUT/DELETE /user/blocks/{username}`, `GET/PATCH/DELETE /user/repository_invitations[/{id}]` |
+| `github_notify_*` | `GET/PUT /notifications`, `PATCH/DELETE /notifications/threads/{id}`, `PUT/DELETE …/subscription`, `GET/PUT /repos/{o}/{r}/subscription` (K) |
+| `github_gist_*` | `GET/POST /gists`, `GET/PATCH/DELETE /gists/{id}` (U) |
 
 ## 4. Work units
 
 ### O-1 — Admin overview, guided settings, full dashboard map (M, medium effort)
-Tools: `github_admin_overview`, `admin_list_guided_settings`, `admin_check_setting`, `admin_review_security`;
+Tools: `github_admin_overview`, `github_admin_list_guided_settings`, `github_admin_check_setting`, `github_admin_review_security`;
 `github_where_is_setting` upgraded to the structured format. Tests: each overview item ok / needs_attention /
 not_readable / not_available_on_plan on fixtures (Free org, Team org, personal); every map entry has steps and an
 expected result; every `verifyWith` points at a real read tool and field; 2FA requirement is guided with a read-back.

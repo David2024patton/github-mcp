@@ -57,8 +57,8 @@ guard). Preview Vercel deployments never offer production (A10).
   this server's own GitHub Apps at level **`locked`** (no tool may remove repositories from, suspend or delete them).
 - **`pr-only`** allows the normal PR conveyor only: create/update/delete non-default, non-protected branches; commits to
   those; open, update, comment on, review and resolve threads on PRs; re-run or dispatch CI on non-default refs; check
-  runs and statuses; issues and labels. Merging into the default branch is allowed **only** through `pr_merge`,
-  `pr_merge_async` or `workflow_merge_when_green` with an exact head SHA and every required check green at that SHA (and
+  runs and statuses; issues and labels. Merging into the default branch is allowed **only** through `github_pr_merge`,
+  `github_pr_merge_async` or `github_workflow_merge_when_green` with an exact head SHA and every required check green at that SHA (and
   still needs a production connection and `confirm`). Everything else — settings, visibility, rename, transfer, archive,
   delete, protection, rulesets, webhooks, secrets, variables, environments, deploy keys, collaborators, releases, tags,
   Actions settings, direct pushes or force moves of the default branch — is refused.
@@ -168,7 +168,7 @@ never sets `production_enabled`; banner present.
 ### B-3 — Self-protection and project ownership (M, medium effort)
 Files: `src/tools/protect-guard.js`, `src/db.js` (`protected_resources` + seed), setup page section,
 `github_list_protected_resources`.
-Tests: `pr-only` allows branch/PR/comment/check tools and `pr_merge` with green checks at the exact SHA; refuses settings,
+Tests: `pr-only` allows branch/PR/comment/check tools and `github_pr_merge` with green checks at the exact SHA; refuses settings,
 secrets, webhooks, releases, default-branch force move; `locked` refuses everything; no argument or pass changes it;
 project-owned ref refused without `outsideProject`.
 

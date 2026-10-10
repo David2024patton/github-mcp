@@ -17,47 +17,47 @@ Pages and packages.
 
 ## 1. Decisions
 
-**G1. Logs are summarised, never dumped** (audit G5). `actions_get_job_log` follows the redirect server-side, keeps the
+**G1. Logs are summarised, never dumped** (audit G5). `github_actions_get_job_log` follows the redirect server-side, keeps the
 last 400 lines by default (`tailLines`), puts failed steps first (from the job's `steps[]` and step logs), extracts error
-lines (`##[error]`, `Error:`, `FAIL`, `✗`, stack traces) and annotations. `actions_get_run_logs_summary` downloads the
+lines (`##[error]`, `Error:`, `FAIL`, `✗`, stack traces) and annotations. `github_actions_get_run_logs_summary` downloads the
 run's zip server-side (stream, 50 MB cap), and returns per failed job: failing step, error lines (≤40), annotations,
 duration. Full text stays behind a handle.
 
-**G2. Dispatch returns the run.** `actions_dispatch` (API 2026-03-10) returns the run ID; production when the ref is
+**G2. Dispatch returns the run.** `github_actions_dispatch` (API 2026-03-10) returns the run ID; production when the ref is
 production (B-2) **or** the workflow file declares a job with an `environment:` that is a production environment
 (read from the workflow file at that ref), because dispatching a deploy workflow on `main` deploys.
 
-**G3. Reruns are bounded.** `actions_rerun` (mode `all` | `failed` | `job`) records the run attempt in the change log;
-`workflow_rerun_failed_ci` (W-4) refuses a second automatic rerun of the same failure (two-strikes rule from Chris's
+**G3. Reruns are bounded.** `github_actions_rerun` (mode `all` | `failed` | `job`) records the run attempt in the change log;
+`github_workflow_rerun_failed_ci` (W-4) refuses a second automatic rerun of the same failure (two-strikes rule from Chris's
 build process). Rerunning a production deployment job is production.
 
-**G4. Secret values never pass through a tool** (shared decision 5). `secret_set(scope, name, valueFrom)`:
+**G4. Secret values never pass through a tool** (shared decision 5). `github_secret_set(scope, name, valueFrom)`:
 `valueFrom: 'setup-page'` (default) records a `secret_entry_requests` row and returns a link; Chris types the value on the
 setup page; the server fetches the scope's public key, seals the value with libsodium (`crypto_box_seal`), PUTs
 `encrypted_value` + `key_id`, and reads back (`GET …/secrets/{name}` → `updated_at` newer). `valueFrom: 'generate'`
 makes a random value (default 32 bytes, hex) server-side, stores it the same way, and — only if Chris asks on the setup
-page — shows it once on the one-time-secret page. `secret_list` never returns values (GitHub never does either). Moving
+page — shows it once on the one-time-secret page. `github_secret_list` never returns values (GitHub never does either). Moving
 a value from another service (e.g. a Neon connection string) is a hub workflow (ROADMAP), not built here.
 
 **G5. Variables are not secret** and are returned with values; setting a variable in a production environment or at org
 level is production.
 
-**G6. Environments and deployments.** `env_save` is read-merge-write (protection rules, reviewers, wait timer, branch
-policies) and production when the environment is (B-2 rule 6). `deploy_create` to a production environment is production;
-`actions_review_pending_deployment` (approve/reject) needs Chris's user token (`U`) because GitHub requires a person as
+**G6. Environments and deployments.** `github_env_save` is read-merge-write (protection rules, reviewers, wait timer, branch
+policies) and production when the environment is (B-2 rule 6). `github_deploy_create` to a production environment is production;
+`github_actions_review_pending_deployment` (approve/reject) needs Chris's user token (`U`) because GitHub requires a person as
 the reviewer.
 
-**G7. Releases are production** (B-2 rule 4). `release_create` defaults to `draft: true` and `generate_release_notes:
-true`; publishing (`release_update` with `draft: false`, or `release_create` with `draft: false`) creates the tag and is
-production + `M` (watchers are notified). `release_upload_asset` downloads from a public HTTPS URL server-side (private,
+**G7. Releases are production** (B-2 rule 4). `github_release_create` defaults to `draft: true` and `generate_release_notes:
+true`; publishing (`github_release_update` with `draft: false`, or `github_release_create` with `draft: false`) creates the tag and is
+production + `M` (watchers are notified). `github_release_upload_asset` downloads from a public HTTPS URL server-side (private,
 loopback and metadata addresses refused; 100 MB cap), never takes bytes in chat (audit G15). Immutable releases (org
 setting) are respected: editing a published immutable release is refused with GitHub's reason.
 
-**G8. Check runs are for builders.** `check_create_run`/`check_update_run` act as the App (G4); they never complete a check
-run that another app owns. `status_create` writes commit statuses (any credential). `check_get_ci_state` is the E-1 helper
+**G8. Check runs are for builders.** `github_check_create_run`/`github_check_update_run` act as the App (G4); they never complete a check
+run that another app owns. `github_status_create` writes commit statuses (any credential). `github_check_get_ci_state` is the E-1 helper
 exposed as a tool.
 
-**G9. Artifacts and archives are links.** `artifact_get_link` returns GitHub's short-lived download URL (followed
+**G9. Artifacts and archives are links.** `github_artifact_get_link` returns GitHub's short-lived download URL (followed
 server-side only to read the `Location` header); bytes never pass through chat.
 
 ## 2. Schema
@@ -74,26 +74,26 @@ CREATE TABLE IF NOT EXISTS secret_entry_requests (id TEXT PRIMARY KEY, account T
 
 | Tool | Operation(s) (paths under `/repos/{owner}/{repo}` unless stated) |
 |---|---|
-| `actions_list_workflows`, `actions_set_workflow_enabled` | `GET /actions/workflows`, `PUT …/workflows/{id}/enable` / `disable` |
-| `actions_dispatch` | `POST /actions/workflows/{workflow_id}/dispatches` |
-| `actions_list_runs`, `actions_get_run` | `GET /actions/runs` (or `…/workflows/{id}/runs`), `GET /actions/runs/{run_id}`, `…/jobs`, `…/timing` |
-| `actions_get_job_log`, `actions_get_run_logs_summary` | `GET /actions/jobs/{job_id}/logs`, `…/steps/{n}/logs`, `GET /actions/runs/{run_id}/logs` |
-| `actions_rerun` | `POST /actions/runs/{id}/rerun`, `…/rerun-failed-jobs`, `POST /actions/jobs/{job_id}/rerun` |
-| `actions_cancel_run`, `actions_delete_run` | `POST …/cancel`, `…/force-cancel`; `DELETE /actions/runs/{id}`, `DELETE …/logs` |
-| `actions_list_pending_deployments`, `actions_review_pending_deployment` | `GET`/`POST /actions/runs/{run_id}/pending_deployments` |
-| `check_get_ci_state` | `GET /commits/{ref}/check-runs`, `GET /commits/{ref}/status`, rules + protection (E-1 helper) |
-| `check_get_run`, `check_create_run`, `check_update_run` | `GET`/`PATCH /check-runs/{id}`, `…/annotations`, `POST /check-runs` |
-| `status_create` | `POST /statuses/{sha}` |
-| `artifact_list`, `artifact_get_link`, `artifact_delete` | `GET /actions/artifacts` (or per run), `GET …/{artifact_id}/zip` (redirect), `DELETE …/{artifact_id}` |
-| `cache_list`, `cache_delete` | `GET /actions/caches`, `GET /actions/cache/usage`, `DELETE /actions/caches` / `…/{cache_id}` |
-| `secret_list`, `secret_set`, `secret_delete` | `GET/PUT/DELETE …/{actions\|dependabot\|codespaces\|agents}/secrets[/…]`, environment and `/orgs/{org}/…` equivalents, `…/public-key` |
-| `secret_set_repo_access` | `PUT /orgs/{org}/{kind}/secrets/{name}/repositories` |
-| `variable_list`, `variable_set`, `variable_delete` | `GET/POST/PATCH/DELETE …/actions/variables[/{name}]`, environment and org equivalents |
-| `env_list`, `env_get`, `env_save`, `env_delete` | `GET/PUT/DELETE /environments[/{name}]`, `…/deployment-branch-policies`, `…/deployment_protection_rules` |
-| `deploy_list`, `deploy_create`, `deploy_set_status` | `GET/POST /deployments`, `GET/POST …/{id}/statuses` |
-| `release_*` | `GET/POST /releases`, `GET /releases/latest`, `…/tags/{tag}`, `PATCH/DELETE /releases/{id}`, `POST /releases/generate-notes`, upload to `upload_url` |
-| `pages_get`, `pages_save`, `pages_disable` | `GET/POST/PUT/DELETE /pages`, `GET /pages/builds/latest`, `GET /pages/health` |
-| `package_list`, `package_delete_version`, `package_restore_version` | `GET /orgs/{org}/packages`, `GET /users/{username}/packages`, `…/versions`, `DELETE …/versions/{id}`, `POST …/versions/{id}/restore` |
+| `github_actions_list_workflows`, `github_actions_set_workflow_enabled` | `GET /actions/workflows`, `PUT …/workflows/{id}/enable` / `disable` |
+| `github_actions_dispatch` | `POST /actions/workflows/{workflow_id}/dispatches` |
+| `github_actions_list_runs`, `github_actions_get_run` | `GET /actions/runs` (or `…/workflows/{id}/runs`), `GET /actions/runs/{run_id}`, `…/jobs`, `…/timing` |
+| `github_actions_get_job_log`, `github_actions_get_run_logs_summary` | `GET /actions/jobs/{job_id}/logs`, `…/steps/{n}/logs`, `GET /actions/runs/{run_id}/logs` |
+| `github_actions_rerun` | `POST /actions/runs/{id}/rerun`, `…/rerun-failed-jobs`, `POST /actions/jobs/{job_id}/rerun` |
+| `github_actions_cancel_run`, `github_actions_delete_run` | `POST …/cancel`, `…/force-cancel`; `DELETE /actions/runs/{id}`, `DELETE …/logs` |
+| `github_actions_list_pending_deployments`, `github_actions_review_pending_deployment` | `GET`/`POST /actions/runs/{run_id}/pending_deployments` |
+| `github_check_get_ci_state` | `GET /commits/{ref}/check-runs`, `GET /commits/{ref}/status`, rules + protection (E-1 helper) |
+| `github_check_get_run`, `github_check_create_run`, `github_check_update_run` | `GET`/`PATCH /check-runs/{id}`, `…/annotations`, `POST /check-runs` |
+| `github_status_create` | `POST /statuses/{sha}` |
+| `github_artifact_list`, `github_artifact_get_link`, `github_artifact_delete` | `GET /actions/artifacts` (or per run), `GET …/{artifact_id}/zip` (redirect), `DELETE …/{artifact_id}` |
+| `github_cache_list`, `github_cache_delete` | `GET /actions/caches`, `GET /actions/cache/usage`, `DELETE /actions/caches` / `…/{cache_id}` |
+| `github_secret_list`, `github_secret_set`, `github_secret_delete` | `GET/PUT/DELETE …/{actions\|dependabot\|codespaces\|agents}/secrets[/…]`, environment and `/orgs/{org}/…` equivalents, `…/public-key` |
+| `github_secret_set_repo_access` | `PUT /orgs/{org}/{kind}/secrets/{name}/repositories` |
+| `github_variable_list`, `github_variable_set`, `github_variable_delete` | `GET/POST/PATCH/DELETE …/actions/variables[/{name}]`, environment and org equivalents |
+| `github_env_list`, `github_env_get`, `github_env_save`, `github_env_delete` | `GET/PUT/DELETE /environments[/{name}]`, `…/deployment-branch-policies`, `…/deployment_protection_rules` |
+| `github_deploy_list`, `github_deploy_create`, `github_deploy_set_status` | `GET/POST /deployments`, `GET/POST …/{id}/statuses` |
+| `github_release_*` | `GET/POST /releases`, `GET /releases/latest`, `…/tags/{tag}`, `PATCH/DELETE /releases/{id}`, `POST /releases/generate-notes`, upload to `upload_url` |
+| `github_pages_get`, `github_pages_save`, `github_pages_disable` | `GET/POST/PUT/DELETE /pages`, `GET /pages/builds/latest`, `GET /pages/health` |
+| `github_package_list`, `github_package_delete_version`, `github_package_restore_version` | `GET /orgs/{org}/packages`, `GET /users/{username}/packages`, `…/versions`, `DELETE …/versions/{id}`, `POST …/versions/{id}/restore` |
 
 ## 4. Work units
 

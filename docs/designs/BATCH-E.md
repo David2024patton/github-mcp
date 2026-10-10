@@ -21,34 +21,34 @@ merge commits → stacks merge bottom-up after retargeting to `main`.
 ## 1. Decisions
 
 **E1. "Required checks green at the exact head" is computed by the server**, in one helper
-(`src/github/ci-state.js`, shared with `check_get_ci_state` in G-2): the required contexts are the union of the base
+(`src/github/ci-state.js`, shared with `github_check_get_ci_state` in G-2): the required contexts are the union of the base
 branch's ruleset `required_status_checks` rules and classic protection's required checks; each is matched against the
 head SHA's check runs (latest per name, by app where the rule names one) and commit statuses; result per context:
 `success` / `failure` / `pending` / `missing`. Overall green only when every required context is `success` (or
 `neutral`/`skipped` where GitHub counts those as passing).
 
-**E2. `pr_merge` merges only at an exact head and only when green.** Arguments: `expectedHeadSha` (required), `method`
+**E2. `github_pr_merge` merges only at an exact head and only when green.** Arguments: `expectedHeadSha` (required), `method`
 (default `merge` — merge commits, Chris's rule), `title`/`message`. `plan` re-reads the PR: head ≠ expected → refused
 ("new commits arrived; evidence is stale"); not green per E1 → refused listing each non-green check; draft → refused;
 mergeable false → refused with GitHub's reason. Then GitHub's own merge with `sha` = expected (GitHub rejects if the head
 moved in between). Read-back: PR `merged: true`, base branch head = merge response `sha`. There is no "merge anyway"
 argument; GitHub's rules still apply on top.
 
-**E3. `pr_merge_async`** is the same contract over `merge-async` with `merge_action: 'direct_merge'`; returns `merged`,
-`failed` (GitHub's message) or `pending` (the uuid; `pr_get` reports the result later — no polling loop).
-**`bypass_rules` is never sent**, by any tool, including `api_write` (B-4/U).
+**E3. `github_pr_merge_async`** is the same contract over `merge-async` with `merge_action: 'direct_merge'`; returns `merged`,
+`failed` (GitHub's message) or `pending` (the uuid; `github_pr_get` reports the result later — no polling loop).
+**`bypass_rules` is never sent**, by any tool, including `github_api_write` (B-4/U).
 
-**E4. Retargeting before merging a stack.** `pr_update` with a new `base` previews which commits the PR will then contain
-(`commit_compare`). `workflow_merge_stack` (W-2) uses it; E-2 builds only the primitives.
+**E4. Retargeting before merging a stack.** `github_pr_update` with a new `base` previews which commits the PR will then contain
+(`github_commit_compare`). `github_workflow_merge_stack` (W-2) uses it; E-2 builds only the primitives.
 
-**E5. Review threads are first-class.** `review_list_threads` returns, per thread: id, resolved, outdated, path, line
-range, the latest comment and author (with `untrusted` marking), and a link. `review_resolve_thread` resolves only after
-re-reading the thread (already resolved → `confirmed: true`, no write). `review_reply` uses
+**E5. Review threads are first-class.** `github_review_list_threads` returns, per thread: id, resolved, outdated, path, line
+range, the latest comment and author (with `untrusted` marking), and a link. `github_review_resolve_thread` resolves only after
+re-reading the thread (already resolved → `confirmed: true`, no write). `github_review_reply` uses
 `addPullRequestReviewThreadReply`.
 
-**E6. PR creation is idempotent and labelled.** `pr_create`: if an open PR already exists for the same head and base, it is
+**E6. PR creation is idempotent and labelled.** `github_pr_create`: if an open PR already exists for the same head and base, it is
 returned (`replayed: true`) instead of failing with 422; the body gets a one-line footer
-`<!-- rmcp tool=pr_create run=<runId?> -->` so Batch V cleanup and the change log can find it. Drafts are supported.
+`<!-- rmcp tool=github_pr_create run=<runId?> -->` so Batch V cleanup and the change log can find it. Drafts are supported.
 
 **E7. Reviews by the App.** A review submitted with an installation token appears as the App's bot. The App cannot
 approve PRs it opened itself (GitHub rule); the tool says so instead of failing obscurely.
@@ -60,19 +60,19 @@ in a repository outside Chris's accounts need `confirm`.
 
 | Tool | Operation(s) |
 |---|---|
-| `pr_list`, `pr_get` | `GET /repos/{o}/{r}/pulls`, `GET …/pulls/{n}`; GraphQL `pullRequest { reviewDecision, reviewThreads(first:100){ totalCount nodes { isResolved } } }`; E1 helper |
-| `pr_get_diff`, `pr_list_files`, `pr_list_commits` | `GET …/pulls/{n}` (diff media type), `GET …/pulls/{n}/files`, `GET …/pulls/{n}/commits` |
-| `pr_create`, `pr_update`, `pr_close` | `POST /repos/{o}/{r}/pulls`, `PATCH …/pulls/{n}` |
-| `pr_set_draft` | GraphQL `convertPullRequestToDraft` / `markPullRequestReadyForReview` |
-| `pr_update_branch` | `PUT …/pulls/{n}/update-branch` (`expected_head_sha`) |
-| `pr_merge` | `PUT …/pulls/{n}/merge` |
-| `pr_merge_async` | `PUT …/pulls/{n}/merge-async`, `GET …/merge-async/{uuid}` |
-| `pr_set_auto_merge` | GraphQL `enablePullRequestAutoMerge` / `disablePullRequestAutoMerge` |
-| `pr_list_stacks`, `pr_stack_manage` | `GET/POST /repos/{o}/{r}/stacks`, `GET …/stacks/{stack_number}`, `POST …/add`, `POST …/unstack` |
-| `review_list`, `review_create`, `review_submit`, `review_dismiss` | `GET/POST …/pulls/{n}/reviews`, `POST …/reviews/{id}/events`, `PUT …/reviews/{id}/dismissals` |
-| `review_list_threads`, `review_resolve_thread`, `review_reply` | GraphQL `reviewThreads`, `resolveReviewThread`/`unresolveReviewThread`, `addPullRequestReviewThreadReply` |
-| `review_list_comments` | `GET …/pulls/{n}/comments` |
-| `review_request_reviewers` | `POST`/`DELETE …/pulls/{n}/requested_reviewers` |
+| `github_pr_list`, `github_pr_get` | `GET /repos/{o}/{r}/pulls`, `GET …/pulls/{n}`; GraphQL `pullRequest { reviewDecision, reviewThreads(first:100){ totalCount nodes { isResolved } } }`; E1 helper |
+| `github_pr_get_diff`, `github_pr_list_files`, `github_pr_list_commits` | `GET …/pulls/{n}` (diff media type), `GET …/pulls/{n}/files`, `GET …/pulls/{n}/commits` |
+| `github_pr_create`, `github_pr_update`, `github_pr_close` | `POST /repos/{o}/{r}/pulls`, `PATCH …/pulls/{n}` |
+| `github_pr_set_draft` | GraphQL `convertPullRequestToDraft` / `markPullRequestReadyForReview` |
+| `github_pr_update_branch` | `PUT …/pulls/{n}/update-branch` (`expected_head_sha`) |
+| `github_pr_merge` | `PUT …/pulls/{n}/merge` |
+| `github_pr_merge_async` | `PUT …/pulls/{n}/merge-async`, `GET …/merge-async/{uuid}` |
+| `github_pr_set_auto_merge` | GraphQL `enablePullRequestAutoMerge` / `disablePullRequestAutoMerge` |
+| `github_pr_list_stacks`, `github_pr_stack_manage` | `GET/POST /repos/{o}/{r}/stacks`, `GET …/stacks/{stack_number}`, `POST …/add`, `POST …/unstack` |
+| `github_review_list`, `github_review_create`, `github_review_submit`, `github_review_dismiss` | `GET/POST …/pulls/{n}/reviews`, `POST …/reviews/{id}/events`, `PUT …/reviews/{id}/dismissals` |
+| `github_review_list_threads`, `github_review_resolve_thread`, `github_review_reply` | GraphQL `reviewThreads`, `resolveReviewThread`/`unresolveReviewThread`, `addPullRequestReviewThreadReply` |
+| `github_review_list_comments` | `GET …/pulls/{n}/comments` |
+| `github_review_request_reviewers` | `POST`/`DELETE …/pulls/{n}/requested_reviewers` |
 
 ## 4. Work units
 

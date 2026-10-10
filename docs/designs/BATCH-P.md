@@ -36,20 +36,20 @@ scanning, push protection), `actionsSettings` (default token read-only, fork-PR 
 **P3. Profiles feed the guards.** `productionBranches`/`productionEnvironments` extend B-2's rules; `ownedRefs` drive
 B-3's project-ownership guard (refused without `outsideProject: true`). No profile on a repository → nothing extra.
 
-**P4. `workflow_app_readiness(project | spec)`** checks every row of a profile — or of an inline `spec` with the same
+**P4. `github_workflow_app_readiness(project | spec)`** checks every row of a profile — or of an inline `spec` with the same
 fields, for a project that has no profile yet — and returns, per row: done / fixed (with confirm) / needs you (link +
 numbered steps) / needs a decision (`IN-xx` of that project). It can fix, each previewed and confirmed: ruleset missing
 the required check, secret scanning/push protection off, default token permission write, fork-PR approval too loose,
 merge-commit setting. It **never** edits a project's workflow files or moves an owned ref; it reports them.
 
-**P5. `workflow_project_setup(project, spec)`** is for a **new** project: given a short plain description (name, owner,
+**P5. `github_workflow_project_setup(project, spec)`** is for a **new** project: given a short plain description (name, owner,
 public/private, required check name, production branch, environments), it previews and then creates the repository (or
 uses an existing empty one), a ruleset requiring the check (and blocking force pushes and deletion of the default
 branch), merge settings, security features, standard labels, environments with protection where the plan allows; run
 twice → nothing new. It finishes by writing a draft profile (`status: draft`) and the text of the project's
 `APP-NEEDS-<PROJECT>.md` for Chris or the project's agent to commit in that project's repo.
 
-**P6. `project_draft_profile(findings)`** turns what an agent found in a codebase (workflow files and their
+**P6. `github_project_draft_profile(findings)`** turns what an agent found in a codebase (workflow files and their
 `permissions`, branch names used in scripts, environments, required check names, Vercel `git.deploymentEnabled`) into a
 draft profile and APP-NEEDS text. It never fetches code itself.
 
@@ -68,14 +68,14 @@ required check `ci`, merge commits, `ai/**` work branches, CI `permissions: cont
 ## 4. Work units
 
 ### P-1 — `known_projects`, two seeds, guards read profiles (M, medium effort)
-Tools: `project_list_profiles`, `project_get_profile`. Tests: `live` on Appliance Desk is production; `transfer/x` write
+Tools: `github_project_list_profiles`, `github_project_get_profile`. Tests: `live` on Appliance Desk is production; `transfer/x` write
 refused naming `sandbox-publish.yml`; `outsideProject` goes ahead with confirm; a repo without a profile unaffected; a
 test lists every seeded row with the appliance-desk file it came from (the PR body carries that table).
-### P-2 — `workflow_app_readiness` (L, medium effort)
+### P-2 — `github_workflow_app_readiness` (L, medium effort)
 Tests with fixtures for every row of the Appliance Desk table (`docs/APP-NEEDS-APPLIANCE-DESK.md`, rows G1–G20) and the
 Robinson-server profile: ruleset missing `ci` → one confirmed fix → read-back; push protection off → fix; workflow with
 `pull_request_target` → reported, never edited; guided rows return link + steps; inline spec behaves like a profile.
-### P-3 — `workflow_project_setup` and `project_draft_profile` (M)
+### P-3 — `github_workflow_project_setup` and `github_project_draft_profile` (M)
 Tests: new project created with ruleset, settings, labels; run twice → nothing new; the draft profile and doc text are
 returned, never committed elsewhere; findings with an unknown field are reported, not guessed.
 

@@ -18,17 +18,17 @@ they cost nothing until used.
 
 ## 1. Decisions
 
-**U1. Tools:** `api_search(query)` (method, path, summary, and the classification: reads / writes / production /
-access-widening / notifies / spends / which credential), `api_describe(op)` (parameters trimmed from the description),
-`api_read(op, params)` (GET; Batch C result rules), `api_write(op, params)` (POST/PUT/PATCH/DELETE; `full` profile only;
-passes need `allow_writes`), `graphql_read(query, variables)`, `graphql_write(mutation, variables)` (`full` only).
+**U1. Tools:** `github_api_search(query)` (method, path, summary, and the classification: reads / writes / production /
+access-widening / notifies / spends / which credential), `github_api_describe(op)` (parameters trimmed from the description),
+`github_api_read(op, params)` (GET; Batch C result rules), `github_api_write(op, params)` (POST/PUT/PATCH/DELETE; `full` profile only;
+passes need `allow_writes`), `github_graphql_read(query, variables)`, `github_graphql_write(mutation, variables)` (`full` only).
 
 **U2. Only what GitHub describes.** Every REST request is checked against the vendored description (operation, path and
 query parameters, body against the request schema with `ajv`); every GraphQL document is parsed and validated against
-the vendored schema, and must contain only queries (`graphql_read`) or exactly one mutation field (`graphql_write`).
+the vendored schema, and must contain only queries (`github_graphql_read`) or exactly one mutation field (`github_graphql_write`).
 Unknown → refused in words. No guessing.
 
-**U3. `api_write` and `graphql_write` always need `confirm`** and support `dryRun`; the preview shows the operation in plain
+**U3. `github_api_write` and `github_graphql_write` always need `confirm`** and support `dryRun`; the preview shows the operation in plain
 words, the parameters, and the object as it is now when the path or input names one.
 
 **U4. Classification table** (`src/github/operation-classes.js`, generated once from the description then reviewed by
@@ -48,14 +48,14 @@ universal tool refuses and names it, so curated checks (merge on green, protecti
 spend estimate) are never bypassed.
 
 **U6. Hard refusals:** any request containing `bypass_rules: true`; any secret write (`…/secrets/{name}` PUT) — use
-`secret_set`; any request whose body contains a token- or key-shaped string; enterprise endpoints unless the account is an
+`github_secret_set`; any request whose body contains a token- or key-shaped string; enterprise endpoints unless the account is an
 enterprise (not today); App-management endpoints that need the App JWT (`/app/…`) except the reads B-8 uses.
 
 **U7. Guards apply:** production guard, self-protection, project ownership (when the path names a repo/ref), people and
 spend guards, change log, request-key replay, read-back when the response has an `id`/`node_id`/`number` (otherwise
 `confirmed: null`), undo for labels, topics, archive and simple settings where the before-state was read.
 
-**U8. GraphQL cost.** `graphql_read` estimates the query's point cost from the connection `first`/`last` arguments (GitHub's
+**U8. GraphQL cost.** `github_graphql_read` estimates the query's point cost from the connection `first`/`last` arguments (GitHub's
 documented formula) and refuses queries above 500 points or 500,000 nodes, suggesting smaller pages.
 
 ## 4. Work units
@@ -64,14 +64,14 @@ documented formula) and refuses queries above 500 points or 500,000 nodes, sugge
 Files: `src/tools/universal.js`, `src/github/openapi-index.js` (compact index built from the vendored file at build time),
 `src/github/operation-classes.js`, `src/github/hand-built-map.js`.
 Tests: unknown operation and unknown parameter refused; body validated against the schema; no-confirm changes nothing;
-`PUT …/pulls/{n}/merge` refused naming `pr_merge`; `merge-async` with `bypass_rules` refused; an unlisted "create"
+`PUT …/pulls/{n}/merge` refused naming `github_pr_merge`; `merge-async` with `bypass_rules` refused; an unlisted "create"
 operation treated as production + access-widening; Copilot seat add counted as spend; production and protection guards
-via `api_write` (write-contract); request shapes valid for 25 random GET and 10 write operations; `api_search "hosted
+via `github_api_write` (write-contract); request shapes valid for 25 random GET and 10 write operations; `github_api_search "hosted
 runner"` and `"interaction limit"` find the right operations.
 ### U-2 — GraphQL universal tools (M, medium effort)
 Files: `src/tools/universal-graphql.js`, `src/github/mutation-classes.js`.
-Tests: invalid document refused with GraphQL's message; a mutation in `graphql_read` refused; two mutations in one
-`graphql_write` refused; `mergePullRequest` refused naming `pr_merge`; cost estimate refuses a 1,000-point query;
+Tests: invalid document refused with GraphQL's message; a mutation in `github_graphql_read` refused; two mutations in one
+`github_graphql_write` refused; `mergePullRequest` refused naming `github_pr_merge`; cost estimate refuses a 1,000-point query;
 `enqueuePullRequest` (merge queue) treated as production; guards via write-contract.
 
 ## 5. Stop-and-ask points
@@ -84,7 +84,7 @@ Tests: invalid document refused with GraphQL's message; a mutation in `graphql_r
 |---|---|
 | Every request validated against GitHub's description/schema | `tests/unit/universal.test.js`, `tests/unit/universal-graphql.test.js` |
 | Safe default for unclassified operations | same |
-| Same guards as hand-built tools; hand-built tools win | write-contract through `api_write`/`graphql_write` |
+| Same guards as hand-built tools; hand-built tools win | write-contract through `github_api_write`/`github_graphql_write` |
 
 ## Amendments
 

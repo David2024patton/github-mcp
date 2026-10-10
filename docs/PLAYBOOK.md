@@ -110,7 +110,7 @@ what is not included; CI runs used. Delete the resume note in the final commit.
    AI-PR-READ-FIRST, write "Self-review: …" with every finding and its disposition, and fix all blocking findings in one
    patch. If an organization-wide reviewer posts anyway, fix or answer each thread and resolve it; never wait for one.
 3. Resolve a thread only after verifying the fix at the exact head (GraphQL `resolveReviewThread`, or this server's
-   `review_resolve_thread` once it exists).
+   `github_review_resolve_thread` once it exists).
 
 ## Step 8 — Preview
 

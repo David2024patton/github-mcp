@@ -11,7 +11,7 @@ repository. Scope and acceptance: `docs/PLAN.md` → Batch A. Cards A-1 … A-6.
 | A1 | A source for the contract-generic code exists, in this order of preference: (a) the hub's `robinson-mcp-core` package (hub card K-3); (b) the Stripe MCP's `src/core/` on its `main`; (c) the Google Workspace MCP files Stripe's `docs/designs/BATCH-A.md` row A1 lists (`api/oauth/*`, `api/well-known/*`, `src/oauth/{helpers,login-guard}.js`, `src/crypto.js`, `src/once.js`, `src/changelog.js`, `src/tools/{write,util,errors}.js`, `scripts/check-writes.mjs`, `test/helpers/{fake-db,pg-neon-adapter}.js`, `test/contract/db-contract.js`, `.github/workflows/ci.yml`) | `npm view robinson-mcp-core version`; `git clone --depth 1 https://github.com/Robinson-AI-Systems/stripe-mcp /tmp/s && ls /tmp/s/src/core`; else clone the Workspace MCP and `ls` those paths. Record which source and commit in the PR |
 | A2 | `X-GitHub-Api-Version: 2026-03-10` is still supported and is the newest version (or a newer one exists — then this card still pins 2026-03-10 and a ROADMAP line proposes the move) | https://docs.github.com/en/rest/about-the-rest-api/api-versions |
 | A3 | `github/rest-api-description` still publishes `descriptions/api.github.com/api.github.com.2026-03-10.json`, and `github/docs` publishes `src/graphql/data/fpt/schema.docs.graphql` | `git clone --depth 1 --filter=blob:none --no-checkout https://github.com/github/rest-api-description /tmp/rad && git -C /tmp/rad ls-tree -r --name-only HEAD \| grep 2026-03-10` |
-| A4 | `@octokit/core`, `@octokit/plugin-paginate-rest`, `@octokit/plugin-throttling`, `@octokit/plugin-retry`, `@octokit/auth-app`, `@octokit/webhooks`, `libsodium-wrappers`, `@modelcontextprotocol/sdk`, `@neondatabase/serverless`, `ajv`, `graphql` install under Node 20 (research §1.5 lists the versions seen 2026-10-10) | `npm i` in A-1; record versions in the PR |
+| A4 | `@octokit/core`, `@octokit/plugin-paginate-rest`, `@octokit/plugin-throttling`, `@octokit/plugin-retry`, `@octokit/auth-app`, `@octokit/webhooks`, `libsodium-wrappers`, `@modelcontextprotocol/sdk`, `@neondatabase/serverless`, `ajv`, `graphql` install under Node 24.x (research §1.5 lists the versions seen 2026-10-10; Node 24 per DECISIONS 2026-10-10 — Vercel disabled Node 20 for new deployments on 2026-10-01) | `npm i` in A-1; record versions in the PR |
 | A5 | GitHub's manifest flow still returns `id`, `slug`, `client_id`, `client_secret`, `pem`, `webhook_secret` from `POST /app-manifests/{code}/conversions`, and private Apps can still only be installed on their owner account | `node scripts/openapi-find.mjs "manifest conversion"` (after A-4) and the response schema; https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest |
 
 If any row is false, stop and report; the design may need amending.
@@ -47,9 +47,9 @@ organization and the `christcr2012` personal account; the scratch organization o
 - **installation tokens** (1 hour) minted from the App key for almost every call, cached encrypted in
   `gh_installation_tokens` until 5 minutes before expiry, and **downscoped per connection** (B-6);
 - an optional **user authorization** of the App by Chris (OAuth web flow with PKCE S256 on the setup page): 8-hour user
-  token + 6-month refresh token, used only by tools marked `U` in the catalog (personal settings, `repo_transfer`,
-  `billing_*` for the user, codespaces, gists, `app_set_installation_repos`);
-- an optional **classic token with only the `notifications` scope** (IN-11), used only by `notify_*`.
+  token + 6-month refresh token, used only by tools marked `U` in the catalog (personal settings, `github_repo_transfer`,
+  `github_billing_*` for the user, codespaces, gists, `github_app_set_installation_repos`);
+- an optional **classic token with only the `notifications` scope** (IN-11), used only by `github_notify_*`.
 Fallback `credential_kind = 'fine_grained'`: one fine-grained token per account pasted on the setup page; tools that need
 an App (check runs, token approvals, downscoping) say so plainly. Classic tokens for general use are refused by the setup
 page (it reads `X-OAuth-Scopes` and refuses any scope other than `notifications`).
@@ -91,7 +91,7 @@ request's time budget** (default 20 s; never a loop); writes spaced at least 1 s
 `gh_write_slots` (one atomic `UPDATE … RETURNING`, so two Vercel instances cannot both write in the same second); every
 response's rate headers recorded in `gh_rate_state` so the next request on any instance sees a block (`blocked_until`)
 and answers `rate_limited` with the reset time in Denver time instead of calling GitHub. Reads that are polled
-(`check_get_ci_state`, `pr_get`, `actions_get_run`) send `If-None-Match` from `gh_etag_cache` (an authenticated 304 does
+(`github_check_get_ci_state`, `github_pr_get`, `github_actions_get_run`) send `If-None-Match` from `gh_etag_cache` (an authenticated 304 does
 not count against the primary limit).
 
 **A10. Previews never act on production.** On any non-production Vercel deployment (`VERCEL_ENV !== 'production'`) the

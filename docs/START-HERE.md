@@ -1,6 +1,6 @@
 # START HERE — Robinson GitHub MCP
 
-A hosted MCP server (Node 20, plain ES modules, Vercel serverless + Neon Postgres) that gives Chris's AI agents safe,
+A hosted MCP server (Node 24.x, plain ES modules, Vercel serverless + Neon Postgres) that gives Chris's AI agents safe,
 almost-complete control of his GitHub accounts. Same family and conventions as `Robinson-AI-Systems/stripe-mcp` (the
 reference implementation of the server playbook) and `Robinson-AI-Systems/google-workspace-mcp`. General-purpose across
 Chris's projects; projects whose own automation manages GitHub get a project profile (Batch P), the first being the

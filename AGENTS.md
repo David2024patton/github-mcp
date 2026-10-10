@@ -173,6 +173,10 @@ plain words in the tool description or setup page. Money is shown in dollars and
 - **Code and tests change together.** Every write tool is built with `defineWrite` and passes the write-contract helper
   through every door this server has (MCP, `github_call`, HTTPS API). Contract-generic code lives in `src/core/` and
   imports nothing GitHub-specific, so the hub can extract it into `robinson-mcp-core`.
+- **Every tool name starts with `github_`** (`github_<area>_<verb>`, e.g. `github_pr_merge`; workflows
+  `github_workflow_*`, developer tools `github_dev_*`, universal tools `github_api_*` / `github_graphql_*`). The Vercel,
+  Neon and GitHub servers share nouns (project, branch, deployment), and two connectors in one chat must never offer two
+  tools with the same name. `docs/count-catalog.py` enforces it (DECISIONS 2026-10-10).
 - **GitHub only through `src/github/client.js`** (official Octokit, pinned `GITHUB_API_VERSION = '2026-03-10'`, request
   keys, write slots, rate state). Never hand-build URLs or encode path parameters yourself; never change the API version
   outside its own card.
