@@ -42,9 +42,9 @@ visibility, default branch, rename, archive, transfer and delete are separate to
 preview ("Making Robinson-AI-Systems/x **public**: anyone can read the code and its history, including old commits").
 `github_repo_delete` and `github_repo_transfer` are destructive; `github_repo_transfer` needs Chris's user authorization (`U`).
 
-**D6. Old-name map.** D-1 adds `docs/TOOLKIT-NAME-MAP.md`: every one of the old toolkit's 311 `github_*` names → new
-name, or "removed, because …" (required workflows: GitHub retired the API; logs/artifacts as base64: replaced by
-summaries and links; etc., from the research audit §2).
+**D6. No compatibility with the old toolkits (Chris, 2026-10-10).** The older Robinson toolkits were used only as a
+completeness checklist (`docs/audits/2026-10-10-prior-tools.md`). No old-name map, aliases or legacy shims are built;
+agents use this server's own tool names.
 
 **D7. Inverses** (for Batch X): topics/description/feature switches → previous values; archive ↔ unarchive; visibility ↔
 previous visibility; rename ↔ old name; default branch ↔ previous; file put → previous content by blob SHA (or delete if
@@ -94,7 +94,7 @@ delete; star ↔ unstar. Delete repo and transfer have no inverse.
 
 ## 4. Work units (each: unit tests, write-contract for every write, request-shape test for every call, TOOL-CATALOG marks)
 
-### D-1 — Repositories (M) — includes `docs/TOOLKIT-NAME-MAP.md`
+### D-1 — Repositories (M)
 Extra tests: visibility to public → access-widening confirm + production; `github_repo_delete` on a `pr-only` repo refused;
 `github_repo_get_insights` retries a 202 at most 3 times within budget, then says "GitHub is still computing; try again".
 ### D-2 — Files, commits, git data (M, medium effort)
@@ -118,7 +118,6 @@ regression); tag create is production; `github_branch_list` never sends an empty
 |---|---|
 | Every listed tool built, catalog marked | TOOL-CATALOG Card column `built #n` |
 | No literal default branch; concurrency-safe file writes and ref moves | D-2/D-3 regression tests |
-| Name map complete | `docs/TOOLKIT-NAME-MAP.md` has one row per prior name in `docs/audits/2026-10-10-prior-tools.md` §3 (528; test counts them) |
 
 ## Amendments
 

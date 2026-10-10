@@ -20,7 +20,7 @@ written, two PRs). A-1 (repository, fake GitHub, CI, checks) merged in PR #1. Pl
 | 6 Owner side | O | Admin overview, members, teams, billing and spend, apps and tokens, personal account, every dashboard setting guided | IN-09, IN-11, IN-13 |
 | 7 Projects and workflows | P → W | Optional project profiles (Appliance Desk and the Robinson servers first) and the one-sentence jobs | — |
 | 8 Everything else | U → R | Universal REST and GraphQL access; the contract doors Robinson's Toolkit (the hub) uses to reach this server | IN-10 |
-| 9 Close-out | X | Undo, read-only smoke test on the real accounts, decision on the old toolkit's `github` namespace | IN-04, IN-05, IN-14 |
+| 9 Close-out | X | Undo, read-only smoke test on the real accounts | IN-04, IN-05 |
 | Production | GO-LIVE-CHECKLIST | Only after Chris turns production on per account | IN-07 |
 
 ## Implementing agent — paste this
@@ -46,7 +46,7 @@ by the approved design; write the card when its predecessor is real. Tool counts
 | A Foundation | A-1 repo, CI, fake GitHub · A-2 schema · A-3 login · A-4 GitHub client, vendored descriptions, finders · A-5 setup page, Apps from manifests, credential store, one-time secrets · A-6 DEPLOY.md | 2 | A-1 MERGED (#1); A-2 READY; A-3 written (after A-2); A-4 onward JIT |
 | B Trust | B-1 safety layer · B-2 production guard · B-3 self-protection and ownership · B-4 access/message/spend · B-5 errors and shaping · B-6 profiles and downscoped tokens · B-7 check-writes · B-8 server tools | 11 | JIT |
 | C Context | C-1 small results · C-2 listing modes, meta-tools, budgets | 5 | JIT |
-| D Code | D-1 repositories + toolkit name map · D-2 files, commits, git data · D-3 branches and tags | 44 | JIT |
+| D Code | D-1 repositories · D-2 files, commits, git data · D-3 branches and tags | 44 | JIT |
 | E Pull requests | E-1 read/create/update · E-2 merge at exact head, auto-merge, stacks · E-3 reviews and threads | 24 | JIT |
 | G CI and delivery | G-1 Actions and log summaries · G-2 checks, statuses, artifacts, caches · G-3 secrets and variables · G-4 environments and deployments · G-5 releases · G-6 Pages and packages | 51 | JIT |
 | V Developer tools | V-1 scenarios, runs, scratch repos · V-2 cleanup · V-3 test branches, PRs, dispatch, check runs · V-4 test webhooks and forwarding · V-5 integration check | 15 | JIT |
