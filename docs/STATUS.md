@@ -30,7 +30,8 @@ three Vitest suites (unit, db, shapes), `scripts/check-secrets.mjs` (scans track
 non-local database URLs, Neon/Vercel identifiers, committed `.env`), `check-docs-updated`, `check-writes` and
 `check-budgets` (starting form), `check-core-imports`, `count-catalog.py` and the index validator in `npm run check`;
 `scripts/local-postgres-test.sh`; `test/helpers/fake-github.js`; CI jobs check, unit, db, shapes and the aggregate `ci`.
-A deliberately failing test turned `unit` and `ci` red once (run linked in PR #1), then was removed. Cards A-2 and A-3
+A deliberately failing test turned `unit` and `ci` red once (https://github.com/Robinson-AI-Systems/github-mcp/actions/runs/38077330755), then was removed; the final run is green at the
+exact head (linked in PR #1). Actions pinned to `actions/checkout@v7` and `actions/setup-node@v7` (Node 24 runtimes). Cards A-2 and A-3
 written.
 
 
