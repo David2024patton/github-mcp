@@ -443,7 +443,7 @@ Card(s): O-4. Spend guard (`docs/designs/BATCH-B.md` B-4): `$` tools show a doll
 | `github_codespace_delete` | Delete a codespace (unpushed work is lost) | C·D | C | U | B | F | O-4 |
 | `github_codespace_set_org_access` | Choose who may use codespaces at the organization's expense | C·$·A | N | I | O | F | O-4 |
 
-## Owner: apps and fine-grained tokens (`github_app_*, github_pat_*`) — 7
+## Owner: apps and fine-grained tokens (`github_app_*, github_tokenpolicy_*`) — 7
 
 Card(s): O-5.
 
