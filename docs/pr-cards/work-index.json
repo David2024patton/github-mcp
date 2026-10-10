@@ -1,0 +1,1234 @@
+{
+  "version": 1,
+  "updated": "2026-10-10",
+  "order": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "G",
+    "V",
+    "F",
+    "H",
+    "O",
+    "P",
+    "W",
+    "U",
+    "R",
+    "X"
+  ],
+  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. Designs are DRAFT until Chris answers IN-00 (cards marked APPROVED_PENDING_IN00 become APPROVED then); A-1 is written and READY, and starts once IN-00 is answered.",
+  "cards": [
+    {
+      "id": "A-1",
+      "title": "Repository, test harness (fake GitHub), CI and doc checks",
+      "batch": "A",
+      "design": "docs/designs/BATCH-A.md",
+      "dependencies": [],
+      "card": "docs/pr-cards/A-1.md",
+      "status": "READY",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "A-1"
+      ],
+      "readiness": "READY",
+      "ownerInputs": [
+        "IN-00"
+      ]
+    },
+    {
+      "id": "A-2",
+      "title": "Database schema",
+      "batch": "A",
+      "design": "docs/designs/BATCH-A.md",
+      "dependencies": [
+        "A-1"
+      ],
+      "card": "docs/pr-cards/A-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "foundation",
+      "budget": 250,
+      "units": [
+        "A-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "A-3",
+      "title": "Connector login with accounts, mode, profile, listing",
+      "batch": "A",
+      "design": "docs/designs/BATCH-A.md",
+      "dependencies": [
+        "A-2"
+      ],
+      "card": "docs/pr-cards/A-3.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "A-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "A-4",
+      "title": "GitHub client, vendored OpenAPI and GraphQL schema, operation finder, rate discipline",
+      "batch": "A",
+      "design": "docs/designs/BATCH-A.md",
+      "dependencies": [
+        "A-3"
+      ],
+      "card": "docs/pr-cards/A-4.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "A-4"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "A-5",
+      "title": "Setup page, GitHub Apps from manifests, credential store, one-time secrets",
+      "batch": "A",
+      "design": "docs/designs/BATCH-A.md",
+      "dependencies": [
+        "A-4"
+      ],
+      "card": "docs/pr-cards/A-5.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 550,
+      "units": [
+        "A-5"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-02",
+        "IN-03",
+        "IN-04",
+        "IN-05"
+      ]
+    },
+    {
+      "id": "A-6",
+      "title": "DEPLOY.md",
+      "batch": "A",
+      "design": "docs/designs/BATCH-A.md",
+      "dependencies": [
+        "A-5"
+      ],
+      "card": "docs/pr-cards/A-6.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 0,
+      "units": [
+        "A-6"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-02",
+        "IN-03",
+        "IN-04"
+      ]
+    },
+    {
+      "id": "B-1",
+      "title": "Safety layer: defineWrite for GitHub, request-key replay, write-contract helper",
+      "batch": "B",
+      "design": "docs/designs/BATCH-B.md",
+      "dependencies": [
+        "A-6"
+      ],
+      "card": "docs/pr-cards/B-1.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "B-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "B-2",
+      "title": "Production guard and two-step production enable",
+      "batch": "B",
+      "design": "docs/designs/BATCH-B.md",
+      "dependencies": [
+        "B-1"
+      ],
+      "card": "docs/pr-cards/B-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "B-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-07",
+        "IN-12"
+      ]
+    },
+    {
+      "id": "B-3",
+      "title": "Self-protection and project ownership",
+      "batch": "B",
+      "design": "docs/designs/BATCH-B.md",
+      "dependencies": [
+        "B-2"
+      ],
+      "card": "docs/pr-cards/B-3.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "additive",
+      "budget": 350,
+      "units": [
+        "B-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-08"
+      ]
+    },
+    {
+      "id": "B-4",
+      "title": "Access, message and spend guards",
+      "batch": "B",
+      "design": "docs/designs/BATCH-B.md",
+      "dependencies": [
+        "B-3"
+      ],
+      "card": "docs/pr-cards/B-4.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "B-4"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-09",
+        "IN-13"
+      ]
+    },
+    {
+      "id": "B-5",
+      "title": "Plain-English GitHub errors and result shaping",
+      "batch": "B",
+      "design": "docs/designs/BATCH-B.md",
+      "dependencies": [
+        "B-4"
+      ],
+      "card": "docs/pr-cards/B-5.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "B-5"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "B-6",
+      "title": "Profiles and downscoped installation tokens",
+      "batch": "B",
+      "design": "docs/designs/BATCH-B.md",
+      "dependencies": [
+        "B-5"
+      ],
+      "card": "docs/pr-cards/B-6.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 350,
+      "units": [
+        "B-6"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "B-7",
+      "title": "check-writes and declarations",
+      "batch": "B",
+      "design": "docs/designs/BATCH-B.md",
+      "dependencies": [
+        "B-6"
+      ],
+      "card": "docs/pr-cards/B-7.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 200,
+      "units": [
+        "B-7"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "B-8",
+      "title": "Server tools",
+      "batch": "B",
+      "design": "docs/designs/BATCH-B.md",
+      "dependencies": [
+        "B-7"
+      ],
+      "card": "docs/pr-cards/B-8.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 350,
+      "units": [
+        "B-8"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "C-1",
+      "title": "Summaries, fields, detail, text caps, handles, annotations",
+      "batch": "C",
+      "design": "docs/designs/BATCH-C.md",
+      "dependencies": [
+        "B-8"
+      ],
+      "card": "docs/pr-cards/C-1.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "additive",
+      "budget": 450,
+      "units": [
+        "C-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "C-2",
+      "title": "Listing modes, meta-tools, budgets",
+      "batch": "C",
+      "design": "docs/designs/BATCH-C.md",
+      "dependencies": [
+        "C-1"
+      ],
+      "card": "docs/pr-cards/C-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "C-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "D-1",
+      "title": "Repositories and the toolkit name map",
+      "batch": "D",
+      "design": "docs/designs/BATCH-D.md",
+      "dependencies": [
+        "C-2"
+      ],
+      "card": "docs/pr-cards/D-1.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "D-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "D-2",
+      "title": "Files, commits and git data",
+      "batch": "D",
+      "design": "docs/designs/BATCH-D.md",
+      "dependencies": [
+        "D-1"
+      ],
+      "card": "docs/pr-cards/D-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "D-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "D-3",
+      "title": "Branches and tags",
+      "batch": "D",
+      "design": "docs/designs/BATCH-D.md",
+      "dependencies": [
+        "D-2"
+      ],
+      "card": "docs/pr-cards/D-3.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 300,
+      "units": [
+        "D-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "E-1",
+      "title": "Pull requests: read, create, update",
+      "batch": "E",
+      "design": "docs/designs/BATCH-E.md",
+      "dependencies": [
+        "D-3"
+      ],
+      "card": "docs/pr-cards/E-1.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "E-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "E-2",
+      "title": "Merge at exact head, auto-merge, stacks",
+      "batch": "E",
+      "design": "docs/designs/BATCH-E.md",
+      "dependencies": [
+        "E-1"
+      ],
+      "card": "docs/pr-cards/E-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "E-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "E-3",
+      "title": "Reviews and review threads",
+      "batch": "E",
+      "design": "docs/designs/BATCH-E.md",
+      "dependencies": [
+        "E-2"
+      ],
+      "card": "docs/pr-cards/E-3.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "E-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "G-1",
+      "title": "Actions: workflows, runs, jobs, log summaries",
+      "batch": "G",
+      "design": "docs/designs/BATCH-G.md",
+      "dependencies": [
+        "E-3"
+      ],
+      "card": "docs/pr-cards/G-1.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "G-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "G-2",
+      "title": "Checks, statuses, artifacts, caches",
+      "batch": "G",
+      "design": "docs/designs/BATCH-G.md",
+      "dependencies": [
+        "G-1"
+      ],
+      "card": "docs/pr-cards/G-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "G-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "G-3",
+      "title": "Secrets (sealed, setup page) and variables",
+      "batch": "G",
+      "design": "docs/designs/BATCH-G.md",
+      "dependencies": [
+        "G-2"
+      ],
+      "card": "docs/pr-cards/G-3.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "additive",
+      "budget": 450,
+      "units": [
+        "G-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "G-4",
+      "title": "Environments and deployments",
+      "batch": "G",
+      "design": "docs/designs/BATCH-G.md",
+      "dependencies": [
+        "G-3"
+      ],
+      "card": "docs/pr-cards/G-4.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 350,
+      "units": [
+        "G-4"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "G-5",
+      "title": "Releases",
+      "batch": "G",
+      "design": "docs/designs/BATCH-G.md",
+      "dependencies": [
+        "G-4"
+      ],
+      "card": "docs/pr-cards/G-5.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 350,
+      "units": [
+        "G-5"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "G-6",
+      "title": "Pages and packages",
+      "batch": "G",
+      "design": "docs/designs/BATCH-G.md",
+      "dependencies": [
+        "G-5"
+      ],
+      "card": "docs/pr-cards/G-6.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 250,
+      "units": [
+        "G-6"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "V-1",
+      "title": "Scenarios, seed, runs, scratch repositories",
+      "batch": "V",
+      "design": "docs/designs/BATCH-V.md",
+      "dependencies": [
+        "G-6"
+      ],
+      "card": "docs/pr-cards/V-1.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "additive",
+      "budget": 500,
+      "units": [
+        "V-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-06"
+      ]
+    },
+    {
+      "id": "V-2",
+      "title": "Cleanup by run",
+      "batch": "V",
+      "design": "docs/designs/BATCH-V.md",
+      "dependencies": [
+        "V-1"
+      ],
+      "card": "docs/pr-cards/V-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 350,
+      "units": [
+        "V-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-06"
+      ]
+    },
+    {
+      "id": "V-3",
+      "title": "Test branches, PRs, dispatch and wait, check runs",
+      "batch": "V",
+      "design": "docs/designs/BATCH-V.md",
+      "dependencies": [
+        "V-2"
+      ],
+      "card": "docs/pr-cards/V-3.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "V-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "V-4",
+      "title": "Test webhooks and delivery forwarding",
+      "batch": "V",
+      "design": "docs/designs/BATCH-V.md",
+      "dependencies": [
+        "V-3"
+      ],
+      "card": "docs/pr-cards/V-4.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "additive",
+      "budget": 450,
+      "units": [
+        "V-4"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "V-5",
+      "title": "Integration check",
+      "batch": "V",
+      "design": "docs/designs/BATCH-V.md",
+      "dependencies": [
+        "V-4"
+      ],
+      "card": "docs/pr-cards/V-5.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 250,
+      "units": [
+        "V-5"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "F-1",
+      "title": "Issues",
+      "batch": "F",
+      "design": "docs/designs/BATCH-F.md",
+      "dependencies": [
+        "V-5"
+      ],
+      "card": "docs/pr-cards/F-1.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "F-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "F-2",
+      "title": "Labels and milestones",
+      "batch": "F",
+      "design": "docs/designs/BATCH-F.md",
+      "dependencies": [
+        "F-1"
+      ],
+      "card": "docs/pr-cards/F-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 250,
+      "units": [
+        "F-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "F-3",
+      "title": "Discussions, projects, search",
+      "batch": "F",
+      "design": "docs/designs/BATCH-F.md",
+      "dependencies": [
+        "F-2"
+      ],
+      "card": "docs/pr-cards/F-3.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "F-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-11"
+      ]
+    },
+    {
+      "id": "H-1",
+      "title": "Branch protection and rulesets",
+      "batch": "H",
+      "design": "docs/designs/BATCH-H.md",
+      "dependencies": [
+        "F-3"
+      ],
+      "card": "docs/pr-cards/H-1.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "H-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "H-2",
+      "title": "Webhooks",
+      "batch": "H",
+      "design": "docs/designs/BATCH-H.md",
+      "dependencies": [
+        "H-1"
+      ],
+      "card": "docs/pr-cards/H-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "H-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "H-3",
+      "title": "Collaborators and deploy keys",
+      "batch": "H",
+      "design": "docs/designs/BATCH-H.md",
+      "dependencies": [
+        "H-2"
+      ],
+      "card": "docs/pr-cards/H-3.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 300,
+      "units": [
+        "H-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "H-4",
+      "title": "Security features, alerts, Actions settings",
+      "batch": "H",
+      "design": "docs/designs/BATCH-H.md",
+      "dependencies": [
+        "H-3"
+      ],
+      "card": "docs/pr-cards/H-4.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "H-4"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-09"
+      ]
+    },
+    {
+      "id": "O-1",
+      "title": "Admin overview, guided settings, full dashboard map",
+      "batch": "O",
+      "design": "docs/designs/BATCH-O.md",
+      "dependencies": [
+        "H-4"
+      ],
+      "card": "docs/pr-cards/O-1.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "O-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "O-2",
+      "title": "Organization and members",
+      "batch": "O",
+      "design": "docs/designs/BATCH-O.md",
+      "dependencies": [
+        "O-1"
+      ],
+      "card": "docs/pr-cards/O-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "O-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-13"
+      ]
+    },
+    {
+      "id": "O-3",
+      "title": "Teams and roles",
+      "batch": "O",
+      "design": "docs/designs/BATCH-O.md",
+      "dependencies": [
+        "O-2"
+      ],
+      "card": "docs/pr-cards/O-3.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 350,
+      "units": [
+        "O-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "O-4",
+      "title": "Billing, budgets, Copilot, Codespaces",
+      "batch": "O",
+      "design": "docs/designs/BATCH-O.md",
+      "dependencies": [
+        "O-3"
+      ],
+      "card": "docs/pr-cards/O-4.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "O-4"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-09"
+      ]
+    },
+    {
+      "id": "O-5",
+      "title": "Apps and fine-grained tokens",
+      "batch": "O",
+      "design": "docs/designs/BATCH-O.md",
+      "dependencies": [
+        "O-4"
+      ],
+      "card": "docs/pr-cards/O-5.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 300,
+      "units": [
+        "O-5"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "O-6",
+      "title": "Personal account",
+      "batch": "O",
+      "design": "docs/designs/BATCH-O.md",
+      "dependencies": [
+        "O-5"
+      ],
+      "card": "docs/pr-cards/O-6.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "O-6"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "O-7",
+      "title": "Notifications and gists",
+      "batch": "O",
+      "design": "docs/designs/BATCH-O.md",
+      "dependencies": [
+        "O-6"
+      ],
+      "card": "docs/pr-cards/O-7.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 300,
+      "units": [
+        "O-7"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-11"
+      ]
+    },
+    {
+      "id": "P-1",
+      "title": "known_projects, Appliance Desk and Robinson-server profiles, guards read profiles",
+      "batch": "P",
+      "design": "docs/designs/BATCH-P.md",
+      "dependencies": [
+        "O-7"
+      ],
+      "card": "docs/pr-cards/P-1.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "P-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "P-2",
+      "title": "workflow_app_readiness",
+      "batch": "P",
+      "design": "docs/designs/BATCH-P.md",
+      "dependencies": [
+        "P-1"
+      ],
+      "card": "docs/pr-cards/P-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "P-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "P-3",
+      "title": "workflow_project_setup and project_draft_profile",
+      "batch": "P",
+      "design": "docs/designs/BATCH-P.md",
+      "dependencies": [
+        "P-2"
+      ],
+      "card": "docs/pr-cards/P-3.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "P-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "W-1",
+      "title": "PR status and open PR",
+      "batch": "W",
+      "design": "docs/designs/BATCH-W.md",
+      "dependencies": [
+        "P-3"
+      ],
+      "card": "docs/pr-cards/W-1.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 350,
+      "units": [
+        "W-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "W-2",
+      "title": "Merge when green and merge stack",
+      "batch": "W",
+      "design": "docs/designs/BATCH-W.md",
+      "dependencies": [
+        "W-1"
+      ],
+      "card": "docs/pr-cards/W-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "W-3",
+      "title": "Review threads",
+      "batch": "W",
+      "design": "docs/designs/BATCH-W.md",
+      "dependencies": [
+        "W-2"
+      ],
+      "card": "docs/pr-cards/W-3.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 350,
+      "units": [
+        "W-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "W-4",
+      "title": "CI failure summary and rerun once",
+      "batch": "W",
+      "design": "docs/designs/BATCH-W.md",
+      "dependencies": [
+        "W-3"
+      ],
+      "card": "docs/pr-cards/W-4.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 350,
+      "units": [
+        "W-4"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "W-5",
+      "title": "Repo health, security review, access review",
+      "batch": "W",
+      "design": "docs/designs/BATCH-W.md",
+      "dependencies": [
+        "W-4"
+      ],
+      "card": "docs/pr-cards/W-5.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-5"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "W-6",
+      "title": "Release and branch cleanup",
+      "batch": "W",
+      "design": "docs/designs/BATCH-W.md",
+      "dependencies": [
+        "W-5"
+      ],
+      "card": "docs/pr-cards/W-6.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "W-6"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "W-7",
+      "title": "New repo, find, weekly digest",
+      "batch": "W",
+      "design": "docs/designs/BATCH-W.md",
+      "dependencies": [
+        "W-6"
+      ],
+      "card": "docs/pr-cards/W-7.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-7"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "U-1",
+      "title": "REST universal tools",
+      "batch": "U",
+      "design": "docs/designs/BATCH-U.md",
+      "dependencies": [
+        "W-7"
+      ],
+      "card": "docs/pr-cards/U-1.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 550,
+      "units": [
+        "U-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "U-2",
+      "title": "GraphQL universal tools",
+      "batch": "U",
+      "design": "docs/designs/BATCH-U.md",
+      "dependencies": [
+        "U-1"
+      ],
+      "card": "docs/pr-cards/U-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "U-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "R-1",
+      "title": "Passes",
+      "batch": "R",
+      "design": "docs/designs/BATCH-R.md",
+      "dependencies": [
+        "U-2"
+      ],
+      "card": "docs/pr-cards/R-1.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "R-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-10"
+      ]
+    },
+    {
+      "id": "R-2",
+      "title": "HTTPS tool API, manifest, OpenAPI, shared rate limit",
+      "batch": "R",
+      "design": "docs/designs/BATCH-R.md",
+      "dependencies": [
+        "R-1"
+      ],
+      "card": "docs/pr-cards/R-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "additive",
+      "budget": 450,
+      "units": [
+        "R-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-10"
+      ]
+    },
+    {
+      "id": "R-3",
+      "title": "RTC 1 conformance in CI",
+      "batch": "R",
+      "design": "docs/designs/BATCH-R.md",
+      "dependencies": [
+        "R-2"
+      ],
+      "card": "docs/pr-cards/R-3.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 150,
+      "units": [
+        "R-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "X-1",
+      "title": "Undo",
+      "batch": "X",
+      "design": "docs/designs/BATCH-X.md",
+      "dependencies": [
+        "R-3"
+      ],
+      "card": "docs/pr-cards/X-1.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "X-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": []
+    },
+    {
+      "id": "X-2",
+      "title": "Read-only smoke test against the real accounts",
+      "batch": "X",
+      "design": "docs/designs/BATCH-X.md",
+      "dependencies": [
+        "X-1"
+      ],
+      "card": "docs/pr-cards/X-2.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 250,
+      "units": [
+        "X-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-04",
+        "IN-05"
+      ]
+    },
+    {
+      "id": "X-3",
+      "title": "Toolkit decision note",
+      "batch": "X",
+      "design": "docs/designs/BATCH-X.md",
+      "dependencies": [
+        "X-2"
+      ],
+      "card": "docs/pr-cards/X-3.md",
+      "status": "APPROVED_PENDING_IN00",
+      "migration": "none",
+      "budget": 0,
+      "units": [
+        "X-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-14"
+      ]
+    }
+  ]
+}
