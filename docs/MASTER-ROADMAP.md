@@ -4,8 +4,9 @@ Written 2026-10-10 for an empty repository. [STATUS](STATUS.md) holds current st
 
 ## What is next
 
-**Next:** Chris approves the plan (IN-00). Then **A-1** repository, test harness (fake GitHub), CI and doc checks — the
-card is written and READY (`docs/pr-cards/A-1.md`).
+**Next:** **A-2** foundation database schema — card READY (`docs/pr-cards/A-2.md`); then **A-3** connector login (card
+written, two PRs). A-1 (repository, fake GitHub, CI, checks) merged in PR #1. Chris: IN-00 (approve the designs) is
+still open.
 
 ## Order and why
 
@@ -42,7 +43,7 @@ by the approved design; write the card when its predecessor is real. Tool counts
 
 | Batch | Cards | Tools | Card status |
 |---|---|---|---|
-| A Foundation | A-1 repo, CI, fake GitHub · A-2 schema · A-3 login · A-4 GitHub client, vendored descriptions, finders · A-5 setup page, Apps from manifests, credential store, one-time secrets · A-6 DEPLOY.md | 2 | A-1 READY; A-2 onward JIT |
+| A Foundation | A-1 repo, CI, fake GitHub · A-2 schema · A-3 login · A-4 GitHub client, vendored descriptions, finders · A-5 setup page, Apps from manifests, credential store, one-time secrets · A-6 DEPLOY.md | 2 | A-1 MERGED (#1); A-2 READY; A-3 written (after A-2); A-4 onward JIT |
 | B Trust | B-1 safety layer · B-2 production guard · B-3 self-protection and ownership · B-4 access/message/spend · B-5 errors and shaping · B-6 profiles and downscoped tokens · B-7 check-writes · B-8 server tools | 11 | JIT |
 | C Context | C-1 small results · C-2 listing modes, meta-tools, budgets | 5 | JIT |
 | D Code | D-1 repositories + toolkit name map · D-2 files, commits, git data · D-3 branches and tags | 44 | JIT |

@@ -24,8 +24,8 @@ next bounded implementation. Every line below maps to evidence named in its desi
 - The PR description carries the card's acceptance checklist with evidence and a "Self-review" (AI-PR-READ-FIRST).
 
 ## Batch A — Foundation (`designs/BATCH-A.md`)
-- [ ] Node 24.x in `package.json` and every CI job; CI runs check, unit, database and request-shape jobs on every PR with a
-  single `ci` gate; a deliberately failing test turned it red once.
+- [x] Node 24.x in `package.json` and every CI job; CI runs check, unit, database and request-shape jobs on every PR with a
+  single `ci` gate; a deliberately failing test turned it red once. — A-1, PR #1 (red proof: https://github.com/Robinson-AI-Systems/github-mcp/actions/runs/38077330755; green run linked in the PR).
 - [ ] Connector login with default account, allowed accounts, mode (preview unless the account has production enabled),
   profile and listing; lockout after 5 tries in 15 minutes; tokens stored hashed; a refresh keeps every setting.
 - [ ] GitHub Apps created from manifests on the setup page; credentials stored only encrypted; nothing copied by hand;
