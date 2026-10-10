@@ -2,8 +2,9 @@
 
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
-on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` once A-1 exists). When a
-tool merges, its Card cell gains `built #<PR>`.
+on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
+tool merges, its Card cell gains `built #<PR>`. Built so far: **0 tools** — the registry (`src/tools/index.js`) exists
+and is empty until A-5 adds `github_whoami` and `github_list_accounts`.
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
 `—` reads only · `P` preview available (`dryRun`), no confirmation needed for ordinary targets · `C` always needs

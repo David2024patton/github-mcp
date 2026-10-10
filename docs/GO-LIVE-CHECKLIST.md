@@ -14,7 +14,7 @@ Legend: **Owner** = only Chris · **Agent** = Claude can do it once you say go.
 | Done | Item | Where / how | Today | How you know it worked |
 |---|---|---|---|---|
 | [ ] | Vercel project `github-mcp` and its own Neon database created, free tiers (IN-02) | Vercel and Neon connectors (Agent, after you say go) | Not created | The server's home page shows its tool counts |
-| [ ] | Node 24.x runtime | `package.json` `engines` (A-1) — Vercel picks it up | Not built | Vercel's deployment page shows Node 24.x |
+| [ ] | Node 24.x runtime | `package.json` `engines` (A-1) — Vercel picks it up | Set in `package.json` (A-1, #1); Vercel project not created | Vercel's deployment page shows Node 24.x |
 | [ ] | `DATABASE_URL` for this server's own database only (IN-02) | Vercel → Environment Variables (Agent after approval) | Not set | The server creates its tables without touching any other project |
 | [ ] | `ADMIN_PASSPHRASE` and `TOKEN_ENCRYPTION_KEY` set (IN-03) | Vercel → Environment Variables (Owner; `docs/DEPLOY.md` shows how to make the key) | Not set | The setup page asks for the passphrase and agrees to store a credential |
 | [ ] | Repository settings for this repo: ruleset on `main` requiring `ci`, merge commits, secret scanning and push protection on (IN-01) | github.com (Owner) or, once Batch H exists, ask Claude (Agent with your confirm) | Not set | `github_workflow_repo_health` on `Robinson-AI-Systems/github-mcp` shows all ok |

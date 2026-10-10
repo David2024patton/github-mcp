@@ -33,8 +33,14 @@ spend or pass defaults; committing to `main`; skipping, disabling or weakening t
    update the resume note (§4). Repeat. Red → fix one failing file at a time, then the full check once.
 4. **Code first, then docs.** In an implementation PR, edit only the docs checklist B names.
 5. When the card is complete: update the docs **as if this PR had already merged** (card `MERGED (#n)`, STATUS,
-   `work-index.json`, TOOL-CATALOG Card column, ARCHITECTURE when infra changed — checklist B), push once, open the PR,
-   then follow PLAYBOOK Steps 5–9.
+   `work-index.json`, TOOL-CATALOG Card column, ARCHITECTURE when infra changed — checklist B), `git fetch origin main`,
+   push once, open the PR **through REST** (`gh api repos/Robinson-AI-Systems/github-mcp/pulls -f title=… -f head=… -f
+   base=main -F body=@file`; `gh pr` may be blocked), then PLAYBOOK Steps 5–9: wait for the `ci` check at the exact head
+   with the bounded REST check of Step 10 (one `sleep 60` per command, ≤15 checks), self-review, merge with
+   `gh api -X PUT …/pulls/<n>/merge -f sha=<head> -f merge_method=merge`, confirm `main`'s CI is green.
+
+Dev commands (all finish by themselves): `npm run check` · `npm test` (unit) · `npm run test:db -- <files>` (throwaway
+Postgres; CI service or local binaries) · `npm run test:shapes -- <files>` (Octokit against `test/helpers/fake-github.js`).
 
 ## 4. Resume note — so stopping never loses your place
 

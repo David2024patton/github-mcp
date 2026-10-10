@@ -7,5 +7,5 @@ the exact commit, secrets and keys that never pass through an AI, and small resu
 It follows the Robinson Tool Contract, so Robinson's Toolkit (the hub) can offer it to any agent alongside Chris's other
 servers — and it works fully on its own.
 
-**Status:** plan only; no code yet. Start at [`docs/START-HERE.md`](docs/START-HERE.md). AI agents: read
+**Status:** plan and foundation (repository tooling, tests, CI); no tools yet — see [`docs/STATUS.md`](docs/STATUS.md). Start at [`docs/START-HERE.md`](docs/START-HERE.md). AI agents: read
 [`AGENTS.md`](AGENTS.md) first.

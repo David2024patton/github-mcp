@@ -18,7 +18,7 @@
     "R",
     "X"
   ],
-  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. Designs are DRAFT until Chris answers IN-00 (cards marked APPROVED_PENDING_IN00 become APPROVED then); A-1 is written and READY, and starts once IN-00 is answered.",
+  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 is READY and A-3 is written (READY after A-2). Designs stay DRAFT until Chris answers IN-00; cards marked APPROVED_PENDING_IN00 become APPROVED then.",
   "cards": [
     {
       "id": "A-1",
@@ -27,7 +27,7 @@
       "design": "docs/designs/BATCH-A.md",
       "dependencies": [],
       "card": "docs/pr-cards/A-1.md",
-      "status": "READY",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -36,6 +36,9 @@
       "readiness": "READY",
       "ownerInputs": [
         "IN-00"
+      ],
+      "pr": [
+        1
       ]
     },
     {
@@ -47,13 +50,13 @@
         "A-1"
       ],
       "card": "docs/pr-cards/A-2.md",
-      "status": "APPROVED_PENDING_IN00",
+      "status": "READY",
       "migration": "foundation",
-      "budget": 250,
+      "budget": 200,
       "units": [
         "A-2"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": []
     },
     {
@@ -65,13 +68,13 @@
         "A-2"
       ],
       "card": "docs/pr-cards/A-3.md",
-      "status": "APPROVED_PENDING_IN00",
+      "status": "READY_AFTER_A-2",
       "migration": "none",
       "budget": 450,
       "units": [
         "A-3"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": []
     },
     {

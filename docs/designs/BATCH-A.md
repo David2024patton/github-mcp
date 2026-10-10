@@ -270,3 +270,9 @@ Done when: a reviewer pretending to be Chris can follow it without a question.
 ## Amendments
 
 (Dated entries only.)
+
+**2026-10-10 — A-1 as built (Claude, PR #1).** `test/helpers/fake-github.js` records `{ method, route, path, params,
+query, body, headers }` (adds decoded `params`), keeps `calls`, `unmatched` and `graphql` lists, refuses `when()` for a
+route it does not know, and answers 501 for a known route with no configured reply (a test can never receive invented
+data). `makeFakeGitHub({ routes })` accepts extra templates so A-4 can pass the vendored description's list; `{path}`
+spans segments (file paths), every other parameter is one segment. Contract source recorded: Stripe MCP @ `e2f90e8`.
