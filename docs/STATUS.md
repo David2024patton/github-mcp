@@ -9,7 +9,7 @@ repositories.
 
 - **A-2 — foundation database schema:** `docs/pr-cards/A-2.md` (READY). Branch `ai/<tool>/a-2-schema` from `main`.
   Then **A-3** connector login (`docs/pr-cards/A-3.md`, written; split into A-3a and A-3b).
-- **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — repository public, **no automated review** ("I don't want the automated review at this time"); the implementer self-reviews every diff.
+- **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).
 
 ## Environment
