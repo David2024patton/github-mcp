@@ -5,14 +5,14 @@ Written 2026-10-10 for an empty repository. [STATUS](STATUS.md) holds current st
 ## What is next
 
 **Next:** **A-2** foundation database schema — card READY (`docs/pr-cards/A-2.md`); then **A-3** connector login (card
-written, two PRs). A-1 (repository, fake GitHub, CI, checks) merged in PR #1. Chris: IN-00 (approve the designs) is
-still open.
+written, two PRs). A-1 (repository, fake GitHub, CI, checks) merged in PR #1. Plan approved by Chris
+(IN-00, 2026-10-10).
 
 ## Order and why
 
 | Stage | Batches | Why in this place | Owner gate |
 |---|---|---|---|
-| 1 Foundation | A | Nothing works without it: tests, login, GitHub Apps from manifests, one polite GitHub client | IN-00; IN-01 applied provisionally; IN-02/IN-03/IN-04/IN-05 before A-5 can be tried for real |
+| 1 Foundation | A | Nothing works without it: tests, login, GitHub Apps from manifests, one polite GitHub client | IN-02/IN-03/IN-04/IN-05 before A-5 can be tried for real |
 | 2 Safety | B → C | Every later tool is built on the trust layer (production guard, self-protection, access/message/spend guards) and the context rules | IN-07, IN-08, IN-09, IN-12, IN-13 (defaults; none blocks building) |
 | 3 The build conveyor | D → E → G | What Chris's own build process runs on every day: code, branches, PRs, merge at the exact head on green, review threads, CI with log summaries, releases | — |
 | 4 Building with GitHub | V | Developer tools for any project: scratch repositories, test branches and PRs, dispatch and wait, simulated checks, webhook deliveries forwarded into apps under development, cleanup by run | IN-06 (scratch organization) before real use |

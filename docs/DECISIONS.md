@@ -106,3 +106,7 @@ rule (hand-build when the change log shows repeated universal calls). Totals 301
 
 **2026-10-10 — Token-approval tools renamed `github_tokenpolicy_*`.** They were `github_pat_*`, which is also the real
 prefix of GitHub fine-grained tokens, so every secret scanner (ours included) would flag the tool names themselves.
+
+**2026-10-10 — Plan approved; no automated review (Chris).** "I approve the plans, and I don't want the automated review
+at this time." IN-00 and IN-01 answered; designs marked APPROVED. An organization-wide Codex reviewer may still post
+until Chris turns it off for this repository; agents answer and resolve its threads but never wait for one.

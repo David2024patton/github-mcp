@@ -1,6 +1,6 @@
 # Design — Batch E: Pull requests, merges, stacks and reviews
 
-Status: **DRAFT — awaiting Chris's approval (IN-00)**. Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
+Status: **APPROVED** (Chris, 2026-10-10). Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
 Batch E. Cards E-1 … E-3. Depends on Batch D. Tool list: `docs/TOOL-CATALOG.md` sections Pull requests; Reviews and
 review threads.
 

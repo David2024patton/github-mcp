@@ -1,6 +1,6 @@
 # Design — Batch U: Universal tools (every other REST operation and GraphQL)
 
-Status: **DRAFT — awaiting Chris's approval (IN-00)**. Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
+Status: **APPROVED** (Chris, 2026-10-10). Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
 Batch U. Cards U-1, U-2. Depends on Batches B and C (and A-4's vendored descriptions).
 
 Hand-built tools cover the common jobs; six universal tools reach **all 1,232 REST operations** of API 2026-03-10 and the

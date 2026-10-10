@@ -1,6 +1,6 @@
 # Design — Batch O: Owner and administration (contract §11)
 
-Status: **DRAFT — awaiting Chris's approval (IN-00)**. Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
+Status: **APPROVED** (Chris, 2026-10-10). Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
 Batch O. Cards O-1 … O-7. Depends on Batches B and H. Tool list: `docs/TOOL-CATALOG.md` sections Owner: … and
 Owner and administration: guided settings; `github_admin_overview`. Research: `docs/audits/2026-10-10-research.md` §9.
 

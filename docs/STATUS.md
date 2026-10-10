@@ -9,8 +9,7 @@ repositories.
 
 - **A-2 — foundation database schema:** `docs/pr-cards/A-2.md` (READY). Branch `ai/<tool>/a-2-schema` from `main`.
   Then **A-3** connector login (`docs/pr-cards/A-3.md`, written; split into A-3a and A-3b).
-- **Chris:** approve the plan (IN-00) — A-1 was built at your direction; the designs stay DRAFT until you say so.
-  IN-01 (public repository, no automated review) is applied provisionally.
+- **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — repository public, **no automated review** ("I don't want the automated review at this time"); the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).
 
 ## Environment
@@ -56,7 +55,7 @@ first card A-1.
 
 ## Blocked
 
-Nothing in engineering. IN-00 (plan approval) is still formally open; owner inputs IN-02 … IN-14 (`OWNER-INPUTS.md`)
+Nothing in engineering. IN-00 and IN-01 answered; owner inputs IN-02 … IN-14 (`OWNER-INPUTS.md`)
 are open and none blocks A-2 … A-4.
 
 ## Unverified (each has an owner card)

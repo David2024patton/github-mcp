@@ -1,6 +1,6 @@
 # Design — Batch G: CI and delivery (Actions, checks, secrets and variables, environments, deployments, releases, Pages, packages)
 
-Status: **DRAFT — awaiting Chris's approval (IN-00)**. Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
+Status: **APPROVED** (Chris, 2026-10-10). Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
 Batch G. Cards G-1 … G-6. Depends on Batch E (the CI-state helper of E-1/E-2). Tool list: `docs/TOOL-CATALOG.md`
 sections Actions; Checks, statuses, artifacts and caches; Secrets and variables; Environments and deployments; Releases;
 Pages and packages.

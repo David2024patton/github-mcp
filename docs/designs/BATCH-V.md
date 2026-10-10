@@ -1,6 +1,6 @@
 # Design — Batch V: Developer tools (build and test with GitHub)
 
-Status: **DRAFT — awaiting Chris's approval (IN-00)**. Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
+Status: **APPROVED** (Chris, 2026-10-10). Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
 Batch V. Cards V-1 … V-5. Depends on Batches E and G (PR and Actions tools exist). Tool list: `docs/TOOL-CATALOG.md`
 section Developer tools. Follows hub contract §10 (`devTools: true` in the manifest).
 
