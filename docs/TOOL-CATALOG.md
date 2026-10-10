@@ -452,10 +452,10 @@ Card(s): O-5.
 | `github_app_list_installations` | GitHub Apps installed on an org or on Chris's account, with permissions and repo selection | — | C | I,U | O | R | O-5 |
 | `github_app_get_installation` | One installation: permissions, events, selected repositories, suspended state | — | C | I | O | R | O-5 |
 | `github_app_set_installation_repos` | Add or remove a repository from an app installation | C·A* | N | U | O | F | O-5 |
-| `github_pat_list_requests` | Pending requests from fine-grained tokens to access the organization | — | N | I | O | R | O-5 |
-| `github_pat_review_request` | Approve or deny a fine-grained token's access request | C·A* | N | I | O | F | O-5 |
-| `github_pat_list_tokens` | Fine-grained tokens that can reach the organization, with owner, repositories and expiry | — | N | I | O | R | O-5 |
-| `github_pat_revoke_access` | Revoke a fine-grained token's access to the organization | C | N | I | O | F | O-5 |
+| `github_tokenpolicy_list_requests` | Pending requests from fine-grained tokens to access the organization | — | N | I | O | R | O-5 |
+| `github_tokenpolicy_review_request` | Approve or deny a fine-grained token's access request | C·A* | N | I | O | F | O-5 |
+| `github_tokenpolicy_list_tokens` | Fine-grained tokens that can reach the organization, with owner, repositories and expiry | — | N | I | O | R | O-5 |
+| `github_tokenpolicy_revoke_access` | Revoke a fine-grained token's access to the organization | C | N | I | O | F | O-5 |
 
 ## Owner: personal account (`github_account_*`) — 9
 

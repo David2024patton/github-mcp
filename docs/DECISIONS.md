@@ -103,3 +103,6 @@ inference is out of scope), 3 named gaps plus one planned category added: `githu
 Each fits its existing card (budgets +40 lines), so no card was split. Everything else stays universal under the ROADMAP
 rule (hand-build when the change log shows repeated universal calls). Totals 301 → 305 (299 hand-built + 6 universal).
 `docs/TOOLKIT-NAME-MAP.md` (D-1) now covers all 528 names, not only the 311.
+
+**2026-10-10 — Token-approval tools renamed `github_tokenpolicy_*`.** They were `github_pat_*`, which is also the real
+prefix of GitHub fine-grained tokens, so every secret scanner (ours included) would flag the tool names themselves.

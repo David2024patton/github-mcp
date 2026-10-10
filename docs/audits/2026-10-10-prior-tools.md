@@ -657,7 +657,7 @@ Origins use the codes in §1. Dropped reasons:
 | Self-hosted runners, runner groups, hosted runners | universal (hosted runners classified as spend; ROADMAP) |
 | Org API insights, artifact metadata, attestations, network configurations | universal (ROADMAP: SBOM and attestations) |
 | Org blocking, outside collaborators, roles, security managers | `github_org_set_blocked`, `github_org_set_outside_collaborator`, `github_role_*` |
-| Org personal access tokens | `github_pat_*` |
+| Org personal access tokens | `github_tokenpolicy_*` |
 | Org webhooks | `github_webhook_*` (organization scope) |
 | Team discussions | universal |
 | Deployments: branch policies, protection rules, statuses | `github_env_save`, `github_deploy_*` |

@@ -96,7 +96,7 @@ None new (uses `gh_accounts`, `change_log`). The dashboard map is a data file.
 | `github_copilot_*` | `GET /orgs/{org}/copilot/billing`, `…/seats`, `POST/DELETE …/selected_users`, `…/selected_teams` |
 | `github_codespace_*` | `GET /user/codespaces`, `GET /orgs/{org}/codespaces`, `POST /repos/{o}/{r}/codespaces` (U), `POST /user/codespaces/{name}/start\|stop`, `DELETE /user/codespaces/{name}`, `PUT /orgs/{org}/codespaces/access[/selected_users]` |
 | `github_app_*` | `GET /orgs/{org}/installations`, `GET /user/installations` (U), `GET /user/installations/{id}/repositories` (U), `PUT/DELETE /user/installations/{id}/repositories/{repository_id}` (U) |
-| `github_pat_*` | `GET/POST /orgs/{org}/personal-access-token-requests[/{id}]`, `GET/POST /orgs/{org}/personal-access-tokens[/{id}]` |
+| `github_tokenpolicy_*` | `GET/POST /orgs/{org}/personal-access-token-requests[/{id}]`, `GET/POST /orgs/{org}/personal-access-tokens[/{id}]` |
 | `github_account_*` | `GET/PATCH /user`, `GET/POST/DELETE /user/emails`, `PATCH /user/email/visibility`, `GET/POST/DELETE /user/keys`, `/user/ssh_signing_keys`, `/user/gpg_keys`, `GET/PUT/DELETE /user/blocks/{username}`, `GET/PATCH/DELETE /user/repository_invitations[/{id}]` |
 | `github_notify_*` | `GET/PUT /notifications`, `PATCH/DELETE /notifications/threads/{id}`, `PUT/DELETE …/subscription`, `GET/PUT /repos/{o}/{r}/subscription` (K) |
 | `github_gist_*` | `GET/POST /gists`, `GET/PATCH/DELETE /gists/{id}` (U) |
