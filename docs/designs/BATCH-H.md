@@ -1,6 +1,6 @@
 # Design — Batch H: Repository governance and security (protection, rulesets, webhooks, access, security features)
 
-Status: **DRAFT — awaiting Chris's approval (IN-00)**. Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
+Status: **APPROVED** (Chris, 2026-10-10). Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
 Batch H. Cards H-1 … H-4. Depends on Batch B (every tool here is production or access-widening). Tool list:
 `docs/TOOL-CATALOG.md` sections Branch protection and rulesets; Webhooks; Collaborators and deploy keys; Security
 features and alerts; Actions settings.

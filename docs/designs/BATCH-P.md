@@ -1,6 +1,6 @@
 # Design — Batch P: Project profiles (any project whose code and automation live on GitHub)
 
-Status: **DRAFT — awaiting Chris's approval (IN-00)**. Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
+Status: **APPROVED** (Chris, 2026-10-10). Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
 Batch P. Cards P-1 … P-3. Depends on Batches B, G and H.
 
 The GitHub MCP is a general development tool. Some projects run their own automation on GitHub — a release workflow that

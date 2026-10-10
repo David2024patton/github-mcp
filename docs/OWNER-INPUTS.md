@@ -2,12 +2,12 @@
 
 Decisions only Chris can make, with stable IDs. Agents check here first and ask only for what the current card needs.
 An answer is "applied" only once the setting and its behavior are verified. Plain English throughout.
-None of these blocks A-1 … A-4 except IN-00 (approving the plan at all).
+IN-00 and IN-01 are answered; none of the rest blocks A-2 … A-4.
 
 | ID | Status | Question | Blocks | Recommended / safe default |
 |---|---|---|---|---|
-| IN-00 | **Open — Chris** | Approve this plan (all designs in `docs/designs/`) so building can start. | Everything | — |
-| IN-01 | **Pending Chris's confirmation (same as Stripe)** — applied provisionally; mirrors his Stripe MCP decision of 2026-10-10 | Keep this repository public (free CI, GitHub secret scanning) with **no automated (Codex) review** — the building agent inspects every change itself and writes "Self-review" in the PR? | Nothing | As for Stripe: public, no automated review |
+| IN-00 | **Answered 2026-10-10 — approved** (Chris: "I approve the plans") | Approve this plan (all designs in `docs/designs/`) so building can start. | Everything | — |
+| IN-01 | **Answered 2026-10-10** — **no automated review** (Chris: "I don't want the automated review at this time"); public, as Chris created the repository (and as he chose for the Stripe MCP) | Keep this repository public (free CI, GitHub secret scanning) with **no automated (Codex) review** — the building agent inspects every change itself and writes "Self-review" in the PR? | Nothing | As for Stripe: public, no automated review |
 | IN-02 | Awaiting Chris (before A-5 is tried for real) | Create a Vercel project `github-mcp` and a Neon database for it (free tiers). Claude can do both with your Vercel and Neon connectors once you say go. | Real deployment | Free tiers; no purchase |
 | IN-03 | Awaiting Chris (with IN-02) | Set two secrets in Vercel yourself: `ADMIN_PASSPHRASE` (the passphrase for the login and setup pages) and `TOKEN_ENCRYPTION_KEY` (DEPLOY.md shows how to make it). Claude never sees them. | Real deployment | — |
 | IN-04 | Awaiting Chris (before A-5 is used for real) | **How the server signs in to GitHub.** Recommended: on the server's setup page, click "Create the GitHub App" once for your organization (Robinson-AI-Systems) and once for your personal account (christcr2012). GitHub creates a private app for each and hands its keys straight to the server — nothing to copy. Then click "Install" on each, and "Authorize as me" once so the server can reach your personal settings. Alternative: paste one fine-grained token per account (simpler, but no check runs, no token approvals, no per-connection read-only tokens). Not recommended: classic tokens. | Using the server | **Two private GitHub Apps** (research §4) |

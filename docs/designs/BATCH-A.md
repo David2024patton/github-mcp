@@ -1,6 +1,6 @@
 # Design — Batch A: Foundation (repo, tests, login, GitHub App credentials, GitHub client)
 
-Status: **DRAFT — awaiting Chris's approval (IN-00)**. Written 2026-10-10 by Claude (Opus 5.5) for an empty
+Status: **APPROVED** (Chris, 2026-10-10). Written 2026-10-10 by Claude (Opus 5.5) for an empty
 repository. Scope and acceptance: `docs/PLAN.md` → Batch A. Cards A-1 … A-6. Research: `docs/audits/2026-10-10-research.md`
 §1, §4, §5.
 

@@ -1,6 +1,6 @@
 # Design — Batch C: Cheap on context (small results, compact listing, budgets)
 
-Status: **DRAFT — awaiting Chris's approval (IN-00)**. Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
+Status: **APPROVED** (Chris, 2026-10-10). Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
 Batch C. Cards C-1, C-2. Depends on Batch B. Every later tool is built to these rules, so this batch comes before any
 area tools.
 

@@ -1,6 +1,6 @@
 # Design — Batch D: Repositories, code, branches and tags
 
-Status: **DRAFT — awaiting Chris's approval (IN-00)**. Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
+Status: **APPROVED** (Chris, 2026-10-10). Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
 Batch D. Cards D-1 … D-3. Depends on Batches B and C. Tool list: `docs/TOOL-CATALOG.md` sections Repositories; Files,
 commits and git data; Branches and tags.
 
