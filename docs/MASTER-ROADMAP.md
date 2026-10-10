@@ -57,5 +57,5 @@ by the approved design; write the card when its predecessor is real. Tool counts
 | W Workflows | W-1 … W-7 (`designs/BATCH-W.md` §4 table) | 15 | JIT |
 | U Universal | U-1 REST · U-2 GraphQL | 6 | JIT |
 | R Hub-ready doors (RTC 1) | R-1 passes · R-2 HTTPS API, manifest, OpenAPI, shared rate limit · R-3 conformance in CI | 1 | JIT |
-| X Close-out | X-1 undo · X-2 read-only smoke test · X-3 toolkit note | 1 | JIT |
-| **Total** | 65 cards | **305** | |
+| X Close-out | X-1 undo · X-2 read-only smoke test | 1 | JIT |
+| **Total** | 64 cards | **305** | |

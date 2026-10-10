@@ -1,7 +1,7 @@
 # Design — Batch X: Undo, real-account smoke test
 
 Status: **APPROVED** (Chris, 2026-10-10). Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
-Batch X. Cards X-1 … X-3.
+Batch X. Cards X-1 … X-2.
 
 ## 0. Verify before starting
 
@@ -46,7 +46,6 @@ Done when: report committed; every failure fixed or listed as a known gap with a
 |---|---|
 | Undo for every clean opposite | `tests/unit/undo.test.js` |
 | Read-only smoke report | `docs/audits/smoke-<date>.md` |
-| Toolkit note delivered | X-3 PR |
 
 ## Amendments
 

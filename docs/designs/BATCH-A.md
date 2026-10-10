@@ -20,7 +20,7 @@ If any row is false, stop and report; the design may need amending.
 
 **A1. A separate, hosted server, built like the Stripe MCP.** Reason: GitHub holds Chris's code and the switches that
 put it in production; it needs the same preview / confirm / read-back / change-log discipline, hosted so it works from
-his phone and from any agent. The old toolkit's `github` namespace stays as it is until Batch X decides its future.
+his phone and from any agent. The old toolkit was only a completeness checklist; nothing here keeps compatibility with it.
 
 **A2. Copy, don't reinvent.** Contract-generic code comes from the A1 source (package > Stripe `src/core/` > Workspace
 files). First line of each copied file: `// Copied from <repo> <path> @ <commit>`. When the hub's `robinson-mcp-core`
