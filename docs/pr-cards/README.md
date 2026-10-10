@@ -19,7 +19,7 @@ reason to stop. Designs govern behavior; cards cannot silently override them.
 - Commands to run (with `set -o pipefail` when piping).
 - Done when: observable conditions; what the successor inherits.
 
-Validate coverage with `python3 docs/pr-cards/validate-index.py` and the catalog with `python3 docs/count-catalog.py`.
+Validate coverage with `python3 docs/pr-cards/validate-index.py` and the catalog with `python3 scripts/count-catalog.py`.
 
 ## Effort guide for Sol 5.6
 

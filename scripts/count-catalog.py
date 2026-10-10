@@ -1,6 +1,6 @@
 """Check docs/TOOL-CATALOG.md: section counts, totals, unique names, valid marks, cards that exist.
 
-Run: python3 docs/count-catalog.py   (prints the totals; exits 1 on any mismatch)
+Run: python3 scripts/count-catalog.py   (prints the totals; exits 1 on any mismatch)
 A-1 adds it to `npm run check`. Any PR that adds, removes or renames a catalog tool keeps this green.
 """
 import json

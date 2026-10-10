@@ -191,7 +191,7 @@ Files: `package.json`, `.github/workflows/ci.yml`, `vitest.config.js` (+ `.db`, 
 `scripts/{check-secrets,check-docs-updated,check-writes,check-budgets,check-core-imports}.mjs` (writes/budgets start as
 honest "0 tools registered — nothing to check" passes; B-7 and C-2 make them real), `scripts/local-postgres-test.sh`,
 `test/helpers/{fake-db,pg-neon-adapter}.js`, `test/contract/db-contract.js`, `test/helpers/fake-github.js` (API in the
-card), `src/tools/index.js` (empty registry), `README.md`. `npm run check` also runs `python3 docs/count-catalog.py`.
+card), `src/tools/index.js` (empty registry), `README.md`. `npm run check` also runs `python3 scripts/count-catalog.py`.
 Tests: fake GitHub records calls and refuses an unknown route; secret scan fails on a planted real-shaped `ghp_`/
 `github_pat_`/`ghs_`/`ghu_`/`ghr_` token and a PEM private key (prove, remove); core-imports check fails on a planted
 import (prove, remove).

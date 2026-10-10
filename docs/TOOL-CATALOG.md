@@ -2,7 +2,7 @@
 
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
-on day one. Counts are checked by `python3 docs/count-catalog.py` (run by `npm run check` once A-1 exists). When a
+on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` once A-1 exists). When a
 tool merges, its Card cell gains `built #<PR>`.
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
@@ -23,7 +23,7 @@ copy code) · `F` the old toolkit had it **with a bug or a missing guard**, fixe
 **Profile:** `R` read_only and up · `E` everyday and up · `F` full only.
 
 **Names:** every tool starts with the service prefix `github_` (`github_<area>_<verb>`; DECISIONS 2026-10-10), so it
-never collides with the Vercel or Neon server's tools in the same chat; `docs/count-catalog.py` enforces it.
+never collides with the Vercel or Neon server's tools in the same chat; `scripts/count-catalog.py` enforces it.
 
 Toolkit name mapping: `github_list_pull_requests` → `github_pr_list`, and so on; D-1 adds `docs/TOOLKIT-NAME-MAP.md` mapping
 all 311 old names to new names or to "removed, because …".

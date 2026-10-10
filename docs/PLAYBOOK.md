@@ -62,7 +62,7 @@ git diff --name-only origin/<base>...HEAD -- api src packages scripts | wc -l
 
 `npm run check` = secret scan (`scripts/check-secrets.mjs`, fails on anything shaped like a real GitHub token, a PEM
 private key or a connection string), docs check (`scripts/check-docs-updated.mjs`), index validation
-(`docs/pr-cards/validate-index.py`), catalog count (`docs/count-catalog.py`), lint, write-safety
+(`docs/pr-cards/validate-index.py`), catalog count (`scripts/count-catalog.py`), lint, write-safety
 (`scripts/check-writes.mjs`), token budgets (`scripts/check-budgets.mjs`), core imports
 (`scripts/check-core-imports.mjs`). Never `--no-verify`.
 

@@ -152,7 +152,7 @@ plain words in the tool description or setup page. Money is shown in dollars and
 |---|---|
 | Starting a card session; resume note | `docs/SESSION-START.md` |
 | Step-by-step procedure and testing | `docs/PLAYBOOK.md` |
-| Every tool: name, purpose, safety, credential, audience, profile, card | `docs/TOOL-CATALOG.md` (counted by `docs/count-catalog.py`) |
+| Every tool: name, purpose, safety, credential, audience, profile, card | `docs/TOOL-CATALOG.md` (counted by `scripts/count-catalog.py`) |
 | Project profiles (what each project needs from GitHub) | `docs/APP-NEEDS-APPLIANCE-DESK.md` (first profile), `docs/designs/BATCH-P.md` |
 | Runtime facts (env vars, tables, infra) as built | `docs/ARCHITECTURE.md` |
 | Remaining acceptance | `docs/PLAN.md` |
@@ -167,6 +167,7 @@ plain words in the tool description or setup page. Money is shown in dollars and
 | Credential/secret/guard constraints for PRs | `docs/AI-PR-READ-FIRST.md` |
 | The contract every Robinson server follows | `Robinson-AI-Systems/robinsons-toolkit-hub` `docs/CONTRACT.md` (RTC 1) |
 | Research: GitHub API, credentials, old toolkit audit, official connector | `docs/audits/2026-10-10-research.md` |
+| Retired documents (reference only) | `docs/archive/` |
 
 ## Engineering rules for every change
 
@@ -176,7 +177,7 @@ plain words in the tool description or setup page. Money is shown in dollars and
 - **Every tool name starts with `github_`** (`github_<area>_<verb>`, e.g. `github_pr_merge`; workflows
   `github_workflow_*`, developer tools `github_dev_*`, universal tools `github_api_*` / `github_graphql_*`). The Vercel,
   Neon and GitHub servers share nouns (project, branch, deployment), and two connectors in one chat must never offer two
-  tools with the same name. `docs/count-catalog.py` enforces it (DECISIONS 2026-10-10).
+  tools with the same name. `scripts/count-catalog.py` enforces it (DECISIONS 2026-10-10).
 - **GitHub only through `src/github/client.js`** (official Octokit, pinned `GITHUB_API_VERSION = '2026-03-10'`, request
   keys, write slots, rate state). Never hand-build URLs or encode path parameters yourself; never change the API version
   outside its own card.
@@ -210,7 +211,7 @@ npx vitest run tests/unit/<file>.test.js          # one unit file
 npm run test:db -- tests/db/<file>.test.js        # throwaway Postgres (scripts/local-postgres-test.sh)
 npm run test:shapes -- tests/shapes/<file>.test.js  # request shapes against the vendored GitHub description
 python3 docs/pr-cards/validate-index.py
-python3 docs/count-catalog.py
+python3 scripts/count-catalog.py
 ```
 
 ## Ending a session

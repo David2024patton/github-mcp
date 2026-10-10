@@ -36,7 +36,7 @@ GitHub's published API description and schema for the pinned version.
 | Current state / ordered work | STATUS / MASTER-ROADMAP / `pr-cards/work-index.json` |
 | Remaining acceptance | PLAN |
 | How each batch works | `designs/BATCH-*.md` (targeted headings); the card for exact execution |
-| Every tool and its safety marks | TOOL-CATALOG (`count-catalog.py` keeps the totals honest) |
+| Every tool and its safety marks | TOOL-CATALOG (`scripts/count-catalog.py` keeps the totals honest) |
 | What each profiled project needs | `APP-NEEDS-<PROJECT>.md` (first: APP-NEEDS-APPLIANCE-DESK), `designs/BATCH-P.md` |
 | Owner-only inputs / production switches | OWNER-INPUTS / GO-LIVE-CHECKLIST |
 | Runtime facts | code and tests; ARCHITECTURE updated as behavior ships |
