@@ -1,7 +1,7 @@
-# Design — Batch X: Undo, real-account smoke test, toolkit decision
+# Design — Batch X: Undo, real-account smoke test
 
 Status: **APPROVED** (Chris, 2026-10-10). Written 2026-10-10. Scope and acceptance: `docs/PLAN.md` →
-Batch X. Cards X-1 … X-3.
+Batch X. Cards X-1 … X-2.
 
 ## 0. Verify before starting
 
@@ -27,8 +27,6 @@ deleted runs/logs/artifacts/packages beyond their restore window.
 read_only** connection to each real account; never a write; report `docs/audits/smoke-<date>.md` with pass/fail per tool,
 GitHub's request IDs for failures, and the plan-dependent items seen.
 
-**X3. Toolkit decision note:** one page for Chris — keep Robinson's Toolkit's `github` namespace for local use, retire it,
-or point its compound tools at this server; the work each needs (hub Batch M). Chris decides (IN-14); a later card does it.
 
 ## 4. Work units
 
@@ -37,8 +35,6 @@ Tests: each clean opposite; merge refuses with "open a revert PR"; undo of an un
 preview connection refused.
 ### X-2 — Read-only smoke test (M)
 Done when: report committed; every failure fixed or listed as a known gap with an owner card.
-### X-3 — Toolkit decision note (S, docs)
-
 ## 5. Stop-and-ask points
 
 1. The smoke test finds a real repository in a state that needs a change (e.g. no protection on a default branch): report
@@ -50,7 +46,6 @@ Done when: report committed; every failure fixed or listed as a known gap with a
 |---|---|
 | Undo for every clean opposite | `tests/unit/undo.test.js` |
 | Read-only smoke report | `docs/audits/smoke-<date>.md` |
-| Toolkit note delivered | X-3 PR |
 
 ## Amendments
 

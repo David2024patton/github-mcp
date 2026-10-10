@@ -50,12 +50,12 @@ Projects tools; a dated amendment lets a profile allow its own agent steps on an
 
 **2026-10-10 — Plan written (initial commits):** AGENTS, START-HERE, SESSION-START, PLAYBOOK, research audit (GitHub API,
 credentials, old toolkit's 311 tools and 20 bugs, official connector comparison), 15 batch designs, TOOL-CATALOG (301 tools:
-295 hand-built + 6 universal, every name `github_…`), owner inputs IN-00 … IN-14, work index (65 cards) with validator,
+295 hand-built + 6 universal, every name `github_…`), owner inputs IN-00 … IN-14, work index (64 cards since the old-toolkit decision note was dropped) with validator,
 first card A-1.
 
 ## Blocked
 
-Nothing in engineering. IN-00 and IN-01 answered; owner inputs IN-02 … IN-14 (`OWNER-INPUTS.md`)
+Nothing in engineering. IN-00 and IN-01 answered; owner inputs IN-02 … IN-13 (`OWNER-INPUTS.md`; IN-14 answered: not needed)
 are open and none blocks A-2 … A-4.
 
 ## Unverified (each has an owner card)

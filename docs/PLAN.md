@@ -60,8 +60,6 @@ next bounded implementation. Every line below maps to evidence named in its desi
 - [ ] Every D-1 … D-3 tool in TOOL-CATALOG built and marked `built #n`.
 - [ ] No literal default branch (audit G4); file writes and ref moves are compare-and-swap; force moves previewed with
   the commits dropped.
-- [ ] `docs/TOOLKIT-NAME-MAP.md` maps every prior name in `docs/audits/2026-10-10-prior-tools.md` §3 — 528: the old
-  toolkit's 311 plus the other prior toolkits' names (a test counts them).
 
 ## Batch E — Pull requests, merges, stacks, reviews (`designs/BATCH-E.md`)
 - [ ] Every E-1 … E-3 tool built and marked.
@@ -127,7 +125,6 @@ next bounded implementation. Every line below maps to evidence named in its desi
 - [ ] Per-pass rate limit stored per pass and counted in Postgres (overlapping-request test across two instances).
 - [ ] RTC 1 conformance green in CI once the hub's package exists (never a blocker before).
 
-## Batch X — Undo, smoke test, toolkit decision (`designs/BATCH-X.md`)
+## Batch X — Undo, smoke test (`designs/BATCH-X.md`)
 - [ ] Undo for every clean opposite (audit G17 fixed); every other change says what the right opposite is.
 - [ ] Read-only smoke report on the real accounts (`docs/audits/smoke-<date>.md`), preview read-only connection, no write.
-- [ ] Toolkit decision note delivered to Chris (IN-14).

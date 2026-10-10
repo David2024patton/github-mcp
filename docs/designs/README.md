@@ -21,7 +21,7 @@ go in `CHANGES-SINCE-DESIGN.md`. New designs start from `TEMPLATE.md`.
 | W Workflows | [BATCH-W](BATCH-W.md) | Approved 2026-10-10 (Chris, IN-00) |
 | U Universal tools (REST + GraphQL) | [BATCH-U](BATCH-U.md) | Approved 2026-10-10 (Chris, IN-00) |
 | R Hub-ready doors (RTC 1) | [BATCH-R](BATCH-R.md) | Approved 2026-10-10 (Chris, IN-00) |
-| X Undo, smoke test, toolkit decision | [BATCH-X](BATCH-X.md) | Approved 2026-10-10 (Chris, IN-00) |
+| X Undo, smoke test | [BATCH-X](BATCH-X.md) | Approved 2026-10-10 (Chris, IN-00) |
 
 Letters follow the Stripe MCP where the meaning is the same (A, B, C, V, P, W, U, R, X); D–H and O are this server's
 area and owner batches. There is no Batch I–N.

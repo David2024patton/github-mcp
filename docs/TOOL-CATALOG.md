@@ -26,9 +26,6 @@ copy code) · `F` the old toolkit had it **with a bug or a missing guard**, fixe
 **Names:** every tool starts with the service prefix `github_` (`github_<area>_<verb>`; DECISIONS 2026-10-10), so it
 never collides with the Vercel or Neon server's tools in the same chat; `scripts/count-catalog.py` enforces it.
 
-Toolkit name mapping: `github_list_pull_requests` → `github_pr_list`, and so on; D-1 adds `docs/TOOLKIT-NAME-MAP.md` mapping
-every prior name (the old toolkit's 311 plus the other prior toolkits' names, 528 in all; `docs/audits/2026-10-10-prior-tools.md`
-§3) to a new name, the universal tools, or "removed, because …".
 
 ## Server about itself (`github_*`) — 21
 
