@@ -38,23 +38,23 @@ card is written and READY (`docs/pr-cards/A-1.md`).
 
 `docs/pr-cards/work-index.json` is the machine-readable list (`python3 docs/pr-cards/validate-index.py`). **JIT** = covered
 by the approved design; write the card when its predecessor is real. Tool counts are from `docs/TOOL-CATALOG.md`
-(`python3 scripts/count-catalog.py`: 301 = 295 hand-built + 6 universal).
+(`python3 scripts/count-catalog.py`: 305 = 299 hand-built + 6 universal).
 
 | Batch | Cards | Tools | Card status |
 |---|---|---|---|
 | A Foundation | A-1 repo, CI, fake GitHub · A-2 schema · A-3 login · A-4 GitHub client, vendored descriptions, finders · A-5 setup page, Apps from manifests, credential store, one-time secrets · A-6 DEPLOY.md | 2 | A-1 READY; A-2 onward JIT |
 | B Trust | B-1 safety layer · B-2 production guard · B-3 self-protection and ownership · B-4 access/message/spend · B-5 errors and shaping · B-6 profiles and downscoped tokens · B-7 check-writes · B-8 server tools | 11 | JIT |
 | C Context | C-1 small results · C-2 listing modes, meta-tools, budgets | 5 | JIT |
-| D Code | D-1 repositories + toolkit name map · D-2 files, commits, git data · D-3 branches and tags | 43 | JIT |
+| D Code | D-1 repositories + toolkit name map · D-2 files, commits, git data · D-3 branches and tags | 44 | JIT |
 | E Pull requests | E-1 read/create/update · E-2 merge at exact head, auto-merge, stacks · E-3 reviews and threads | 24 | JIT |
-| G CI and delivery | G-1 Actions and log summaries · G-2 checks, statuses, artifacts, caches · G-3 secrets and variables · G-4 environments and deployments · G-5 releases · G-6 Pages and packages | 48 | JIT |
+| G CI and delivery | G-1 Actions and log summaries · G-2 checks, statuses, artifacts, caches · G-3 secrets and variables · G-4 environments and deployments · G-5 releases · G-6 Pages and packages | 51 | JIT |
 | V Developer tools | V-1 scenarios, runs, scratch repos · V-2 cleanup · V-3 test branches, PRs, dispatch, check runs · V-4 test webhooks and forwarding · V-5 integration check | 15 | JIT |
 | F Issues and planning | F-1 issues · F-2 labels and milestones · F-3 discussions, projects, search | 32 | JIT |
-| H Governance and security | H-1 protection and rulesets · H-2 webhooks · H-3 collaborators and deploy keys · H-4 security features, alerts, Actions settings | 32 | JIT |
+| H Governance and security | H-1 protection and rulesets · H-2 webhooks · H-3 collaborators and deploy keys · H-4 security features, alerts, Actions settings | 33 | JIT |
 | O Owner | O-1 admin overview, guided settings, dashboard map · O-2 org and members · O-3 teams and roles · O-4 billing, budgets, Copilot, Codespaces · O-5 apps and tokens · O-6 personal account · O-7 notifications and gists | 61 | JIT |
 | P Project profiles | P-1 `known_projects` + two seeds · P-2 app readiness · P-3 project setup + draft profile | 5 | JIT |
 | W Workflows | W-1 … W-7 (`designs/BATCH-W.md` §4 table) | 15 | JIT |
 | U Universal | U-1 REST · U-2 GraphQL | 6 | JIT |
 | R Hub-ready doors (RTC 1) | R-1 passes · R-2 HTTPS API, manifest, OpenAPI, shared rate limit · R-3 conformance in CI | 1 | JIT |
 | X Close-out | X-1 undo · X-2 read-only smoke test · X-3 toolkit note | 1 | JIT |
-| **Total** | 65 cards | **301** | |
+| **Total** | 65 cards | **305** | |

@@ -60,7 +60,8 @@ next bounded implementation. Every line below maps to evidence named in its desi
 - [ ] Every D-1 … D-3 tool in TOOL-CATALOG built and marked `built #n`.
 - [ ] No literal default branch (audit G4); file writes and ref moves are compare-and-swap; force moves previewed with
   the commits dropped.
-- [ ] `docs/TOOLKIT-NAME-MAP.md` maps all 311 old names (a test counts them).
+- [ ] `docs/TOOLKIT-NAME-MAP.md` maps every prior name in `docs/audits/2026-10-10-prior-tools.md` §3 — 528: the old
+  toolkit's 311 plus the other prior toolkits' names (a test counts them).
 
 ## Batch E — Pull requests, merges, stacks, reviews (`designs/BATCH-E.md`)
 - [ ] Every E-1 … E-3 tool built and marked.

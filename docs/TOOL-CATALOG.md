@@ -26,7 +26,8 @@ copy code) · `F` the old toolkit had it **with a bug or a missing guard**, fixe
 never collides with the Vercel or Neon server's tools in the same chat; `scripts/count-catalog.py` enforces it.
 
 Toolkit name mapping: `github_list_pull_requests` → `github_pr_list`, and so on; D-1 adds `docs/TOOLKIT-NAME-MAP.md` mapping
-all 311 old names to new names or to "removed, because …".
+every prior name (the old toolkit's 311 plus the other prior toolkits' names, 528 in all; `docs/audits/2026-10-10-prior-tools.md`
+§3) to a new name, the universal tools, or "removed, because …".
 
 ## Server about itself (`github_*`) — 21
 
@@ -83,7 +84,7 @@ Card(s): D-1.
 | `github_repo_set_custom_properties` | Set custom property values on a repository | P | N | I | O | F | D-1 |
 | `github_repo_star` | Star or unstar a repository as Chris | P | C | U | Op | E | D-1 |
 
-## Files, commits and git data (`github_content_*, github_commit_*, github_git_*`) — 14
+## Files, commits and git data (`github_content_*, github_commit_*, github_git_*`) — 15
 
 Card(s): D-2.
 
@@ -95,6 +96,7 @@ Card(s): D-2.
 | `github_content_delete_file` | Delete one file with a commit | C·Prod* | C | I | B | E | D-2 |
 | `github_content_push_files` | Commit several file changes at once on a branch, signed by GitHub (GraphQL `createCommitOnBranch`, expected head checked) | P·Prod* | N | I | B | E | D-2 |
 | `github_content_get_archive_link` | Short-lived download link for a tarball or zipball of a ref | — | N | I | B | R | D-2 |
+| `github_content_check_codeowners` | Problems GitHub found in a CODEOWNERS file on a branch (bad lines, unknown users or teams), in plain words | — | C | I | B,O | R | D-2 |
 | `github_commit_list` | Commits on a branch or path, by author or date | — | C | I | B,Op | R | D-2 |
 | `github_commit_get` | One commit: message, author, files changed with stats (patch capped) | — | C | I | B,Op | R | D-2 |
 | `github_commit_compare` | Compare two refs: ahead/behind, commits, files (patches capped) | — | C | I | B,Op | R | D-2 |
@@ -275,7 +277,7 @@ Card(s): G-4.
 | `github_deploy_create` | Create a deployment for a ref and environment | C·Prod* | C | I | B | E | G-4 |
 | `github_deploy_set_status` | Add a status to a deployment (in progress, success, failure, inactive) | P·Prod* | C | I | B | E | G-4 |
 
-## Releases (`github_release_*`) — 6
+## Releases (`github_release_*`) — 7
 
 Card(s): G-5.
 
@@ -287,8 +289,9 @@ Card(s): G-5.
 | `github_release_update` | Edit notes, name, flags; publish a draft | C·Prod | C | I | B | F | G-5 |
 | `github_release_delete` | Delete a release (the tag is kept unless asked) | C·D·Prod | C | I | B | F | G-5 |
 | `github_release_upload_asset` | Attach a file to a release from a public URL (downloaded server-side, size-capped; no bytes in chat) | P·Prod* | F | I | B | F | G-5 |
+| `github_release_delete_asset` | Remove a file attached to a release (a wrong or outdated build); production when the release is published | C·D·Prod* | C | I | B | F | G-5 |
 
-## Pages and packages (`github_pages_*, github_package_*`) — 6
+## Pages and packages (`github_pages_*, github_package_*`) — 7
 
 Card(s): G-6.
 
@@ -299,7 +302,8 @@ Card(s): G-6.
 | `github_pages_disable` | Turn off a Pages site | C·D·Prod | C | I | O | F | G-6 |
 | `github_package_list` | Packages of an org or user with versions | — | C | I | B | R | G-6 |
 | `github_package_delete_version` | Delete a package version (restorable for 30 days) | C·D | C | I | B | F | G-6 |
-| `github_package_restore_version` | Restore a deleted package version | P | N | I | B | F | G-6 |
+| `github_package_delete` | Delete a whole package with all its versions (restorable for 30 days; GitHub refuses public packages with over 5,000 downloads) | C·D | C | I | B | F | G-6 |
+| `github_package_restore_version` | Restore a deleted package or package version (within 30 days) | P | C | I | B | F | G-6 |
 
 ## Developer tools (`github_dev_*`) — 15
 
@@ -368,7 +372,7 @@ Card(s): H-3.
 | `github_deploykey_add` | Add a deploy key (public key only; write access is access-widening and production) | C·A·Prod* | F | I | O | F | H-3 |
 | `github_deploykey_delete` | Remove a deploy key | C | C | I | O | F | H-3 |
 
-## Security features and alerts; Actions settings (`github_security_*, github_actions_*settings`) — 8
+## Security features and alerts; Actions settings (`github_security_*, github_actions_*settings`) — 9
 
 Card(s): H-4.
 
@@ -380,6 +384,7 @@ Card(s): H-4.
 | `github_security_get_alert` | One alert in plain words (secret scanning: the secret itself is never returned) | — | F | I | O,B | R | H-4 |
 | `github_security_update_alert` | Dismiss, resolve or reopen an alert with a reason | P | C | I | O,B | E | H-4 |
 | `github_security_list_advisories` | Repository security advisories, or global advisories by package | — | C | I | O,B | R | H-4 |
+| `github_security_compare_dependencies` | Dependencies added, removed or changed between two commits or branches (a PR), with known vulnerabilities and licences | — | N | I | B,O | R | H-4 |
 | `github_actions_get_settings` | Repository Actions settings: allowed actions, default token permissions, fork PR approval, retention | — | N | I | O,B | R | H-4 |
 | `github_actions_set_settings` | Change repository Actions settings | C·Prod | N | I | O | F | H-4 |
 
@@ -567,9 +572,9 @@ an organization; scheduled reminders; interaction limits beyond 6 months. The fu
 
 ## Totals
 
-**Totals:** 301 tools: 295 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
-dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 131, everyday adds 81
-(everyday lists 212), full adds 89 (full lists 301). In compact mode (`docs/designs/BATCH-C.md`) an agent
+**Totals:** 305 tools: 299 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 133, everyday adds 81
+(everyday lists 214), full adds 91 (full lists 305). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
 `github_search_tools` / `github_call`.
 
@@ -577,7 +582,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | --- | --- |
 | Server about itself | 21 |
 | Repositories | 20 |
-| Files, commits and git data | 14 |
+| Files, commits and git data | 15 |
 | Branches and tags | 9 |
 | Pull requests | 15 |
 | Reviews and review threads | 9 |
@@ -588,13 +593,13 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Checks, statuses, artifacts and caches | 10 |
 | Secrets and variables | 7 |
 | Environments and deployments | 7 |
-| Releases | 6 |
-| Pages and packages | 6 |
+| Releases | 7 |
+| Pages and packages | 7 |
 | Developer tools | 15 |
 | Branch protection and rulesets | 9 |
 | Webhooks | 8 |
 | Collaborators and deploy keys | 7 |
-| Security features and alerts; Actions settings | 8 |
+| Security features and alerts; Actions settings | 9 |
 | Owner: organization and members | 12 |
 | Owner: teams and roles | 9 |
 | Owner: billing, budgets, Copilot and Codespaces | 13 |
@@ -605,4 +610,4 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Project profiles | 3 |
 | Workflows | 17 |
 | Everything else on GitHub: the universal tools | 6 |
-| **Total** | **301** |
+| **Total** | **305** |

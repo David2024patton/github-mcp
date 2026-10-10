@@ -354,7 +354,7 @@
       "card": "docs/pr-cards/D-2.md",
       "status": "APPROVED_PENDING_IN00",
       "migration": "none",
-      "budget": 450,
+      "budget": 490,
       "units": [
         "D-2"
       ],
@@ -516,7 +516,7 @@
       "card": "docs/pr-cards/G-5.md",
       "status": "APPROVED_PENDING_IN00",
       "migration": "none",
-      "budget": 350,
+      "budget": 390,
       "units": [
         "G-5"
       ],
@@ -534,7 +534,7 @@
       "card": "docs/pr-cards/G-6.md",
       "status": "APPROVED_PENDING_IN00",
       "migration": "none",
-      "budget": 250,
+      "budget": 290,
       "units": [
         "G-6"
       ],
@@ -756,7 +756,7 @@
       "card": "docs/pr-cards/H-4.md",
       "status": "APPROVED_PENDING_IN00",
       "migration": "none",
-      "budget": 450,
+      "budget": 490,
       "units": [
         "H-4"
       ],

@@ -14,6 +14,7 @@ Pages and packages.
 | G3 | Secrets are written as `encrypted_value` + `key_id` sealed with the scope's public key (`…/secrets/public-key`) for Actions, Dependabot, Codespaces and agents secrets, at repo, environment and org level | `node scripts/openapi-find.mjs "public key"`; GitHub's "Encrypting secrets for the REST API" (libsodium) |
 | G4 | Check runs can be created only with a GitHub App token | `docs/audits/2026-10-10-research.md` §4 (availability data) |
 | G5 | Release asset upload goes to `uploads.github.com` with the `upload_url` template | `node scripts/openapi-find.mjs "upload a release asset"` |
+| G6 | Whole-package delete and restore (`/orgs/{org}/packages/{type}/{name}[/restore]`, `/user/…`, `/users/{username}/…`) accept a GitHub App installation token; public packages with a version over 5,000 downloads cannot be deleted | `node scripts/openapi-find.mjs "delete a package"`; token availability data; GitHub's packages REST page (read 2026-10-10). If installation tokens are refused, stop-and-ask 2 of Batch D applies: mark the tools `U` |
 
 ## 1. Decisions
 
@@ -91,9 +92,9 @@ CREATE TABLE IF NOT EXISTS secret_entry_requests (id TEXT PRIMARY KEY, account T
 | `github_variable_list`, `github_variable_set`, `github_variable_delete` | `GET/POST/PATCH/DELETE …/actions/variables[/{name}]`, environment and org equivalents |
 | `github_env_list`, `github_env_get`, `github_env_save`, `github_env_delete` | `GET/PUT/DELETE /environments[/{name}]`, `…/deployment-branch-policies`, `…/deployment_protection_rules` |
 | `github_deploy_list`, `github_deploy_create`, `github_deploy_set_status` | `GET/POST /deployments`, `GET/POST …/{id}/statuses` |
-| `github_release_*` | `GET/POST /releases`, `GET /releases/latest`, `…/tags/{tag}`, `PATCH/DELETE /releases/{id}`, `POST /releases/generate-notes`, upload to `upload_url` |
+| `github_release_*` | `GET/POST /releases`, `GET /releases/latest`, `…/tags/{tag}`, `PATCH/DELETE /releases/{id}`, `POST /releases/generate-notes`, upload to `upload_url`; `github_release_delete_asset`: `DELETE /releases/assets/{asset_id}` |
 | `github_pages_get`, `github_pages_save`, `github_pages_disable` | `GET/POST/PUT/DELETE /pages`, `GET /pages/builds/latest`, `GET /pages/health` |
-| `github_package_list`, `github_package_delete_version`, `github_package_restore_version` | `GET /orgs/{org}/packages`, `GET /users/{username}/packages`, `…/versions`, `DELETE …/versions/{id}`, `POST …/versions/{id}/restore` |
+| `github_package_list`, `github_package_delete_version`, `github_package_restore_version`, `github_package_delete` | `GET /orgs/{org}/packages`, `GET /users/{username}/packages`, `…/versions`, `DELETE …/versions/{id}`, `POST …/versions/{id}/restore`; whole package `DELETE /orgs/{org}/packages/{type}/{name}` (and `/user/…`, `/users/{username}/…`), `POST …/{name}/restore` |
 
 ## 4. Work units
 
@@ -113,9 +114,12 @@ Tests: env save read-merge-write keeps reviewers when only branch policy changes
 deploy to production environment on a preview connection refused.
 ### G-5 — Releases (M)
 Tests: draft by default; publish is production + M; asset upload from private URL refused; size cap; immutable release
-edit refused in words.
+edit refused in words; asset delete on a published release is production, on a draft it is not, and the preview names
+the file and its download count.
 ### G-6 — Pages and packages (S)
-Tests: Pages on a private repo making it public is access-widening; package delete is destructive with the 30-day note.
+Tests: Pages on a private repo making it public is access-widening; package delete (version or whole package) is
+destructive with the 30-day note; whole-package preview lists the version count and refuses in words a public package
+with a version over 5,000 downloads; restore takes either a package or a version.
 
 ## 5. Stop-and-ask points
 
@@ -133,3 +137,8 @@ Tests: Pages on a private repo making it public is access-widening; package dele
 ## Amendments
 
 (Dated entries only.)
+
+**2026-10-10 — Gap check against prior toolkits.** `docs/audits/2026-10-10-prior-tools.md` §4 added
+`github_release_delete_asset` (G-5) and `github_package_delete` (G-6), and widened `github_package_restore_version` to
+whole packages (the old toolkits' delete_release_asset, delete_package and restore_package). Operations in §3, tests in
+§4; catalog rows in `docs/TOOL-CATALOG.md`.

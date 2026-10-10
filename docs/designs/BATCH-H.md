@@ -15,6 +15,7 @@ features and alerts; Actions settings.
 | H4 | `PATCH /repos/{o}/{r}` `security_and_analysis` turns on secret scanning, push protection, Dependabot security updates, code security, Advanced Security; `PUT/DELETE …/vulnerability-alerts`, `…/automated-security-fixes`, `…/private-vulnerability-reporting` | `node scripts/openapi-find.mjs "security"` |
 | H5 | Secret scanning alert objects include the `secret` field (must be hidden) | read `secret-scanning-alert` schema |
 | H6 | Repository Actions settings: `…/actions/permissions`, `…/permissions/workflow`, `…/permissions/fork-pr-contributor-approval`, `…/permissions/selected-actions`, `…/permissions/artifact-and-log-retention` | `node scripts/openapi-find.mjs "actions permissions"` |
+| H7 | `GET /repos/{o}/{r}/dependency-graph/compare/{basehead}` exists, needs Contents read, and answers 403 on private repositories without Advanced Security/Code Security and on forks | `node scripts/openapi-find.mjs "dependency review"`; GitHub's dependency-review REST page (read 2026-10-10) |
 
 ## 1. Decisions
 
@@ -63,6 +64,7 @@ permissions (read/write, can approve PRs), fork-PR contributor approval, artifac
 | `github_security_get_settings`, `github_security_set_feature` | `GET /repos/{o}/{r}` (`security_and_analysis`), `PATCH /repos/{o}/{r}`, `GET/PUT/DELETE /vulnerability-alerts`, `/automated-security-fixes`, `/private-vulnerability-reporting` |
 | `github_security_list_alerts`, `github_security_get_alert`, `github_security_update_alert` | `GET/PATCH /dependabot/alerts[/{n}]`, `/code-scanning/alerts[/{n}]`, `/secret-scanning/alerts[/{n}]` (+ `…/locations`); org list equivalents |
 | `github_security_list_advisories` | `GET /security-advisories`; `GET /advisories` (global) |
+| `github_security_compare_dependencies` | `GET /repos/{o}/{r}/dependency-graph/compare/{basehead}` (`name` filter) |
 | `github_actions_get_settings`, `github_actions_set_settings` | `GET/PUT /actions/permissions`, `…/workflow`, `…/fork-pr-contributor-approval`, `…/selected-actions`, `…/artifact-and-log-retention` |
 
 ## 4. Work units
@@ -78,7 +80,9 @@ Tests: preview shows before/after permission; private key pasted → refused wit
 production connection.
 ### H-4 — Security features, alerts, Actions settings (M)
 Tests: paid feature on a private repo is `$` and refused at the $0 limit; free on public; secret-scanning `secret` never
-in any result (key-scan + field test); dismiss without reason refused; settings read-merge-write.
+in any result (key-scan + field test); dismiss without reason refused; settings read-merge-write;
+`github_security_compare_dependencies` accepts a PR number (resolved to base...head) and turns GitHub's 403 on a private
+repository without Code Security into `not_available_on_plan`.
 
 ## 5. Stop-and-ask points
 
@@ -97,3 +101,7 @@ in any result (key-scan + field test); dismiss without reason refused; settings 
 ## Amendments
 
 (Dated entries only.)
+
+**2026-10-10 — Gap check against prior toolkits.** `docs/audits/2026-10-10-prior-tools.md` §4 added
+`github_security_compare_dependencies` (H-4; the "Dependency Review" category planned in `GITHUB-COMPLETION-PLAN.md`).
+Operations in §3, tests in §4; catalog rows in `docs/TOOL-CATALOG.md`.

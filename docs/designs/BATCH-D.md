@@ -15,6 +15,7 @@ reminder of which GitHub call it makes; rebuild with `src/github/client.js` rout
 | D2 | `createCommitOnBranch` takes `branch`, `expectedHeadOid`, `fileChanges { additions, deletions }`, `message` | `node scripts/graphql-find.mjs createCommitOnBranch` |
 | D3 | `updateRefs` accepts `refUpdates: [{ name, afterOid, beforeOid, force }]` | `node scripts/graphql-find.mjs updateRefs` |
 | D4 | The stats endpoints still answer `202` while computing | `node scripts/openapi-find.mjs "commit activity"` (responses) |
+| D5 | `GET /repos/{o}/{r}/codeowners/errors` exists with a `ref` query and returns `errors[]` (line, column, kind, message, suggestion) | `node scripts/openapi-find.mjs "codeowners errors"` |
 
 ## 1. Decisions
 
@@ -75,6 +76,7 @@ delete; star ↔ unstar. Delete repo and transfer have no inverse.
 | `github_content_put_file`, `github_content_delete_file` | `PUT`/`DELETE /repos/{owner}/{repo}/contents/{path}` |
 | `github_content_push_files` | GraphQL `createCommitOnBranch` |
 | `github_content_get_archive_link` | `GET /repos/{owner}/{repo}/tarball/{ref}` / `zipball/{ref}` (redirect URL only) |
+| `github_content_check_codeowners` | `GET /repos/{owner}/{repo}/codeowners/errors` (`ref`; default branch when omitted) |
 | `github_commit_list`, `github_commit_get` | `GET /repos/{owner}/{repo}/commits`, `GET …/commits/{ref}` |
 | `github_commit_compare` | `GET /repos/{owner}/{repo}/compare/{basehead}` |
 | `github_commit_list_prs` | `GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls` |
@@ -98,7 +100,8 @@ Extra tests: visibility to public → access-widening confirm + production; `git
 ### D-2 — Files, commits, git data (M, medium effort)
 Extra tests: file changed between preview and confirm refused; `github_content_push_files` sends `expectedHeadOid`; force move
 on the default branch refused on a preview connection; path with spaces/`#` encoded; update inverse restores previous
-content (audit G17 regression).
+content (audit G17 regression); `github_content_check_codeowners` turns each error into line, column, kind and a
+plain-words fix, and says "no CODEOWNERS file" rather than "no errors" when the file is missing (fixture: GitHub's 404).
 ### D-3 — Branches and tags (S)
 Extra tests: default branch delete always refused; `github_branch_create` defaults to the real default branch (audit G4
 regression); tag create is production; `github_branch_list` never sends an empty `protected=` (audit G9 regression).
@@ -115,8 +118,12 @@ regression); tag create is production; `github_branch_list` never sends an empty
 |---|---|
 | Every listed tool built, catalog marked | TOOL-CATALOG Card column `built #n` |
 | No literal default branch; concurrency-safe file writes and ref moves | D-2/D-3 regression tests |
-| Name map complete | `docs/TOOLKIT-NAME-MAP.md` has 311 rows (test counts them) |
+| Name map complete | `docs/TOOLKIT-NAME-MAP.md` has one row per prior name in `docs/audits/2026-10-10-prior-tools.md` §3 (528; test counts them) |
 
 ## Amendments
 
 (Dated entries only.)
+
+**2026-10-10 — Gap check against prior toolkits.** `docs/audits/2026-10-10-prior-tools.md` §4 added
+`github_content_check_codeowners` (D-2; the old toolkit's get_codeowners_errors). Operations in §3, tests in §4; catalog
+rows in `docs/TOOL-CATALOG.md`.

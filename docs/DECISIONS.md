@@ -92,3 +92,14 @@ governance, owner side and developer tools; six universal tools (`github_api_*`,
 REST operation and GraphQL mutation, validated against GitHub's description, with a safe default (unclassified writes are
 treated as production + access-widening). Runners, merge queue, Copilot agent features, migrations and other rarely used
 areas are universal only until the change log shows repeated use (ROADMAP).
+
+**2026-10-10 — Gap check against prior toolkits.** Chris asked for every GitHub tool he had built or planned, in any of
+his toolkit repositories, to be checked against this plan. `docs/audits/2026-10-10-prior-tools.md` maps all 528 prior
+names (the old toolkit's 311 plus 217 from `robinsonai-mcp-servers` and `robinsons-toolkit-api`, built or planned):
+432 → hand-built tools, 59 → universal tools, 34 dropped (Projects classic, required workflows, workflow-usage timing and
+legacy Copilot metrics endpoints were retired by GitHub; the org audit-log API is Enterprise Cloud only; GitHub Models
+inference is out of scope), 3 named gaps plus one planned category added: `github_content_check_codeowners` (D-2),
+`github_release_delete_asset` (G-5), `github_package_delete` (G-6), `github_security_compare_dependencies` (H-4).
+Each fits its existing card (budgets +40 lines), so no card was split. Everything else stays universal under the ROADMAP
+rule (hand-build when the change log shows repeated universal calls). Totals 301 → 305 (299 hand-built + 6 universal).
+`docs/TOOLKIT-NAME-MAP.md` (D-1) now covers all 528 names, not only the 311.
