@@ -221,3 +221,7 @@ from a fixture installation.
 ## Amendments
 
 (Dated entries only.)
+
+**2026-10-10 — Project ownership allows a profile's declared agent steps.** B3's project-ownership rule now honours an
+owned ref's `agentMay` list (`create-from-default`, `commit-files`); see `docs/designs/BATCH-P.md` Amendments
+2026-10-10. Example: Appliance Desk's `transfer/**` branches, which agents create and fill per that project's runbook.

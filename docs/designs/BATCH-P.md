@@ -49,7 +49,7 @@ branch), merge settings, security features, standard labels, environments with p
 twice → nothing new. It finishes by writing a draft profile (`status: draft`) and the text of the project's
 `APP-NEEDS-<PROJECT>.md` for Chris or the project's agent to commit in that project's repo.
 
-**P6. `github_project_draft_profile(findings)`** turns what an agent found in a codebase (workflow files and their
+**P6. `github_profile_draft(findings)`** turns what an agent found in a codebase (workflow files and their
 `permissions`, branch names used in scripts, environments, required check names, Vercel `git.deploymentEnabled`) into a
 draft profile and APP-NEEDS text. It never fetches code itself.
 
@@ -68,14 +68,14 @@ required check `ci`, merge commits, `ai/**` work branches, CI `permissions: cont
 ## 4. Work units
 
 ### P-1 — `known_projects`, two seeds, guards read profiles (M, medium effort)
-Tools: `github_project_list_profiles`, `github_project_get_profile`. Tests: `live` on Appliance Desk is production; `transfer/x` write
+Tools: `github_profile_list`, `github_profile_get`. Tests: `live` on Appliance Desk is production; `transfer/x` write
 refused naming `sandbox-publish.yml`; `outsideProject` goes ahead with confirm; a repo without a profile unaffected; a
 test lists every seeded row with the appliance-desk file it came from (the PR body carries that table).
 ### P-2 — `github_workflow_app_readiness` (L, medium effort)
 Tests with fixtures for every row of the Appliance Desk table (`docs/APP-NEEDS-APPLIANCE-DESK.md`, rows G1–G20) and the
 Robinson-server profile: ruleset missing `ci` → one confirmed fix → read-back; push protection off → fix; workflow with
 `pull_request_target` → reported, never edited; guided rows return link + steps; inline spec behaves like a profile.
-### P-3 — `github_workflow_project_setup` and `github_project_draft_profile` (M)
+### P-3 — `github_workflow_project_setup` and `github_profile_draft` (M)
 Tests: new project created with ruleset, settings, labels; run twice → nothing new; the draft profile and doc text are
 returned, never committed elsewhere; findings with an unknown field are reported, not guessed.
 
@@ -95,3 +95,16 @@ returned, never committed elsewhere; findings with an unknown field are reported
 ## Amendments
 
 (Dated entries only.)
+
+**2026-10-10 — Owned refs may allow the project's own agent steps (found while writing APP-NEEDS-APPLIANCE-DESK).**
+Appliance Desk's fallback publishing runbook (`docs/runbooks/SANDBOX-PUBLISH.md` there) tells an agent to **create**
+`transfer/<id>` from `main` "with your GitHub tool" and **upload files** into its `.transfer/` folder; the workflow
+`sandbox-publish.yml` then rebuilds the commits, pushes the `ai/*` target and deletes the transfer branch. A blanket
+"refused without `outsideProject`" on `transfer/**` would break that runbook. Change to P2/P3 and B3: an `ownedRefs`
+entry may carry `agentMay: ['create-from-default', 'commit-files']` (the only two values); those writes go through the
+normal guards without `outsideProject`. Everything else on an owned ref — force moves, ref updates to another SHA,
+renames, deletes, merges into it — stays refused without `outsideProject: true` (and then needs `confirm`). The
+Appliance Desk seed uses `agentMay` for `transfer/**` only; `live` has none. P-1 tests both.
+
+**2026-10-10 — Profile tools renamed `github_profile_*`** (were `github_project_*_profile`), because `github_project_*` is
+GitHub Projects (F-3). Same names pattern as the Vercel MCP (`vercel_profile_*`). DECISIONS 2026-10-10.

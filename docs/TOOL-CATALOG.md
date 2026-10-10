@@ -492,15 +492,15 @@ Card(s): O-1. Every GitHub settings page is in the dashboard map (`src/data/dash
 | `github_admin_check_setting` | Read back one setting after Chris (or a browser agent) changed it; never reports a guided setting done without a read-back or Chris saying so | — | N | I,U | O | R | O-1 |
 | `github_admin_review_security` | Security review of an org or the personal account: 2FA, SSO (plan-dependent), token policies, apps, deploy keys with write, push protection coverage, outside collaborators | — | N | I,U | O | R | O-1 |
 
-## Project profiles (`github_project_*`) — 3
+## Project profiles (`github_profile_*`) — 3
 
 Card(s): P-1 … P-3. Optional (`docs/designs/BATCH-P.md`). The readiness and setup workflows are listed under Workflows.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_project_list_profiles` | Project profiles the server knows (Appliance Desk, the Robinson servers, drafts) | — | N | — | B,O | R | P-1 |
-| `github_project_get_profile` | One profile: repos, production branches and environments, required checks, workflows with write access, owned settings | — | N | — | B,O | R | P-1 |
-| `github_project_draft_profile` | Turn what an agent found in a codebase (workflows, branches, environments, required checks) into a draft profile and APP-NEEDS text | — | N | — | B | R | P-3 |
+| `github_profile_list` | Project profiles the server knows (Appliance Desk, the Robinson servers, drafts) | — | N | — | B,O | R | P-1 |
+| `github_profile_get` | One profile: repos, production branches and environments, required checks, workflows with write access, owned settings | — | N | — | B,O | R | P-1 |
+| `github_profile_draft` | Turn what an agent found in a codebase (workflows, branches, environments, required checks) into a draft profile and APP-NEEDS text | — | N | — | B | R | P-3 |
 
 ## Workflows (`github_workflow_*`) — 17
 
