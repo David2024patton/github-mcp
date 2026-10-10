@@ -1,0 +1,101 @@
+# CI for the Robinson GitHub MCP. Independent jobs plus one aggregate job named `ci`, the single merge gate.
+# Public repository: no secrets, read-only token, never pull_request_target, never echo environment values.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      # secret scan, docs check, index validation, catalog count, lint, write-safety, token budgets, core imports
+      - run: npm run check
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm test
+
+  db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        # ECR mirror: Docker Hub's anonymous pull limit broke Appliance Desk CI.
+        image: public.ecr.aws/docker/library/postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-not-a-secret
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm run test:db
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:ci-only-not-a-secret@127.0.0.1:5432/postgres
+
+  shapes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm run test:shapes
+
+  ci:
+    if: always()
+    needs: [check, unit, db, shapes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every verification job to succeed
+        env:
+          CHECK: ${{ needs.check.result }}
+          UNIT: ${{ needs.unit.result }}
+          DB: ${{ needs.db.result }}
+          SHAPES: ${{ needs.shapes.result }}
+        run: |
+          status=0
+          for job in CHECK UNIT DB SHAPES; do
+            result="${!job}"
+            echo "$job: $result"
+            [ "$result" = success ] || status=1
+          done
+          exit $status
