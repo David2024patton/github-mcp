@@ -24,6 +24,9 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-10 — CI cadence (docs + CI config PR #5):** never push while a PR's CI run is in progress (SESSION-START §6,
+PLAYBOOK Step 5); obsolete PR runs are cancelled, runs on `main` never are. Next action unchanged.
+
 **2026-10-10 — A-1 foundation merged (PR #1):** `package.json` (Node 24.x, pinned dependencies, lockfile), ESLint,
 three Vitest suites (unit, db, shapes), `scripts/check-secrets.mjs` (scans tracked files for GitHub tokens, PEM keys,
 non-local database URLs, Neon/Vercel identifiers, committed `.env`), `check-docs-updated`, `check-writes` and
