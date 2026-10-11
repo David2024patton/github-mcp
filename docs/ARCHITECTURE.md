@@ -85,9 +85,21 @@ and GitHub callbacks (`/api/github/*`, A-5), the HTTPS tool API and manifest (Ba
 
 ## GitHub API version and descriptions
 
-Planned pin: REST `X-GitHub-Api-Version: 2026-03-10` in `src/github/client.js` (A-4), with the OpenAPI description and
-the GraphQL schema for that version vendored under `vendor/github-openapi/` and `vendor/github-graphql/` (each with
-`SOURCE.md`). Not vendored yet.
+REST `X-GitHub-Api-Version: 2026-03-10` is pinned in `src/github/client.js` (`GITHUB_API_VERSION`, A-4) and sent on every call. The
+matching descriptions are vendored: `vendor/github-openapi/api.github.com.2026-03-10.json` (rest-api-description @ 58b1e0c0, 1,232
+operations) and `vendor/github-graphql/schema.docs.graphql` (github/docs @ be38ec5d); each has a `SOURCE.md` with URL, commit, sha256 and
+date, and a test checks the hash. Search them with `node scripts/openapi-find.mjs "<words>"` (`--show "<METHOD /path>"`) and
+`node scripts/graphql-find.mjs <name>`; never read them whole. Moving the version is its own card.
+
+### GitHub client (A-4)
+
+| Piece | Behaviour |
+|---|---|
+| `githubFor(ctx, { owner, cred, scope })` | One Octokit per request. `ctx = { connection, db, credentials, fetch?, now?, sleep?, budgetMs? }`; `credentials.token({ account, cred, scope })` is supplied by A-5. `cred` is `I` installation, `U` user or `K` fine-grained token |
+| Writes | Never retried after an error; each waits for its `gh_write_slots` turn (1 s apart per account and credential kind, across instances; refused with `rate_limited` if the queue is over 5 s) |
+| Reads | Retried twice on 5xx; `request: { etag: true }` sends `If-None-Match` from `gh_etag_cache` and returns the stored body on a 304 (`notModified: true`) |
+| Rate limits | Every response's headers go to `gh_rate_state`; a spent budget or a `retry-after` on 403/429 blocks that account and resource; waits are honoured only inside the 20 s budget, otherwise `rate_limited` with the reset in Denver time |
+| `requestKey(ctx, tool, args)` | `rmcp_<tool>_<sha256>_<10-minute bucket>`; ignores `dryRun`, `confirm`, `fields`, `detail`; a caller `requestKey` replaces the arguments |
 
 ## GitHub App permissions
 

@@ -28,6 +28,9 @@ export const SCHEMA_TABLES = Object.freeze([
  */
 export const CONNECTION_FIELDS = Object.freeze(['default_account', 'accounts', 'mode', 'profile', 'listing']);
 
+/** Cached bodies larger than this are not kept (A9). */
+export const ETAG_BODY_LIMIT_BYTES = 256 * 1024;
+
 export const CONNECTION_MODES = Object.freeze(['preview', 'production']);
 export const CONNECTION_PROFILES = Object.freeze(['read_only', 'everyday', 'full']);
 export const CONNECTION_LISTINGS = Object.freeze(['catalog', 'compact']);
@@ -326,6 +329,62 @@ export function createDb(sql = productionSql()) {
       const rows = await sql`SELECT count(*)::integer AS count FROM login_attempts
         WHERE ip = ${ip} AND success = FALSE AND attempted_at > now() - ${minutes} * interval '1 minute'`;
       return rows[0].count;
+    },
+
+    /**
+     * Claims the next write slot for an installation in one atomic statement, so two server instances can never both
+     * write in the same second (A9). The slot is the later of "now" and the previous claim's end; each claim reserves
+     * `spacingMs` after it. Returns `{ waitMs }` (how long the caller must wait before writing) or `null` when that
+     * wait would exceed `maxWaitMs` (nothing is reserved then).
+     */
+    async claimWriteSlot(installationKey, { spacingMs = 1000, maxWaitMs = 5000 } = {}) {
+      if (typeof installationKey !== 'string' || !installationKey) throw new TypeError('claimWriteSlot needs an installation key.');
+      const spacing = spacingMs / 1000;
+      const maxWait = maxWaitMs / 1000;
+      const rows = await sql`INSERT INTO gh_write_slots (installation_key, next_write_at)
+        VALUES (${installationKey}, now() + make_interval(secs => ${spacing}::float8))
+        ON CONFLICT (installation_key) DO UPDATE
+          SET next_write_at = GREATEST(gh_write_slots.next_write_at, now()) + make_interval(secs => ${spacing}::float8)
+          WHERE gh_write_slots.next_write_at <= now() + make_interval(secs => ${maxWait}::float8)
+        RETURNING (EXTRACT(EPOCH FROM (next_write_at - make_interval(secs => ${spacing}::float8) - now())) * 1000)::float8 AS wait_ms`;
+      return rows[0] ? { waitMs: Math.max(0, Math.round(rows[0].wait_ms)) } : null;
+    },
+
+    /** Records GitHub's rate headers for an account and resource so every instance sees a block (A9). */
+    async recordRateState({ account, resource, remaining = null, resetAt = null, blockedUntil = null }) {
+      await sql`INSERT INTO gh_rate_state (account, resource, remaining, reset_at, blocked_until, updated_at)
+        VALUES (${account}, ${resource}, ${remaining}, ${resetAt}, ${blockedUntil}, now())
+        ON CONFLICT (account, resource) DO UPDATE SET remaining = EXCLUDED.remaining, reset_at = EXCLUDED.reset_at,
+          blocked_until = EXCLUDED.blocked_until, updated_at = now()`;
+    },
+
+    /** The recorded rate state, or null. `blocked_until` is only reported while it is still in the future. */
+    async getRateState(account, resource) {
+      const rows = await sql`SELECT remaining, reset_at, CASE WHEN blocked_until > now() THEN blocked_until END AS blocked_until
+        FROM gh_rate_state WHERE account = ${account} AND resource = ${resource}`;
+      return rows[0] ? { remaining: rows[0].remaining, reset_at: rows[0].reset_at, blocked_until: rows[0].blocked_until } : null;
+    },
+
+    /** The cached body and ETag for a polled read, or null (rows older than 24 hours are ignored). */
+    async getEtag(account, urlKey) {
+      const rows = await sql`SELECT etag, body FROM gh_etag_cache
+        WHERE account = ${account} AND url_key = ${urlKey} AND stored_at > now() - interval '24 hours'`;
+      return rows[0] ? { etag: rows[0].etag, body: rows[0].body } : null;
+    },
+
+    /** Stores an ETag and body (bodies over 256 KB are not kept) and deletes up to 100 expired rows. */
+    async putEtag(account, urlKey, etag, body) {
+      const json = JSON.stringify(body ?? null);
+      if (Buffer.byteLength(json) > ETAG_BODY_LIMIT_BYTES) {
+        await sql`DELETE FROM gh_etag_cache WHERE account = ${account} AND url_key = ${urlKey}`;
+        return false;
+      }
+      await sql`INSERT INTO gh_etag_cache (account, url_key, etag, body, stored_at)
+        VALUES (${account}, ${urlKey}, ${etag}, ${json}::jsonb, now())
+        ON CONFLICT (account, url_key) DO UPDATE SET etag = EXCLUDED.etag, body = EXCLUDED.body, stored_at = now()`;
+      await sql`DELETE FROM gh_etag_cache WHERE ctid IN (
+        SELECT ctid FROM gh_etag_cache WHERE stored_at < now() - interval '24 hours' LIMIT 100)`;
+      return true;
     },
 
     /** The accounts the login page offers. `production_enabled` decides whether production mode may be offered. */

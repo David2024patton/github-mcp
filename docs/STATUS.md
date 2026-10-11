@@ -1,15 +1,16 @@
 # STATUS — current work, blockers and next action
 
-Updated 2026-10-10. **The foundation is built (A-1, PR #1), its database schema exists (A-2, PR #7) and the connector login is built (A-3a, PR #8; A-3b, PR #9):** Node 24
+Updated 2026-10-10. **The foundation is built (A-1, PR #1), its database schema exists (A-2, PR #7), the connector login is built (A-3a, PR #8; A-3b, PR #9) and the GitHub client exists (A-4, PR #10):** Node 24
 package with a committed lockfile, a fake GitHub for tests, the check scripts, throwaway-Postgres database tests, CI with
-one `ci` merge gate, `src/db.js` creating the 13 foundation tables and storing connector logins, and the OAuth endpoints and `/api/mcp` (zero tools). No tools exist yet; no deployment exists. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
+one `ci` merge gate, `src/db.js` creating the 13 foundation tables and storing connector logins, the OAuth endpoints and `/api/mcp` (zero tools), and `src/github/client.js` (pinned API version, request keys, write spacing, rate blocks, ETag cache) with GitHub's REST and GraphQL descriptions vendored. No tools exist yet; no deployment exists. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
 repositories.
 
 ## Next
 
-- **A-4 — GitHub client, vendored OpenAPI and GraphQL descriptions, operation finders, rate discipline:** card to be written at its
-  start (`work-index.json`, `docs/designs/BATCH-A.md` §1 A7–A9, §4 A-4). Branch `ai/<tool>/a-4-github-client` from `main`.
-  Then A-5 (setup page, Apps from manifests, credential store; needs IN-02…IN-05 to try for real).
+- **A-5 — setup page, GitHub Apps from manifests, credential store, one-time secrets:** card to be written at its start
+  (`work-index.json`, `docs/designs/BATCH-A.md` §1 A4–A5, §4 A-5). Branch `ai/<tool>/a-5-setup-credentials` from `main`. It supplies
+  `ctx.credentials.token({ account, cred, scope })` to the A-4 client. Needs IN-02…IN-05 to try for real; everything before the real
+  GitHub steps is built and tested with fakes. Then A-6 (DEPLOY.md), then Batch B.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).
 
@@ -24,6 +25,18 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-10 — A-4 GitHub client (PR #10):** `src/github/client.js` is the only file that imports `@octokit/*`. `githubFor(ctx, { owner, cred, scope })`
+refuses an account outside the connection (`outside_scope`) or without a credential (`no_credentials`), sends `X-GitHub-Api-Version: 2026-03-10` on
+every call, never retries a write (or a GraphQL mutation) after an error, spaces writes one second apart per installation across instances
+(`claimWriteSlot`, one atomic statement), records GitHub's rate headers per account and resource and refuses calls while blocked with the
+reset time in Denver time (`rate_limited`), honours `retry-after` only inside a 20-second budget, and can cache a polled read by ETag
+(`request: { etag: true }`; a 304 returns the stored body). `requestKey` gives writes their retry-proof key; `listAll` follows `Link` to a cap and
+says when it stopped. Vendored: GitHub's REST description for 2026-03-10 (rest-api-description @ 58b1e0c0, 1,232 operations) and GraphQL schema
+(github/docs @ be38ec5d), each with `SOURCE.md`; `scripts/openapi-find.mjs` and `scripts/graphql-find.mjs` search them. The fake GitHub now knows every
+operation and rejects any request that does not match the description (including unknown body fields) or any GraphQL document that does not match the
+schema. The secret scan skips only the two vendored data files (their examples contain token-shaped text). Tests: 138 unit, 38 database, 15 request-shape.
+No real GitHub call was made; no credential exists.
 
 **2026-10-10 — A-3b connector login endpoints (PR #9):** `api/oauth/{register,authorize,token}`, `api/well-known/*` (rewritten
 from `/.well-known/*` by `vercel.json`), `api/mcp.js`, `api/index.js`. Contract-generic `src/core/{http,oauth-handlers,mcp-auth,

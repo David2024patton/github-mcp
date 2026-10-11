@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Octokit } from '@octokit/core';
 import { makeFakeGitHub } from '../../test/helpers/fake-github.js';
-
-const GITHUB_API_VERSION = '2026-03-10'; // A-4 moves this into src/github/client.js
+import { GITHUB_API_VERSION } from '../../src/github/client.js';
 const repoFixture = { id: 1, name: 'hello', full_name: 'octo/hello', private: false, default_branch: 'main' };
 
 describe('request shapes: Octokit through the fake GitHub', () => {
@@ -31,7 +30,7 @@ describe('request shapes: Octokit through the fake GitHub', () => {
     const res = await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', { owner: 'octo', repo: 'hello', path: 'a b.md' });
     expect(gh.calls[0].path).toBe('/repos/octo/hello/contents/a%20b.md');
     expect(res.data).toEqual({ path: 'a b.md' });
-    await expect(octokit.request('GET /orgs/{org}/teams', { org: 'octo' })).rejects.toMatchObject({ status: 404 });
-    expect(gh.unmatched.map((c) => c.path)).toEqual(['/orgs/octo/teams']);
+    await expect(octokit.request('GET /orgs/{org}/not-a-real-endpoint', { org: 'octo' })).rejects.toMatchObject({ status: 404 });
+    expect(gh.unmatched.map((c) => c.path)).toEqual(['/orgs/octo/not-a-real-endpoint']);
   });
 });

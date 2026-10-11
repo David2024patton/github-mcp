@@ -143,3 +143,21 @@ registry but its default dispatcher refuses every `tools/call`: with no safety l
 to run. Production connections are refused unless the deployment is the production one (A10) and, at login, unless every selected
 account has `production_enabled`; a production token presented to a preview deployment gets a plain 403 so a client does not loop
 on sign-in. The database schema is created once per server instance, not on every request.
+
+**2026-10-10 — The secret scan skips the two vendored GitHub data files (A-4).** GitHub's own REST description contains example
+token- and key-shaped strings in its response examples (nine findings), so the scan cannot pass on the file as published. Rather than edit
+vendored data (which would break its recorded hash), `scripts/check-secrets.mjs` skips exactly `vendor/github-openapi/api.github.com.2026-03-10.json`
+and `vendor/github-graphql/schema.docs.graphql`; their `SOURCE.md` files and every other file are still scanned, and a test pins the list.
+Moving the API version means changing that list in the same card.
+
+**2026-10-10 — Write spacing is the database slot, one second for every write; writes are never replayed (A-4).** `@octokit/plugin-throttling`
+queues writes per process and makes GraphQL and notification-triggering writes wait one and three seconds, which does not work across Vercel instances
+and slows reads that happen to use GraphQL. Its queues are replaced by no-ops and `gh_write_slots` (one atomic statement) spaces every write one second
+per account across all instances, with a five-second maximum queue (then `rate_limited`). `@octokit/plugin-retry` retries any method on a 5xx; a write
+that failed with a 5xx may have been applied, so writes and GraphQL mutations get zero retries (A8's request key and read-back cover genuine retries by the
+caller). Secondary-limit 403/429 answers mean GitHub did not process the request, so those are retried once when `retry-after` fits the 20-second budget.
+Bookkeeping after a completed call (rate headers, ETag cache) never turns a successful GitHub call into an error.
+
+**2026-10-10 — The fake GitHub refuses unknown top-level body fields (A-4).** GitHub's description almost never forbids extra fields, so a misspelled or
+foreign field (`mergeMethod`, `bypass_rules`) would validate and be silently ignored by GitHub. The test fake reports any top-level body field not named by
+the operation's schema as invalid (422), recorded in `invalid`; tests assert it is empty. Nested objects are validated by the schema as published.

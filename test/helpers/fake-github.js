@@ -1,9 +1,13 @@
 // Built for github-mcp (A-1). A fake GitHub HTTP server reached through Octokit's `request.fetch` — no network.
 // Every request is recorded as { method, route, path, params, query, body, headers }, where `route` is the matched
-// OpenAPI template (e.g. 'PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge'). In A-1 the route table is the small
-// hand-written list below; A-4 replaces it with the vendored GitHub description and validates every request against it.
+// OpenAPI template (e.g. 'PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge'). A-4: the route table is every
+// operation in the vendored GitHub description (plus POST /graphql), every REST request is validated against its
+// operation (path, query, JSON body) and every GraphQL document against the vendored schema. A request that does not
+// match is answered with 422 (REST) or a GraphQL `errors` array, recorded in `invalid`, and tests assert `invalid` is empty.
 
-/** Templates the A-1 fake knows. Each `{name}` matches one path segment, except `{path}` (file paths span segments). */
+import { operations, validateRestRequest, validateGraphql } from './github-descriptions.js';
+
+/** Templates the A-1 fake knew; they are all in the vendored description too (kept for `validate: false` use). Each `{name}` matches one path segment, except `{path}` (file paths span segments). */
 export const A1_ROUTES = [
   'GET /user',
   'GET /repos/{owner}/{repo}',
@@ -54,16 +58,23 @@ function json(status, body, headers = {}) {
 }
 
 /**
- * @param {{ routes?: string[], baseUrl?: string }} [options] extra route templates (A-4 passes the vendored list).
- * @returns {{ fetch: Function, calls: object[], unmatched: object[], graphql: object[], when: Function, routes: string[] }}
+ * @param {{ routes?: string[], baseUrl?: string, validate?: boolean }} [options] extra route templates; `validate`
+ *   (default true) loads the vendored description, knows all its routes and validates every request.
+ * @returns {{ fetch: Function, calls: object[], unmatched: object[], invalid: object[], graphql: object[], when: Function, routes: string[] }}
  */
-export function makeFakeGitHub({ routes = [], baseUrl = 'https://api.github.com' } = {}) {
-  const table = [...new Set([...A1_ROUTES, ...routes])].map(compile);
+export function makeFakeGitHub({ routes = [], baseUrl = 'https://api.github.com', validate = true } = {}) {
+  const described = validate ? operations().map((o) => o.route) : [];
+  // Most specific first: fewer {parameters}, then longer templates, so '/pulls/comments' beats '/pulls/{pull_number}'.
+  const specificity = (route) => [route.split('{').length, -route.length];
+  const table = [...new Set([...A1_ROUTES, ...described, ...routes])]
+    .sort((a, b) => { const [pa, la] = specificity(a); const [pb, lb] = specificity(b); return pa - pb || la - lb; })
+    .map(compile);
   const known = new Set(table.map((r) => r.route));
   const replies = new Map();
   const calls = [];
   const unmatched = [];
   const graphql = [];
+  const invalid = [];
 
   function when(route) {
     if (!known.has(route)) throw new Error(`fake GitHub does not know route "${route}"`);
@@ -71,6 +82,13 @@ export function makeFakeGitHub({ routes = [], baseUrl = 'https://api.github.com'
       /** reply(status, body | (request) => body, headers?) */
       reply(status, body = {}, headers = {}) {
         replies.set(route, { status, body, headers });
+        return this;
+      },
+      /** replySequence([{ status, body?, headers? }, …]) answers each call in turn; the last entry repeats. */
+      replySequence(steps) {
+        if (!Array.isArray(steps) || !steps.length) throw new TypeError('replySequence needs at least one step');
+        let index = 0;
+        replies.set(route, { sequence: () => steps[Math.min(index++, steps.length - 1)] });
         return this;
       }
     };
@@ -105,14 +123,30 @@ export function makeFakeGitHub({ routes = [], baseUrl = 'https://api.github.com'
     calls.push(request);
     if (hit.route === 'POST /graphql') {
       graphql.push({ query: request.body?.query, variables: request.body?.variables ?? {} });
+      if (validate) {
+        const problems = await validateGraphql(request.body?.query);
+        if (problems.length) {
+          request.invalid = problems;
+          invalid.push(request);
+          return json(200, { errors: problems.map((message) => ({ message })) });
+        }
+      }
+    } else if (validate) {
+      const problems = validateRestRequest(hit.route, request);
+      if (problems.length) {
+        request.invalid = problems;
+        invalid.push(request);
+        return json(422, { message: `fake GitHub: ${hit.route} request does not match the vendored OpenAPI description`, errors: problems });
+      }
     }
     const reply = replies.get(hit.route);
     if (!reply) {
       return json(501, { message: `fake GitHub: no reply configured for ${hit.route}` });
     }
-    const body = typeof reply.body === 'function' ? await reply.body(request) : reply.body;
-    return json(reply.status, body, reply.headers);
+    const step = reply.sequence ? reply.sequence() : reply;
+    const body = typeof step.body === 'function' ? await step.body(request) : step.body;
+    return json(step.status, body, step.headers);
   }
 
-  return { fetch, calls, unmatched, graphql, when, routes: [...known] };
+  return { fetch, calls, unmatched, invalid, graphql, when, routes: [...known] };
 }
