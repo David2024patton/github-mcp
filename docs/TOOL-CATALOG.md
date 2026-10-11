@@ -236,15 +236,15 @@ Card(s): G-2.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_check_get_ci_state` | CI state at a commit or PR head: every check run and status, which are required by rules, overall green/red/pending | — | N | I | B,Op | R | G-2 built #PR |
-| `github_check_get_run` | One check run with output summary and annotations | — | C | I | B | R | G-2 built #PR |
+| `github_check_get_ci_state` | CI state at a commit or PR head: every check run and status, which are required by rules, overall green/red/pending | — | N | I | B,Op | R | G-2 built #42 |
+| `github_check_get_run` | One check run with output summary and annotations | — | C | I | B | R | G-2 built #42 |
 | `github_check_create_run` | Create a check run on a commit (GitHub App only) | P | C | I | B | E | G-2 |
 | `github_check_update_run` | Update or complete a check run | P | C | I | B | E | G-2 |
 | `github_status_create` | Set a commit status (pending/success/failure/error) with a context | P | C | I | B | E | G-2 |
-| `github_artifact_list` | Artifacts of a run or repository with size and expiry | — | C | I | B | R | G-2 built #PR |
-| `github_artifact_get_link` | Short-lived download link for an artifact (bytes never pass through chat) | — | F | I | B | R | G-2 built #PR |
+| `github_artifact_list` | Artifacts of a run or repository with size and expiry | — | C | I | B | R | G-2 built #42 |
+| `github_artifact_get_link` | Short-lived download link for an artifact (bytes never pass through chat) | — | F | I | B | R | G-2 built #42 |
 | `github_artifact_delete` | Delete an artifact | C·D | C | I | Op | E | G-2 |
-| `github_cache_list` | Actions caches and total cache usage for a repository | — | N | I | B,Op | R | G-2 built #PR |
+| `github_cache_list` | Actions caches and total cache usage for a repository | — | N | I | B,Op | R | G-2 built #42 |
 | `github_cache_delete` | Delete caches by key or ID | C | N | I | B | E | G-2 |
 
 ## Secrets and variables (`github_secret_*, github_variable_*`) — 7
