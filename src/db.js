@@ -21,8 +21,10 @@ export const SCHEMA_TABLES = Object.freeze([
   'gh_write_slots',
   'gh_etag_cache',
   'server_settings',
-  'protected_resources'
+  'protected_resources',
+  'result_store'
 ]);
+export const RESULT_HANDLE = /^res_[A-Za-z0-9_-]{20,64}$/;
 
 export const PROTECTED_KINDS = Object.freeze(['repo', 'installation']);
 export const PROTECTED_LEVELS = Object.freeze(['pr-only', 'locked']);
@@ -281,6 +283,31 @@ export function createDb(sql = productionSql()) {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         PRIMARY KEY (kind, target)
       )`;
+      // Big results kept behind a handle for 24 hours, readable only by the connection that made them (C-1).
+      await sql`CREATE TABLE IF NOT EXISTS result_store (
+        handle TEXT PRIMARY KEY,
+        connection TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        expires_at TIMESTAMPTZ NOT NULL,
+        summary TEXT,
+        body JSONB NOT NULL
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS result_store_expires ON result_store (expires_at)`;
+    },
+
+    /** Keeps a big result behind a handle. Also deletes up to 100 expired rows (no cron). */
+    async putResult({ handle, connection, summary = null, body, ttlSeconds = 86400 }) {
+      if (!RESULT_HANDLE.test(handle ?? '')) throw new TypeError('A result handle looks like res_ followed by letters and digits.');
+      if (typeof connection !== 'string' || !connection) throw new TypeError('A result belongs to a connection.');
+      await sql`DELETE FROM result_store WHERE handle IN (SELECT handle FROM result_store WHERE expires_at < now() LIMIT 100)`;
+      await sql`INSERT INTO result_store (handle, connection, expires_at, summary, body)
+        VALUES (${handle}, ${connection}, now() + make_interval(secs => ${ttlSeconds}), ${summary === null ? null : String(summary).slice(0, 500)}, ${JSON.stringify(body)}::jsonb)`;
+    },
+    /** The kept result, only for the connection that made it and only while it has not expired. */
+    async getResult(handle, connection) {
+      if (!RESULT_HANDLE.test(handle ?? '') || typeof connection !== 'string' || !connection) return null;
+      const rows = await sql`SELECT handle, summary, body, created_at, expires_at FROM result_store WHERE handle = ${handle} AND connection = ${connection} AND expires_at > now()`;
+      return rows[0] ?? null;
     },
 
     /** Names of the tables in the connection's current schema, sorted. */

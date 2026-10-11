@@ -60,6 +60,7 @@ secret-looking column name.
 | `gh_write_slots` | Next allowed write time per installation (write spacing across instances) |
 | `gh_etag_cache` | ETags and bodies for polled reads per (account, URL key) |
 | `protected_resources` | The protected list (B-3): kind (`repo`, `installation`), lowercase target (`owner/name`, an installation number, or `*` for this server's own Apps), level (`pr-only`, `locked`), reason |
+| `result_store` | Big results kept 24 hours behind a `res_…` handle for one connection (C-1); expired rows are cleared on the next write |
 | `server_settings` | Owner settings as key and JSON value (B-2: the extra production names; later cards add theirs) |
 
 Login store (A-3a, `createDb(sql)` in `src/db.js`): codes, access tokens, refresh credentials and client secrets are stored
@@ -168,6 +169,10 @@ A connection's profile (`read_only`, `everyday`, `full`) decides which tools exi
 (`src/core/registry.js` `toolsForProfile`); `tools/list` shows only those and a hidden tool called by name answers "unknown". For `read_only`, the installation token is
 minted with every permission the installation has at `read` (`workflows` and `profile` exist only at write and are left out); unknown installation permissions refuse the
 token rather than send an empty list (which GitHub reads as "everything"). Fine-grained-token accounts cannot be narrowed. The home page prints `tools_by_profile`.
+
+### Small results (C-1)
+
+Read replies go through `readReply` in `src/tools/dispatch.js`: summary form (tools defined with `defineRead` and a `summaryType`; `detail: 'full'` for the whole object) → shaping (`shapeResult`) → `fields` (keeps `untrusted`, brings `_local` times) → the full result is kept if anything will be cut → text caps → 8 KB fit. Rules live in `src/core/result-rules.js` (4,000 characters, 400 log lines, 8,192 bytes, 20 per page, 100 max). `kept_result` in a reply carries the handle; `github_get_result` reads it for the same connection only and shrinks a page that would not fit.
 
 ### Connection tools and the write-safety check (B-7, B-8)
 

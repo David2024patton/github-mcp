@@ -7,7 +7,7 @@ repositories.
 
 ## Next
 
-- **Batch C — small results and listings** (`docs/designs/BATCH-C.md`): `fields`/`detail` rules, compact listing, handles for large results. Batch B is finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
+- **C-2 — listing modes, meta-tools (`github_search_tools`, `github_describe_tool`, `github_call`, `github_batch`) and token budgets** (`docs/designs/BATCH-C.md`). Batch B and C-1 are finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).
@@ -23,6 +23,8 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-10 — C-1 small results (PR #25):** every read result is shaped, then cut to size: long text is cut at 4,000 characters (logs keep their last 400 lines), a result over 8 KB becomes a preview, and anything cut is kept whole for 24 hours behind a `res_…` handle that only the same connection can read with the new `github_get_result` (pages, fields, more text). 29 summary forms for GitHub objects, `defineRead` for new read tools, a 16th table `result_store`.
 
 **2026-10-10 — B-8b diagnostics (PR #24):** `github_check_permissions` (compares each App installation's permissions with what 21 tool areas need and names the exact permission to add; fine-grained-token accounts are reported, not guessed), `github_rate_status` (what the server last saw, any block, and GitHub's live numbers; works even while a block is in force), `github_where_is_setting` (16 seeded settings GitHub has no API for, with link, numbered steps, what you should see and a read-back check where one exists). Batch B is complete.
 

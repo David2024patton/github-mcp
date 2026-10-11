@@ -2,7 +2,7 @@
 // schema, A-3a adds the connector login store. Service-independent in-memory fake of createDb(): it mirrors the behavior
 // of src/db.js (hashed storage, single-use codes, atomic refresh) and is held to the same contract suite
 // (test/contract/oauth-contract.js) as real PostgreSQL.
-import { SCHEMA_TABLES, SETUP_PURPOSES, ETAG_BODY_LIMIT_BYTES, PROTECTED_SEEDED_KEY, checkConnection, checkProtected, connectionSettings, normalizeChange } from '../../src/db.js';
+import { RESULT_HANDLE, SCHEMA_TABLES, SETUP_PURPOSES, ETAG_BODY_LIMIT_BYTES, PROTECTED_SEEDED_KEY, checkConnection, checkProtected, connectionSettings, normalizeChange } from '../../src/db.js';
 import { hashToken } from '../../src/core/oauth.js';
 
 function changeViewOf(r) {
@@ -30,6 +30,7 @@ export function createFakeDb({ clock = Date.now } = {}) {
   const changes = [];
   const settings = new Map();
   const protectedRows = new Map();
+  const results = new Map();
   let changeId = 0;
   const DAY_MS = 24 * 60 * 60 * 1000;
   let attemptId = 0;
@@ -39,6 +40,18 @@ export function createFakeDb({ clock = Date.now } = {}) {
   return {
     async initSchema() { for (const name of SCHEMA_TABLES) tables.add(name); },
     async listTables() { return [...tables].sort(); },
+    async putResult({ handle, connection, summary = null, body, ttlSeconds = 86400 }) {
+      if (!RESULT_HANDLE.test(handle ?? '')) throw new TypeError('A result handle looks like res_ followed by letters and digits.');
+      if (typeof connection !== 'string' || !connection) throw new TypeError('A result belongs to a connection.');
+      for (const [key] of [...results].filter(([, r]) => r.expires_at.getTime() < clock()).slice(0, 100)) results.delete(key);
+      if (results.has(handle)) throw new Error('duplicate handle');
+      results.set(handle, { handle, connection, summary: summary === null ? null : String(summary).slice(0, 500), body: structuredClone(JSON.parse(JSON.stringify(body))), created_at: new Date(clock()), expires_at: new Date(clock() + ttlSeconds * 1000) });
+    },
+    async getResult(handle, connection) {
+      const row = results.get(handle);
+      if (!RESULT_HANDLE.test(handle ?? '') || !row || row.connection !== connection || row.expires_at.getTime() <= clock()) return null;
+      return { handle: row.handle, summary: row.summary, body: structuredClone(row.body), created_at: row.created_at, expires_at: row.expires_at };
+    },
     async put(key, value) { rows.set(key, structuredClone(value)); },
     async get(key) { return rows.has(key) ? structuredClone(rows.get(key)) : null; },
 
