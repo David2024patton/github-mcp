@@ -2,7 +2,7 @@
 // schema, A-3a adds the connector login store. Service-independent in-memory fake of createDb(): it mirrors the behavior
 // of src/db.js (hashed storage, single-use codes, atomic refresh) and is held to the same contract suite
 // (test/contract/oauth-contract.js) as real PostgreSQL.
-import { SCHEMA_TABLES, SETUP_PURPOSES, ETAG_BODY_LIMIT_BYTES, checkConnection, connectionSettings, normalizeChange } from '../../src/db.js';
+import { SCHEMA_TABLES, SETUP_PURPOSES, ETAG_BODY_LIMIT_BYTES, PROTECTED_SEEDED_KEY, checkConnection, checkProtected, connectionSettings, normalizeChange } from '../../src/db.js';
 import { hashToken } from '../../src/core/oauth.js';
 
 function changeViewOf(r) {
@@ -29,6 +29,7 @@ export function createFakeDb({ clock = Date.now } = {}) {
   const etags = new Map();
   const changes = [];
   const settings = new Map();
+  const protectedRows = new Map();
   let changeId = 0;
   const DAY_MS = 24 * 60 * 60 * 1000;
   let attemptId = 0;
@@ -219,6 +220,24 @@ export function createFakeDb({ clock = Date.now } = {}) {
     async setSetting(key, value) {
       if (typeof key !== 'string' || !/^[a-z][a-z0-9_.]{0,62}$/.test(key)) throw new TypeError('A setting key is lowercase words.');
       settings.set(key, structuredClone(value));
+    },
+    async listProtectedResources() {
+      return [...protectedRows.values()].map((r) => ({ ...r })).sort((a, b) => (a.kind + a.target).localeCompare(b.kind + b.target));
+    },
+    async saveProtectedResource(raw) {
+      const e = checkProtected(raw);
+      protectedRows.set(`${e.kind}:${e.target}`, { ...e, updated_at: new Date(clock()).toISOString() });
+      return e;
+    },
+    async removeProtectedResource(kind, target) { return protectedRows.delete(`${kind}:${String(target).toLowerCase()}`); },
+    async seedProtectedResources(entries) {
+      if (settings.get(PROTECTED_SEEDED_KEY) === true) return false;
+      for (const raw of entries) {
+        const e = checkProtected(raw);
+        if (!protectedRows.has(`${e.kind}:${e.target}`)) protectedRows.set(`${e.kind}:${e.target}`, { ...e, updated_at: new Date(clock()).toISOString() });
+      }
+      settings.set(PROTECTED_SEEDED_KEY, true);
+      return true;
     },
     async setProductionEnabled(login, enabled) {
       const r = accountRows.get(String(login).toLowerCase());

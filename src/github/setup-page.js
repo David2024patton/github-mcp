@@ -11,6 +11,7 @@ import { bareOctokit } from './client.js';
 import { readBack } from './setup-readback.js';
 import { renderSetup, resultPage } from './setup-html.js';
 import { PRODUCTION_NAMES_KEY, cleanNames, productionNames } from '../tools/production-guard.js';
+import { protectedList } from '../tools/protect-guard.js';
 
 const HTML = 'text/html; charset=utf-8';
 const CSP = "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://github.com; base-uri 'none'; frame-ancestors 'none'";
@@ -88,7 +89,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'status') {
       const accounts = [];
       for (const a of (await db.listAccounts()).slice(0, 10)) accounts.push(await readBack({ db, credentials, fetch }, a.login));
-      return page(200, { accounts, productionNames: await productionNames(db) });
+      return page(200, { accounts, productionNames: await productionNames(db), protectedList: await protectedList(db) });
     }
     if (action === 'reveal') {
       if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
@@ -100,6 +101,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     }
     if (action === 'set-production-names') return await setProductionNames(p, page);
     if (action === 'confirm-production') return await confirmProduction(p, page);
+    if (action === 'save-protected' || action === 'remove-protected') return await editProtected(action, p, page);
     if (!['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic'].includes(action)) return page(400, { result: 'Unknown action.' });
     if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
     if (!credentials.keyConfigured()) return page(503, { keyHelp: 'The server has no encryption key, so it will not store anything. Set TOKEN_ENCRYPTION_KEY (see docs/DEPLOY.md) and reload.' });
@@ -137,6 +139,27 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (environments.error || branches.error) return page(400, { result: environments.error || branches.error });
     await db.setSetting(PRODUCTION_NAMES_KEY, { environments: environments.names, branches: branches.names });
     return page(200, { result: 'Saved. These names now count as production in addition to the built-in ones.', productionNames: await productionNames(db) });
+  }
+
+  /** The owner's only way to change the protected list. Loosening protection is logged as an access change. */
+  async function editProtected(action, p, page) {
+    if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
+    const kind = String(p.kind || '');
+    const before = await protectedList(db);
+    const target = String(p.target ?? '').trim().toLowerCase();
+    const current = before.find((e) => e.kind === kind && e.target === target);
+    let summary; let loosened;
+    if (action === 'remove-protected') {
+      if (!current) return page(404, { result: 'That entry is not on the list.' });
+      await db.removeProtectedResource(kind, target);
+      summary = `Removed ${kind} ${target} from the protected list (was ${current.level})`; loosened = true;
+    } else {
+      let saved;
+      try { saved = await db.saveProtectedResource({ kind, target, level: String(p.level || ''), reason: p.reason }); } catch (error) { return page(400, { result: error instanceof TypeError ? error.message : 'That entry was not accepted.' }); }
+      summary = `Protected list: ${kind} ${saved.target} is now ${saved.level}${current ? ` (was ${current.level})` : ''}`; loosened = current?.level === 'locked' && saved.level === 'pr-only';
+    }
+    await db.recordChange({ account: null, mode: 'setup', tool: `setup_${action.replace('-', '_')}`, target, summary, production: true, accessWidening: loosened, confirmed: true }).catch(() => {});
+    return page(200, { result: `${summary}.`, protectedList: await protectedList(db) });
   }
 
   /** Step 2 of turning production on: the owner has asked Claude first (a pending request exists), and now proves it with the passphrase. */

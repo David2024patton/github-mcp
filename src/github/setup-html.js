@@ -33,7 +33,7 @@ function accountCard(a) {
 /**
  * @param {object} view `{ csrf, result?, revealed?, show?, accounts?, manifestForm?, installLink?, blocked?, keyHelp? }`
  */
-export function renderSetup({ csrf, result = '', revealed = null, show = '', accounts = null, manifestForm = null, installLink = null, blocked = '', keyHelp = '', productionNames = null }) {
+export function renderSetup({ csrf, result = '', revealed = null, show = '', accounts = null, manifestForm = null, installLink = null, blocked = '', keyHelp = '', productionNames = null, protectedList = null }) {
   const form = (action, inner, button, extra = '') => `<form method="post" autocomplete="off">${hidden('csrf', csrf)}${hidden('action', action)}${extra}${inner}${passphrase}<button type="submit">${h(button)}</button></form>`;
   const login = '<label>GitHub account name (for example your organization or user name)<input name="login" required maxlength="39" autocomplete="off"></label>';
   const type = '<label>Account type<select name="accountType"><option value="Organization">Organization</option><option value="User">Personal user</option></select></label>';
@@ -60,6 +60,10 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
     '<h2>Names that count as production</h2><p>A repository\'s default branch, its protected branches, tags, releases, settings and environments named production, prod or live always count as production. Add more names here (separated by commas; * is a wildcard). Built-in names cannot be removed.</p>' +
     (productionNames ? `<p><small>Environments: ${h(productionNames.environments.join(', ') || 'none')} · Branches: ${h(productionNames.branches.join(', ') || 'none')}</small></p>` : '') +
     form('set-production-names', '<label>Extra environment names<input name="environments" maxlength="400" autocomplete="off"></label><label>Extra branch names<input name="branches" maxlength="400" autocomplete="off"></label>', 'Save production names') +
+    '<h2>Protected repositories and installations</h2><p>The server never changes these except as described. <strong>pr-only</strong>: only pull requests (branches, commits, reviews, checks, issues) and merges on green at an exact head. <strong>locked</strong>: nothing at all. Only this page can change the list. For an installation enter its number, or * for all of this server\'s own GitHub Apps.</p>' +
+    (protectedList ? `<ul>${protectedList.map((e) => `<li><code>${h(e.kind)}</code> ${h(e.target)} — <strong>${h(e.level)}</strong> (${h(e.reason)})</li>`).join('')}</ul>` : '') +
+    form('save-protected', '<label>Kind<select name="kind"><option value="repo">Repository (owner/name)</option><option value="installation">App installation</option></select></label><label>Repository or installation<input name="target" required maxlength="140" autocomplete="off"></label><label>Level<select name="level"><option value="pr-only">pr-only</option><option value="locked">locked</option></select></label><label>Reason<input name="reason" required maxlength="300" autocomplete="off"></label>', 'Add or change this entry') +
+    form('remove-protected', '<label>Kind<select name="kind"><option value="repo">Repository</option><option value="installation">App installation</option></select></label><label>Repository or installation to remove<input name="target" required maxlength="140" autocomplete="off"></label>', 'Remove this entry') +
     '<h2>Alternative: use a fine-grained token instead of a GitHub App</h2><p>Simpler, but no per-connection read-only tokens and no check runs. Classic tokens are refused.</p>' +
     form('add-fine-grained', login + '<label>Fine-grained personal access token<input type="password" name="token" required autocomplete="off"></label>', 'Verify and save encrypted token') +
     '<h2>Optional: notifications token</h2><p>GitHub only lets a classic token read notifications. It must have only the <em>notifications</em> scope; anything else is refused.</p>' +

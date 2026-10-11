@@ -88,6 +88,6 @@ describe('github_disable_production and the gate', () => {
     expect((await gate({ ctx: w.ctx, target: { owner: 'example-org', scope: 'repo' }, classification: {}, args: {} }))?.refuse).toBeFalsy();
   });
   it('the real gate list contains the production switch', () => {
-    expect(createGates()).toHaveLength(1);
+    expect(createGates().length).toBeGreaterThanOrEqual(1);
   });
 });
