@@ -121,6 +121,10 @@ plain words in the tool description or setup page. Money is shown in dollars and
   approved design and actual code (`docs/pr-cards/README.md`). A missing card means write it, not stop. Credentials,
   secrets, guards and production rules follow the design's contract; if it can't work, propose a dated amendment and get
   it reviewed.
+- **Execution detail:** when preparing a JIT card, use `docs/implementation-contracts/IMPLEMENTATION-DETAIL.md` and
+  only the current unit's row in `REMAINING-WORK.md`. Record exact helper exports, request translations, before/after
+  observations and test fixtures once in the card. During coding read only its named recipe; these aids do not override
+  approved semantics, owner gates, the queue or tests.
 - **Drift and reconciliation** (`docs/implementation-contracts/DRIFT-PROTOCOL.md`): checklist A before each PR, B inside
   each PR written as if it had already merged, C when a batch finishes.
 - **PR size:** about 500 production lines and 15 files, hard stop ~800 lines, at most one migration, one risk area

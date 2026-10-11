@@ -198,4 +198,14 @@ cannot be narrowed per connection, so a read-only connection on such an account 
 
 **2026-10-11 — Parameters of a DELETE (or PUT) that are not in the path must be written into the route as a query template (G-2).** Octokit sends every parameter that is not in the path as a JSON *body* for methods other than GET, and GitHub ignores a body on `DELETE …/actions/caches`, so a delete by key would have matched nothing or everything depending on the endpoint. The fake GitHub, which validates each request against the vendored description, reported "query must have required property 'key'". The fix is to write the route as `DELETE /repos/{owner}/{repo}/actions/caches{?key,ref}`. Any future tool whose DELETE/POST/PUT operation lists query parameters in the description must do the same; the request-shape check (`gh.invalid` empty) is what catches a miss.
 
+
+**2026-10-11 — Add execution packets to reduce repeated implementation discovery (Chris's request).**
+The approved plans already define behavior and safety. A second execution layer now records existing exports,
+argument-to-request translations, before/after observations, fixture arrangements, ordered edits and exact focused
+commands once per JIT card. IMPLEMENTATION-DETAIL, TOOL-RECIPES, REMAINING-WORK and the worked G-4 packet live in
+`docs/implementation-contracts/`; workflow entry points make them discoverable. Distant paths remain proposals,
+not speculative READY cards. No design override, test reduction, owner approval or model change is implied.
+The shared contract's one-write assertion remains intact; compound work additionally proves its mutation trace,
+partial failures and replay behavior. Planning does not edit in-flight E-2/G-3 cards or their index entries.
+
 **2026-10-11 — Secret values reach GitHub only from the setup page or the server's own random generator (G-3).** `github_secret_set` never accepts a value. By default it records a request and returns a link; Chris types the value on the passphrase-protected setup page, the server seals it with the place's public key and sends it, then forgets it (a failed send puts the request back). `valueFrom: generate` makes a random value that nobody reads. The design's `change_log_id` column on `secret_entry_requests` is dropped: the setup page writes its own change-log row. Showing a generated value once on the one-time page stays on the ROADMAP.
