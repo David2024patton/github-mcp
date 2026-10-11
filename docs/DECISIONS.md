@@ -127,3 +127,10 @@ purpose (the merge gate must be green at the exact head). The waste was pushing 
 started overlapping full runs. Rule added to SESSION-START §6: never push while your PR's run is in progress; collect all
 failures, fix them together, push once; run checks locally first; "re-run failed jobs" only for infrastructure hiccups.
 CI cancels an obsolete PR run when a newer push arrives.
+
+**2026-10-10 — Connection settings are validated where they are stored (A-3a).** A login code or token row with no
+accounts, a default account outside its list, or an unknown mode, profile or listing would either be unusable or hand out
+more than the login chose, and a refresh copies those settings forward unchanged. `checkConnection` in `src/db.js` refuses
+such a row for codes and tokens alike, so a bug in a later endpoint cannot write one. Whether `production` is allowed stays
+in the login endpoint (A-3b), which can see `gh_accounts.production_enabled` and `VERCEL_ENV`. Also: the copied login
+primitives had a crash on an empty submitted passphrase; fixed in this copy and flagged for the source and the hub core.

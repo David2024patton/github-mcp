@@ -1,15 +1,14 @@
 # STATUS — current work, blockers and next action
 
-Updated 2026-10-10. **The foundation is built (A-1, PR #1) and its database schema exists (A-2, PR #7):** Node 24
+Updated 2026-10-10. **The foundation is built (A-1, PR #1), its database schema exists (A-2, PR #7) and the login store is built (A-3a, PR #8):** Node 24
 package with a committed lockfile, a fake GitHub for tests, the check scripts, throwaway-Postgres database tests, CI with
-one `ci` merge gate, and `src/db.js` creating the 13 foundation tables. No tools exist yet. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
+one `ci` merge gate, and `src/db.js` creating the 13 foundation tables and storing connector logins. No tools or endpoints exist yet. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
 repositories.
 
 ## Next
 
-- **A-3 — connector login:** `docs/pr-cards/A-3.md` (READY; split into A-3a primitives + store, then A-3b endpoints).
-  Branch `ai/<tool>/a-3a-login-store` from `main`. Then **A-4** (GitHub client, vendored descriptions, finders; card written
-  at its start).
+- **A-3b — connector login endpoints:** `docs/pr-cards/A-3.md` (READY; A-3a merged, #8). Branch `ai/<tool>/a-3b-login-endpoints`
+  from `main`. Then **A-4** (GitHub client, vendored descriptions, finders; card written at its start).
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).
 
@@ -24,6 +23,15 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-10 — A-3a connector login store (PR #8):** `src/core/oauth.js` (copied from `stripe-mcp` @ 90a49c0: token hashing,
+PKCE S256, redirect validation, client address, 5-failures-in-15-minutes lockout) with one fix — an empty submitted
+passphrase used to crash the login check instead of counting as wrong (port back to the source and the hub core).
+`src/db.js` gained `checkConnection` (refuses a connection with no accounts, a default outside the list, or an unknown
+mode, profile or listing) and the store: clients, single-use codes, access tokens, atomic refresh on the same row for the
+same client, revocation, login-attempt counting, `listAccountsForLogin`. Codes, tokens and client secrets are hashed. Fake
+database mirrors it; one shared contract (`test/contract/oauth-contract.js`) runs against the fake and real Postgres.
+Tests: `tests/unit/oauth-core.test.js`, `tests/unit/oauth-store.test.js`, `tests/db/oauth.test.js`. No endpoints yet (A-3b).
 
 **2026-10-10 — A-2 foundation schema (PR #7):** `src/db.js` — `SCHEMA_TABLES` (13 tables), `CONNECTION_FIELDS` and
 `connectionSettings(row)`, `productionSql()` (lazy Neon client, plain error when `DATABASE_URL` is missing, nothing at
@@ -68,7 +76,7 @@ first card A-1.
 ## Blocked
 
 Nothing in engineering. IN-00 and IN-01 answered; owner inputs IN-02 … IN-13 (`OWNER-INPUTS.md`; IN-14 answered: not needed)
-are open and none blocks A-3 … A-4.
+are open and none blocks A-3b … A-4.
 
 ## Unverified (each has an owner card)
 

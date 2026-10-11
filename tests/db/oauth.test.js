@@ -1,0 +1,72 @@
+import { beforeAll, afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { createDb, CONNECTION_FIELDS } from '../../src/db.js';
+import { evaluateLogin, hashToken, MAX_FAILED_LOGINS } from '../../src/core/oauth.js';
+import { openIsolatedSchema, closeIsolatedSchema, neonShapedQuery, rawQuery } from '../../test/helpers/pg-neon-adapter.js';
+import { runOAuthContract } from '../../test/contract/oauth-contract.js';
+
+let db;
+beforeAll(async () => {
+  if (!process.env.TEST_DATABASE_URL) throw new Error('TEST_DATABASE_URL must point to disposable localhost Postgres (npm run test:db)');
+  if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(new URL(process.env.TEST_DATABASE_URL).hostname)) throw new Error('Refusing non-local Postgres in tests');
+  await openIsolatedSchema(process.env.TEST_DATABASE_URL);
+  db = createDb(neonShapedQuery());
+  await db.initSchema();
+});
+afterAll(async () => { await closeIsolatedSchema(); });
+beforeEach(async () => { await rawQuery('TRUNCATE oauth_clients, oauth_codes, oauth_tokens, login_attempts, gh_accounts'); });
+
+runOAuthContract('isolated PostgreSQL', async () => ({
+  ...db,
+  async seedAccounts(list) {
+    let id = 0;
+    for (const a of list) {
+      await rawQuery('INSERT INTO gh_accounts (login, account_id, account_type, label, production_enabled, is_default) VALUES ($1, $2, $3, $4, $5, $6)',
+        [a.login, ++id, 'Organization', a.label, a.production_enabled, a.is_default]);
+    }
+  }
+}));
+
+describe('connector login store on throwaway Postgres only', () => {
+  const scope = { defaultAccount: 'example-org', accounts: ['example-org'], mode: 'preview', profile: 'everyday', listing: 'catalog' };
+
+  it('never stores a client secret, code, access token or refresh token in plain text', async () => {
+    await db.createOAuthClient({ clientId: 'client-1', clientSecret: 'fixture-secret-not-real', redirectUris: ['https://example.test/cb'] });
+    await db.createAuthCode({ code: 'code-plain-fixture', clientId: 'client-1', redirectUri: 'https://example.test/cb', codeChallenge: 'Z'.repeat(43), ...scope });
+    await db.createAccessToken({ accessToken: 'access-plain-fixture', refreshToken: 'refresh-plain-fixture', clientId: 'client-1', ...scope });
+    const dump = JSON.stringify([
+      await rawQuery('SELECT * FROM oauth_clients'), await rawQuery('SELECT * FROM oauth_codes'), await rawQuery('SELECT * FROM oauth_tokens')
+    ]);
+    for (const plain of ['fixture-secret-not-real', 'code-plain-fixture', 'access-plain-fixture', 'refresh-plain-fixture']) expect(dump).not.toContain(plain);
+    expect((await rawQuery('SELECT code FROM oauth_codes'))[0].code).toBe(hashToken('code-plain-fixture'));
+    const [token] = await rawQuery('SELECT token_hash, refresh_hash FROM oauth_tokens');
+    expect(token).toEqual({ token_hash: hashToken('access-plain-fixture'), refresh_hash: hashToken('refresh-plain-fixture') });
+  });
+
+  it('fails if oauth_codes or oauth_tokens gain a column that is neither a connection setting nor a listed non-setting (so a new setting cannot be dropped on refresh)', async () => {
+    const NON_SETTINGS = {
+      oauth_codes: ['code', 'client_id', 'data', 'expires_at'],
+      oauth_tokens: ['token_hash', 'client_id', 'refresh_hash', 'kind', 'expires_at', 'last_used_at', 'revoked_at', 'created_at']
+    };
+    for (const [table, allowed] of Object.entries(NON_SETTINGS)) {
+      const columns = (await rawQuery('SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = $1', [table])).map((r) => r.column_name);
+      expect(columns.filter((c) => !CONNECTION_FIELDS.includes(c) && !allowed.includes(c))).toEqual([]);
+      for (const field of CONNECTION_FIELDS) expect(columns).toContain(field);
+    }
+  });
+
+  it('stores the account list as a real text array and the settings exactly as given', async () => {
+    await db.createAccessToken({ accessToken: 'a', refreshToken: 'r', clientId: 'c', defaultAccount: 'b', accounts: ['a', 'b', 'c'], mode: 'production', profile: 'full', listing: 'compact' });
+    const [row] = await rawQuery('SELECT accounts, pg_typeof(accounts)::text AS type, default_account, mode, profile, listing FROM oauth_tokens');
+    expect(row).toEqual({ accounts: ['a', 'b', 'c'], type: 'text[]', default_account: 'b', mode: 'production', profile: 'full', listing: 'compact' });
+  });
+
+  it('counts a lockout in Postgres: five wrong passphrases lock the address, other addresses stay open', async () => {
+    for (let n = 0; n < MAX_FAILED_LOGINS; n++) {
+      expect((await evaluateLogin({ ip: '192.0.2.50', supplied: 'wrong', expected: 'correct', store: db })).status).toBe('wrong');
+    }
+    expect((await evaluateLogin({ ip: '192.0.2.50', supplied: 'correct', expected: 'correct', store: db })).status).toBe('locked');
+    expect((await evaluateLogin({ ip: '192.0.2.51', supplied: 'correct', expected: 'correct', store: db })).status).toBe('ok');
+    expect(Number((await rawQuery(`SELECT count(*) FROM login_attempts WHERE ip = '192.0.2.50' AND success = FALSE`))[0].count)).toBe(MAX_FAILED_LOGINS + 1);
+    expect((await rawQuery(`SELECT success FROM login_attempts WHERE ip = '192.0.2.51'`))[0].success).toBe(true);
+  });
+});
