@@ -408,7 +408,7 @@
         "D-1"
       ],
       "card": "docs/pr-cards/D-2.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "none",
       "budget": 490,
       "units": [
@@ -417,7 +417,8 @@
       "readiness": "READY",
       "ownerInputs": [],
       "pr": [
-        30
+        30,
+        31
       ]
     },
     {

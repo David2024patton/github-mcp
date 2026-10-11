@@ -7,8 +7,8 @@ repositories.
 
 ## Next
 
-- **Batch D, D-2 part 2 — file and ref changes** (`docs/pr-cards/D-2.md`): `github_content_put_file`, `_delete_file`, `_push_files`, `github_commit_comment`, `github_git_update_ref`. Part 1 (ten reads) is in PR #30.
-- Batches A, B, C finished; Batch D cards D-2 and D-3 remain. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
+- **Batch D, D-3 — branches and tags** (`docs/designs/BATCH-D.md` §3–4; write the card first). D-1 and D-2 are finished.
+- Batches A, B, C finished; Batch D card D-3 remains. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).
@@ -24,6 +24,8 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-11 — D-2 part 2, file and ref changes (PR #31):** `github_content_put_file` / `_delete_file` (branch always named; refused if the file changed since the preview; undo restores the previous text), `github_content_push_files` (GitHub-signed commit, branch head checked), `github_commit_comment` (notifies mentioned outsiders), `github_git_update_ref` (compare-and-swap; dropping commits needs force and the preview counts them). D-2 is complete.
 
 **2026-10-11 — D-2 part 1, code and commit reads (PR #30):** `github_content_get` (text, directory listing, binary files show size and link only, long text kept behind a handle), `github_content_get_tree` (real default branch, glob filter, GitHub's truncation reported), `github_content_get_archive_link` (the redirect link only), `github_content_check_codeowners` (line, column, kind and a plain fix; 'no CODEOWNERS file' is not 'no errors'), `github_commit_list/get/compare/list_prs` (patches cut at 1,500 characters per file), `github_git_get_ref`, `github_git_get_commit`. D-1 is merged (#27, #29).
 
