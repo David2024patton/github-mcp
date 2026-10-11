@@ -18,7 +18,7 @@
     "R",
     "X"
   ],
-  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split — A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00).",
+  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split \u2014 A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00).",
   "cards": [
     {
       "id": "A-1",
@@ -451,14 +451,17 @@
         "D-3"
       ],
       "card": "docs/pr-cards/E-1.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 450,
       "units": [
         "E-1"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "ownerInputs": []
+      "readiness": "PARTLY_BUILT_READS",
+      "ownerInputs": [],
+      "pr": [
+        35
+      ]
     },
     {
       "id": "E-2",
