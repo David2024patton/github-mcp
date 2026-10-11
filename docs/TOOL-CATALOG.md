@@ -573,9 +573,9 @@ an organization; scheduled reminders; interaction limits beyond 6 months. The fu
 
 ## Totals
 
-**Totals:** 305 tools: 299 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 308 tools: 302 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 133, everyday adds 81
-(everyday lists 214), full adds 91 (full lists 305). In compact mode (`docs/designs/BATCH-C.md`) an agent
+(everyday lists 214), full adds 94 (full lists 308). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
 `github_search_tools` / `github_call`.
 
