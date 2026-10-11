@@ -15,7 +15,7 @@ const NAME = { type: 'string', minLength: 1, maxLength: 100, pattern: '^[A-Za-z_
 const KINDS = ['actions', 'dependabot', 'codespaces', 'agents'];
 
 /** Where the thing lives: its API base path and a plain label. */
-function place(args, ctx) {
+export function place(args, ctx) {
   const owner = ownerOf(args, ctx);
   if (args.environment !== undefined && !args.repo) throw new TypeError('An environment belongs to a repository: give repo too.');
   if (args.environment !== undefined) return { level: 'environment', owner, repo: args.repo, environment: args.environment, label: `the ${args.environment} environment of ${slug(owner, args.repo)}` };
@@ -27,7 +27,7 @@ const varRoute = (pl) => ({
   one: pl.level === 'org' ? '/orgs/{org}/actions/variables/{name}' : pl.level === 'environment' ? '/repos/{owner}/{repo}/environments/{environment_name}/variables/{name}' : '/repos/{owner}/{repo}/actions/variables/{name}'
 });
 const varParams = (pl) => (pl.level === 'org' ? { org: pl.owner } : pl.level === 'environment' ? { owner: pl.owner, repo: pl.repo, environment_name: pl.environment } : { owner: pl.owner, repo: pl.repo });
-const targetOf = (pl) => ({ owner: pl.owner, ...(pl.repo ? { repo: pl.repo } : {}), ...(pl.environment ? { environment: pl.environment } : {}), scope: pl.level === 'org' ? 'org' : 'repo' });
+export const targetOf = (pl) => ({ owner: pl.owner, ...(pl.repo ? { repo: pl.repo } : {}), ...(pl.environment ? { environment: pl.environment } : {}), scope: pl.level === 'org' ? 'org' : 'repo' });
 const getVar = (ctx, pl, name) => missing(async () => (await (await octo(ctx, pl.owner)).request(`GET ${varRoute(pl).one}`, { ...varParams(pl), name })).data);
 
 export const variableList = defineRead({

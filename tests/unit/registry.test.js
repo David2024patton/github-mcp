@@ -20,7 +20,7 @@ describe('tool registry', () => {
       'github_actions_set_workflow_enabled', 'github_actions_dispatch', 'github_actions_rerun', 'github_actions_cancel_run', 'github_actions_delete_run', 'github_actions_review_pending_deployment',
       'github_check_get_ci_state', 'github_check_get_run', 'github_artifact_list', 'github_artifact_get_link', 'github_cache_list',
       'github_check_create_run', 'github_check_update_run', 'github_status_create', 'github_artifact_delete', 'github_cache_delete',
-      'github_variable_list', 'github_secret_list', 'github_variable_set', 'github_variable_delete'];
+      'github_variable_list', 'github_secret_list', 'github_variable_set', 'github_variable_delete', 'github_secret_set', 'github_secret_delete', 'github_secret_set_repo_access'];
     expect(registry.tools.map((t) => t.name)).toEqual(names);
     expect(Object.keys(registry.handlers)).toEqual(names);
     for (const tool of registry.tools) expect(tool.name).toMatch(/^github_[a-z_]+$/);
