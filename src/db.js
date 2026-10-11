@@ -20,8 +20,27 @@ export const SCHEMA_TABLES = Object.freeze([
   'gh_rate_state',
   'gh_write_slots',
   'gh_etag_cache',
-  'server_settings'
+  'server_settings',
+  'protected_resources'
 ]);
+
+export const PROTECTED_KINDS = Object.freeze(['repo', 'installation']);
+export const PROTECTED_LEVELS = Object.freeze(['pr-only', 'locked']);
+export const PROTECTED_SEEDED_KEY = 'protected_resources_seeded';
+const REPO_TARGET = /^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?\/[a-z0-9._-]{1,100}$/;
+
+/** Checks one protected-list entry and returns it in its stored form (lowercase target). Throws a TypeError with a plain sentence. */
+export function checkProtected({ kind, target, level, reason }) {
+  if (!PROTECTED_KINDS.includes(kind)) throw new TypeError('A protected entry is a repo or an installation.');
+  if (!PROTECTED_LEVELS.includes(level)) throw new TypeError('The level is pr-only or locked.');
+  const t = String(target ?? '').trim().toLowerCase();
+  if (kind === 'repo' && !REPO_TARGET.test(t)) throw new TypeError('A repository is written owner/name.');
+  if (kind === 'installation' && !(t === '*' || /^[0-9]{1,15}$/.test(t))) throw new TypeError('An installation is its number, or * for all of this server\'s own Apps.');
+  const why = String(reason ?? '').trim();
+  if (why.length < 3 || why.length > 300) throw new TypeError('Give a reason of 3 to 300 characters.');
+  return { kind, target: t, level, reason: why };
+}
+const normalizeProtected = (r) => ({ kind: r.kind, target: r.target, level: r.level, reason: r.reason, updated_at: r.updated_at instanceof Date ? r.updated_at.toISOString() : r.updated_at });
 
 /**
  * The per-connection settings a login stores and every token refresh must copy forward (Robinson Tool Contract §2).
@@ -253,6 +272,14 @@ export function createDb(sql = productionSql()) {
         setting TEXT PRIMARY KEY,
         value JSONB NOT NULL,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS protected_resources (
+        kind TEXT NOT NULL,
+        target TEXT NOT NULL,
+        level TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (kind, target)
       )`;
     },
 
@@ -493,6 +520,34 @@ export function createDb(sql = productionSql()) {
       await sql`INSERT INTO server_settings (setting, value, updated_at) VALUES (${key}, ${JSON.stringify(value)}::jsonb, now())
         ON CONFLICT (setting) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`;
     },
+    /** The protected list, sorted. `kind` is 'repo' (target `owner/name`, lowercase) or 'installation' (an installation number or `*` for all of this server's own Apps). */
+    async listProtectedResources() {
+      const rows = await sql`SELECT kind, target, level, reason, updated_at FROM protected_resources ORDER BY kind, target`;
+      return rows.map(normalizeProtected);
+    },
+    /** Adds or changes one entry. Only the setup page calls this. */
+    async saveProtectedResource({ kind, target, level, reason }) {
+      const entry = checkProtected({ kind, target, level, reason });
+      await sql`INSERT INTO protected_resources (kind, target, level, reason, updated_at) VALUES (${entry.kind}, ${entry.target}, ${entry.level}, ${entry.reason}, now())
+        ON CONFLICT (kind, target) DO UPDATE SET level = EXCLUDED.level, reason = EXCLUDED.reason, updated_at = now()`;
+      return entry;
+    },
+    /** Removes one entry; true when something was removed. Only the setup page calls this. */
+    async removeProtectedResource(kind, target) {
+      const rows = await sql`DELETE FROM protected_resources WHERE kind = ${kind} AND target = ${String(target).toLowerCase()} RETURNING target`;
+      return rows.length === 1;
+    },
+    /** Inserts the starting list once ever (a flag in `server_settings`), so an entry the owner later removes stays removed. Returns true when it seeded. */
+    async seedProtectedResources(entries) {
+      if ((await this.getSetting(PROTECTED_SEEDED_KEY)) === true) return false;
+      for (const raw of entries) {
+        const e = checkProtected(raw);
+        await sql`INSERT INTO protected_resources (kind, target, level, reason) VALUES (${e.kind}, ${e.target}, ${e.level}, ${e.reason}) ON CONFLICT (kind, target) DO NOTHING`;
+      }
+      await this.setSetting(PROTECTED_SEEDED_KEY, true);
+      return true;
+    },
+
     /** Turns production on or off for one account. Returns false when the account is unknown. Used only by the setup page (on) and the disable tool (off). */
     async setProductionEnabled(login, enabled) {
       const rows = await sql`UPDATE gh_accounts SET production_enabled = ${enabled === true} WHERE lower(login) = lower(${login}) RETURNING login`;

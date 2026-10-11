@@ -494,3 +494,42 @@ describe('turning production on (B-2, step 2)', () => {
     expect(status.body).toContain('eu-prod');
   });
 });
+
+describe('the protected list on the setup page (B-3)', () => {
+  it('shows the starting list on the status screen', async () => {
+    const t = await build();
+    await t.open();
+    const res = await t.post({ action: 'status' });
+    expect(res.body).toContain('robinson-ai-systems/github-mcp');
+    expect(res.body).toContain('pr-only');
+    expect(res.body).toContain('robinsons-toolkit-mcp');
+  });
+  it('adds, changes and removes an entry with the passphrase, and logs each', async () => {
+    const t = await build();
+    await t.open();
+    const add = await t.post({ action: 'save-protected', kind: 'repo', target: 'Example-Org/Crown-Jewels', level: 'locked', reason: 'never touch' });
+    expect(add.statusCode).toBe(200);
+    expect((await t.db.listProtectedResources()).some((e) => e.target === 'example-org/crown-jewels' && e.level === 'locked')).toBe(true);
+    const loosen = await t.post({ action: 'save-protected', kind: 'repo', target: 'example-org/crown-jewels', level: 'pr-only', reason: 'ok through PRs' });
+    expect(loosen.body).toContain('was locked');
+    const gone = await t.post({ action: 'remove-protected', kind: 'repo', target: 'example-org/crown-jewels' });
+    expect(gone.statusCode).toBe(200);
+    expect((await t.db.listProtectedResources()).some((e) => e.target === 'example-org/crown-jewels')).toBe(false);
+    const logged = [await t.db.getChange(1), await t.db.getChange(2), await t.db.getChange(3)];
+    expect(logged.map((r) => r?.tool)).toEqual(['setup_save_protected', 'setup_save_protected', 'setup_remove_protected']);
+    expect(logged[1].summary).toContain('was locked');
+  });
+  it('refuses bad entries, unknown removals, a wrong passphrase and a preview deployment', async () => {
+    const t = await build();
+    await t.open();
+    expect((await t.post({ action: 'save-protected', kind: 'repo', target: 'no-slash', level: 'locked', reason: 'why not' })).statusCode).toBe(400);
+    expect((await t.post({ action: 'save-protected', kind: 'repo', target: 'a/b', level: 'open', reason: 'why not' })).statusCode).toBe(400);
+    expect((await t.post({ action: 'remove-protected', kind: 'repo', target: 'a/never-listed' })).statusCode).toBe(404);
+    const before = (await t.db.listProtectedResources()).length;
+    expect((await t.post({ action: 'save-protected', kind: 'repo', target: 'a/b', level: 'locked', reason: 'why not', passphrase: 'wrong-wrong-wrong' })).statusCode).toBe(401);
+    expect((await t.db.listProtectedResources()).length).toBe(before);
+    const preview = await build({ env: { ...PROD, VERCEL_ENV: 'preview' } });
+    await preview.open();
+    expect((await preview.post({ action: 'save-protected', kind: 'repo', target: 'a/b', level: 'locked', reason: 'why not' })).statusCode).toBe(403);
+  });
+});

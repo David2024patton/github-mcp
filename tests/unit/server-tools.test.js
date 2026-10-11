@@ -145,7 +145,7 @@ describe('over the MCP endpoint', () => {
       return JSON.parse(text.split('\n').find((l) => l.startsWith('data:'))?.slice(5) ?? text);
     };
     const listed = await rpc('tools/list', {});
-    expect(listed.result.tools.map((x) => x.name)).toEqual(['github_whoami', 'github_list_accounts', 'github_enable_production', 'github_disable_production']);
+    expect(listed.result.tools.map((x) => x.name)).toEqual(['github_whoami', 'github_list_accounts', 'github_list_protected_resources', 'github_enable_production', 'github_disable_production']);
     const called = await rpc('tools/call', { name: 'github_list_accounts', arguments: {} });
     const out = JSON.parse(called.result.content[0].text);
     expect(out.accounts.map((a) => a.login)).toEqual(['example-org']);

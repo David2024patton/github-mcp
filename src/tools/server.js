@@ -5,6 +5,7 @@ import { GITHUB_API_VERSION } from '../github/client.js';
 import { GithubClientError, formatDenver } from '../github/errors.js';
 import { defineGithubWrite } from './define-github-write.js';
 import { publicOrigin } from '../core/http.js';
+import { protectedList } from './protect-guard.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
 const FIELDS = { type: 'array', items: { type: 'string', maxLength: 64 }, maxItems: 20, description: 'Only these fields of each account' };
@@ -73,6 +74,17 @@ async function listAccounts(args, ctx) {
   return { count: accounts.length, accounts: pick(accounts, args.fields) };
 }
 
+async function listProtectedResources(args, ctx) {
+  const entries = await protectedList(ctx.db);
+  const rows = entries.map((e) => ({ kind: e.kind, target: e.target === '*' ? 'all of this server\'s own GitHub App installations' : e.target, level: e.level, reason: e.reason }));
+  return {
+    count: rows.length,
+    levels: { 'pr-only': 'only pull requests (branches, commits, reviews, checks, issues) and merges on green at an exact head are allowed', locked: 'no change of any kind' },
+    editable: 'only on the setup page, with your passphrase',
+    protected: pick(rows, args.fields)
+  };
+}
+
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 const readTools = [
   {
@@ -86,9 +98,15 @@ const readTools = [
     description: 'Connected GitHub accounts this connection may use: App installation, repository selection, your sign-in, notifications token, production on/off.',
     inputSchema: { type: 'object', properties: { detail: DETAIL, fields: FIELDS }, additionalProperties: false },
     annotations: readOnly
+  },
+  {
+    name: 'github_list_protected_resources',
+    description: 'Repositories and installations this server refuses to change (its own repo, other Robinson servers) and the level: pr-only or locked.',
+    inputSchema: { type: 'object', properties: { fields: FIELDS }, additionalProperties: false },
+    annotations: readOnly
   }
 ];
-const readHandlers = { github_whoami: whoami, github_list_accounts: listAccounts };
+const readHandlers = { github_whoami: whoami, github_list_accounts: listAccounts, github_list_protected_resources: listProtectedResources };
 
 // ---- Production switch (B-2): ask here, confirm on the setup page; turning it off needs no passphrase. ----
 const PENDING_MINUTES = 10;

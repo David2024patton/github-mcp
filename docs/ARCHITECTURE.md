@@ -59,6 +59,7 @@ secret-looking column name.
 | `gh_rate_state` | Last known GitHub rate headers and `blocked_until` per (account, resource) |
 | `gh_write_slots` | Next allowed write time per installation (write spacing across instances) |
 | `gh_etag_cache` | ETags and bodies for polled reads per (account, URL key) |
+| `protected_resources` | The protected list (B-3): kind (`repo`, `installation`), lowercase target (`owner/name`, an installation number, or `*` for this server's own Apps), level (`pr-only`, `locked`), reason |
 | `server_settings` | Owner settings as key and JSON value (B-2: the extra production names; later cards add theirs) |
 
 Login store (A-3a, `createDb(sql)` in `src/db.js`): codes, access tokens, refresh credentials and client secrets are stored
@@ -136,6 +137,14 @@ reviewers or wait timer), and refs (names, project-profile patterns, the default
 `production`, `prod`, `live`; the owner can only add more (`server_settings`). A failed read counts as production. The gate `productionEnabledGate` then refuses a
 production change on a production connection unless the account's switch is on. The switch turns on in two steps: `github_enable_production` creates a single-use
 10-minute waiting request (`setup_states`, purpose `enable_production`); the passphrase on the setup page consumes it. `github_disable_production` turns it off at once.
+
+### Protected resources and project ownership (B-3)
+
+`src/tools/protect-guard.js` runs after the production gate. The list (`protected_resources`, seeded once with the IN-08 default and edited only on the setup page) has two
+levels: `locked` refuses every write; `pr-only` allows only the pull-request routine (an allow-list of tool names, away from default and protected branches) and merges by
+the three merge tools with an exact `expectedHeadSha`. Anything else, and any unknown tool name, is refused. Project ownership asks `ctx.profileFor(owner, repo)` (Batch P) for
+`ownedRefs`; a write to an owned ref is refused naming its workflow unless `outsideProject: true` (then it asks first); `agentMay` lets the project's own agent steps through.
+A list that cannot be read refuses the change.
 
 ## GitHub App permissions
 
