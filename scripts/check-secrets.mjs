@@ -59,8 +59,19 @@ export function scanFiles(files) {
   return failures;
 }
 
+/**
+ * The two vendored GitHub descriptions (A-4) are GitHub's own public documentation data and contain example
+ * token- and key-shaped strings in their response examples. Exactly these two data files are skipped; their
+ * SOURCE.md files and everything else are still scanned. Their integrity is pinned by the sha256 in SOURCE.md.
+ */
+export const VENDORED_DATA = Object.freeze([
+  'vendor/github-openapi/api.github.com.2026-03-10.json',
+  'vendor/github-graphql/schema.docs.graphql'
+]);
+
 export function trackedFiles(cwd = process.cwd()) {
-  return execFileSync('git', ['ls-files', '-z'], { cwd, encoding: 'utf8' }).split('\0').filter(Boolean);
+  return execFileSync('git', ['ls-files', '-z'], { cwd, encoding: 'utf8' }).split('\0').filter(Boolean)
+    .filter((file) => !VENDORED_DATA.includes(file));
 }
 
 export function formatFailure(f) {

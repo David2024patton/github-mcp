@@ -2,7 +2,7 @@
 // schema, A-3a adds the connector login store. Service-independent in-memory fake of createDb(): it mirrors the behavior
 // of src/db.js (hashed storage, single-use codes, atomic refresh) and is held to the same contract suite
 // (test/contract/oauth-contract.js) as real PostgreSQL.
-import { SCHEMA_TABLES, checkConnection, connectionSettings } from '../../src/db.js';
+import { SCHEMA_TABLES, ETAG_BODY_LIMIT_BYTES, checkConnection, connectionSettings } from '../../src/db.js';
 import { hashToken } from '../../src/core/oauth.js';
 
 export function createFakeDb({ clock = Date.now } = {}) {
@@ -13,6 +13,10 @@ export function createFakeDb({ clock = Date.now } = {}) {
   const tokens = new Map();
   const attempts = [];
   const accounts = [];
+  const slots = new Map();
+  const rates = new Map();
+  const etags = new Map();
+  const DAY_MS = 24 * 60 * 60 * 1000;
   let attemptId = 0;
   const settingsOf = (row) => connectionSettings({ ...row, accounts: row.accounts });
   const live = (row) => row && row.revoked_at == null && row.kind === 'connector';
@@ -91,6 +95,36 @@ export function createFakeDb({ clock = Date.now } = {}) {
     async recordLoginAttempt(ip) { attempts.push({ id: ++attemptId, ip, at: clock(), success: false }); return attemptId; },
     async markLoginAttemptSucceeded(id) { const a = attempts.find((x) => x.id === id); if (a) a.success = true; },
     async countRecentFailedLogins(ip, minutes = 15) { return attempts.filter((a) => a.ip === ip && !a.success && a.at > clock() - minutes * 60000).length; },
+
+    async claimWriteSlot(installationKey, { spacingMs = 1000, maxWaitMs = 5000 } = {}) {
+      if (typeof installationKey !== 'string' || !installationKey) throw new TypeError('claimWriteSlot needs an installation key.');
+      const now = clock(); // no await between the check and the write: atomic like the real statement
+      const next = slots.get(installationKey);
+      if (next !== undefined && next > now + maxWaitMs) return null;
+      const slot = next === undefined ? now : Math.max(next, now);
+      slots.set(installationKey, slot + spacingMs);
+      return { waitMs: Math.max(0, Math.round(slot - now)) };
+    },
+    async recordRateState({ account, resource, remaining = null, resetAt = null, blockedUntil = null }) {
+      rates.set(`${account}\u0000${resource}`, { remaining, reset_at: resetAt && new Date(resetAt), blocked_until: blockedUntil && new Date(blockedUntil) });
+    },
+    async getRateState(account, resource) {
+      const row = rates.get(`${account}\u0000${resource}`);
+      if (!row) return null;
+      return { ...row, blocked_until: row.blocked_until && row.blocked_until.getTime() > clock() ? row.blocked_until : null };
+    },
+    async getEtag(account, urlKey) {
+      const row = etags.get(`${account}\u0000${urlKey}`);
+      return row && row.stored_at > clock() - DAY_MS ? { etag: row.etag, body: structuredClone(row.body) } : null;
+    },
+    async putEtag(account, urlKey, etag, body) {
+      const key = `${account}\u0000${urlKey}`;
+      if (Buffer.byteLength(JSON.stringify(body ?? null)) > ETAG_BODY_LIMIT_BYTES) { etags.delete(key); return false; }
+      etags.set(key, { etag, body: structuredClone(body ?? null), stored_at: clock() });
+      let removed = 0;
+      for (const [k, v] of etags) if (removed < 100 && v.stored_at < clock() - DAY_MS) { etags.delete(k); removed++; }
+      return true;
+    },
 
     /** Test seam: the fake has no gh_accounts table, so tests seed the login page's account list here. */
     async seedAccounts(list) { accounts.splice(0, accounts.length, ...structuredClone(list)); },

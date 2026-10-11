@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { scanFiles, scanText, isEnvFile } from '../../scripts/check-secrets.mjs';
+import { scanFiles, scanText, isEnvFile, trackedFiles, VENDORED_DATA } from '../../scripts/check-secrets.mjs';
 
 // Real-shaped values are assembled at run time so this file itself never contains one.
 const base62 = (n) => 'Zq8Lm3Xv'.repeat(Math.ceil(n / 8)).slice(0, n);
@@ -72,5 +72,16 @@ describe('secret scan', () => {
     expect(run.status).toBe(1);
     expect(run.stderr).toContain('GitHub token: leak.js:1');
     expect(run.stderr + run.stdout).not.toContain(leaked);
+  });
+
+  it('skips exactly the two vendored GitHub data files and nothing else under vendor/', () => {
+    expect(VENDORED_DATA).toEqual([
+      'vendor/github-openapi/api.github.com.2026-03-10.json',
+      'vendor/github-graphql/schema.docs.graphql'
+    ]);
+    const tracked = trackedFiles();
+    for (const file of VENDORED_DATA) expect(tracked).not.toContain(file);
+    expect(tracked).toContain('vendor/github-openapi/SOURCE.md');
+    expect(tracked).toContain('vendor/github-graphql/SOURCE.md');
   });
 });
