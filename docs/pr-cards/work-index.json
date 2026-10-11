@@ -473,7 +473,7 @@
         "E-1"
       ],
       "card": "docs/pr-cards/E-2.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -482,7 +482,8 @@
       "readiness": "WRITE_CARD_AT_START",
       "ownerInputs": [],
       "pr": [
-        46
+        46,
+        48
       ]
     },
     {

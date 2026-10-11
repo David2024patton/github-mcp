@@ -7,7 +7,7 @@ repositories.
 
 ## Next
 
-- **Batch E — pull requests and reviews** (`docs/designs/BATCH-E.md`). E-1 is finished (reads #35 with the shared `ciState` helper; create/update/close/set_draft/update_branch #40). E-3 (review reads and changes) is built (PRs #37 and #38). E-2 part 1 (`github_pr_merge` at an exact head SHA, `_merge_async`, `_set_auto_merge`, PR #46) is built; next is E-2 part 2: `github_pr_list_stacks`, `github_pr_stack_manage`. Batch D is finished.
+- **Batch E — pull requests and reviews** (`docs/designs/BATCH-E.md`). E-1 is finished (reads #35 with the shared `ciState` helper; create/update/close/set_draft/update_branch #40). E-3 (review reads and changes) is built (PRs #37 and #38). E-2 is complete: exact-head merge tools (#46), plus list/create/append/unstack pull request stacks (#48). Next is Batch G, G-4 environments and deployments. Batch D is finished.
 - Batches A, B, C, D finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
@@ -24,6 +24,8 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-11 — E-2 part 2, pull request stacks (PR #48):** `github_pr_list_stacks` pages or inspects ordered stacks; `github_pr_stack_manage` creates, adds or un-stacks, verifies the exact PR branch chain and read-back, never merges or edits branches. Batch E is complete; G-4 (environment settings, deployments) is next.
 
 **2026-10-11 — Implementation detail for faster Sol 5.6 execution (planning):**
 `docs/implementation-contracts/IMPLEMENTATION-DETAIL.md` defines concrete JIT packets; `TOOL-RECIPES.md` maps
