@@ -3,7 +3,7 @@
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
-tool merges, its Card cell gains `built #<PR>`. Built so far: **72 tools** (`github_search_tools`, `github_describe_tool`, `github_call`, `github_batch`, `github_get_result`, `github_check_permissions`, `github_rate_status`, `github_where_is_setting`, `github_whoami`, `github_list_accounts`, `github_list_protected_resources`, `github_list_connections`, `github_recent_changes`, `github_enable_production`, `github_disable_production`, `github_set_spend_limit`, `github_set_default_account`, `github_revoke_connection`, `github_repo_list`, `github_repo_get`, `github_repo_find`, `github_repo_get_insights`, `github_repo_get_traffic`, `github_repo_list_activity`, `github_repo_get_custom_properties`, `github_repo_create`, `github_repo_create_from_template`, `github_repo_update_settings`, `github_repo_set_visibility`, `github_repo_set_default_branch`, `github_repo_rename`, `github_repo_set_archived`, `github_repo_transfer`, `github_repo_delete`, `github_repo_fork`, `github_repo_sync_fork`, `github_repo_set_custom_properties`, `github_repo_star`, `github_content_get`, `github_content_get_tree`, `github_content_get_archive_link`, `github_content_check_codeowners`, `github_commit_list`, `github_commit_get`, `github_commit_compare`, `github_commit_list_prs`, `github_git_get_ref`, `github_git_get_commit`, `github_content_put_file`, `github_content_delete_file`, `github_content_push_files`, `github_commit_comment`, `github_git_update_ref`, `github_branch_list`, `github_branch_get`, `github_branch_create`, `github_branch_rename`, `github_branch_delete`, `github_branch_merge`, `github_tag_list`, `github_tag_create`, `github_tag_delete`, `github_pr_list`, `github_pr_get`, `github_pr_get_diff`, `github_pr_list_files`, `github_pr_list_commits`, `github_pr_create`, `github_pr_update`, `github_pr_close`, `github_pr_set_draft`, `github_pr_update_branch`) — the registry (`src/tools/index.js`) exists
+tool merges, its Card cell gains `built #<PR>`. Built so far: **81 tools** (`github_search_tools`, `github_describe_tool`, `github_call`, `github_batch`, `github_get_result`, `github_check_permissions`, `github_rate_status`, `github_where_is_setting`, `github_whoami`, `github_list_accounts`, `github_list_protected_resources`, `github_list_connections`, `github_recent_changes`, `github_enable_production`, `github_disable_production`, `github_set_spend_limit`, `github_set_default_account`, `github_revoke_connection`, `github_repo_list`, `github_repo_get`, `github_repo_find`, `github_repo_get_insights`, `github_repo_get_traffic`, `github_repo_list_activity`, `github_repo_get_custom_properties`, `github_repo_create`, `github_repo_create_from_template`, `github_repo_update_settings`, `github_repo_set_visibility`, `github_repo_set_default_branch`, `github_repo_rename`, `github_repo_set_archived`, `github_repo_transfer`, `github_repo_delete`, `github_repo_fork`, `github_repo_sync_fork`, `github_repo_set_custom_properties`, `github_repo_star`, `github_content_get`, `github_content_get_tree`, `github_content_get_archive_link`, `github_content_check_codeowners`, `github_commit_list`, `github_commit_get`, `github_commit_compare`, `github_commit_list_prs`, `github_git_get_ref`, `github_git_get_commit`, `github_content_put_file`, `github_content_delete_file`, `github_content_push_files`, `github_commit_comment`, `github_git_update_ref`, `github_branch_list`, `github_branch_get`, `github_branch_create`, `github_branch_rename`, `github_branch_delete`, `github_branch_merge`, `github_tag_list`, `github_tag_create`, `github_tag_delete`, `github_pr_list`, `github_pr_get`, `github_pr_get_diff`, `github_pr_list_files`, `github_pr_list_commits`, `github_review_list`, `github_review_list_threads`, `github_review_list_comments`, `github_review_create`, `github_review_submit`, `github_review_dismiss`, `github_review_reply`, `github_review_resolve_thread`, `github_review_request_reviewers`, `github_pr_create`, `github_pr_update`, `github_pr_close`, `github_pr_set_draft`, `github_pr_update_branch`) — the registry (`src/tools/index.js`) exists
 and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Since B-5 every result of these tools is shaped (`src/tools/util.js`) and failures are explained by `src/tools/errors.js`. Since B-6 a connection sees only the tools its profile allows (`tools/list` and by-name calls). Every write tool below will be built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
@@ -131,11 +131,11 @@ Card(s): E-1, E-2.
 | `github_pr_get_diff` | The PR's diff (capped; handle for the rest) | — | C | I | B | R | E-1 (built #35) |
 | `github_pr_list_files` | Files changed with additions/deletions (patches capped) | — | C | I | B | R | E-1 (built #35) |
 | `github_pr_list_commits` | Commits in the PR | — | C | I | B | R | E-1 (built #35) |
-| `github_pr_create` | Open a pull request (draft option; body footer records the tool and run) | P·M | C | I | B | E | E-1 (built #36) |
-| `github_pr_update` | Title, body, base branch (retarget), state open/closed | P·M | F | I | B | E | E-1 (built #36) |
-| `github_pr_set_draft` | Convert to draft or mark ready for review (GraphQL) | P | N | I | B | E | E-1 (built #36) |
-| `github_pr_close` | Close without merging (head branch kept) | C | C | I | B | E | E-1 (built #36) |
-| `github_pr_update_branch` | Bring the PR branch up to date with its base (expected head SHA checked) | P | C | I | B | E | E-1 (built #36) |
+| `github_pr_create` | Open a pull request (draft option; body footer records the tool and run) | P·M | C | I | B | E | E-1 (built #40) |
+| `github_pr_update` | Title, body, base branch (retarget), state open/closed | P·M | F | I | B | E | E-1 (built #40) |
+| `github_pr_set_draft` | Convert to draft or mark ready for review (GraphQL) | P | N | I | B | E | E-1 (built #40) |
+| `github_pr_close` | Close without merging (head branch kept) | C | C | I | B | E | E-1 (built #40) |
+| `github_pr_update_branch` | Bring the PR branch up to date with its base (expected head SHA checked) | P | C | I | B | E | E-1 (built #40) |
 | `github_pr_merge` | Merge at an exact head SHA; refuses unless every required check is green at that SHA; production base needs a production connection | C·Prod* | F | I | B | E | E-2 |
 | `github_pr_merge_async` | Same as `github_pr_merge` using GitHub's asynchronous merge (returns merged / failed / pending); `bypass_rules` is always refused | C·Prod* | N | I | B | E | E-2 |
 | `github_pr_set_auto_merge` | Turn auto-merge on (merges when GitHub's rules pass) or off (GraphQL) | C·Prod* | N | I | B | E | E-2 |
@@ -148,15 +148,15 @@ Card(s): E-3.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_review_list` | Reviews on a PR (state, author, submitted at) | — | C | I | B,Op | R | E-3 |
-| `github_review_list_threads` | Review threads with resolved/outdated state, file and line, every comment (GraphQL) | — | N | I | B | R | E-3 |
-| `github_review_list_comments` | Inline review comments (REST), filterable by file | — | C | I | B | R | E-3 |
-| `github_review_create` | Start or submit a review: comment, approve or request changes, with inline comments | P·M | C | I | B | E | E-3 |
-| `github_review_submit` | Submit a pending review | P·M | C | I | B | E | E-3 |
-| `github_review_dismiss` | Dismiss a review with a message | C·M | C | I | B | F | E-3 |
-| `github_review_reply` | Reply in a review thread | P·M | C | I | B | E | E-3 |
-| `github_review_resolve_thread` | Resolve or unresolve a review thread (GraphQL) | P | N | I | B | E | E-3 |
-| `github_review_request_reviewers` | Request or remove reviewers (users or teams) | P·M | C | I | B | E | E-3 |
+| `github_review_list` | Reviews on a PR (state, author, submitted at) | — | C | I | B,Op | R | E-3 built #37 |
+| `github_review_list_threads` | Review threads with resolved/outdated state, file and line, every comment (GraphQL) | — | N | I | B | R | E-3 built #37 |
+| `github_review_list_comments` | Inline review comments (REST), filterable by file | — | C | I | B | R | E-3 built #37 |
+| `github_review_create` | Start or submit a review: comment, approve or request changes, with inline comments | P·M | C | I | B | E | E-3 built #38 |
+| `github_review_submit` | Submit a pending review | P·M | C | I | B | E | E-3 built #38 |
+| `github_review_dismiss` | Dismiss a review with a message | C·M | C | I | B | F | E-3 built #38 |
+| `github_review_reply` | Reply in a review thread | P·M | C | I | B | E | E-3 built #38 |
+| `github_review_resolve_thread` | Resolve or unresolve a review thread (GraphQL) | P | N | I | B | E | E-3 built #38 |
+| `github_review_request_reviewers` | Request or remove reviewers (users or teams) | P·M | C | I | B | E | E-3 built #38 |
 
 ## Issues (`github_issue_*`) — 15
 
