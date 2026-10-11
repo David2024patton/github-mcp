@@ -4,6 +4,7 @@ import * as diagnostics from './server-diagnostics.js';
 import * as meta from './meta.js';
 import * as repos from './repos.js';
 import * as reposWrite from './repos-write.js';
+import * as codeRead from './code-read.js';
 
 // Tool modules are added here as their cards land.
-export const registry = mergeNamespaces([meta, server, diagnostics, repos, reposWrite]);
+export const registry = mergeNamespaces([meta, server, diagnostics, repos, reposWrite, codeRead]);
