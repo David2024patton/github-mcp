@@ -3,7 +3,7 @@
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
-tool merges, its Card cell gains `built #<PR>`. Built so far: **25 tools** (`github_search_tools`, `github_describe_tool`, `github_call`, `github_batch`, `github_get_result`, `github_check_permissions`, `github_rate_status`, `github_where_is_setting`, `github_whoami`, `github_list_accounts`, `github_list_protected_resources`, `github_list_connections`, `github_recent_changes`, `github_enable_production`, `github_disable_production`, `github_set_spend_limit`, `github_set_default_account`, `github_revoke_connection`, `github_repo_list`, `github_repo_get`, `github_repo_find`, `github_repo_get_insights`, `github_repo_get_traffic`, `github_repo_list_activity`, `github_repo_get_custom_properties`) — the registry (`src/tools/index.js`) exists
+tool merges, its Card cell gains `built #<PR>`. Built so far: **38 tools** (`github_search_tools`, `github_describe_tool`, `github_call`, `github_batch`, `github_get_result`, `github_check_permissions`, `github_rate_status`, `github_where_is_setting`, `github_whoami`, `github_list_accounts`, `github_list_protected_resources`, `github_list_connections`, `github_recent_changes`, `github_enable_production`, `github_disable_production`, `github_set_spend_limit`, `github_set_default_account`, `github_revoke_connection`, `github_repo_list`, `github_repo_get`, `github_repo_find`, `github_repo_get_insights`, `github_repo_get_traffic`, `github_repo_list_activity`, `github_repo_get_custom_properties`, `github_repo_create`, `github_repo_create_from_template`, `github_repo_update_settings`, `github_repo_set_visibility`, `github_repo_set_default_branch`, `github_repo_rename`, `github_repo_set_archived`, `github_repo_transfer`, `github_repo_delete`, `github_repo_fork`, `github_repo_sync_fork`, `github_repo_set_custom_properties`, `github_repo_star`) — the registry (`src/tools/index.js`) exists
 and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Since B-5 every result of these tools is shaped (`src/tools/util.js`) and failures are explained by `src/tools/errors.js`. Since B-6 a connection sees only the tools its profile allows (`tools/list` and by-name calls). Every write tool below will be built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
@@ -64,23 +64,23 @@ Card(s): D-1.
 | `github_repo_list` | Repositories of an org or user (type, visibility, sort, archived filter) | — | C | I | B,Op | R | D-1 built #27 |
 | `github_repo_get` | One repo: visibility, default branch, merge settings, protection summary, security features, custom properties | — | C | I | B,O,Op | R | D-1 built #27 |
 | `github_repo_find` | Plain-words search across Chris's accounts (name, topic, description) | — | N | I | Op | R | D-1 built #27 |
-| `github_repo_create` | New repository in an org or user account (private by default; public is access-widening) | P·A* | F | I | B | E | D-1 |
-| `github_repo_create_from_template` | New repository from a template repository | P·A* | C | I | B | E | D-1 |
-| `github_repo_update_settings` | Description, homepage, topics, features (issues, wiki, projects), merge options, delete-branch-on-merge, auto-merge allowed | P·Prod* | F | I | B,O | F | D-1 |
-| `github_repo_set_visibility` | Make a repository private or public (public = access-widening) | C·Prod·A* | F | I | O | F | D-1 |
-| `github_repo_set_default_branch` | Change the default branch | C·Prod | F | I | O | F | D-1 |
-| `github_repo_rename` | Rename a repository (GitHub keeps a redirect) | C·Prod | N | I | O | F | D-1 |
-| `github_repo_set_archived` | Archive (read-only) or unarchive a repository | C·Prod | F | I | O | F | D-1 |
-| `github_repo_transfer` | Transfer a repository to another owner | C·D·Prod·A | F | U | O | F | D-1 |
-| `github_repo_delete` | Delete a repository (cannot be undone by this server) | C·D·Prod | F | I | O | F | D-1 |
+| `github_repo_create` | New repository in an org or user account (private by default; public is access-widening) | P·A* | F | I | B | E | D-1 built #29 |
+| `github_repo_create_from_template` | New repository from a template repository | P·A* | C | I | B | E | D-1 built #29 |
+| `github_repo_update_settings` | Description, homepage, topics, features (issues, wiki, projects), merge options, delete-branch-on-merge, auto-merge allowed | P·Prod* | F | I | B,O | F | D-1 built #29 |
+| `github_repo_set_visibility` | Make a repository private or public (public = access-widening) | C·Prod·A* | F | I | O | F | D-1 built #29 |
+| `github_repo_set_default_branch` | Change the default branch | C·Prod | F | I | O | F | D-1 built #29 |
+| `github_repo_rename` | Rename a repository (GitHub keeps a redirect) | C·Prod | N | I | O | F | D-1 built #29 |
+| `github_repo_set_archived` | Archive (read-only) or unarchive a repository | C·Prod | F | I | O | F | D-1 built #29 |
+| `github_repo_transfer` | Transfer a repository to another owner | C·D·Prod·A | F | U | O | F | D-1 built #29 |
+| `github_repo_delete` | Delete a repository (cannot be undone by this server) | C·D·Prod | F | I | O | F | D-1 built #29 |
 | `github_repo_get_insights` | Languages, contributors, community profile and commit activity in one summary (retries GitHub's 202 'computing' answer) | — | C | I | Op | R | D-1 built #27 |
 | `github_repo_get_traffic` | Views, clones, top referrers and paths for the last 14 days | — | C | I | Op,O | R | D-1 built #27 |
 | `github_repo_list_activity` | Pushes, force pushes, branch creations and deletions, merges — who and when | — | C | I | Op,O | R | D-1 built #27 |
-| `github_repo_fork` | Fork a repository into an account | P | C | U | B | E | D-1 |
-| `github_repo_sync_fork` | Bring a fork's branch up to date with its upstream | P·Prod* | C | I | B | E | D-1 |
+| `github_repo_fork` | Fork a repository into an account | P | C | U | B | E | D-1 built #29 |
+| `github_repo_sync_fork` | Bring a fork's branch up to date with its upstream | P·Prod* | C | I | B | E | D-1 built #29 |
 | `github_repo_get_custom_properties` | Custom property values on a repository | — | N | I | O | R | D-1 built #27 |
-| `github_repo_set_custom_properties` | Set custom property values on a repository | P | N | I | O | F | D-1 |
-| `github_repo_star` | Star or unstar a repository as Chris | P | C | U | Op | E | D-1 |
+| `github_repo_set_custom_properties` | Set custom property values on a repository | P | N | I | O | F | D-1 built #29 |
+| `github_repo_star` | Star or unstar a repository as Chris | P | C | U | Op | E | D-1 built #29 |
 
 ## Files, commits and git data (`github_content_*, github_commit_*, github_git_*`) — 15
 
