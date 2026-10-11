@@ -302,7 +302,7 @@ Card(s): G-6.
 | `github_pages_save` | Turn on Pages or change source branch/path, custom domain, HTTPS | C·Prod·A* | C | I | B,O | F | G-6 built #61 |
 | `github_pages_disable` | Turn off a Pages site | C·D·Prod | C | I | O | F | G-6 built #61 |
 | `github_package_list` | Packages of an org or user with versions | — | C | I | B | R | G-6 built #60 |
-| `github_package_delete_version` | Delete a package version (restorable for 30 days) | C·D | C | I | B | F | G-6 built #62 |
+| `github_package_delete_version` | Delete a package version (restorable for 30 days) | C·D·Prod | C | I | B | F | G-6 built #62 |
 | `github_package_delete` | Delete a whole package with all its versions (restorable for 30 days; GitHub refuses public packages with over 5,000 downloads) | C·D | C | I | B | F | G-6 |
 | `github_package_restore_version` | Restore a deleted package or package version (within 30 days) | P | C | I | B | F | G-6 |
 
