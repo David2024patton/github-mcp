@@ -3,8 +3,8 @@
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
-tool merges, its Card cell gains `built #<PR>`. Built so far: **5 tools** (`github_whoami`, `github_list_accounts`, `github_list_protected_resources`, `github_enable_production`, `github_disable_production`) — the registry (`src/tools/index.js`) exists
-and holds the two A-5 tools, the B-3 protected-list reader and the two B-2 production-switch tools. Every write tool below will be built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
+tool merges, its Card cell gains `built #<PR>`. Built so far: **6 tools** (`github_whoami`, `github_list_accounts`, `github_list_protected_resources`, `github_enable_production`, `github_disable_production`, `github_set_spend_limit`) — the registry (`src/tools/index.js`) exists
+and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Every write tool below will be built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
 `—` reads only · `P` preview available (`dryRun`), no confirmation needed for ordinary targets · `C` always needs
@@ -42,7 +42,7 @@ Card(s): A-5, B-2, B-3, B-8, C-1, C-2, R-1, O-1, X-1. Meta-tools, connection and
 | `github_revoke_connection` | Switch a connection or pass off at once | C | N | — | O | F | B-8 |
 | `github_enable_production` | Allow production-mode connections for one account (needs the passphrase on the setup page as a second step) | C | N | — | O | F | B-2 built #18 |
 | `github_disable_production` | Stop production-mode connections for one account immediately | C | N | — | O | F | B-2 built #18 |
-| `github_set_spend_limit` | Lower the monthly spend this server may add for an account (raising it is only possible on the setup page) | C | N | — | O | F | B-8 |
+| `github_set_spend_limit` | Lower the monthly spend this server may add for an account (raising it is only possible on the setup page) | C | N | — | O | F | B-8 built #20 |
 | `github_list_protected_resources` | The repositories and installations this server refuses to change (its own repo, other Robinson servers) and at what level | — | N | — | O,B | R | B-3 built #19 |
 | `github_recent_changes` | What was changed through this server (filter by repo, tool, account, date; previews hidden unless asked) | — | N | — | O,Op | R | B-8 |
 | `github_undo_change` | Undo one change-log entry when it has a clean opposite; says plainly when it does not | C | N | I | Op | E | X-1 |

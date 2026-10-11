@@ -12,6 +12,9 @@ import { readBack } from './setup-readback.js';
 import { renderSetup, resultPage } from './setup-html.js';
 import { PRODUCTION_NAMES_KEY, cleanNames, productionNames } from '../tools/production-guard.js';
 import { protectedList } from '../tools/protect-guard.js';
+import { OWN_PEOPLE_KEY, cleanLogins, extraOwnPeople } from '../tools/people-guard.js';
+import { spendStatus } from '../tools/spend-guard.js';
+import { dollars as money } from '../github/prices.js';
 
 const HTML = 'text/html; charset=utf-8';
 const CSP = "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://github.com; base-uri 'none'; frame-ancestors 'none'";
@@ -89,7 +92,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'status') {
       const accounts = [];
       for (const a of (await db.listAccounts()).slice(0, 10)) accounts.push(await readBack({ db, credentials, fetch }, a.login));
-      return page(200, { accounts, productionNames: await productionNames(db), protectedList: await protectedList(db) });
+      return page(200, { accounts, productionNames: await productionNames(db), protectedList: await protectedList(db), spendLimits: await spendView(), ownPeopleExtra: await extraOwnPeople(db) });
     }
     if (action === 'reveal') {
       if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
@@ -101,6 +104,8 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     }
     if (action === 'set-production-names') return await setProductionNames(p, page);
     if (action === 'confirm-production') return await confirmProduction(p, page);
+    if (action === 'set-spend-limit') return await setSpendLimit(p, page);
+    if (action === 'set-own-people') return await setOwnPeople(p, page);
     if (action === 'save-protected' || action === 'remove-protected') return await editProtected(action, p, page);
     if (!['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic'].includes(action)) return page(400, { result: 'Unknown action.' });
     if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
@@ -139,6 +144,41 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (environments.error || branches.error) return page(400, { result: environments.error || branches.error });
     await db.setSetting(PRODUCTION_NAMES_KEY, { environments: environments.names, branches: branches.names });
     return page(200, { result: 'Saved. These names now count as production in addition to the built-in ones.', productionNames: await productionNames(db) });
+  }
+
+  const spendView = async () => {
+    const rows = [];
+    for (const a of (await db.listAccounts()).slice(0, 10)) {
+      const st = await spendStatus({ db, now: () => Date.now() }, a.login);
+      rows.push({ login: a.login, limit: money(st.limitCents), used: money(st.usedCents) });
+    }
+    return rows;
+  };
+
+  /** The owner's only way to raise the monthly spend limit (Claude's tool can only lower it). */
+  async function setSpendLimit(p, page) {
+    if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
+    if (!isValidLogin(p.login)) return page(400, { result: 'Enter a valid GitHub account name.' });
+    const row = await db.getAccount(p.login);
+    if (!row) return page(404, { result: 'That account is not set up on the server.' });
+    const text = String(p.dollars ?? '').trim().replace(/^\$/, '');
+    if (!/^\d{1,7}(\.\d{1,2})?$/.test(text)) return page(400, { result: 'Enter dollars as a number such as 25 or 19.50.' });
+    const cents = Math.round(Number(text) * 100);
+    await db.setSpendLimitCents(row.login, cents);
+    const raised = cents > (Number(row.spend_limit_cents) || 0);
+    await db.recordChange({ account: row.login, mode: 'setup', tool: 'setup_set_spend_limit', target: row.login, summary: `Monthly spend limit for ${row.login} set to ${money(cents)} (was ${money(Number(row.spend_limit_cents) || 0)})`,
+      production: true, accessWidening: false, confirmed: true }).catch(() => {});
+    return page(200, { result: `The monthly spend limit for ${row.login} is now ${money(cents)}${raised ? '. Actions that cost money still ask you first.' : '.'}`, spendLimits: await spendView() });
+  }
+
+  /** Extra names that count as the owner's own people (they reduce confirmations, so only this page sets them). */
+  async function setOwnPeople(p, page) {
+    if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
+    const cleaned = cleanLogins(p.logins);
+    if (cleaned.error) return page(400, { result: cleaned.error });
+    await db.setSetting(OWN_PEOPLE_KEY, { logins: cleaned.logins });
+    await db.recordChange({ account: null, mode: 'setup', tool: 'setup_set_own_people', target: 'own_people', summary: `Extra own people set to: ${cleaned.logins.join(', ') || 'none'}`, production: true, accessWidening: true, confirmed: true }).catch(() => {});
+    return page(200, { result: 'Saved. These names now count as your own people in addition to the built-in ones.', ownPeopleExtra: cleaned.logins });
   }
 
   /** The owner's only way to change the protected list. Loosening protection is logged as an access change. */

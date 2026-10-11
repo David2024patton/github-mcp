@@ -548,6 +548,19 @@ export function createDb(sql = productionSql()) {
       return true;
     },
 
+    /** Sets an account's monthly spend limit in cents. Returns false when the account is unknown. Raising it is done only by the setup page. */
+    async setSpendLimitCents(login, cents) {
+      if (!Number.isSafeInteger(cents) || cents < 0 || cents > 100000000) throw new TypeError('The spend limit is a whole number of cents from 0 to 1,000,000 dollars.');
+      const rows = await sql`UPDATE gh_accounts SET spend_limit_cents = ${cents} WHERE lower(login) = lower(${login}) RETURNING login`;
+      return rows.length === 1;
+    },
+    /** Cents this account's real (not preview) changes have committed since `since`: everything sent except a change GitHub definitely rejected. In-flight and uncertain ones count. */
+    async sumSpendCents(account, since) {
+      const rows = await sql`SELECT COALESCE(SUM(spend_cents), 0) AS total FROM change_log
+        WHERE lower(account) = lower(${account}) AND dry_run = FALSE AND spend_cents > 0 AND at >= ${new Date(since).toISOString()}::timestamptz AND summary NOT LIKE 'REJECTED:%'`;
+      return Number(rows[0].total);
+    },
+
     /** Turns production on or off for one account. Returns false when the account is unknown. Used only by the setup page (on) and the disable tool (off). */
     async setProductionEnabled(login, enabled) {
       const rows = await sql`UPDATE gh_accounts SET production_enabled = ${enabled === true} WHERE lower(login) = lower(${login}) RETURNING login`;
