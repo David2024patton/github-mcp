@@ -25,7 +25,7 @@ repositories.
 
 ## Recent changes (newest first)
 
-**2026-10-11 — G-6 Pages and packages reads (PR #60):** Token-budget reconciliation compacts optional field-filter metadata (no behavior change).  Added read-only Pages configuration/build inspection and org/user package discovery with bounded version metadata and permission-preserving errors. Next: G-6 guarded writes. No changes to Pages or packages were made.
+**2026-10-11 — G-6 Pages and packages reads (PR #60):** Corrected unsupported user-version `page/per_page` query parameters after exact CI failure, documented truthful incomplete user-version results, and tightened permanent no-shell slow-CI anti-stall guidance in AGENTS/SESSION-START.  Token-budget reconciliation compacts optional field-filter metadata (no behavior change).  Added read-only Pages configuration/build inspection and org/user package discovery with bounded version metadata and permission-preserving errors. Next: G-6 guarded writes. No changes to Pages or packages were made.
 
 
 **2026-10-11 — G-5 asset upload (PR #59):** Authenticated binary upload to GitHub's exact release upload host with bounded public HTTPS source, duplicate/immutability/published-state protections, nine-contract checks and asset read-back. G-5 complete, G-6 next. No live asset changed.

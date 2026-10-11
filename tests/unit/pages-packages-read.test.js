@@ -55,7 +55,28 @@ describe('G-6 Pages and packages reads', () => {
           versions: [{ id: 12, name: '1.2.0' }], more_versions_possible: true }] });
       expect(w.gh.invalid).toEqual([]);
       expect(w.gh.calls).toHaveLength(2);
+      const query = w.gh.calls[1].query;
+      if (scope === 'user') {
+        expect(query).not.toHaveProperty('per_page');
+        expect(query).not.toHaveProperty('page');
+        expect(out.items[0].versions_paging_supported).toBe(false);
+      } else {
+        expect(query).toMatchObject({ per_page: '1', page: '1' });
+        expect(out.items[0].versions_paging_supported).toBe(true);
+      }
     }
+  });
+  it('caps an unpageable user versions response and reports potentially omitted versions', async () => {
+    const w = await makeWorld({ profile: 'read_only' });
+    w.gh.when(USER).reply(200, [{ ...pkg, version_count: null }]);
+    w.gh.when(USER_V).reply(200, [version, { ...version, id: 13, name: '1.3.0' }]);
+    const out = await run(w, 'github_package_list', {
+      scope: 'user', packageType: 'npm', max: 1, versionMax: 1
+    });
+    expect(out.items[0]).toMatchObject({
+      versions: [{ id: 12 }], more_versions_possible: true, versions_paging_supported: false
+    });
+    expect(w.gh.invalid).toEqual([]);
   });
   it('can list packages without version calls and propagates permission refusal', async () => {
     const w = await makeWorld({ profile: 'read_only' });

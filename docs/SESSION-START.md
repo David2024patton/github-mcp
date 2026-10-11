@@ -88,6 +88,15 @@ Delete it in the card's final commit.
 - Pipe long output through `| tail -80`. Same command fails twice → change approach or record the blocker.
 - After ~10 reads/searches without an edit, make the smallest next edit.
 - CI and reviews: check once, act on what is new, then do other work. Two identical pending status reads trigger the Step 10 anti-spin rule: inspect job evidence once, develop the immediate successor without pushing the pending predecessor, or record its exact head and pending check as a recovery point. A pending check is not a failure and never permission to merge.
+- GitHub REST/no-shell slow-job recovery (G-6 #60 regression): the unit suite often takes over 200 seconds.
+  Never poll it rapidly or mistake a long-running job for a blocker. After two unchanged reads, take a
+  bounded check break for useful independent work; do not push to a running head. Once it finishes, retrieve
+  failing job logs **once**, collect all failures, and read the exact route's pinned OpenAPI parameter list.
+  In particular, user package-version GET has no `page`/`per_page` parameters while the org route does;
+  sending unsupported fields gives 422, so correct the implementation and preserve a truthful incomplete-list
+  indicator rather than weakening a fixture or skipping the test. Complete check/unit/db/shapes/ci at the
+  new exact head, self-review, resolve threads, and only then merge. If forced to stop, record the exact
+  PR/head/job/failed route/next file edit in STATUS and the progress note.
 
 ## 6. Keep moving: problems are not blockers
 

@@ -46,12 +46,18 @@ export const packageList = defineRead({
       if (args.includeVersions !== false) {
         const { data: versions } = await octokit.request(scope === 'org' ? VERSIONS_ORG : VERSIONS_USER, {
           ...locator, package_type: args.packageType, package_name: pkg.name,
-          per_page: versionMax, page: 1
+          // The pinned user versions route has NO per_page/page parameters;
+          // the org version route has both. Never send invented query fields.
+          ...(scope === 'org' ? { per_page: versionMax, page: 1 } : {})
         });
         if (!Array.isArray(versions)) throw new TypeError('GitHub did not return a package version list.');
-        item.versions = versions.map(versionView);
+        item.versions = versions.slice(0, versionMax).map(versionView);
         item.versions_page = 1;
-        if (pkg.version_count != null ? pkg.version_count > versions.length : versions.length === versionMax) {
+        item.versions_paging_supported = scope === 'org';
+        // A non-pageable user route is only a bounded snapshot. Never claim all
+        // versions were returned, even if the response happened to be short.
+        if (pkg.version_count != null ? pkg.version_count > item.versions.length :
+            (scope === 'user' || versions.length >= versionMax)) {
           item.more_versions_possible = true;
         }
       }

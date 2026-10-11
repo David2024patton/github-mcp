@@ -38,6 +38,15 @@ sections below when a step names them.
     fix; stop only for a hard limit or an owner decision the current step needs (SESSION-START §6).
 13. **Thin slices, then a recovery point.** Run each slice's tests and lint before writing the next (≤ ~150 lines between
     runs); end every turn right after a push whose resume note names the exact next action.
+14. **Slow CI is not a stalled agent.** The full unit job routinely takes >200 seconds. On no-shell GitHub REST
+    sessions, query the exact-head check runs once, then switch to independent review/docs work; two unchanged
+    pending reads trigger a bounded wait/checkpoint, not rapid polling. Only read job logs once the job is completed.
+    If red, extract the exact failing test and vendored request-shape errors, patch code and tests together, and
+    push only after *every* job on the old head finishes. For example, GitHub's pinned
+    `GET /users/{username}/packages/{package_type}/{package_name}/versions` does not accept
+    `page` or `per_page`: never "fix" a 422 by weakening the fake or replacing the fixture alone.
+    No check may be inferred green from its earlier successful siblings. If the chat must stop, leave
+    the exact PR, head SHA, failing job, route/field, fix and next command in the card and STATUS.
 
 ## What this is
 
