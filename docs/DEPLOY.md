@@ -1,0 +1,139 @@
+# DEPLOY — putting the server online and signing in to GitHub
+
+Written for Chris, who is not a developer. Follow it top to bottom; every step says what you will see when it worked. Nothing
+here costs money (free tiers), and nothing here changes a real repository: the first connection is **preview** mode, which
+can look but not change anything that matters. Where a step says *Claude can do this*, say "go" in chat and it will use your
+Vercel and Neon connections; the three secrets in Part 3 are always yours to type, because Claude must never see them.
+
+Status of the server today: the code is built and tested against a pretend GitHub. Nothing is deployed yet and no GitHub App
+exists (`docs/STATUS.md`).
+
+## Part 1 — Make the two homes (Claude can do this; IN-02)
+
+1. **Vercel project.** A new project named `github-mcp`, connected to the GitHub repository `Robinson-AI-Systems/github-mcp`,
+   production branch `main`, no build command, Node.js **24.x** (the repository already says so). Free ("Hobby") plan.
+   *You will see:* a deployment that finishes with a green "Ready".
+2. **Neon database.** A new, empty Neon project for this server only (never reuse Appliance Desk's or the Stripe server's
+   database). Free plan. Copy its connection string (starts with `postgresql://`); you will paste it in Part 2.
+   *You will see:* a project with no tables yet. The server creates its own 13 tables the first time it runs.
+
+## Part 2 — The project's settings (names only; values are yours)
+
+In Vercel: project → **Settings → Environment Variables**. Add these four for **Production** only (the server refuses to
+store or show a credential anywhere else):
+
+| Name | Value | Secret? |
+|---|---|---|
+| `DATABASE_URL` | The Neon connection string from Part 1 | Yes |
+| `PUBLIC_BASE_URL` | The project's web address with nothing after it, e.g. `https://github-mcp.vercel.app` (Vercel → project → Domains shows it). Must start with `https://`, no trailing slash, no path | No |
+| `ADMIN_PASSPHRASE` | A long passphrase you invent (four or more unrelated words is fine). You type it on the login and setup pages | Yes |
+| `TOKEN_ENCRYPTION_KEY` | A random key, made as in Part 3 | Yes |
+
+`VERCEL_ENV` is set by Vercel itself; do not add it. After adding or changing any variable, **redeploy** (Deployments →
+the latest → "Redeploy"), otherwise the running copy still has the old values.
+
+## Part 3 — Make the encryption key (IN-03)
+
+The key scrambles every GitHub key and token before it is saved in the database, so a copy of the database alone is useless.
+Make it on your own computer, copy it straight into Vercel, and keep one copy in your password manager. **If you lose it, the
+saved GitHub credentials cannot be read and you redo the setup page; if someone else gets it together with the database, they
+could read them.** Never put it in chat, email or the repository.
+
+- **Mac or Linux** (Terminal): `openssl rand -base64 32`
+- **Windows** (PowerShell): `$b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)`
+
+You get one line of 43 or 44 characters ending in `=` or not. That whole line is the value of `TOKEN_ENCRYPTION_KEY`.
+*How you know it worked:* open `<your address>/api/github/setup` (Part 4). If the key is missing or the wrong shape, the page
+says so in a red line after you try a step ("The server has no encryption key…").
+
+## Part 4 — Check the server is alive
+
+1. Open `<your address>/` — you should see a small page of facts: name "Robinson GitHub MCP", status, `tools: 2`. Nothing secret.
+2. Open `<your address>/.well-known/oauth-authorization-server` — you should see a block of text starting with `{"issuer"`.
+
+If either shows "temporarily unavailable", the database address (`DATABASE_URL`) is wrong or Neon is asleep for the first
+second; wait ten seconds and reload. If it still fails, tell Claude "the server shows unavailable" and it will read the
+deployment's logs (it never prints your secrets).
+
+## Part 5 — Create and install a GitHub App for each account (IN-04, IN-05)
+
+You do this once per account: the organization `Robinson-AI-Systems`, then your personal account `christcr2012`. A "GitHub
+App" is a private robot account that only this server controls; its power is limited to exactly the list in Part 7, and you
+can remove it from GitHub's settings at any moment.
+
+Open `<your address>/api/github/setup`. Every button on the page asks for your administrator passphrase again; that is on
+purpose.
+
+1. **Create.** Under *1. Create the GitHub App for an account*, type the account name (`Robinson-AI-Systems`), choose
+   *Organization*, type your passphrase, press **Prepare the GitHub App**. The page now shows a **Continue to GitHub** button.
+   Press it. GitHub shows the App it is about to make, named `robinson-mcp-<account>`, owned by that account. Check the name
+   and press **Create GitHub App**. *You will see:* a page on this server saying "GitHub App created", with an
+   **Install the App on GitHub** link. (GitHub gives the App's secret keys straight to the server; you copy nothing.)
+   If GitHub says it does not recognise a permission, stop and tell Claude the exact words; that is a one-line fix.
+2. **Install.** Press the install link. Choose **All repositories** (the server's own guards do the narrowing; pick *Only
+   select repositories* only if you want less) and press **Install**. GitHub sends you back to the setup page and shows
+   "The GitHub App is installed on <account>".
+3. **Check.** Back on the setup page, type your passphrase and press **Show my accounts and check them with GitHub**. The
+   account's card should show: App created, installed, and — if GitHub lists any — *requested permissions not yet granted*.
+   If it lists some, open the App's page on GitHub (Settings → Developer settings → GitHub Apps → the App → Permissions) and
+   accept the new permissions.
+4. **Authorize as me (optional but recommended).** Under *3. Authorize as me*, type the account name and passphrase and press
+   **Authorize on GitHub**, then **Authorize** on GitHub's page. This lets the server use your own sign-in for the few things
+   only a person can do (personal settings). The card then says "You are signed in as …".
+5. Repeat 1–4 for `christcr2012`, choosing *Personal user* in step 1.
+
+**No App wanted?** Under *Alternative: use a fine-grained token*, paste a fine-grained token you created on GitHub. It is
+checked with GitHub, saved scrambled, and only its last four characters are ever shown. Classic tokens are refused, with one
+exception: the optional notifications token (below).
+
+**Notifications (optional, IN-11).** GitHub lets only a classic token read notifications. On GitHub create a classic token
+with **only** the `notifications` box ticked, paste it under *Optional: notifications token*. Any other box ticked and the
+page refuses it.
+
+## Part 6 — Connect Claude (preview mode first)
+
+1. In Claude: **Settings → Connectors → Add custom connector**. Name: `GitHub`. Address: `<your address>/api/mcp`.
+2. Claude opens this server's sign-in page. Tick the accounts you want available, pick the default account, leave **Mode** as
+   *preview*, leave the **Profile** as *read_only* for now, type your passphrase and press **Authorize this connection**.
+3. Ask Claude: *"Which GitHub accounts am I connected to?"* It should answer using `github_list_accounts` and name both
+   accounts with "installed". `github_whoami` additionally shows the mode (PREVIEW), profile, which kinds of credentials
+   exist and the remaining rate budget.
+
+Production mode is deliberately not offered until you turn it on per account (IN-07, after the merge tools exist).
+
+## Part 7 — What the Apps ask GitHub for
+
+Requested when the App is created (source of truth: `src/github/app-manifest.js`). Level is what the server may do at most;
+the server's profiles and guards decide when it actually does.
+
+- **Repository, read & write:** actions, administration, checks, codespaces, codespaces secrets, contents, Dependabot secrets,
+  deployments, discussions, environments, issues, pages, pull requests, repository custom properties, repository webhooks,
+  secret scanning alerts, secrets, security events, commit statuses, Actions variables, vulnerability alerts, workflows.
+  **Read only:** metadata, attestations.
+- **Organization:** read & write — members, Actions variables, Codespaces, Codespaces secrets, Codespaces settings, Copilot
+  seat management, Dependabot secrets, organization webhooks, personal access token requests and tokens, projects, secrets,
+  user blocking, custom properties; read only — administration, custom organization roles, plan.
+- **Your account (personal) permissions:** none yet. They are added with the personal-settings tools (Batch O) after being tested
+  against real GitHub.
+- **Webhook:** `<your address>/api/github/webhook`, signed. The server listens only for the App being installed, changed,
+  suspended, removed, and for you revoking your sign-in.
+
+Seven of these names appear in GitHub's documentation data but not in its machine-readable API description. They have not been
+tried against real GitHub yet. If creating the App fails on one of them, the fix is to delete that line from the list in
+`src/github/app-manifest.js` (Claude can do this in a small pull request).
+
+## If something goes wrong
+
+| You see | Meaning | Do this |
+|---|---|---|
+| "Credentials can only be set up on the production deployment" | You opened a preview deployment's address | Use the production address (`PUBLIC_BASE_URL`) |
+| "The server has no encryption key" | `TOKEN_ENCRYPTION_KEY` missing, malformed, or not redeployed | Part 3, then redeploy |
+| "Too many attempts. Try again later." | Five wrong passphrases from this network address | Wait 15 minutes |
+| "Setup page expired; reload it" | The page was open for over ten minutes | Reload it and repeat the step |
+| "Setup link expired" after GitHub | The link is single-use or older than an hour | Start the step again from the setup page |
+| Card says "Could not read the GitHub App back" | GitHub did not answer, or the App was deleted on GitHub | Press the check button again; if it persists, delete the App on GitHub and redo Part 5 step 1 |
+| An account shows "suspended" | The installation was suspended on GitHub | Unsuspend it in GitHub → the organization's Settings → Installed GitHub Apps |
+
+To start an account over: delete its App on GitHub (Settings → Developer settings → GitHub Apps → Advanced → Delete), then
+repeat Part 5. To rotate the encryption key or the passphrase, change the value in Vercel, redeploy, and (for the key) redo Part 5
+for each account, because saved credentials were scrambled with the old key.
