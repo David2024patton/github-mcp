@@ -136,9 +136,9 @@ Card(s): E-1, E-2.
 | `github_pr_set_draft` | Convert to draft or mark ready for review (GraphQL) | P | N | I | B | E | E-1 (built #40) |
 | `github_pr_close` | Close without merging (head branch kept) | C | C | I | B | E | E-1 (built #40) |
 | `github_pr_update_branch` | Bring the PR branch up to date with its base (expected head SHA checked) | P | C | I | B | E | E-1 (built #40) |
-| `github_pr_merge` | Merge at an exact head SHA; refuses unless every required check is green at that SHA; production base needs a production connection | C·Prod* | F | I | B | E | E-2 (built #45) |
-| `github_pr_merge_async` | Same as `github_pr_merge` using GitHub's asynchronous merge (returns merged / failed / pending); `bypass_rules` is always refused | C·Prod* | N | I | B | E | E-2 (built #45) |
-| `github_pr_set_auto_merge` | Turn auto-merge on (merges when GitHub's rules pass) or off (GraphQL) | C·Prod* | N | I | B | E | E-2 (built #45) |
+| `github_pr_merge` | Merge at an exact head SHA; refuses unless every required check is green at that SHA; production base needs a production connection | C·Prod* | F | I | B | E | E-2 (built #46) |
+| `github_pr_merge_async` | Same as `github_pr_merge` using GitHub's asynchronous merge (returns merged / failed / pending); `bypass_rules` is always refused | C·Prod* | N | I | B | E | E-2 (built #46) |
+| `github_pr_set_auto_merge` | Turn auto-merge on (merges when GitHub's rules pass) or off (GraphQL) | C·Prod* | N | I | B | E | E-2 (built #46) |
 | `github_pr_list_stacks` | Pull request stacks in a repo, or one stack with its PRs in order | — | N | I | B | R | E-2 |
 | `github_pr_stack_manage` | Create a stack, add PRs to it, or unstack PRs | P | N | I | B | E | E-2 |
 
