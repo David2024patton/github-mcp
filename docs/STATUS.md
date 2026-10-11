@@ -25,6 +25,8 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-11 — E-3 part 1, review reads (PR #PR):** `github_review_list`, `github_review_list_threads` (resolved/outdated, file and lines, latest comment; open threads only on request), `github_review_list_comments`. Review writes (create, submit, dismiss, reply, resolve, request reviewers) follow in part 2.
+
 **2026-10-11 — D-3 branches and tags (PR #33):** `github_branch_list/get`, `github_tag_list` (reads; an empty `protected=` is never sent), `github_branch_create` (starts from the repository's real default branch), `_rename`, `_delete` (the default branch is always refused; the undo recreates it at the recorded commit), `_merge`, `github_tag_create` (lightweight or annotated) and `_delete` (tags are always production). Batch D is complete.
 
 **2026-10-11 — D-2 part 2, file and ref changes (PR #32):** `github_content_put_file` / `_delete_file` (branch always named; refused if the file changed since the preview; undo restores the previous text), `github_content_push_files` (GitHub-signed commit, branch head checked), `github_commit_comment` (notifies mentioned outsiders), `github_git_update_ref` (compare-and-swap; dropping commits needs force and the preview counts them). D-2 is complete.
