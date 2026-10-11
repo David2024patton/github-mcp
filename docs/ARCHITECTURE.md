@@ -173,6 +173,10 @@ token rather than send an empty list (which GitHub reads as "everything"). Fine-
 
 `github_list_connections` lists connector logins that use only accounts the caller also has; `github_revoke_connection` switches one off (only if all its accounts are the caller's) and `github_set_default_account` changes the default of the caller's own login. `src/db.js` `getAccessToken` records `last_used_at` at most once a minute. `github_recent_changes` reads `change_log` limited to the caller's accounts (`listChanges({ accounts })`). `defineWrite` accepts `price`; `scripts/check-writes.mjs` reads `docs/TOOL-CATALOG.md` and fails any drift (run by `npm run check` and CI).
 
+### Diagnostics tools and data files (B-8b)
+
+`src/tools/server-diagnostics.js` holds `github_check_permissions` (stored installation permissions against `src/data/permission-needs.js`), `github_rate_status` (database rate state plus a direct, unguarded `GET /rate_limit`) and `github_where_is_setting` (`src/data/dashboard-map.js`, plain-words search, `{org}` / `{user}` filled from the connection). The data files are plain frozen arrays; tests tie them to the App manifest and the tool catalog.
+
 ## GitHub App permissions
 
 None granted yet. The requested list lives in `src/github/app-manifest.js` (A-5b; repository and organization permissions only, no account permissions until Batch O) and `docs/DEPLOY.md` (A-6); record the
