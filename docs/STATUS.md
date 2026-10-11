@@ -7,7 +7,7 @@ repositories.
 
 ## Next
 
-- **Batch E — pull requests and reviews** (`docs/designs/BATCH-E.md`). E-1 is finished (reads #35 with the shared `ciState` helper; create/update/close/set_draft/update_branch #40). E-3 (review reads and changes) is built (PRs #37 and #38). E-2 is complete: exact-head merge tools (#46), plus list/create/append/unstack pull request stacks (#48). G-4 deployment reads are built (#51); deployment create/status writes are built (#52); G-4 branch/tag policies completed (#53); G-4 is complete. G-5 release metadata reads built in #54; guarded release create/update/delete built in #55; next: G-5 COMPLETE after upload #59, deletion #56, notes #57 and secure URL boundary #58. Next: finish G-6 Pages save/disable and guarded package delete/restore after Pages and package reads #60. Batch D is finished.
+- **Batch E — pull requests and reviews** (`docs/designs/BATCH-E.md`). E-1 is finished (reads #35 with the shared `ciState` helper; create/update/close/set_draft/update_branch #40). E-3 (review reads and changes) is built (PRs #37 and #38). E-2 is complete: exact-head merge tools (#46), plus list/create/append/unstack pull request stacks (#48). G-4 deployment reads are built (#51); deployment create/status writes are built (#52); G-4 branch/tag policies completed (#53); G-4 is complete. G-5 release metadata reads built in #54; guarded release create/update/delete built in #55; next: G-5 COMPLETE after upload #59, deletion #56, notes #57 and secure URL boundary #58. Next: G-6 Pages save/disable built #61; guarded package version deletion/restoration and whole-package deletion remain. Batch D is finished.
 - Batches A, B, C, D finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
@@ -24,6 +24,9 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-11 — G-6 Pages writes (PR #61):** Guarded Pages creation, source/domain/HTTPS updates and disable; read-before/write/recheck/read-back; publication classified production, private-repo exposure classified access-widening. Updates preserve omitted fields. No live site changed.
+
 
 **2026-10-11 — G-6 Pages and packages reads (PR #60):** Corrected unsupported user-version `page/per_page` query parameters after exact CI failure, documented truthful incomplete user-version results, and tightened permanent no-shell slow-CI anti-stall guidance in AGENTS/SESSION-START.  Token-budget reconciliation compacts optional field-filter metadata (no behavior change).  Added read-only Pages configuration/build inspection and org/user package discovery with bounded version metadata and permission-preserving errors. Next: G-6 guarded writes. No changes to Pages or packages were made.
 
