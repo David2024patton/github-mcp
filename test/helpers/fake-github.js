@@ -51,7 +51,8 @@ function parseBody(body) {
 
 function json(status, body, headers = {}) {
   const noBody = status === 204 || status === 304;
-  return new Response(noBody ? null : JSON.stringify(body ?? {}), {
+  // Bytes (a Buffer) are sent as they are, for downloads such as log archives; everything else is JSON.
+  return new Response(noBody ? null : Buffer.isBuffer(body) ? body : JSON.stringify(body ?? {}), {
     status,
     headers: { 'content-type': 'application/json; charset=utf-8', ...headers }
   });
