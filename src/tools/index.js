@@ -18,10 +18,11 @@ import * as secrets from './secrets.js';
 import * as environmentsRead from './environments-read.js';
 import * as environmentsWrite from './environments-write.js';
 import * as deploymentsRead from './deployments-read.js';
+import * as deploymentsWrite from './deployments-write.js';
 import * as pullsRead from './pulls-read.js';
 import * as pullsWrite from './pulls-write.js';
 import * as pullsMerge from './pulls-merge.js';
 import * as pullsStacks from './pulls-stacks.js';
 
 // Tool modules are added here as their cards land.
-export const registry = mergeNamespaces([meta, server, diagnostics, repos, reposWrite, codeRead, codeWrite, branches, pullsRead, pullsWrite, pullsMerge, pullsStacks, reviews, reviewsWrite, actionsRead, actionsWrite, checksRead, checksWrite, variables, secrets, environmentsRead, environmentsWrite, deploymentsRead]);
+export const registry = mergeNamespaces([meta, server, diagnostics, repos, reposWrite, codeRead, codeWrite, branches, pullsRead, pullsWrite, pullsMerge, pullsStacks, reviews, reviewsWrite, actionsRead, actionsWrite, checksRead, checksWrite, variables, secrets, environmentsRead, environmentsWrite, deploymentsRead, deploymentsWrite]);
