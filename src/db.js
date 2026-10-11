@@ -331,6 +331,127 @@ export function createDb(sql = productionSql()) {
       return rows[0].count;
     },
 
+    // ---- GitHub Apps, accounts and credentials (A-5a). Values named *_enc are ciphertext made by src/github/credentials.js. ----
+
+    /** Stores (or replaces) the GitHub App returned by the manifest flow. Secrets arrive already encrypted. */
+    async saveApp({ id, slug, ownerLogin, ownerType, clientId, clientSecretEnc, privateKeyEnc, webhookSecretEnc, permissions }) {
+      await sql`INSERT INTO gh_apps (id, slug, owner_login, owner_type, client_id, client_secret_enc, private_key_enc, webhook_secret_enc, permissions)
+        VALUES (${id}, ${slug}, ${ownerLogin}, ${ownerType}, ${clientId}, ${clientSecretEnc}, ${privateKeyEnc}, ${webhookSecretEnc}, ${JSON.stringify(permissions ?? {})}::jsonb)
+        ON CONFLICT (id) DO UPDATE SET slug = EXCLUDED.slug, owner_login = EXCLUDED.owner_login, owner_type = EXCLUDED.owner_type,
+          client_id = EXCLUDED.client_id, client_secret_enc = EXCLUDED.client_secret_enc, private_key_enc = EXCLUDED.private_key_enc,
+          webhook_secret_enc = EXCLUDED.webhook_secret_enc, permissions = EXCLUDED.permissions`;
+    },
+    /** The full App row (ciphertext included) for the credential layer, or null. */
+    async getApp(id) {
+      const rows = await sql`SELECT id, slug, owner_login, owner_type, client_id, client_secret_enc, private_key_enc, webhook_secret_enc, permissions
+        FROM gh_apps WHERE id = ${id}`;
+      return rows[0] ? { ...rows[0], id: Number(rows[0].id) } : null;
+    },
+
+    /**
+     * Adds an account or updates its identity. Only the fields passed change; `production_enabled`, `spend_limit_cents`,
+     * credentials and the default flag of an existing account are never touched here. The first account becomes the default.
+     */
+    async upsertAccount({ login, accountId, accountType, label, credentialKind = 'app', appId = null, isScratch = false }) {
+      await sql`INSERT INTO gh_accounts (login, account_id, account_type, label, credential_kind, app_id, is_scratch, is_default)
+        VALUES (${login}, ${accountId}, ${accountType}, ${label}, ${credentialKind}, ${appId}, ${isScratch},
+          NOT EXISTS (SELECT 1 FROM gh_accounts WHERE is_default))
+        ON CONFLICT (login) DO UPDATE SET account_type = EXCLUDED.account_type, label = EXCLUDED.label,
+          credential_kind = EXCLUDED.credential_kind, app_id = COALESCE(EXCLUDED.app_id, gh_accounts.app_id)`;
+    },
+    /** One account's full row (ciphertext included) for the credential layer, or null. */
+    async getAccount(login) {
+      const rows = await sql`SELECT * FROM gh_accounts WHERE lower(login) = lower(${login})`;
+      return rows[0] ? { ...rows[0], account_id: Number(rows[0].account_id), app_id: rows[0].app_id == null ? null : Number(rows[0].app_id),
+        installation_id: rows[0].installation_id == null ? null : Number(rows[0].installation_id) } : null;
+    },
+    /** Every account without any ciphertext: safe to show on the setup page and in tool results. */
+    async listAccounts() {
+      const rows = await sql`SELECT login, account_type, label, credential_kind, app_id, installation_id, repository_selection,
+          installation_status, installation_permissions, user_login, (user_token_enc IS NOT NULL) AS has_user_token, user_token_expires_at,
+          (fine_grained_enc IS NOT NULL) AS has_fine_grained, fine_grained_last4, (classic_enc IS NOT NULL) AS has_classic, classic_scopes,
+          classic_last4, plan_name, production_enabled, is_default, is_scratch, checked_at
+        FROM gh_accounts ORDER BY is_default DESC, login`;
+      return rows.map((r) => ({ ...r, app_id: r.app_id == null ? null : Number(r.app_id), installation_id: r.installation_id == null ? null : Number(r.installation_id) }));
+    },
+    /** Records the installation of an account's App (from the installation callback or a webhook). */
+    async setInstallation(login, { installationId, repositorySelection, permissions, status }) {
+      const rows = await sql`UPDATE gh_accounts SET installation_id = ${installationId}, repository_selection = ${repositorySelection},
+        installation_permissions = ${JSON.stringify(permissions ?? {})}::jsonb, installation_status = ${status}, checked_at = now()
+        WHERE lower(login) = lower(${login}) RETURNING login`;
+      return rows.length === 1;
+    },
+    async setInstallationStatus(login, status) {
+      const rows = await sql`UPDATE gh_accounts SET installation_status = ${status}, checked_at = now() WHERE lower(login) = lower(${login}) RETURNING login`;
+      return rows.length === 1;
+    },
+    /** Stores Chris's user authorization of the App (8-hour token, 6-month refresh token), both already encrypted. */
+    async setUserAuthorization(login, { userLogin, tokenEnc, tokenExpiresAt, refreshEnc, refreshExpiresAt }) {
+      const rows = await sql`UPDATE gh_accounts SET user_login = ${userLogin}, user_token_enc = ${tokenEnc}, user_token_expires_at = ${tokenExpiresAt},
+        user_refresh_enc = ${refreshEnc}, user_refresh_expires_at = ${refreshExpiresAt} WHERE lower(login) = lower(${login}) RETURNING login`;
+      return rows.length === 1;
+    },
+    async clearUserAuthorization(login) {
+      await sql`UPDATE gh_accounts SET user_login = NULL, user_token_enc = NULL, user_token_expires_at = NULL, user_refresh_enc = NULL,
+        user_refresh_expires_at = NULL WHERE lower(login) = lower(${login})`;
+    },
+    async setFineGrainedToken(login, { enc, last4, expiresAt = null }) {
+      const rows = await sql`UPDATE gh_accounts SET fine_grained_enc = ${enc}, fine_grained_last4 = ${last4}, fine_grained_expires_at = ${expiresAt}
+        WHERE lower(login) = lower(${login}) RETURNING login`;
+      return rows.length === 1;
+    },
+    async setClassicToken(login, { enc, scopes, last4 }) {
+      const rows = await sql`UPDATE gh_accounts SET classic_enc = ${enc}, classic_scopes = ${scopes}, classic_last4 = ${last4}
+        WHERE lower(login) = lower(${login}) RETURNING login`;
+      return rows.length === 1;
+    },
+    async setAccountPlan(login, planName) {
+      await sql`UPDATE gh_accounts SET plan_name = ${planName}, checked_at = now() WHERE lower(login) = lower(${login})`;
+    },
+
+    /** A cached installation token for this scope if it has more than five minutes left, else null. */
+    async getInstallationToken(installationId, scopeKey) {
+      const rows = await sql`SELECT token_enc, expires_at FROM gh_installation_tokens
+        WHERE installation_id = ${installationId} AND scope_key = ${scopeKey} AND expires_at > now() + interval '5 minutes'`;
+      return rows[0] ? { token_enc: rows[0].token_enc, expires_at: new Date(rows[0].expires_at) } : null;
+    },
+    async putInstallationToken(installationId, scopeKey, tokenEnc, expiresAt) {
+      await sql`INSERT INTO gh_installation_tokens (installation_id, scope_key, token_enc, expires_at)
+        VALUES (${installationId}, ${scopeKey}, ${tokenEnc}, ${expiresAt})
+        ON CONFLICT (installation_id, scope_key) DO UPDATE SET token_enc = EXCLUDED.token_enc, expires_at = EXCLUDED.expires_at`;
+      await sql`DELETE FROM gh_installation_tokens WHERE ctid IN (SELECT ctid FROM gh_installation_tokens WHERE expires_at < now() LIMIT 100)`;
+    },
+    async deleteInstallationTokens(installationId) {
+      await sql`DELETE FROM gh_installation_tokens WHERE installation_id = ${installationId}`;
+    },
+
+    /** A pending setup step (manifest or user authorization) keyed by an unguessable state; used once, expires. */
+    async createSetupState({ state, purpose, accountHint = null, codeVerifierEnc = null, ttlSeconds = 3600 }) {
+      if (!['manifest', 'user_auth'].includes(purpose)) throw new TypeError('Unknown setup purpose.');
+      if (typeof state !== 'string' || state.length < 32) throw new TypeError('A setup state must be an unguessable string.');
+      const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+      await sql`INSERT INTO setup_states (state, purpose, account_hint, code_verifier_enc, expires_at)
+        VALUES (${state}, ${purpose}, ${accountHint}, ${codeVerifierEnc}, ${expiresAt})`;
+    },
+    /** Atomic: returns the state's data once and deletes it, or null if unknown, used, expired or for another purpose. */
+    async consumeSetupState(state, purpose) {
+      if (typeof state !== 'string' || !state) return null;
+      const rows = await sql`DELETE FROM setup_states WHERE state = ${state} AND purpose = ${purpose} AND expires_at > now()
+        RETURNING account_hint, code_verifier_enc`;
+      return rows[0] ? { account_hint: rows[0].account_hint, code_verifier_enc: rows[0].code_verifier_enc } : null;
+    },
+
+    async addOneTimeSecret({ id, account = null, kind, ciphertext, expiresAt }) {
+      await sql`INSERT INTO one_time_secrets (id, account, kind, ciphertext, expires_at) VALUES (${id}, ${account}, ${kind}, ${ciphertext}, ${expiresAt})`;
+      await sql`DELETE FROM one_time_secrets WHERE ctid IN (SELECT ctid FROM one_time_secrets WHERE expires_at < now() LIMIT 100)`;
+    },
+    /** Atomic delete-and-return: two callers can never both read a single-view secret. */
+    async consumeOneTimeSecret(id) {
+      const rows = await sql`DELETE FROM one_time_secrets WHERE id = ${id} AND expires_at > now() AND viewed_at IS NULL
+        RETURNING account, kind, ciphertext`;
+      return rows[0] || null;
+    },
+
     /**
      * Claims the next write slot for an installation in one atomic statement, so two server instances can never both
      * write in the same second (A9). The slot is the later of "now" and the previous claim's end; each claim reserves

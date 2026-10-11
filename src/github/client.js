@@ -36,6 +36,19 @@ function canonical(value) {
 }
 
 /**
+ * A plain Octokit for the few calls that happen before a connection exists: minting installation tokens with the App's
+ * JWT, reading the App, checking a token the owner pasted. Same API version header and user agent; no database hooks, no
+ * throttling, no retries (the setup page shows the plain error and the owner tries again).
+ * @param {{ token: string, fetch?: Function }} options
+ */
+export function bareOctokit({ token, fetch } = {}) {
+  if (typeof token !== 'string' || !token) throw new TypeError('bareOctokit needs a token.');
+  const octokit = new Octokit({ auth: token, userAgent: USER_AGENT, request: fetch ? { fetch } : {} });
+  octokit.hook.before('request', (options) => { options.headers['x-github-api-version'] = GITHUB_API_VERSION; });
+  return octokit;
+}
+
+/**
  * Request key for a write (A8): `rmcp_<tool>_<sha256(account, tool, args)>_<10-minute bucket>`. `dryRun`, `confirm`,
  * `fields` and `detail` never change it, so previewing a write and then confirming it yield the same key. A caller's
  * `requestKey` argument replaces the arguments in the hash, so the same intent retried with different wording is

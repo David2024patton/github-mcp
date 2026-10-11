@@ -31,9 +31,10 @@ Never record values here. Vercel itself provides `VERCEL_ENV`.
 | `DATABASE_URL` | `productionSql()` in `src/db.js`, on first database use (never at import) | This server's own Neon database (IN-02) | Production, Preview |
 | `PUBLIC_BASE_URL` | `publicOrigin()` in `src/core/http.js` | The server's HTTPS origin with no path, used for the OAuth issuer and the MCP resource; never taken from a request header. Missing or malformed → the OAuth endpoints answer 503 | Production, Preview |
 | `ADMIN_PASSPHRASE` | the authorize handler in `src/core/oauth-handlers.js` | The login passphrase (IN-03). Missing → sign-in fails closed with 503 | Production, Preview |
+| `TOKEN_ENCRYPTION_KEY` | `readEncryptionKey()` in `src/core/crypto.js`, through `createCredentials` (`src/github/credentials.js`) | A base64 32-byte key (AES-256-GCM) that encrypts every GitHub credential at rest (IN-03). Missing or malformed → nothing can be stored or read, and the message says what to set | Production |
 | `VERCEL_ENV` (Vercel) | `src/oauth/policy.js` | `production` is the only value that allows production mode (A10) | set by Vercel |
 
-Batch A still to define: `TOKEN_ENCRYPTION_KEY` (A-5). CI uses only `TEST_DATABASE_URL` (db job, localhost) and `BASE_SHA` (check job,
+CI uses only `TEST_DATABASE_URL` (db job, localhost) and `BASE_SHA` (check job,
 from the PR event).
 
 ## Database tables
@@ -90,6 +91,13 @@ matching descriptions are vendored: `vendor/github-openapi/api.github.com.2026-0
 operations) and `vendor/github-graphql/schema.docs.graphql` (github/docs @ be38ec5d); each has a `SOURCE.md` with URL, commit, sha256 and
 date, and a test checks the hash. Search them with `node scripts/openapi-find.mjs "<words>"` (`--show "<METHOD /path>"`) and
 `node scripts/graphql-find.mjs <name>`; never read them whole. Moving the version is its own card.
+
+### Credentials (A-5a)
+
+`src/github/credentials.js`: `token({ account, cred, scope })` returns the plain token for one request only. `cred I` is the App installation token (cached in
+`gh_installation_tokens`, ciphertext, one row per downscoping) or the account's fine-grained token; `U` is the owner's user authorization (refreshed ten minutes before expiry);
+`K` is the classic notifications token. Every stored value is AES-256-GCM ciphertext with a context naming its owner (`github-mcp/account/<login>/…`, `github-mcp/app/<id>/…`,
+`github-mcp/installation/<id>/<scope>`). `src/core/one-time-secrets.js` holds secrets that may be shown once on the setup page (ten minutes, deleted by the read).
 
 ### GitHub client (A-4)
 

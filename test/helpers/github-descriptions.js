@@ -15,7 +15,7 @@ export const GRAPHQL_FILE = path.join(ROOT, 'vendor/github-graphql/schema.docs.g
 const METHODS = ['get', 'put', 'post', 'patch', 'delete', 'head', 'options'];
 let doc = null;
 let ops = null;
-let ajv = null;
+const ajvs = new Map(); // query strings need type coercion ("100" → 100); JSON bodies must not get it
 const compiled = new Map();
 
 /**
@@ -73,17 +73,18 @@ function resolveRef(node) {
   return node;
 }
 
-function getAjv() {
-  if (ajv) return ajv;
-  ajv = new Ajv({ strict: false, allErrors: true, coerceTypes: true, allowUnionTypes: true });
+function getAjv(coerce) {
+  if (ajvs.has(coerce)) return ajvs.get(coerce);
+  const ajv = new Ajv({ strict: false, allErrors: true, coerceTypes: coerce, allowUnionTypes: true });
   addFormats(ajv);
   // The whole description is registered once so every internal $ref ("#/components/schemas/…") resolves.
   ajv.addSchema(openApi(), 'gh');
+  ajvs.set(coerce, ajv);
   return ajv;
 }
 
-function validator(key, schema) {
-  if (!compiled.has(key)) compiled.set(key, getAjv().compile(schema));
+function validator(key, schema, { coerce = false } = {}) {
+  if (!compiled.has(key)) compiled.set(key, getAjv(coerce).compile(schema));
   return compiled.get(key);
 }
 
@@ -120,7 +121,7 @@ export function validateRestRequest(route, request) {
     additionalProperties: false
   };
   const queryValue = structuredClone(request.query || {});
-  const checkQuery = validator(`q:${route}`, querySchema);
+  const checkQuery = validator(`q:${route}`, querySchema, { coerce: true });
   if (!checkQuery(queryValue)) problems.push(...asErrors('query', checkQuery.errors));
   const body = request.body;
   const content = resolveRef(op.operation.requestBody)?.content;
@@ -130,7 +131,9 @@ export function validateRestRequest(route, request) {
     if (json?.schema) {
       if (body === undefined || body === null) { if (required) problems.push('request body is required'); }
       else if (typeof body === 'object') {
-        const check = validator(`b:${route}`, json.schema);
+        // Compile through a pointer into the registered document so the schema's own "#/components/…" references resolve.
+        const segment = encodeURIComponent(op.path.replace(/~/g, '~0').replace(/\//g, '~1')).replace(/%7E/gi, '~');
+        const check = validator(`b:${route}`, { $ref: `gh#/paths/${segment}/${op.method.toLowerCase()}/requestBody/content/application~1json/schema` });
         if (!check(structuredClone(body))) problems.push(...asErrors('body', check.errors));
         // GitHub's description rarely forbids extra fields, but sending one is always a mistake on our side
         // (a misspelling, or a field from another API version), so unknown top-level fields are refused here.

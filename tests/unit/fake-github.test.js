@@ -131,4 +131,16 @@ describe('fake GitHub', () => {
     expect(gh.routes.length).toBeLessThan(20);
     expect((await send(gh, 'GET', '/repos/octo/hello?whatever=1')).status).toBe(200);
   });
+
+  it('validates nested body schemas through their references and does not coerce types in JSON bodies', async () => {
+    const gh = makeFakeGitHub();
+    gh.when('POST /app/installations/{installation_id}/access_tokens').reply(201, { token: 'ghs_FAKE' });
+    const wrong = await send(gh, 'POST', '/app/installations/7/access_tokens', { body: { permissions: { contents: 'admin-ish' } } });
+    expect(wrong.status).toBe(422);
+    expect(gh.invalid[0].invalid.join(' ')).toMatch(/contents/);
+    const number = await send(gh, 'POST', '/app/installations/7/access_tokens', { body: { repositories: [5] } });
+    expect(number.status).toBe(422);
+    const ok = await send(gh, 'POST', '/app/installations/7/access_tokens', { body: { repositories: ['hello'], permissions: { contents: 'read' } } });
+    expect(ok.status).toBe(201);
+  });
 });
