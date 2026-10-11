@@ -218,17 +218,17 @@ Card(s): G-1.
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_actions_list_workflows` | Workflows in a repository with state and file path | — | C | I | B,Op | R | G-1 built #39 |
-| `github_actions_set_workflow_enabled` | Enable or disable a workflow | P·Prod* | C | I | B | F | G-1 built #PR |
-| `github_actions_dispatch` | Start a workflow (`workflow_dispatch`) on a ref with inputs; returns the run (API 2026-03-10) | P·Prod* | F | I | B,Op | E | G-1 built #PR |
+| `github_actions_set_workflow_enabled` | Enable or disable a workflow | P·Prod* | C | I | B | F | G-1 built #41 |
+| `github_actions_dispatch` | Start a workflow (`workflow_dispatch`) on a ref with inputs; returns the run (API 2026-03-10) | P·Prod* | F | I | B,Op | E | G-1 built #41 |
 | `github_actions_list_runs` | Runs by workflow, branch, event, status, actor, head SHA | — | C | I | B,Op | R | G-1 built #39 |
 | `github_actions_get_run` | One run: status, conclusion, jobs and steps, attempt, billable timing | — | C | I | B,Op | R | G-1 built #39 |
 | `github_actions_get_job_log` | A job's log: failed steps first, tail lines, error lines; never a raw base64 dump | — | F | I | B,Op | R | G-1 built #39 |
 | `github_actions_get_run_logs_summary` | Download a run's log archive server-side and return failing steps, error lines and annotations | — | F | I | B,Op | R | G-1 built #39 |
-| `github_actions_rerun` | Re-run a whole run, only its failed jobs, or one job | P·Prod* | C | I | B,Op | E | G-1 built #PR |
-| `github_actions_cancel_run` | Cancel a run (force-cancel needs confirm) | P | C | I | B,Op | E | G-1 built #PR |
-| `github_actions_delete_run` | Delete a run, or only its logs | C·D | C | I | Op | F | G-1 built #PR |
+| `github_actions_rerun` | Re-run a whole run, only its failed jobs, or one job | P·Prod* | C | I | B,Op | E | G-1 built #41 |
+| `github_actions_cancel_run` | Cancel a run (force-cancel needs confirm) | P | C | I | B,Op | E | G-1 built #41 |
+| `github_actions_delete_run` | Delete a run, or only its logs | C·D | C | I | Op | F | G-1 built #41 |
 | `github_actions_list_pending_deployments` | Runs waiting for an environment approval | — | N | I | Op | R | G-1 built #39 |
-| `github_actions_review_pending_deployment` | Approve or reject a waiting deployment | C·Prod* | N | U | Op | F | G-1 built #PR |
+| `github_actions_review_pending_deployment` | Approve or reject a waiting deployment | C·Prod* | N | U | Op | F | G-1 built #41 |
 
 ## Checks, statuses, artifacts and caches (`github_check_*, github_status_*, github_artifact_*, github_cache_*`) — 10
 

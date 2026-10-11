@@ -25,7 +25,7 @@ repositories.
 
 ## Recent changes (newest first)
 
-**2026-10-11 — G-1 part 2, Actions changes (PR #PR):** `github_actions_set_workflow_enabled`, `_dispatch` (returns the run; production when the workflow file deploys to a production environment, or cannot be read), `_rerun`, `_cancel_run` (force needs confirm), `_delete_run`, `_review_pending_deployment` (owner's own sign-in). G-1 is complete.
+**2026-10-11 — G-1 part 2, Actions changes (PR #41):** `github_actions_set_workflow_enabled`, `_dispatch` (returns the run; production when the workflow file deploys to a production environment, or cannot be read), `_rerun`, `_cancel_run` (force needs confirm), `_delete_run`, `_review_pending_deployment` (owner's own sign-in). G-1 is complete.
 
 **2026-10-11 — G-1 part 1, Actions reads (PR #39):** `github_actions_list_workflows/list_runs/get_run`, `github_actions_get_job_log` and `_get_run_logs_summary` (short form only: failed steps first, error lines, last lines; long encoded text never returned), `_list_pending_deployments`. Starting, rerunning, cancelling and approving follow in part 2.
 
