@@ -7,7 +7,7 @@ repositories.
 
 ## Next
 
-- **Batch E — pull requests and reviews** (`docs/designs/BATCH-E.md`). E-1 is finished (reads #35 with the shared `ciState` helper; create/update/close/set_draft/update_branch #40). E-3 (review reads and changes) is built (PRs #37 and #38). E-2 is complete: exact-head merge tools (#46), plus list/create/append/unstack pull request stacks (#48). Next is G-4 part 3: deployments and guarded branch/tag policy operations; G-4 remains IN_PROGRESS. Batch D is finished.
+- **Batch E — pull requests and reviews** (`docs/designs/BATCH-E.md`). E-1 is finished (reads #35 with the shared `ciState` helper; create/update/close/set_draft/update_branch #40). E-3 (review reads and changes) is built (PRs #37 and #38). E-2 is complete: exact-head merge tools (#46), plus list/create/append/unstack pull request stacks (#48). G-4 deployment reads are built (#51); next are guarded deployment create/status writes and separate branch/tag policy operations; G-4 remains IN_PROGRESS. Batch D is finished.
 - Batches A, B, C, D finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
@@ -24,6 +24,8 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-11 — G-4 part 3a, deployment reads (PR #51):** `github_deploy_list` lists deployment records with bounded paging, ref/environment/task/SHA filters and each deployment's latest status (or explicit null). `includeLatestStatus: false` avoids extra calls. No deployment is created, status changed or production action taken. Next: guarded deployment writes and separate environment branch/tag policy CRUD; G-4 remains IN_PROGRESS.
 
 **2026-10-11 — G-4 part 2, environment settings (PR #50):** `github_env_save` preserves omitted reviewers, wait timers and branch-policy mode, verifies read-back and refuses unsupported custom rules; `github_env_delete` is confirm-always, irreversible, and retains existing production safeguards. No deployment is started. Next: G-4 part 3, deployments and separate branch/tag patterns.
 
