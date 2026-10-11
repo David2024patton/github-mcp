@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { runWriteContract, doorsFor, makeWorld, parse } from '../../test/helpers/write-contract.js';
 import { createDispatch } from '../../src/tools/dispatch.js';
+import { protectionGate } from '../../test/helpers/fixture-gates.js';
+import { protectionVerdict } from '../../src/tools/protect-guard.js';
 import { registry } from '../../src/tools/index.js';
 import * as stacks from '../../src/tools/pulls-stacks.js';
 
@@ -25,7 +27,8 @@ const call = async (name, w, args) => parse(await doorsFor(def(name))[0].call(w,
 runWriteContract({
   label: 'github_pr_stack_manage (create)', definition: def('github_pr_stack_manage'),
   args: { ...R, action: 'create', pullRequestNumbers: [1, 2] },
-  needsConfirm: false, conveyor: true,
+  needsConfirm: false, conveyor: true, gatesFor: ({ protectedLevel }) => protectedLevel
+    ? [protectionGate(protectedLevel === 'pr-only' ? 'none' : protectedLevel)] : [],
   arrange(gh, outcome) {
     seq(gh, PR, [[200, one], [200, two]]);
     gh.when('POST /repos/{owner}/{repo}/stacks').reply(201, stack());
@@ -36,7 +39,8 @@ runWriteContract({
 runWriteContract({
   label: 'github_pr_stack_manage (append)', definition: def('github_pr_stack_manage'),
   args: { ...R, action: 'add', stackNumber: 42, pullRequestNumbers: [3] },
-  needsConfirm: false, conveyor: true,
+  needsConfirm: false, conveyor: true, gatesFor: ({ protectedLevel }) => protectedLevel
+    ? [protectionGate(protectedLevel === 'pr-only' ? 'none' : protectedLevel)] : [],
   arrange(gh, outcome) {
     seq(gh, STACK, [[200, stack()], [200, stack(outcome === 'ok' ? [one, two, three] : [one, two])]]);
     gh.when(PR).reply(200, three);
@@ -47,7 +51,8 @@ runWriteContract({
 runWriteContract({
   label: 'github_pr_stack_manage (unstack)', definition: def('github_pr_stack_manage'),
   args: { ...R, action: 'unstack', stackNumber: 42 },
-  needsConfirm: false, conveyor: true,
+  needsConfirm: false, conveyor: true, gatesFor: ({ protectedLevel }) => protectedLevel
+    ? [protectionGate(protectedLevel === 'pr-only' ? 'none' : protectedLevel)] : [],
   arrange(gh, outcome) {
     seq(gh, STACK, [[200, stack()], outcome === 'ok' ? [404, { message: 'Not Found' }] : [200, stack()]]);
     gh.when('POST /repos/{owner}/{repo}/stacks/{stack_number}/unstack').reply(204, '');
@@ -55,6 +60,10 @@ runWriteContract({
 });
 
 describe('E-2 stack behavior', () => {
+  it('is explicitly permitted by the real pr-only policy without changing production protections', () => {
+    expect(protectionVerdict({ entries: [{ kind: 'repo', target: 'example-org/hello', level: 'pr-only', reason: 'test' }],
+      name: 'github_pr_stack_manage', target: { owner: 'example-org', repo: 'hello' }, classification: { production: null } })).toBeNull();
+  });
   const runRead = async (w, args) => {
     const dispatcher = createDispatch({ credentials: w.credentials, gates: [], fetch: w.gh.fetch, now: w.ctx.now });
     const result = await dispatcher({ registry, name: 'github_pr_list_stacks', args, connection: w.connection, db: w.db });

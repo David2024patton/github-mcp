@@ -127,7 +127,7 @@ const stackManage = defineGithubWrite({
       ...common, stack_number: args.stackNumber, ...(args.action === 'add' ? { pull_requests: args.pullRequestNumbers } : {})
     });
   },
-  readAfter: async ({ args, before, response, ctx, target: t }) => {
+  readAfter: async ({ args, response, ctx, target: t }) => {
     const number = args.stackNumber ?? response.data?.number;
     return number ? getStack(await octo(ctx, t.owner), t.owner, t.repo, number) : null;
   },
