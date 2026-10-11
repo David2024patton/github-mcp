@@ -3,6 +3,7 @@
 // changes nothing, and nothing here ever drops, alters or deletes. Credentials are ciphertext (*_enc) or hashes
 // (*_hash) only; no column holds a plain token, key or secret.
 import { neon } from '@neondatabase/serverless';
+import { hashToken } from './core/oauth.js';
 
 /** The 13 foundation tables, in BATCH-A §2 order. Later batches add their own tables and their own lists. */
 export const SCHEMA_TABLES = Object.freeze([
@@ -26,6 +27,26 @@ export const SCHEMA_TABLES = Object.freeze([
  * A-3 copies every one of these when it refreshes a token.
  */
 export const CONNECTION_FIELDS = Object.freeze(['default_account', 'accounts', 'mode', 'profile', 'listing']);
+
+export const CONNECTION_MODES = Object.freeze(['preview', 'production']);
+export const CONNECTION_PROFILES = Object.freeze(['read_only', 'everyday', 'full']);
+export const CONNECTION_LISTINGS = Object.freeze(['catalog', 'compact']);
+
+/**
+ * Validates the settings a login chose before they are written to a code or token row (BATCH-A A6): at least one
+ * allowed account, a default account that is one of them, and known mode, profile and listing values.
+ * Whether `production` is allowed for those accounts is decided by the login endpoint (A-3b), not here.
+ */
+export function checkConnection({ defaultAccount, accounts, mode, profile, listing }) {
+  if (!Array.isArray(accounts) || !accounts.length || accounts.some((a) => typeof a !== 'string' || !a) || new Set(accounts).size !== accounts.length) {
+    throw new TypeError('A connection needs a non-empty list of distinct account names.');
+  }
+  if (typeof defaultAccount !== 'string' || !accounts.includes(defaultAccount)) throw new TypeError('The default account must be one of the allowed accounts.');
+  if (!CONNECTION_MODES.includes(mode)) throw new TypeError(`Unknown connection mode: ${mode}`);
+  if (!CONNECTION_PROFILES.includes(profile)) throw new TypeError(`Unknown connection profile: ${profile}`);
+  if (!CONNECTION_LISTINGS.includes(listing)) throw new TypeError(`Unknown connection listing: ${listing}`);
+  return { defaultAccount, accounts: [...accounts], mode, profile, listing };
+}
 
 /** Pick exactly the CONNECTION_FIELDS from a stored oauth_codes / oauth_tokens row (missing values become null). */
 export function connectionSettings(row) {
@@ -209,6 +230,107 @@ export function createDb(sql = productionSql()) {
       const rows = await sql`SELECT table_name FROM information_schema.tables
         WHERE table_schema = current_schema() AND table_type = 'BASE TABLE' ORDER BY table_name`;
       return rows.map((row) => row.table_name);
+    },
+
+    // ---- Connector login store (A-3a). Codes, tokens and client secrets are stored as SHA-256 hashes only. ----
+
+    async createOAuthClient({ clientId, clientSecret, redirectUris, clientName }) {
+      if (!clientId || !clientSecret || !Array.isArray(redirectUris) || !redirectUris.length) {
+        throw new TypeError('Missing OAuth client registration fields.');
+      }
+      const data = JSON.stringify({ client_secret_hash: hashToken(clientSecret), redirect_uris: redirectUris, client_name: clientName || null });
+      await sql`INSERT INTO oauth_clients (client_id, data) VALUES (${clientId}, ${data}::jsonb)`;
+    },
+
+    async getOAuthClient(clientId) {
+      const rows = await sql`SELECT client_id, data FROM oauth_clients WHERE client_id = ${clientId}`;
+      return rows[0] ? { client_id: rows[0].client_id, ...rows[0].data } : null;
+    },
+
+    async createAuthCode({ code, clientId, redirectUri, codeChallenge, codeChallengeMethod = 'S256', defaultAccount, accounts,
+      mode = 'preview', profile = 'everyday', listing = 'catalog', ttlSeconds = 600 }) {
+      const connection = checkConnection({ defaultAccount, accounts, mode, profile, listing });
+      const data = JSON.stringify({ redirect_uri: redirectUri, code_challenge: codeChallenge, code_challenge_method: codeChallengeMethod });
+      const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+      await sql`INSERT INTO oauth_codes (code, client_id, data, default_account, accounts, mode, profile, listing, expires_at)
+        VALUES (${hashToken(code)}, ${clientId}, ${data}::jsonb, ${connection.defaultAccount}, ${connection.accounts}::text[],
+          ${connection.mode}, ${connection.profile}, ${connection.listing}, ${expiresAt})`;
+    },
+
+    /** Single use: the row is deleted as it is read. Expired codes are refused. */
+    async consumeAuthCode(code) {
+      if (typeof code !== 'string' || !code) return null;
+      const rows = await sql`DELETE FROM oauth_codes WHERE code = ${hashToken(code)} AND expires_at > now()
+        RETURNING client_id, data, default_account, accounts, mode, profile, listing`;
+      const row = rows[0];
+      return row ? { client_id: row.client_id, ...row.data, ...connectionSettings(row) } : null;
+    },
+
+    async createAccessToken({ accessToken, refreshToken, clientId, defaultAccount, accounts,
+      mode = 'preview', profile = 'everyday', listing = 'catalog', ttlSeconds = 3600 }) {
+      const connection = checkConnection({ defaultAccount, accounts, mode, profile, listing });
+      const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+      await sql`INSERT INTO oauth_tokens (token_hash, refresh_hash, client_id, default_account, accounts, mode, profile, listing, expires_at)
+        VALUES (${hashToken(accessToken)}, ${refreshToken ? hashToken(refreshToken) : null}, ${clientId}, ${connection.defaultAccount},
+          ${connection.accounts}::text[], ${connection.mode}, ${connection.profile}, ${connection.listing}, ${expiresAt})`;
+    },
+
+    async getAccessToken(accessToken) {
+      if (typeof accessToken !== 'string' || !accessToken) return null;
+      const rows = await sql`SELECT client_id, default_account, accounts, mode, profile, listing, kind, expires_at
+        FROM oauth_tokens WHERE token_hash = ${hashToken(accessToken)} AND expires_at > now() AND revoked_at IS NULL AND kind = 'connector'`;
+      const row = rows[0];
+      return row ? { client_id: row.client_id, kind: row.kind, expires_at: row.expires_at, ...connectionSettings(row) } : null;
+    },
+
+    async getTokenByRefreshToken(refreshToken) {
+      if (typeof refreshToken !== 'string' || !refreshToken) return null;
+      const rows = await sql`SELECT client_id, default_account, accounts, mode, profile, listing
+        FROM oauth_tokens WHERE refresh_hash = ${hashToken(refreshToken)} AND revoked_at IS NULL AND kind = 'connector'`;
+      const row = rows[0];
+      return row ? { client_id: row.client_id, ...connectionSettings(row) } : null;
+    },
+
+    /**
+     * One atomic UPDATE on the same row, for the same client only: a refresh credential works once even when two requests
+     * race, and every connection setting stays on the row it was issued with (nothing is copied from a default).
+     */
+    async rotateRefreshToken({ refreshToken, clientId, accessToken, newRefreshToken, ttlSeconds = 3600 }) {
+      if (typeof refreshToken !== 'string' || !refreshToken || !clientId) return null;
+      const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+      const rows = await sql`UPDATE oauth_tokens SET token_hash = ${hashToken(accessToken)}, refresh_hash = ${hashToken(newRefreshToken)},
+        expires_at = ${expiresAt}, last_used_at = NULL
+        WHERE refresh_hash = ${hashToken(refreshToken)} AND client_id = ${clientId} AND revoked_at IS NULL AND kind = 'connector'
+        RETURNING client_id, default_account, accounts, mode, profile, listing`;
+      const row = rows[0];
+      return row ? { client_id: row.client_id, ...connectionSettings(row) } : null;
+    },
+
+    async revokeAccessToken(accessToken) {
+      if (typeof accessToken !== 'string' || !accessToken) return false;
+      const rows = await sql`UPDATE oauth_tokens SET revoked_at = now()
+        WHERE token_hash = ${hashToken(accessToken)} AND revoked_at IS NULL RETURNING token_hash`;
+      return rows.length > 0;
+    },
+
+    async recordLoginAttempt(ip) {
+      const rows = await sql`INSERT INTO login_attempts (ip, success) VALUES (${ip}, FALSE) RETURNING id`;
+      return rows[0].id;
+    },
+
+    async markLoginAttemptSucceeded(id) {
+      await sql`UPDATE login_attempts SET success = TRUE WHERE id = ${id}`;
+    },
+
+    async countRecentFailedLogins(ip, minutes = 15) {
+      const rows = await sql`SELECT count(*)::integer AS count FROM login_attempts
+        WHERE ip = ${ip} AND success = FALSE AND attempted_at > now() - ${minutes} * interval '1 minute'`;
+      return rows[0].count;
+    },
+
+    /** The accounts the login page offers. `production_enabled` decides whether production mode may be offered. */
+    async listAccountsForLogin() {
+      return await sql`SELECT login, label, production_enabled, is_default FROM gh_accounts ORDER BY is_default DESC, login`;
     }
   };
 }
