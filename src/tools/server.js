@@ -171,30 +171,35 @@ const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: t
 const readTools = [
   {
     name: 'github_whoami',
+    area: 'server', audience: ['B', 'O', 'Op'], compact: true,
     description: 'Accounts this connection can use, mode (PREVIEW/PRODUCTION), profile, credential types per account (I, U, K), API version, rate budget, spend limit.',
     inputSchema: { type: 'object', properties: { detail: DETAIL, fields: FIELDS }, additionalProperties: false },
     annotations: readOnly
   },
   {
     name: 'github_list_accounts',
+    area: 'server', audience: ['O'],
     description: 'Connected GitHub accounts this connection may use: App installation, repository selection, your sign-in, notifications token, production on/off.',
     inputSchema: { type: 'object', properties: { detail: DETAIL, fields: FIELDS }, additionalProperties: false },
     annotations: readOnly
   },
   {
     name: 'github_list_protected_resources',
+    area: 'server', audience: ['O', 'B'],
     description: 'Repositories and installations this server refuses to change (its own repo, other Robinson servers) and the level: pr-only or locked.',
     inputSchema: { type: 'object', properties: { fields: FIELDS }, additionalProperties: false },
     annotations: readOnly
   },
   {
     name: 'github_list_connections',
+    area: 'server', audience: ['O'],
     description: 'Connector logins that use your accounts: name, mode, profile, default account, when access expires, last used.',
     inputSchema: { type: 'object', properties: { detail: DETAIL, fields: FIELDS }, additionalProperties: false },
     annotations: readOnly
   },
   {
     name: 'github_recent_changes',
+    area: 'server', audience: ['O', 'Op'],
     description: 'What was changed through this server, newest first. Filter by repo, tool, account or date; previews and refusals are hidden unless asked for.',
     inputSchema: {
       type: 'object',
@@ -209,6 +214,7 @@ const readTools = [
   },
   {
     name: 'github_get_result',
+    area: 'server', audience: ['B', 'O', 'Op'], compact: true,
     description: 'Read the rest of a big result kept behind a handle (res_…): a page at a time, only some fields, or more of a long text. Kept 24 hours.',
     inputSchema: {
       type: 'object',
@@ -235,6 +241,7 @@ const setupUrl = (ctx) => { try { return `${publicOrigin(ctx.env)}/api/github/se
 
 const enableProduction = defineGithubWrite({
   name: 'github_enable_production',
+  area: 'server', audience: ['O'],
   description: 'Step 1 of turning production on for an account: you then confirm with your passphrase on the setup page.',
   properties: { account: { type: 'string', maxLength: 39 } },
   required: ['account'],
@@ -258,6 +265,7 @@ const enableProduction = defineGithubWrite({
 
 const disableProduction = defineGithubWrite({
   name: 'github_disable_production',
+  area: 'server', audience: ['O'],
   description: 'Turn production OFF for an account at once; every production connection to it stops being able to change anything.',
   properties: { account: { type: 'string', maxLength: 39 } },
   required: ['account'],
@@ -277,6 +285,7 @@ const disableProduction = defineGithubWrite({
 
 const setSpendLimit = defineGithubWrite({
   name: 'github_set_spend_limit',
+  area: 'server', audience: ['O'],
   description: 'Lower an account\'s monthly spend limit (0 blocks all spending). Raising it is only possible on the setup page.',
   properties: { account: { type: 'string', maxLength: 39 }, limitCents: { type: 'integer', minimum: 0, maximum: 100000000, description: 'New monthly limit in cents (1000 = $10.00)' } },
   required: ['account', 'limitCents'],
@@ -302,6 +311,7 @@ const thisClient = (ctx) => ctx.connection.client_id;
 
 const setDefaultAccount = defineGithubWrite({
   name: 'github_set_default_account',
+  area: 'server', audience: ['O'],
   description: 'Choose which account tools use when you leave out the owner. Applies to this connector login only.',
   properties: { account: { type: 'string', maxLength: 39, description: 'One of the accounts this connection may use' } },
   required: ['account'],
@@ -323,6 +333,7 @@ const setDefaultAccount = defineGithubWrite({
 
 const revokeConnection = defineGithubWrite({
   name: 'github_revoke_connection',
+  area: 'server', audience: ['O'],
   description: 'Switch one connector login off at once (find its id with github_list_connections). It must sign in again to come back.',
   properties: { connection: { type: 'string', maxLength: 200, description: 'The connection_id from github_list_connections' } },
   required: ['connection'],

@@ -26,6 +26,30 @@ export const isToolVisible = (tool, profile) => !(tool.writes === true) || (Arra
 /** The tools a connection with this profile may see and call. */
 export const toolsForProfile = (registry, profile) => registry.tools.filter((tool) => isToolVisible(tool, profile));
 
+export const LISTINGS = Object.freeze(['catalog', 'compact']);
+
+/** The one-line description shown in tools/list: dangerous tools say so first (C1). */
+export function listedDescription(tool) {
+  const d = tool.declarations;
+  const flags = [];
+  if (tool.writes && d?.production === 'always') flags.push('PRODUCTION');
+  if (tool.writes && d?.spend) flags.push('SPENDS MONEY');
+  const prefix = flags.length ? `${flags.join(', ')}: ` : '';
+  return !prefix || tool.description.startsWith(prefix) ? tool.description : `${prefix}${tool.description}`;
+}
+
+/** What a client is told about one tool. */
+export const listedTool = (tool) => ({ name: tool.name, description: listedDescription(tool), inputSchema: tool.inputSchema, ...(tool.annotations ? { annotations: tool.annotations } : {}) });
+
+/**
+ * The tools a connection is shown. `catalog`: every tool its profile may see. `compact`: only tools marked `compact` (the meta-tools,
+ * whoami, the workflows) - everything else is still reachable through the meta-tools. Hiding a tool from the list never makes it callable.
+ */
+export const toolsForListing = (registry, profile, listing) => {
+  const visible = toolsForProfile(registry, profile);
+  return listing === 'compact' ? visible.filter((tool) => tool.compact === true) : visible;
+};
+
 /** How many tools each profile sees, for the home page. */
 export function profileCounts(registry, profiles = ['read_only', 'everyday', 'full']) {
   return Object.fromEntries(profiles.map((profile) => [profile, toolsForProfile(registry, profile).length]));

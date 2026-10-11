@@ -1,0 +1,76 @@
+// The meta-tools (C-2): find a tool, read its instructions, run any tool by name through the same guards, or read several things at once.
+// They see only the tools the connection's profile includes. `github_call` and `github_batch` run tools through the dispatcher itself
+// (`ctx.callTool`), so every check - arguments, profile, production switch, protected list, people, spend, change log - still applies.
+import { areaOf, describeTool, kindOf, marksOf, searchTools } from '../core/meta.js';
+import { listedDescription, toolsForProfile } from '../core/registry.js';
+
+const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
+const visible = (ctx) => toolsForProfile(ctx.registry, ctx.connection.profile);
+const find = (ctx, name) => visible(ctx).find((t) => t.name === name);
+
+async function searchHandler(args, ctx) {
+  if (!args.query && !args.area && !args.audience) throw new TypeError('Say what you want to do (query), or narrow by area or audience.');
+  const found = searchTools(visible(ctx), args);
+  return {
+    count: found.length,
+    tools: found.map((t) => ({ name: t.name, what: listedDescription(t), kind: kindOf(t), area: areaOf(t), safety: marksOf(t) })),
+    next: 'github_describe_tool shows the arguments; github_call runs a tool that is not in your list.'
+  };
+}
+
+async function describeHandler(args, ctx) {
+  const tool = find(ctx, args.name);
+  if (!tool) throw new TypeError(`Unknown or unavailable tool: ${String(args.name).slice(0, 80)}. Search with github_search_tools.`);
+  return describeTool(tool);
+}
+
+const callable = (ctx, name) => { const t = find(ctx, name); return t && !t.usesRegistry ? t : null; };
+
+async function callHandler(args, ctx) {
+  if (!callable(ctx, args.name)) {
+    return { isError: true, content: [{ type: 'text', text: `Unknown or unavailable tool: ${String(args.name).slice(0, 80)}. Search with github_search_tools.${find(ctx, args.name) ? ' The tool-finding tools are called directly, not through github_call.' : ''}` }] };
+  }
+  return ctx.callTool(args.name, args.args ?? {});
+}
+
+async function batchHandler(args, ctx) {
+  const calls = args.calls;
+  const notReads = calls.filter((c) => { const t = callable(ctx, c.name); return !t || t.writes === true || t.annotations?.readOnlyHint !== true; });
+  if (notReads.length) throw new TypeError(`github_batch runs read tools only. Not a read tool you can use: ${notReads.map((c) => String(c.name).slice(0, 60)).join(', ')}. Use github_call for a change.`);
+  const results = [];
+  for (const call of calls) {
+    const r = await ctx.callTool(call.name, call.args ?? {});
+    results.push(r.isError ? { name: call.name, ok: false, error: r.content?.[0]?.text ?? 'The call failed.' } : { name: call.name, ok: true, result: r.structuredContent ?? null });
+  }
+  return { count: results.length, results };
+}
+
+const CALL_ITEM = { type: 'object', properties: { name: { type: 'string', maxLength: 80 }, args: { type: 'object', additionalProperties: true } }, required: ['name'], additionalProperties: false };
+
+export const tools = [
+  {
+    name: 'github_search_tools', area: 'meta', audience: ['B', 'O', 'Op'], compact: true, usesRegistry: true,
+    description: 'Find tools by plain words, area or audience: name, one line, kind and safety marks.',
+    inputSchema: { type: 'object', properties: { query: { type: 'string', maxLength: 120 }, area: { type: 'string', maxLength: 40 }, audience: { type: 'string', enum: ['B', 'O', 'Op'], description: 'B builder, O owner, Op operator' }, limit: { type: 'integer', minimum: 1, maximum: 25 } }, additionalProperties: false },
+    annotations: readOnly
+  },
+  {
+    name: 'github_describe_tool', area: 'meta', audience: ['B', 'O', 'Op'], compact: true, usesRegistry: true,
+    description: 'Full instructions and arguments for one tool, with its safety marks.',
+    inputSchema: { type: 'object', properties: { name: { type: 'string', maxLength: 80 } }, required: ['name'], additionalProperties: false },
+    annotations: readOnly
+  },
+  {
+    name: 'github_call', area: 'meta', audience: ['B', 'O', 'Op'], compact: true, usesRegistry: true, passthrough: true,
+    description: 'Run any tool your profile includes by name, through the same safety checks as calling it directly.',
+    inputSchema: { type: 'object', properties: { name: { type: 'string', maxLength: 80 }, args: { type: 'object', additionalProperties: true, description: 'That tool\'s arguments' } }, required: ['name'], additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true }
+  },
+  {
+    name: 'github_batch', area: 'meta', audience: ['B', 'O', 'Op'], compact: true, usesRegistry: true,
+    description: 'Run up to 10 read tools in one round trip. Changes are refused: use github_call for those.',
+    inputSchema: { type: 'object', properties: { calls: { type: 'array', items: CALL_ITEM, minItems: 1, maxItems: 10 } }, required: ['calls'], additionalProperties: false },
+    annotations: readOnly
+  }
+];
+export const handlers = { github_search_tools: searchHandler, github_describe_tool: describeHandler, github_call: callHandler, github_batch: batchHandler };

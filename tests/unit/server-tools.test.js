@@ -140,14 +140,20 @@ describe('over the MCP endpoint', () => {
     });
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     const url = `http://127.0.0.1:${server.address().port}`;
-    const rpc = async (method, params) => {
-      const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization: `Bearer ${ACCESS}` }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+    const rpc = async (method, params, query = '') => {
+      const res = await fetch(url + query, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization: `Bearer ${ACCESS}` }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
       const text = await res.text();
       return JSON.parse(text.split('\n').find((l) => l.startsWith('data:'))?.slice(5) ?? text);
     };
     const listed = await rpc('tools/list', {});
-    // the connection is read_only: no write tool is listed (B-6)
-    expect(listed.result.tools.map((x) => x.name)).toEqual(['github_whoami', 'github_list_accounts', 'github_list_protected_resources', 'github_list_connections', 'github_recent_changes', 'github_get_result', 'github_check_permissions', 'github_rate_status', 'github_where_is_setting']);
+    // the connection is read_only (no write tool, B-6) and compact (only the meta-tools, whoami and the result reader, C-2)
+    expect(listed.result.tools.map((x) => x.name)).toEqual(['github_search_tools', 'github_describe_tool', 'github_call', 'github_batch', 'github_whoami', 'github_get_result']);
+    expect(listed.result.tools.every((x) => x.annotations && x.description && x.inputSchema)).toBe(true);
+    // the connection can ask for the other listing on the endpoint address; an invalid value is ignored
+    const catalog = await rpc('tools/list', {}, '?listing=catalog');
+    expect(catalog.result.tools.map((x) => x.name)).toContain('github_list_accounts');
+    expect(catalog.result.tools.map((x) => x.name)).not.toContain('github_revoke_connection');
+    expect((await rpc('tools/list', {}, '?listing=everything')).result.tools).toHaveLength(6);
     const called = await rpc('tools/call', { name: 'github_list_accounts', arguments: {} });
     const out = JSON.parse(called.result.content[0].text);
     expect(out.accounts.map((a) => a.login)).toEqual(['example-org']);

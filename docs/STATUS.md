@@ -7,7 +7,7 @@ repositories.
 
 ## Next
 
-- **C-2 — listing modes, meta-tools (`github_search_tools`, `github_describe_tool`, `github_call`, `github_batch`) and token budgets** (`docs/designs/BATCH-C.md`). Batch B and C-1 are finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
+- **Batch D — repositories, code, branches and tags** (`docs/designs/BATCH-D.md`, cards D-1…D-3): the first GitHub area tools, built with `defineRead` / `defineGithubWrite`. Batches A, B and C are finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).
@@ -23,6 +23,8 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-10 — C-2 listing modes, meta-tools, budgets (PR #26):** a connection now gets either the full catalog or a compact list (4 meta-tools, whoami, the result reader — 816 tokens today); the other listing can be asked for with `?listing=` on the endpoint. `github_search_tools`, `github_describe_tool`, `github_call` (runs any tool you may use, through exactly the same safety checks — every write-contract test now also runs through it) and `github_batch` (reads only). Budgets are enforced in CI with a pinned tokenizer; dangerous tools are listed with PRODUCTION / SPENDS MONEY first; every tool must declare its audience, checked against the catalog. Batch C is complete.
 
 **2026-10-10 — C-1 small results (PR #25):** every read result is shaped, then cut to size: long text is cut at 4,000 characters (logs keep their last 400 lines), a result over 8 KB becomes a preview, and anything cut is kept whole for 24 hours behind a `res_…` handle that only the same connection can read with the new `github_get_result` (pages, fields, more text). 29 summary forms for GitHub objects, `defineRead` for new read tools, a 16th table `result_store`.
 

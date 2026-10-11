@@ -108,18 +108,21 @@ async function whereIsSetting(args, ctx) {
 export const tools = [
   {
     name: 'github_check_permissions',
+    area: 'server', audience: ['O', 'B'],
     description: 'Compare what each GitHub App installation may do with what every tool area needs; names the exact permission to add.',
     inputSchema: { type: 'object', properties: { account: { type: 'string', maxLength: 39 }, area: { type: 'string', maxLength: 40, description: 'One area, e.g. pull-requests' }, detail: DETAIL }, additionalProperties: false },
     annotations: readOnly
   },
   {
     name: 'github_rate_status',
+    area: 'server', audience: ['Op', 'B'],
     description: 'GitHub rate-limit budget per account: what the server last saw, any block in force, and (unless live=false) GitHub\'s live numbers.',
     inputSchema: { type: 'object', properties: { account: { type: 'string', maxLength: 39 }, live: { type: 'boolean', description: 'Ask GitHub now (default true)' }, detail: DETAIL }, additionalProperties: false },
     annotations: readOnly
   },
   {
     name: 'github_where_is_setting',
+    area: 'server', audience: ['O'],
     description: 'Step-by-step directions (link, numbered actions, what you should see, read-back check) for a GitHub setting that has no API.',
     inputSchema: { type: 'object', properties: { query: { type: 'string', minLength: 2, maxLength: 120, description: 'Plain words, e.g. "require two-factor"' }, org: { type: 'string', maxLength: 39 }, detail: DETAIL }, required: ['query'], additionalProperties: false },
     annotations: readOnly

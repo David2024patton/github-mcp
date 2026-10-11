@@ -5,18 +5,25 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { requireMcpToken } from './mcp-auth.js';
-import { toolsForProfile } from './registry.js';
+import { LISTINGS, listedTool, toolsForListing } from './registry.js';
 
 const unknownTool = (name) => ({ isError: true, content: [{ type: 'text', text: `Unknown or unavailable tool: ${String(name).slice(0, 80)}` }] });
 export const denyAll = async ({ name }) => unknownTool(name);
-const publicToolInfo = ({ name, description, inputSchema }) => ({ name, description, inputSchema });
+/** A client may ask for the other listing with `?listing=catalog` or `?listing=compact` on the endpoint. */
+function listingFor(req, connection) {
+  try {
+    const asked = new URL(req.url ?? '/', 'http://localhost').searchParams.get('listing');
+    if (LISTINGS.includes(asked)) return asked;
+  } catch { /* the connection's own listing applies */ }
+  return LISTINGS.includes(connection.listing) ? connection.listing : 'catalog';
+}
 
 export function createMcpHandler({ db, registry, env = process.env, toConnection, dispatch = denyAll, serverInfo = { name: 'robinson-mcp', version: '0.1.0' } }) {
   return async function mcp(req, res) {
     const connection = await requireMcpToken(req, res, db, env, { toConnection });
     if (!connection) return;
     const server = new Server(serverInfo, { capabilities: { tools: {} } });
-    server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: toolsForProfile(registry, connection.profile).map(publicToolInfo) }));
+    server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: toolsForListing(registry, connection.profile, listingFor(req, connection)).map(listedTool) }));
     server.setRequestHandler(CallToolRequestSchema, async (request) =>
       dispatch({ registry, name: request.params?.name, args: request.params?.arguments, connection, db }));
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
