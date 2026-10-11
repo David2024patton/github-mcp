@@ -608,14 +608,17 @@
         "G-4"
       ],
       "card": "docs/pr-cards/G-5.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 390,
       "units": [
         "G-5"
       ],
       "readiness": "WRITE_CARD_AT_START",
-      "ownerInputs": []
+      "ownerInputs": [],
+      "pr": [
+        54
+      ]
     },
     {
       "id": "G-6",

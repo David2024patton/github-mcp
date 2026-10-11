@@ -22,7 +22,7 @@ const view = (d, latest) => ({
 
 export const deployList = defineRead({
   name: 'github_deploy_list', area: 'deploy', audience: ['B', 'Op'],
-  description: 'List deployments by ref, SHA, task or environment with the latest status of each.',
+  description: 'List deployments by filter with latest status.',
   properties: {
     owner: OWNER, repo: REPO, ref: { type: 'string', maxLength: 250 },
     sha: { type: 'string', minLength: 7, maxLength: 40 },
