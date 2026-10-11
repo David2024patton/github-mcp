@@ -30,6 +30,8 @@ describe('defining a write tool', () => {
     expect(() => defineWrite({ ...minimal, declarations: {} })).toThrow(/production/);
     expect(() => defineWrite({ ...minimal, declarations: { production: 'never', confirm: 'sometimes' } })).toThrow(/confirm/);
     expect(() => defineWrite({ ...minimal, declarations: { production: 'never', profiles: ['read_only'] } })).toThrow(/everyday and full/);
+    expect(() => defineWrite({ ...minimal, declarations: { production: 'never', spend: true } })).toThrow(/price function/);
+    expect(() => defineWrite({ ...minimal, price: 5 })).toThrow(/price must be a function/);
     expect(() => defineWrite({ ...minimal, properties: { confirm: { type: 'boolean' } } })).toThrow(/added by the write layer/);
   });
   it('classifies and marks consistently', () => {
@@ -39,6 +41,28 @@ describe('defining a write tool', () => {
     expect(normalizeClassification({}, { declarations: { production: 'always' } }).production).toContain('always');
     expect(normalizeClassification({ spendCents: -5, notifies: 'x' }, { declarations: decl })).toMatchObject({ spendCents: 0, notifies: [] });
     expect(marksOf({ production: 'x', accessWidening: 'y', notifies: ['a', 'b', 'c', 'd', 'e', 'f', 'g'], spendCents: 190 })).toEqual(['PRODUCTION', 'ACCESS CHANGE', 'NOTIFIES a, b, c, d, e and 2 more', 'COSTS $1.90']);
+  });
+});
+
+describe('the price function of a spend tool', () => {
+  const spendy = (price) => defineWrite({ name: 'github_x_spend', description: 'd', declarations: { production: 'never', spend: true, confirm: 'always' },
+    target: () => ({ owner: 'example-org', scope: 'org' }), read: async () => null, classify: () => ({ spendCents: 99999 }), price, summarize: () => 's', apply: async () => null,
+    readAfter: async () => null, verify: () => true, requestKey: () => 'rmcp_x' });
+  it('marks the tool as priced and uses the price, not the classifier, for the cost', async () => {
+    const def = spendy(() => 1900);
+    expect(def.tool.priced).toBe(true);
+    const w = await makeWorld({ gates: [] });
+    const res = parse(await def.handler({ dryRun: true }, w.ctx));
+    expect(JSON.stringify(res)).toContain('COSTS $19.00');
+    expect(JSON.stringify(res)).not.toContain('999.99');
+  });
+  it('refuses when the price cannot be worked out', async () => {
+    const w = await makeWorld({ gates: [] });
+    for (const price of [() => { throw new Error('no price table'); }, () => -5, () => 1.5, () => 'x']) {
+      const res = await spendy(price).handler({ confirm: true }, w.ctx);
+      expect(res.isError).toBe(true);
+      expect(parse(res)).toMatchObject({ status: 'refused_by_guard', refusedBy: 'spend' });
+    }
   });
 });
 

@@ -31,12 +31,12 @@ async function visibleAccounts(ctx) {
   return (await ctx.db.listAccounts()).filter((a) => allowed.has(a.login.toLowerCase()));
 }
 
-function pick(entries, fields) {
+function pick(entries, fields, key = 'login') {
   if (!fields?.length) return entries;
   const known = new Set(entries.flatMap((e) => Object.keys(e)));
-  const unknown = fields.filter((f) => f !== 'login' && !known.has(f));
+  const unknown = fields.filter((f) => f !== key && !known.has(f));
   if (unknown.length && entries.length) throw new TypeError(`Unknown field: ${unknown.slice(0, 3).join(', ')}. Available: ${[...known].join(', ')}`);
-  return entries.map((e) => Object.fromEntries(['login', ...fields.filter((f) => f !== 'login')].filter((f) => f in e).map((f) => [f, e[f]])));
+  return entries.map((e) => Object.fromEntries([key, ...fields.filter((f) => f !== key)].filter((f) => f in e).map((f) => [f, e[f]])));
 }
 
 async function whoami(args, ctx) {
@@ -87,6 +87,49 @@ async function listProtectedResources(args, ctx) {
   };
 }
 
+const lower = (list) => list.map((l) => String(l).toLowerCase());
+const sameLogin = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+
+/** Connector logins that use only accounts the current connection also has (the ones it is allowed to see and switch off). */
+function connectionView(row, ctx) {
+  const mine = new Set(lower(ctx.connection.accounts));
+  const inside = row.accounts.filter((a) => mine.has(a.toLowerCase()));
+  return { row, overlap: inside.length > 0, canRevoke: inside.length === row.accounts.length };
+}
+
+async function listConnections(args, ctx) {
+  const rows = (await ctx.db.listConnections()).map((r) => connectionView(r, ctx)).filter((v) => v.overlap);
+  const byClient = new Map();
+  for (const { row, canRevoke } of rows) {
+    const mine = byClient.get(row.client_id);
+    // several live tokens of one login (access tokens are renewed): show the newest, and the latest use of any
+    if (mine) { mine.last_used_at = [mine.last_used_at, row.last_used_at].filter(Boolean).sort().at(-1) ?? null; continue; }
+    byClient.set(row.client_id, { ...row, canRevoke });
+  }
+  const entries = [...byClient.values()].map((r) => ({
+    connection_id: r.client_id, name: r.client_name ?? r.client_id, is_this_connection: r.client_id === ctx.connection.client_id, mode: r.mode.toUpperCase(), profile: r.profile,
+    default_account: r.default_account, accounts: r.accounts, access_expires: when(r.expires_at), last_used: when(r.last_used_at) ?? 'never', can_revoke_here: r.canRevoke,
+    ...(args.detail === 'full' ? { listing: r.listing, connected_since: when(r.created_at) } : {})
+  }));
+  return { count: entries.length, note: 'Passes appear here once they exist. A login renews itself while it is used; switching it off ends it at once.', connections: pick(entries, args.fields, 'connection_id') };
+}
+
+async function recentChanges(args, ctx) {
+  const mine = lower(ctx.connection.accounts);
+  if (args.account && !mine.includes(String(args.account).toLowerCase())) throw new TypeError(`"${args.account}" is not one of the GitHub accounts this connection may use (${ctx.connection.accounts.join(', ')}).`);
+  if (args.since !== undefined && Number.isNaN(Date.parse(args.since))) throw new TypeError('since must be a date such as 2026-10-01 or 2026-10-01T12:00:00Z.');
+  const rows = await ctx.db.listChanges({ repo: args.repo ?? null, tool: args.tool ?? null, account: args.account ?? null, accounts: ctx.connection.accounts, since: args.since ?? null,
+    includePreviews: args.includePreviews === true, limit: args.limit ?? 20 });
+  const changes = rows.map((r) => ({
+    id: r.id, at: r.at, tool: r.tool, account: r.account, repo: r.repo, summary: r.summary, mode: String(r.mode ?? '').toUpperCase() || null,
+    confirmed: r.confirmed, production: !!r.production, accessWidening: !!r.accessWidening, notifies: r.notifies ?? [],
+    cost: r.spendCents ? dollars(r.spendCents) : null,
+    ...(r.dryRun ? { preview: true } : {}),
+    ...(args.detail === 'full' ? { request_key: r.requestKey ?? null, github_request_id: r.githubRequestId ?? null, can_undo: !!r.inverse } : {})
+  }));
+  return { count: changes.length, note: args.includePreviews === true ? 'Previews and refusals are included.' : 'Previews and refusals are left out (set includePreviews to see them).', changes: pick(changes, args.fields, 'id') };
+}
+
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 const readTools = [
   {
@@ -106,9 +149,29 @@ const readTools = [
     description: 'Repositories and installations this server refuses to change (its own repo, other Robinson servers) and the level: pr-only or locked.',
     inputSchema: { type: 'object', properties: { fields: FIELDS }, additionalProperties: false },
     annotations: readOnly
+  },
+  {
+    name: 'github_list_connections',
+    description: 'Connector logins that use your accounts: name, mode, profile, default account, when access expires, last used.',
+    inputSchema: { type: 'object', properties: { detail: DETAIL, fields: FIELDS }, additionalProperties: false },
+    annotations: readOnly
+  },
+  {
+    name: 'github_recent_changes',
+    description: 'What was changed through this server, newest first. Filter by repo, tool, account or date; previews and refusals are hidden unless asked for.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repo: { type: 'string', maxLength: 140, description: 'owner/name' }, tool: { type: 'string', maxLength: 80 }, account: { type: 'string', maxLength: 39 },
+        since: { type: 'string', maxLength: 40, description: 'Date or date-time, for example 2026-10-01' }, includePreviews: { type: 'boolean' },
+        limit: { type: 'integer', minimum: 1, maximum: 100, description: 'Default 20' }, detail: DETAIL, fields: FIELDS
+      },
+      additionalProperties: false
+    },
+    annotations: readOnly
   }
 ];
-const readHandlers = { github_whoami: whoami, github_list_accounts: listAccounts, github_list_protected_resources: listProtectedResources };
+const readHandlers = { github_whoami: whoami, github_list_accounts: listAccounts, github_list_protected_resources: listProtectedResources, github_list_connections: listConnections, github_recent_changes: recentChanges };
 
 // ---- Production switch (B-2): ask here, confirm on the setup page; turning it off needs no passphrase. ----
 const PENDING_MINUTES = 10;
@@ -122,7 +185,7 @@ const enableProduction = defineGithubWrite({
   description: 'Step 1 of turning production on for an account: you then confirm with your passphrase on the setup page.',
   properties: { account: { type: 'string', maxLength: 39 } },
   required: ['account'],
-  declarations: { production: 'never', accessWidening: true, confirm: 'always', profiles: ['full'] },
+  declarations: { production: 'never', accessWidening: true, confirm: 'always', cred: '—', profiles: ['full'] },
   target: accountTarget,
   read: readAccount,
   classify: ({ args, before }) => (before ? { accessWidening: `production connections could then change ${args.account}\'s real repositories` } : {}),
@@ -145,7 +208,7 @@ const disableProduction = defineGithubWrite({
   description: 'Turn production OFF for an account at once; every production connection to it stops being able to change anything.',
   properties: { account: { type: 'string', maxLength: 39 } },
   required: ['account'],
-  declarations: { production: 'never', confirm: 'always', profiles: ['full'] },
+  declarations: { production: 'never', confirm: 'always', cred: '—', profiles: ['full'] },
   target: accountTarget,
   read: readAccount,
   classify: () => ({}),
@@ -164,7 +227,7 @@ const setSpendLimit = defineGithubWrite({
   description: 'Lower an account\'s monthly spend limit (0 blocks all spending). Raising it is only possible on the setup page.',
   properties: { account: { type: 'string', maxLength: 39 }, limitCents: { type: 'integer', minimum: 0, maximum: 100000000, description: 'New monthly limit in cents (1000 = $10.00)' } },
   required: ['account', 'limitCents'],
-  declarations: { production: 'never', profiles: ['everyday', 'full'] },
+  declarations: { production: 'never', confirm: 'always', cred: '—', profiles: ['full'] },
   target: accountTarget,
   read: async (args, ctx) => spendStatus(ctx, args.account),
   classify: () => ({}),
@@ -180,5 +243,59 @@ const setSpendLimit = defineGithubWrite({
   present: ({ args, after }) => ({ spend_limit: money(after), spend_limit_cents: after, raising_it: `Only the setup page can raise it (account ${args.account}).` })
 });
 
-export const tools = [...readTools, enableProduction.tool, disableProduction.tool, setSpendLimit.tool];
-export const handlers = { ...readHandlers, [enableProduction.tool.name]: enableProduction.handler, [disableProduction.tool.name]: disableProduction.handler, [setSpendLimit.tool.name]: setSpendLimit.handler };
+// ---- Connection tools (B-8): the default account of this login, and switching a login off. ----
+const connectionTarget = (args, ctx) => ({ owner: ctx.connection.default_account, scope: 'server' });
+const thisClient = (ctx) => ctx.connection.client_id;
+
+const setDefaultAccount = defineGithubWrite({
+  name: 'github_set_default_account',
+  description: 'Choose which account tools use when you leave out the owner. Applies to this connector login only.',
+  properties: { account: { type: 'string', maxLength: 39, description: 'One of the accounts this connection may use' } },
+  required: ['account'],
+  declarations: { production: 'never', cred: '—', profiles: ['full'] },
+  target: (args) => ({ owner: args.account, scope: 'server' }),
+  read: async (args, ctx) => ({ current: ctx.connection.default_account, known: (await ctx.db.getAccount(args.account)) != null }),
+  classify: () => ({}),
+  summarize: ({ args, before }) => (before.known
+    ? (sameLogin(before.current, args.account) ? `${args.account} is already the default account` : `Make ${args.account} the default account for this connection (today: ${before.current})`)
+    : `There is no connected account called "${args.account}"`),
+  apply: async ({ args, ctx, before }) => {
+    if (!before.known) throw noAccount(args.account);
+    if (!thisClient(ctx) || (await ctx.db.setConnectionDefaultAccount(thisClient(ctx), args.account)) < 1) throw new GithubClientError('outside_scope', `"${args.account}" is not one of the accounts this connection may use.`, { account: args.account });
+  },
+  readAfter: async ({ ctx }) => (await ctx.db.listConnections()).filter((c) => c.client_id === thisClient(ctx)).map((c) => c.default_account),
+  verify: ({ args, after }) => after.length > 0 && after.every((a) => sameLogin(a, args.account)),
+  present: ({ args }) => ({ default_account: args.account, note: 'Used from your next request on.' })
+});
+
+const revokeConnection = defineGithubWrite({
+  name: 'github_revoke_connection',
+  description: 'Switch one connector login off at once (find its id with github_list_connections). It must sign in again to come back.',
+  properties: { connection: { type: 'string', maxLength: 200, description: 'The connection_id from github_list_connections' } },
+  required: ['connection'],
+  declarations: { production: 'never', confirm: 'always', cred: '—', profiles: ['full'] },
+  target: connectionTarget,
+  read: async (args, ctx) => {
+    const found = (await ctx.db.listConnections()).filter((c) => c.client_id === args.connection).map((c) => ({ c, v: connectionView(c, ctx) }));
+    if (!found.length || found.some(({ v }) => !v.overlap)) return null;
+    return { name: found[0].c.client_name ?? args.connection, tokens: found.length, allowed: found.every(({ v }) => v.canRevoke), isThis: args.connection === thisClient(ctx) };
+  },
+  classify: () => ({}),
+  summarize: ({ args, before }) => {
+    if (!before) return `There is no live connection with the id "${args.connection}"`;
+    if (!before.allowed) return `"${before.name}" also reaches accounts this connection cannot use, so it cannot be switched off from here`;
+    return `Switch off "${before.name}"${before.isThis ? ' — THIS is the connection you are using now; it stops working immediately and must sign in again' : ''}`;
+  },
+  apply: async ({ args, ctx, before }) => {
+    if (!before) throw new GithubClientError('outside_scope', `There is no live connection with the id "${args.connection}".`, { connection: args.connection });
+    if (!before.allowed) throw new GithubClientError('outside_scope', 'That login reaches accounts this connection cannot use.', { connection: args.connection });
+    await ctx.db.revokeConnection(args.connection);
+  },
+  readAfter: async ({ args, ctx }) => (await ctx.db.listConnections()).filter((c) => c.client_id === args.connection).length,
+  verify: ({ after }) => after === 0,
+  present: ({ args }) => ({ switched_off: args.connection, note: 'It has to sign in again to be used.' })
+});
+
+export const tools = [...readTools, enableProduction.tool, disableProduction.tool, setSpendLimit.tool, setDefaultAccount.tool, revokeConnection.tool];
+export const handlers = { ...readHandlers, [enableProduction.tool.name]: enableProduction.handler, [disableProduction.tool.name]: disableProduction.handler, [setSpendLimit.tool.name]: setSpendLimit.handler,
+  [setDefaultAccount.tool.name]: setDefaultAccount.handler, [revokeConnection.tool.name]: revokeConnection.handler };

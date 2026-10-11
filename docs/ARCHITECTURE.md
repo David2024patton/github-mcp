@@ -169,6 +169,10 @@ A connection's profile (`read_only`, `everyday`, `full`) decides which tools exi
 minted with every permission the installation has at `read` (`workflows` and `profile` exist only at write and are left out); unknown installation permissions refuse the
 token rather than send an empty list (which GitHub reads as "everything"). Fine-grained-token accounts cannot be narrowed. The home page prints `tools_by_profile`.
 
+### Connection tools and the write-safety check (B-7, B-8)
+
+`github_list_connections` lists connector logins that use only accounts the caller also has; `github_revoke_connection` switches one off (only if all its accounts are the caller's) and `github_set_default_account` changes the default of the caller's own login. `src/db.js` `getAccessToken` records `last_used_at` at most once a minute. `github_recent_changes` reads `change_log` limited to the caller's accounts (`listChanges({ accounts })`). `defineWrite` accepts `price`; `scripts/check-writes.mjs` reads `docs/TOOL-CATALOG.md` and fails any drift (run by `npm run check` and CI).
+
 ## GitHub App permissions
 
 None granted yet. The requested list lives in `src/github/app-manifest.js` (A-5b; repository and organization permissions only, no account permissions until Batch O) and `docs/DEPLOY.md` (A-6); record the

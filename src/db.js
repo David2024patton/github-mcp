@@ -338,7 +338,39 @@ export function createDb(sql = productionSql()) {
       const rows = await sql`SELECT client_id, default_account, accounts, mode, profile, listing, kind, expires_at
         FROM oauth_tokens WHERE token_hash = ${hashToken(accessToken)} AND expires_at > now() AND revoked_at IS NULL AND kind = 'connector'`;
       const row = rows[0];
-      return row ? { client_id: row.client_id, kind: row.kind, expires_at: row.expires_at, ...connectionSettings(row) } : null;
+      if (!row) return null;
+      // "Last used" for the connections list, at most once a minute per token; a failure here never fails the request.
+      await sql`UPDATE oauth_tokens SET last_used_at = now() WHERE token_hash = ${hashToken(accessToken)} AND (last_used_at IS NULL OR last_used_at < now() - interval '1 minute')`.catch(() => {});
+      return { client_id: row.client_id, kind: row.kind, expires_at: row.expires_at, ...connectionSettings(row) };
+    },
+
+    /** Every live connector login, newest first, without any token or hash. */
+    async listConnections() {
+      const rows = await sql`SELECT t.client_id, c.data->>'client_name' AS client_name, t.default_account, t.accounts, t.mode, t.profile, t.listing,
+          t.expires_at, t.last_used_at, t.created_at
+        FROM oauth_tokens t LEFT JOIN oauth_clients c ON c.client_id = t.client_id
+        WHERE t.kind = 'connector' AND t.revoked_at IS NULL AND t.expires_at > now() ORDER BY t.created_at DESC`;
+      return rows.map((r) => ({ client_id: r.client_id, client_name: r.client_name ?? null, default_account: r.default_account, accounts: r.accounts ?? [], mode: r.mode, profile: r.profile,
+        listing: r.listing, expires_at: r.expires_at, last_used_at: r.last_used_at ?? null, created_at: r.created_at }));
+    },
+    /** Switches off every live token of one connector login. Returns how many were switched off. */
+    async revokeConnection(clientId) {
+      const rows = await sql`UPDATE oauth_tokens SET revoked_at = now() WHERE client_id = ${clientId} AND kind = 'connector' AND revoked_at IS NULL RETURNING token_hash`;
+      return rows.length;
+    },
+    /** Changes the default account of one connector login's live tokens (the account must already be in each token's list). Returns how many changed. */
+    async setConnectionDefaultAccount(clientId, login) {
+      const rows = await sql`UPDATE oauth_tokens SET default_account = ${login} WHERE client_id = ${clientId} AND kind = 'connector' AND revoked_at IS NULL AND ${login} = ANY(accounts) RETURNING token_hash`;
+      return rows.length;
+    },
+    /** Change-log rows, newest first. Previews (dry runs) are left out unless asked for. */
+    async listChanges({ repo = null, tool = null, account = null, accounts = null, since = null, includePreviews = false, limit = 20 } = {}) {
+      const only = Array.isArray(accounts) ? accounts.map((a) => String(a).toLowerCase()) : null;
+      const max = Math.min(Math.max(Number.isInteger(limit) ? limit : 20, 1), 100);
+      const rows = await sql`SELECT * FROM change_log
+        WHERE (${repo}::text IS NULL OR lower(repo) = lower(${repo})) AND (${tool}::text IS NULL OR tool = ${tool}) AND (${account}::text IS NULL OR lower(account) = lower(${account})) AND (${only}::text[] IS NULL OR lower(account) = ANY(${only}::text[]))
+          AND (${since}::timestamptz IS NULL OR at >= ${since}::timestamptz) AND (${includePreviews === true} OR dry_run = FALSE) ORDER BY id DESC LIMIT ${max}`;
+      return rows.map((r) => ({ ...changeView(r), accessWidening: r.access_widening === true }));
     },
 
     async getTokenByRefreshToken(refreshToken) {

@@ -6,7 +6,8 @@ const make = (name) => ({ tools: [{ name }], handlers: { [name]: async () => nul
 
 describe('tool registry', () => {
   it('holds exactly the tools built so far, each with a handler and only github_ names', () => {
-    const names = ['github_whoami', 'github_list_accounts', 'github_list_protected_resources', 'github_enable_production', 'github_disable_production', 'github_set_spend_limit'];
+    const names = ['github_whoami', 'github_list_accounts', 'github_list_protected_resources', 'github_list_connections', 'github_recent_changes', 'github_enable_production', 'github_disable_production',
+      'github_set_spend_limit', 'github_set_default_account', 'github_revoke_connection'];
     expect(registry.tools.map((t) => t.name)).toEqual(names);
     expect(Object.keys(registry.handlers)).toEqual(names);
     for (const tool of registry.tools) expect(tool.name).toMatch(/^github_[a-z_]+$/);

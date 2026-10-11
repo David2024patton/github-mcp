@@ -69,7 +69,7 @@ export function createFakeDb({ clock = Date.now } = {}) {
     async createAccessToken({ accessToken, refreshToken, clientId, defaultAccount, accounts: allowed, mode = 'preview', profile = 'everyday', listing = 'catalog', ttlSeconds = 3600 }) {
       const c = checkConnection({ defaultAccount, accounts: allowed, mode, profile, listing });
       tokens.set(hashToken(accessToken), {
-        token_hash: hashToken(accessToken), refresh_hash: refreshToken ? hashToken(refreshToken) : null, client_id: clientId,
+        created_at: clock(), last_used_at: null, token_hash: hashToken(accessToken), refresh_hash: refreshToken ? hashToken(refreshToken) : null, client_id: clientId,
         default_account: c.defaultAccount, accounts: c.accounts, mode: c.mode, profile: c.profile, listing: c.listing, kind: 'connector',
         expires_at: clock() + ttlSeconds * 1000, revoked_at: null
       });
@@ -78,7 +78,31 @@ export function createFakeDb({ clock = Date.now } = {}) {
       if (typeof accessToken !== 'string' || !accessToken) return null;
       const row = tokens.get(hashToken(accessToken));
       if (!live(row) || row.expires_at <= clock()) return null;
+      if (!row.last_used_at || row.last_used_at < clock() - 60_000) row.last_used_at = clock();
       return { client_id: row.client_id, kind: row.kind, expires_at: new Date(row.expires_at), ...settingsOf(row) };
+    },
+    async listConnections() {
+      return [...tokens.values()].filter((r) => r.kind === 'connector' && live(r) && r.expires_at > clock()).sort((a, b) => b.created_at - a.created_at)
+        .map((r) => ({ client_id: r.client_id, client_name: clients.get(r.client_id)?.client_name ?? null, default_account: r.default_account, accounts: [...r.accounts], mode: r.mode,
+          profile: r.profile, listing: r.listing, expires_at: new Date(r.expires_at), last_used_at: r.last_used_at ? new Date(r.last_used_at) : null, created_at: new Date(r.created_at) }));
+    },
+    async revokeConnection(clientId) {
+      let n = 0;
+      for (const r of tokens.values()) if (r.client_id === clientId && r.kind === 'connector' && live(r)) { r.revoked_at = clock(); n += 1; }
+      return n;
+    },
+    async setConnectionDefaultAccount(clientId, login) {
+      let n = 0;
+      for (const r of tokens.values()) if (r.client_id === clientId && r.kind === 'connector' && live(r) && r.accounts.includes(login)) { r.default_account = login; n += 1; }
+      return n;
+    },
+    async listChanges({ repo = null, tool = null, account = null, accounts = null, since = null, includePreviews = false, limit = 20 } = {}) {
+      const only = Array.isArray(accounts) ? accounts.map((a) => String(a).toLowerCase()) : null;
+      const max = Math.min(Math.max(Number.isInteger(limit) ? limit : 20, 1), 100);
+      const from = since ? new Date(since).getTime() : null;
+      return changes.filter((r) => (!repo || String(r.repo).toLowerCase() === repo.toLowerCase()) && (!tool || r.tool === tool) && (!account || String(r.account).toLowerCase() === account.toLowerCase()) && (!only || only.includes(String(r.account).toLowerCase()))
+        && (from === null || r.at.getTime() >= from) && (includePreviews === true || r.dryRun === false)).sort((a, b) => b.id - a.id).slice(0, max)
+        .map((r) => ({ ...changeViewOf(r), accessWidening: r.accessWidening === true }));
     },
     async getTokenByRefreshToken(refreshToken) {
       if (typeof refreshToken !== 'string' || !refreshToken) return null;
