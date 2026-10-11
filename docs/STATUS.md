@@ -1,14 +1,15 @@
 # STATUS — current work, blockers and next action
 
-Updated 2026-10-10. **The foundation is built (A-1, PR #1):** Node 24 package with a committed lockfile, a fake
-GitHub for tests, the check scripts, throwaway-Postgres database tests and CI with one `ci` merge gate. No tools exist
-yet. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
+Updated 2026-10-10. **The foundation is built (A-1, PR #1) and its database schema exists (A-2, PR #7):** Node 24
+package with a committed lockfile, a fake GitHub for tests, the check scripts, throwaway-Postgres database tests, CI with
+one `ci` merge gate, and `src/db.js` creating the 13 foundation tables. No tools exist yet. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
 repositories.
 
 ## Next
 
-- **A-2 — foundation database schema:** `docs/pr-cards/A-2.md` (READY). Branch `ai/<tool>/a-2-schema` from `main`.
-  Then **A-3** connector login (`docs/pr-cards/A-3.md`, written; split into A-3a and A-3b).
+- **A-3 — connector login:** `docs/pr-cards/A-3.md` (READY; split into A-3a primitives + store, then A-3b endpoints).
+  Branch `ai/<tool>/a-3a-login-store` from `main`. Then **A-4** (GitHub client, vendored descriptions, finders; card written
+  at its start).
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).
 
@@ -23,6 +24,14 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-10 — A-2 foundation schema (PR #7):** `src/db.js` — `SCHEMA_TABLES` (13 tables), `CONNECTION_FIELDS` and
+`connectionSettings(row)`, `productionSql()` (lazy Neon client, plain error when `DATABASE_URL` is missing, nothing at
+import time), `createDb(sql)` → `{ initSchema(), listTables() }`; `initSchema()` runs the §2 `CREATE … IF NOT EXISTS`
+statements one per call, in order (idempotent, no drops, no data). Fake database gained `initSchema`/`listTables`.
+Tests: `tests/unit/schema.test.js`, `tests/db/schema.test.js` (exact table set, idempotence, defaults, keys, no plaintext
+secret column). The two expiry timestamps `user_token_expires_at` / `user_refresh_expires_at` are allow-listed in that
+scan. No Neon database exists yet (IN-02); nothing was run against a real one.
 
 **2026-10-10 — CI cadence (docs + CI config PR #5):** never push while a PR's CI run is in progress (SESSION-START §6,
 PLAYBOOK Step 5); obsolete PR runs are cancelled, runs on `main` never are. Next action unchanged.
@@ -59,7 +68,7 @@ first card A-1.
 ## Blocked
 
 Nothing in engineering. IN-00 and IN-01 answered; owner inputs IN-02 … IN-13 (`OWNER-INPUTS.md`; IN-14 answered: not needed)
-are open and none blocks A-2 … A-4.
+are open and none blocks A-3 … A-4.
 
 ## Unverified (each has an owner card)
 
