@@ -25,7 +25,7 @@ function safeRef(gh) {
 }
 runWriteContract({
   label: 'github_deploy_create (no branch auto-merge)', definition: def('github_deploy_create'),
-  args: R, needsConfirm: true, profile: 'extended',
+  args: R, needsConfirm: true, profile: 'everyday',
   arrange(gh, outcome) {
     safeRef(gh);
     gh.when(CREATE).reply(201, { id: 42, ref: 'feature', environment: 'staging' });
@@ -35,7 +35,7 @@ runWriteContract({
 runWriteContract({
   label: 'github_deploy_set_status (actual deployment)', definition: def('github_deploy_set_status'),
   args: { repo: 'hello', deploymentId: 42, state: 'success', description: 'Ready' },
-  profile: 'extended',
+  profile: 'everyday',
   arrange(gh, outcome) {
     safeRef(gh);
     gh.when(DEPLOY).reply(200, deploy);
@@ -46,7 +46,7 @@ runWriteContract({
 
 describe('G-4 deployment writes', () => {
   it('always disables auto-merge and preserves required checks', async () => {
-    const w = await makeWorld({ mode: 'production', profile: 'extended' });
+    const w = await makeWorld({ mode: 'production', profile: 'everyday' });
     safeRef(w.gh);
     w.gh.when(CREATE).reply(201, deploy);
     w.gh.when(DEPLOY).reply(200, deploy);
@@ -58,7 +58,7 @@ describe('G-4 deployment writes', () => {
   });
 
   it('never sends a production deployment from preview mode', async () => {
-    const w = await makeWorld({ mode: 'preview', profile: 'extended' });
+    const w = await makeWorld({ mode: 'preview', profile: 'everyday' });
     safeRef(w.gh);
     const out = await call('github_deploy_create', w, { ...R, environment: 'production', confirm: true });
     expect(out).toMatchObject({ status: 'refused_by_guard', refusedBy: 'mode' });
@@ -66,7 +66,7 @@ describe('G-4 deployment writes', () => {
   });
 
   it('honors an explicit production flag even for staging', async () => {
-    const w = await makeWorld({ mode: 'preview', profile: 'extended' });
+    const w = await makeWorld({ mode: 'preview', profile: 'everyday' });
     safeRef(w.gh);
     const out = await call('github_deploy_create', w, { ...R, productionEnvironment: true, confirm: true });
     expect(out).toMatchObject({ status: 'refused_by_guard', refusedBy: 'mode' });
@@ -74,7 +74,7 @@ describe('G-4 deployment writes', () => {
   });
 
   it('does not turn a 202 merge response into a created deployment', async () => {
-    const w = await makeWorld({ mode: 'production', profile: 'extended' });
+    const w = await makeWorld({ mode: 'production', profile: 'everyday' });
     safeRef(w.gh);
     w.gh.when(CREATE).reply(202, { sha: '0123456789abcdef' });
     const out = await call('github_deploy_create', w, { ...R, confirm: true });
@@ -84,7 +84,7 @@ describe('G-4 deployment writes', () => {
   });
 
   it('derives status production protection from GitHub deployment, not caller labels', async () => {
-    const w = await makeWorld({ mode: 'preview', profile: 'extended' });
+    const w = await makeWorld({ mode: 'preview', profile: 'everyday' });
     w.gh.when(DEPLOY).reply(200, { ...deploy, environment: 'production' });
     const out = await call('github_deploy_set_status', w,
       { repo: 'hello', deploymentId: 42, state: 'success', confirm: true });
@@ -93,7 +93,7 @@ describe('G-4 deployment writes', () => {
   });
 
   it('refuses unknown deployment ids and never guesses a safe environment', async () => {
-    const w = await makeWorld({ mode: 'production', profile: 'extended' });
+    const w = await makeWorld({ mode: 'production', profile: 'everyday' });
     w.gh.when(DEPLOY).reply(404, { message: 'Not found' });
     const out = await call('github_deploy_set_status', w,
       { repo: 'hello', deploymentId: 999, state: 'failure' });
@@ -102,7 +102,7 @@ describe('G-4 deployment writes', () => {
   });
 
   it('verifies the exact status id rather than assuming a successful latest write', async () => {
-    const w = await makeWorld({ mode: 'production', profile: 'extended' });
+    const w = await makeWorld({ mode: 'production', profile: 'everyday' });
     safeRef(w.gh);
     w.gh.when(DEPLOY).reply(200, deploy);
     w.gh.when(STATUS).reply(201, status);

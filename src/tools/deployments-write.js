@@ -38,7 +38,7 @@ const deployCreate = defineGithubWrite({
     requiredContexts: { type: 'array', minItems: 1, maxItems: 30, items: { type: 'string', minLength: 1, maxLength: 100 } }
   },
   required: ['repo', 'ref', 'environment'],
-  declarations: { production: 'when-target', confirm: 'always', profiles: ['extended', 'full'] },
+  declarations: { production: 'when-target', confirm: 'always', profiles: ['everyday', 'full'] },
   target: environmentTarget,
   read: async (_args, ctx, t) => ({
     repo: await missing(async () => (await (await octo(ctx, t.owner)).request(
@@ -88,7 +88,7 @@ const deployStatus = defineGithubWrite({
     autoInactive: { type: 'boolean' }
   },
   required: ['repo', 'deploymentId', 'state'],
-  declarations: { production: 'when-target', profiles: ['extended', 'full'] },
+  declarations: { production: 'when-target', profiles: ['everyday', 'full'] },
   target: statusTarget,
   read: async (args, ctx, t) => ({ deployment: await get(ctx, t, args.deploymentId) }),
   classify: async ({ ctx, before, target: t }) => ({
