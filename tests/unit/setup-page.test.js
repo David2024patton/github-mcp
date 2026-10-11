@@ -533,3 +533,38 @@ describe('the protected list on the setup page (B-3)', () => {
     expect((await preview.post({ action: 'save-protected', kind: 'repo', target: 'a/b', level: 'locked', reason: 'why not' })).statusCode).toBe(403);
   });
 });
+
+describe('spend limit and own people on the setup page (B-4)', () => {
+  it('raises and lowers the monthly limit in dollars, logs it, and shows used this month', async () => {
+    const t = await build();
+    await withApp(t);
+    const up = await t.post({ action: 'set-spend-limit', login: 'example-org', dollars: '$25.50' });
+    expect(up.statusCode).toBe(200);
+    expect(up.body).toContain('$25.50');
+    expect((await t.db.getAccount('example-org')).spend_limit_cents).toBe(2550);
+    expect((await t.post({ action: 'set-spend-limit', login: 'example-org', dollars: '0' })).statusCode).toBe(200);
+    expect((await t.db.getAccount('example-org')).spend_limit_cents).toBe(0);
+    expect((await t.post({ action: 'status' })).body).toContain('limit $0.00, used this month $0.00');
+  });
+  it('refuses nonsense amounts, unknown accounts, a wrong passphrase and a preview deployment', async () => {
+    const t = await build();
+    await withApp(t);
+    for (const dollars of ['-5', 'lots', '1.234', '', '99999999']) expect((await t.post({ action: 'set-spend-limit', login: 'example-org', dollars })).statusCode).toBe(400);
+    expect((await t.post({ action: 'set-spend-limit', login: 'nobody', dollars: '5' })).statusCode).toBe(404);
+    expect((await t.post({ action: 'set-spend-limit', login: 'example-org', dollars: '5', passphrase: 'wrong-wrong-wrong' })).statusCode).toBe(401);
+    expect((await t.db.getAccount('example-org')).spend_limit_cents).toBe(0);
+    const preview = await build({ env: { ...PROD, VERCEL_ENV: 'preview' } });
+    await preview.open();
+    expect((await preview.post({ action: 'set-spend-limit', login: 'example-org', dollars: '5' })).statusCode).toBe(403);
+  });
+  it('saves, replaces and rejects the extra own-people list', async () => {
+    const t = await build();
+    await t.open();
+    const ok = await t.post({ action: 'set-own-people', logins: '@alice, bob' });
+    expect(ok.statusCode).toBe(200);
+    expect(await t.db.getSetting('own_people')).toEqual({ logins: ['alice', 'bob'] });
+    await t.post({ action: 'set-own-people', logins: '' });
+    expect(await t.db.getSetting('own_people')).toEqual({ logins: [] });
+    expect((await t.post({ action: 'set-own-people', logins: 'bad name!' })).statusCode).toBe(400);
+  });
+});

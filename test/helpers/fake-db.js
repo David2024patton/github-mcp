@@ -239,6 +239,18 @@ export function createFakeDb({ clock = Date.now } = {}) {
       settings.set(PROTECTED_SEEDED_KEY, true);
       return true;
     },
+    async setSpendLimitCents(login, cents) {
+      if (!Number.isSafeInteger(cents) || cents < 0 || cents > 100000000) throw new TypeError('The spend limit is a whole number of cents from 0 to 1,000,000 dollars.');
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r) return false;
+      r.spend_limit_cents = cents;
+      return true;
+    },
+    async sumSpendCents(account, since) {
+      const from = new Date(since).getTime();
+      return changes.filter((r) => String(r.account).toLowerCase() === String(account).toLowerCase() && r.dryRun === false && r.spendCents > 0 && r.at.getTime() >= from && !String(r.summary).startsWith('REJECTED:'))
+        .reduce((sum, r) => sum + r.spendCents, 0);
+    },
     async setProductionEnabled(login, enabled) {
       const r = accountRows.get(String(login).toLowerCase());
       if (!r) return false;

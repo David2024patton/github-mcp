@@ -6,6 +6,8 @@ import { GithubClientError, formatDenver } from '../github/errors.js';
 import { defineGithubWrite } from './define-github-write.js';
 import { publicOrigin } from '../core/http.js';
 import { protectedList } from './protect-guard.js';
+import { dollars as money } from '../github/prices.js';
+import { spendStatus } from './spend-guard.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
 const FIELDS = { type: 'array', items: { type: 'string', maxLength: 64 }, maxItems: 20, description: 'Only these fields of each account' };
@@ -157,5 +159,26 @@ const disableProduction = defineGithubWrite({
   present: ({ args }) => ({ production: `OFF for ${args.account}. Turning it on again needs the setup page and your passphrase.` })
 });
 
-export const tools = [...readTools, enableProduction.tool, disableProduction.tool];
-export const handlers = { ...readHandlers, [enableProduction.tool.name]: enableProduction.handler, [disableProduction.tool.name]: disableProduction.handler };
+const setSpendLimit = defineGithubWrite({
+  name: 'github_set_spend_limit',
+  description: 'Lower an account\'s monthly spend limit (0 blocks all spending). Raising it is only possible on the setup page.',
+  properties: { account: { type: 'string', maxLength: 39 }, limitCents: { type: 'integer', minimum: 0, maximum: 100000000, description: 'New monthly limit in cents (1000 = $10.00)' } },
+  required: ['account', 'limitCents'],
+  declarations: { production: 'never', profiles: ['everyday', 'full'] },
+  target: accountTarget,
+  read: async (args, ctx) => spendStatus(ctx, args.account),
+  classify: () => ({}),
+  summarize: ({ args, before }) => (before
+    ? `Set the monthly spend limit for ${args.account} to ${money(args.limitCents)} (today ${money(before.limitCents)}; ${money(before.usedCents)} spent so far this month)`
+    : `There is no connected account called "${args.account}"`),
+  apply: async ({ args, ctx, before }) => {
+    if (!before) throw noAccount(args.account);
+    await ctx.db.setSpendLimitCents(args.account, args.limitCents);
+  },
+  readAfter: async ({ args, ctx }) => (await ctx.db.getAccount(args.account))?.spend_limit_cents,
+  verify: ({ args, after }) => after === args.limitCents,
+  present: ({ args, after }) => ({ spend_limit: money(after), spend_limit_cents: after, raising_it: `Only the setup page can raise it (account ${args.account}).` })
+});
+
+export const tools = [...readTools, enableProduction.tool, disableProduction.tool, setSpendLimit.tool];
+export const handlers = { ...readHandlers, [enableProduction.tool.name]: enableProduction.handler, [disableProduction.tool.name]: disableProduction.handler, [setSpendLimit.tool.name]: setSpendLimit.handler };

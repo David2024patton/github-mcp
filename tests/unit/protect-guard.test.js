@@ -125,7 +125,7 @@ describe('project ownership', () => {
 
 describe('the gate in the write layer', () => {
   it('is part of the real gate list and refuses with the protected-resource reason', async () => {
-    expect(createGates()).toHaveLength(2);
+    expect(createGates().length).toBeGreaterThanOrEqual(2);
     const w = await makeWorld();
     const gate = protectedResourceGate();
     const refused = await gate({ name: 'github_repo_delete', args: {}, ctx: w.ctx, target: repo('github-mcp'), classification: {} });

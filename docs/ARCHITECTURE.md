@@ -146,6 +146,15 @@ the three merge tools with an exact `expectedHeadSha`. Anything else, and any un
 `ownedRefs`; a write to an owned ref is refused naming its workflow unless `outsideProject: true` (then it asks first); `agentMay` lets the project's own agent steps through.
 A list that cannot be read refuses the change.
 
+### People and spend guards (B-4)
+
+`src/tools/people-guard.js`: "your own people" are connected accounts, their organization members (read from GitHub, cached 10 minutes; unreadable means outsiders),
+`github-actions[bot]`, this server's App bots and extra names set on the setup page (`server_settings` key `own_people`). Tools call `notifyOutsiders` (mentions, assignees,
+reviewers, repositories of unconnected accounts), `accessChange`, `invitation` and `becomesPublic` from `classify`; access changes and outsiders always ask first.
+`src/tools/spend-guard.js` and `src/github/prices.js`: a spend tool's cost comes from the price table (each price has source URL and date), is refused at the default $0 limit,
+and must fit the account's monthly limit (`gh_accounts.spend_limit_cents`) minus the month's spend (Denver calendar month, summed from `change_log.spend_cents`, rejected changes excluded).
+Only the setup page raises the limit; `github_set_spend_limit` only lowers it.
+
 ## GitHub App permissions
 
 None granted yet. The requested list lives in `src/github/app-manifest.js` (A-5b; repository and organization permissions only, no account permissions until Batch O) and `docs/DEPLOY.md` (A-6); record the

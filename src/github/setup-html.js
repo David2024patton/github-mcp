@@ -33,7 +33,7 @@ function accountCard(a) {
 /**
  * @param {object} view `{ csrf, result?, revealed?, show?, accounts?, manifestForm?, installLink?, blocked?, keyHelp? }`
  */
-export function renderSetup({ csrf, result = '', revealed = null, show = '', accounts = null, manifestForm = null, installLink = null, blocked = '', keyHelp = '', productionNames = null, protectedList = null }) {
+export function renderSetup({ csrf, result = '', revealed = null, show = '', accounts = null, manifestForm = null, installLink = null, blocked = '', keyHelp = '', productionNames = null, protectedList = null, spendLimits = null, ownPeopleExtra = null }) {
   const form = (action, inner, button, extra = '') => `<form method="post" autocomplete="off">${hidden('csrf', csrf)}${hidden('action', action)}${extra}${inner}${passphrase}<button type="submit">${h(button)}</button></form>`;
   const login = '<label>GitHub account name (for example your organization or user name)<input name="login" required maxlength="39" autocomplete="off"></label>';
   const type = '<label>Account type<select name="accountType"><option value="Organization">Organization</option><option value="User">Personal user</option></select></label>';
@@ -64,6 +64,12 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
     (protectedList ? `<ul>${protectedList.map((e) => `<li><code>${h(e.kind)}</code> ${h(e.target)} — <strong>${h(e.level)}</strong> (${h(e.reason)})</li>`).join('')}</ul>` : '') +
     form('save-protected', '<label>Kind<select name="kind"><option value="repo">Repository (owner/name)</option><option value="installation">App installation</option></select></label><label>Repository or installation<input name="target" required maxlength="140" autocomplete="off"></label><label>Level<select name="level"><option value="pr-only">pr-only</option><option value="locked">locked</option></select></label><label>Reason<input name="reason" required maxlength="300" autocomplete="off"></label>', 'Add or change this entry') +
     form('remove-protected', '<label>Kind<select name="kind"><option value="repo">Repository</option><option value="installation">App installation</option></select></label><label>Repository or installation to remove<input name="target" required maxlength="140" autocomplete="off"></label>', 'Remove this entry') +
+    '<h2>Monthly spend limit</h2><p>How much new monthly GitHub spend (Copilot seats, Codespaces, paid security features) this server may add for an account. <strong>$0 means every action that costs money is refused.</strong> Claude can lower the limit but only this page can raise it. Enter dollars, for example 25 or 19.50.</p>' +
+    (spendLimits ? `<ul>${spendLimits.map((a) => `<li>${h(a.login)} — limit ${h(a.limit)}, used this month ${h(a.used)}</li>`).join('')}</ul>` : '') +
+    form('set-spend-limit', login + '<label>New monthly limit in dollars<input name="dollars" required maxlength="12" inputmode="decimal" autocomplete="off"></label>', 'Set the spend limit') +
+    '<h2>Your own people</h2><p>Comments, reviews and assignments that only reach your own people need no confirmation. These always count: your connected accounts, their organization members, github-actions[bot] and this server\'s own App bots. Add other GitHub names here, separated by commas. Saving replaces this extra list.</p>' +
+    (ownPeopleExtra ? `<p><small>Extra names: ${h(ownPeopleExtra.join(', ') || 'none')}</small></p>` : '') +
+    form('set-own-people', '<label>Extra names<input name="logins" maxlength="1000" autocomplete="off"></label>', 'Save own people') +
     '<h2>Alternative: use a fine-grained token instead of a GitHub App</h2><p>Simpler, but no per-connection read-only tokens and no check runs. Classic tokens are refused.</p>' +
     form('add-fine-grained', login + '<label>Fine-grained personal access token<input type="password" name="token" required autocomplete="off"></label>', 'Verify and save encrypted token') +
     '<h2>Optional: notifications token</h2><p>GitHub only lets a classic token read notifications. It must have only the <em>notifications</em> scope; anything else is refused.</p>' +

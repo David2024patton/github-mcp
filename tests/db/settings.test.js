@@ -1,7 +1,7 @@
 import { beforeAll, afterAll, beforeEach } from 'vitest';
 import { createDb } from '../../src/db.js';
 import { openIsolatedSchema, closeIsolatedSchema, neonShapedQuery, rawQuery } from '../../test/helpers/pg-neon-adapter.js';
-import { runProtectedContract, runSettingsContract } from '../../test/contract/settings-contract.js';
+import { runProtectedContract, runSettingsContract, runSpendContract } from '../../test/contract/settings-contract.js';
 
 let db;
 beforeAll(async () => {
@@ -12,7 +12,8 @@ beforeAll(async () => {
   await db.initSchema();
 });
 afterAll(async () => { await closeIsolatedSchema(); });
-beforeEach(async () => { await rawQuery('TRUNCATE protected_resources, server_settings, setup_states, gh_accounts CASCADE'); });
+beforeEach(async () => { await rawQuery('TRUNCATE change_log, protected_resources, server_settings, setup_states, gh_accounts CASCADE'); });
 
 runSettingsContract('isolated PostgreSQL', async () => db);
 runProtectedContract('isolated PostgreSQL', async () => db);
+runSpendContract('isolated PostgreSQL', async () => db);

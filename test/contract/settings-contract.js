@@ -88,3 +88,35 @@ export function runProtectedContract(name, make) {
     });
   });
 }
+
+export function runSpendContract(name, make) {
+  describe(`spend limit and monthly spend: ${name}`, () => {
+    const change = (extra) => ({ account: 'example-org', mode: 'production', tool: 'github_x', target: 'example-org', summary: 'did it', ...extra });
+    it('sets the limit in whole cents for a known account only', async () => {
+      const db = await make();
+      await db.upsertAccount({ login: 'example-org', accountId: 1, accountType: 'Organization', label: 'Example', credentialKind: 'app' });
+      expect((await db.getAccount('example-org')).spend_limit_cents).toBe(0);
+      expect(await db.setSpendLimitCents('Example-Org', 5000)).toBe(true);
+      expect((await db.getAccount('example-org')).spend_limit_cents).toBe(5000);
+      expect(await db.setSpendLimitCents('nobody', 100)).toBe(false);
+      for (const bad of [-1, 1.5, '5', 1e12]) await expect(db.setSpendLimitCents('example-org', bad)).rejects.toThrow(TypeError);
+    });
+    it('sums real spend since a moment: counts sent and uncertain changes, skips previews, rejections, other accounts and older rows', async () => {
+      const db = await make();
+      const since = new Date(Date.now() - 60_000);
+      await db.recordChange(change({ dryRun: true, spendCents: 900, summary: 'preview' }));
+      const a = await db.claimChange(change({ spendCents: 1900, requestKey: 'k1'.padEnd(20, 'x') }));
+      await db.finishChange(a.id, { summary: 'seat assigned', confirmed: true });
+      const b = await db.claimChange(change({ spendCents: 3800, requestKey: 'k2'.padEnd(20, 'x') }));
+      await db.finishChange(b.id, { summary: 'UNCERTAIN: seat', confirmed: false });
+      const c = await db.claimChange(change({ spendCents: 7600, requestKey: 'k3'.padEnd(20, 'x') }));
+      await db.finishChange(c.id, { summary: 'REJECTED: seat', confirmed: false, releaseKey: true });
+      const d = await db.claimChange(change({ account: 'other-org', spendCents: 100, requestKey: 'k4'.padEnd(20, 'x') }));
+      await db.finishChange(d.id, { summary: 'seat', confirmed: true });
+      await db.claimChange(change({ spendCents: 500, requestKey: 'k5'.padEnd(20, 'x') }));
+      expect(await db.sumSpendCents('Example-Org', since)).toBe(1900 + 3800 + 500);
+      expect(await db.sumSpendCents('example-org', new Date(Date.now() + 3_600_000))).toBe(0);
+      expect(await db.sumSpendCents('nobody', since)).toBe(0);
+    });
+  });
+}
