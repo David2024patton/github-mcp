@@ -69,19 +69,24 @@ export function createDispatch({ env = process.env, now = Date.now, fetch = glob
     const tool = registry.tools.find((t) => t.name === name);
     const handler = tool && Object.hasOwn(registry.handlers, name) ? registry.handlers[name] : null;
     const isWrite = tool?.writes === true && tool.writeContract === 'defineWrite-v1';
-    const isRead = tool?.annotations?.readOnlyHint === true && tool.writes !== true;
-    if (!handler || (!isWrite && !isRead) || !isToolVisible(tool, connection?.profile)) return fail(`Unknown or unavailable tool: ${String(name).slice(0, 80)}`);
+    const isRead = tool?.annotations?.readOnlyHint === true && tool.writes !== true && tool.passthrough !== true;
+    // A runner (github_call) hands another tool's call back to this same function, so that tool's own checks run; it is neither read nor write itself.
+    const isRunner = tool?.passthrough === true && tool.usesRegistry === true && tool.writes !== true;
+    if (!handler || (!isWrite && !isRead && !isRunner) || !isToolVisible(tool, connection?.profile)) return fail(`Unknown or unavailable tool: ${String(name).slice(0, 80)}`);
     const problem = validateArgs(tool.inputSchema, args);
     if (problem) return fail(problem);
     let result;
     try {
-      result = await handler(args ?? {}, { connection, db, env, now, fetch, ...(isWrite ? { credentials, gates } : {}) });
+      const callTool = (innerName, innerArgs) => dispatch({ registry, name: innerName, args: innerArgs, connection, db });
+      result = await handler(args ?? {}, { connection, db, env, now, fetch, ...(isWrite ? { credentials, gates } : {}), ...(tool.usesRegistry ? { registry, callTool } : {}) });
     } catch (error) {
       return fail(error instanceof TypeError ? error.message : 'That tool could not complete right now. Nothing was changed.');
     }
     const mode = connection?.mode;
     let shaped;
-    if (isWrite) {
+    if (isRunner) {
+      shaped = result; // already shaped, kept or refused by the dispatch of the tool it ran
+    } else if (isWrite) {
       const body = result?.structuredContent ?? null;
       const clean = body ? shapeResult(body, { mode }) : null;
       shaped = clean ? { ...result, structuredContent: clean, content: [{ type: 'text', text: JSON.stringify(clean) }] } : result;

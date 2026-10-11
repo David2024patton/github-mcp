@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { missingDocs } from '../../scripts/check-docs-updated.mjs';
 import { checkWrites, parseCatalog, parseSafety } from '../../scripts/check-writes.mjs';
-import { checkBudgets } from '../../scripts/check-budgets.mjs';
+import { checkBudgets, listingTokens } from '../../scripts/check-budgets.mjs';
 
 describe('docs check (DRIFT-PROTOCOL B)', () => {
   it('passes docs-only and tooling-only changes', () => {
@@ -24,14 +24,14 @@ describe('docs check (DRIFT-PROTOCOL B)', () => {
 describe('write-safety check (B-7)', () => {
   const DECL = { production: 'never', accessWidening: false, notifies: false, spend: false, confirm: 'when-needed', cred: 'I', profiles: ['everyday', 'full'] };
   const IN = { properties: { dryRun: {}, confirm: {} } };
-  const write = (name, declarations = {}, extra = {}) => ({ name, writes: true, writeContract: 'defineWrite-v1', inputSchema: IN, priced: false, declarations: { ...DECL, ...declarations }, ...extra });
+  const write = (name, declarations = {}, extra = {}) => ({ name, audience: ['O'], writes: true, writeContract: 'defineWrite-v1', inputSchema: IN, priced: false, declarations: { ...DECL, ...declarations }, ...extra });
   const catalogOf = (rows) => parseCatalog(rows.map(([n, safety, cred, profile]) => `| \`${n}\` | What | ${safety} | N | ${cred} | O | ${profile} | B-7 |`).join('\n'));
 
   it('fails a write tool without dryRun/confirm, a write contract or declarations, and ignores reads', () => {
     const tools = [
-      { name: 'github_repo_get', writes: false },
-      { name: 'github_label_create', writes: true, inputSchema: { properties: { name: {} } } },
-      { name: 'github_pr_merge', writes: true, writeContract: {}, inputSchema: IN }
+      { name: 'github_repo_get', writes: false, audience: ['O'] },
+      { name: 'github_label_create', audience: ['O'], writes: true, inputSchema: { properties: { name: {} } } },
+      { name: 'github_pr_merge', audience: ['O'], writes: true, writeContract: {}, inputSchema: IN }
     ];
     expect(checkWrites(tools)).toEqual([
       'github_label_create: write tool without dryRun/confirm inputs',
@@ -54,7 +54,7 @@ describe('write-safety check (B-7)', () => {
   it('passes a tool that matches its row', () => {
     const c = catalogOf([['github_ok', 'P·Prod*·M', 'I', 'E'], ['github_big', 'C·$', 'I,U', 'F'], ['github_read', '—', 'I', 'R']]);
     expect(checkWrites([write('github_ok', { production: 'when-target', notifies: true }),
-      write('github_big', { spend: true, confirm: 'always', cred: 'I,U', profiles: ['full'] }, { priced: true }), { name: 'github_read', writes: false }], c)).toEqual([]);
+      write('github_big', { spend: true, confirm: 'always', cred: 'I,U', profiles: ['full'] }, { priced: true }), { name: 'github_read', audience: ['O'], writes: false }], c)).toEqual([]);
   });
 
   it('fails each kind of drift between a tool and its catalog row', () => {
@@ -70,8 +70,10 @@ describe('write-safety check (B-7)', () => {
     expect(bad(write('github_a', { profiles: ['full'] }))[0]).toContain('profiles are ["full"] but the catalog says E');
     expect(bad(write('github_w'))[0]).toContain('not valid for a write tool');
     expect(bad(write('github_r'))[0]).toContain('catalog says read-only');
-    expect(bad({ name: 'github_r', writes: false, annotations: {} })).toEqual([]);
-    expect(bad({ name: 'github_a', writes: false })[0]).toContain('catalog says it changes things');
+    expect(bad({ name: 'github_r', audience: ['O'], writes: false, annotations: {} })).toEqual([]);
+    expect(bad({ name: 'github_a', audience: ['O'], writes: false })[0]).toContain('catalog says it changes things');
+    expect(bad(write('github_a', {}, { audience: ['B'] }))).toEqual(['github_a: audience is B but the catalog says O']);
+    expect(bad({ name: 'github_r', writes: false })).toEqual(['github_r: tool without an audience (B, O, Op)']);
     expect(bad(write('github_missing'))).toEqual(['github_missing: registered tool has no row in docs/TOOL-CATALOG.md']);
   });
 
@@ -81,11 +83,26 @@ describe('write-safety check (B-7)', () => {
   });
 });
 
-describe('token-budget check (starting form)', () => {
-  it('fails a description over 160 characters and an oversized catalog', () => {
-    expect(checkBudgets([{ name: 'github_ok', description: 'short' }])).toEqual([]);
+describe('token-budget check (C-2)', () => {
+  const words = (n) => Array.from({ length: n }, (_, i) => `word${i}`).join(' ');
+  it('passes short descriptions and a small catalog', () => {
+    expect(checkBudgets([{ name: 'github_ok', description: 'short', inputSchema: { type: 'object', properties: {} } }])).toEqual([]);
+  });
+  it('fails a description over 160 characters (counting the PRODUCTION / SPENDS MONEY prefix it is listed with)', () => {
     expect(checkBudgets([{ name: 'github_long', description: 'x'.repeat(161) }])).toEqual(['github_long: description over 160 characters']);
-    const huge = Array.from({ length: 600 }, (_, i) => ({ name: `github_t${i}`, description: 'y'.repeat(150) }));
-    expect(checkBudgets(huge)).toContain('tool catalog over 20000 estimated tokens');
+    const prefixed = { name: 'github_p', description: 'y'.repeat(150), writes: true, declarations: { production: 'always', spend: true } };
+    expect(checkBudgets([prefixed])).toEqual(['github_p: description over 160 characters']);
+  });
+  it('fails a schema over 1,500 tokens', () => {
+    const fat = { name: 'github_fat', description: 'd', inputSchema: { type: 'object', properties: { a: { type: 'string', description: words(1600) } } } };
+    expect(checkBudgets([fat])).toEqual(['github_fat: schema over 1500 tokens']);
+  });
+  it('fails a compact listing over 5,000 tokens and an everyday catalog over 22,000', () => {
+    const compact = Array.from({ length: 120 }, (_, i) => ({ name: `github_c${i}`, compact: true, description: words(24), inputSchema: { type: 'object', properties: { a: { type: 'string', description: words(20) } } } }));
+    expect(checkBudgets(compact).some((f) => f.startsWith('compact listing is'))).toBe(true);
+    const catalog = Array.from({ length: 400 }, (_, i) => ({ name: `github_e${i}`, description: words(24), inputSchema: { type: 'object', properties: { a: { type: 'string', description: words(30) } } } }));
+    expect(checkBudgets(catalog).some((f) => f.startsWith('everyday catalog listing is'))).toBe(true);
+    expect(listingTokens(compact).compact).toBeGreaterThan(5000);
+    expect(listingTokens(catalog).compact).toBe(listingTokens([]).compact);
   });
 });

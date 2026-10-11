@@ -10,6 +10,10 @@ describe('annotations match what each tool is', () => {
       if (tool.writes) {
         expect(a.readOnlyHint).toBe(false);
         expect(a.destructiveHint).toBe(tool.declarations.production !== 'never');
+      } else if (tool.passthrough) {
+        // a runner can run changes, so it must not claim to be read-only
+        expect(a.readOnlyHint).toBe(false);
+        expect(a.destructiveHint).toBe(true);
       } else {
         expect(a.readOnlyHint).toBe(true);
         expect(a.destructiveHint).toBe(false);

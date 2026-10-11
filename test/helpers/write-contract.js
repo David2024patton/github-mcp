@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { createCredentials } from '../../src/github/credentials.js';
 import { createDispatch } from '../../src/tools/dispatch.js';
 import { mergeNamespaces } from '../../src/core/registry.js';
+import * as meta from '../../src/tools/meta.js';
 import { createFakeDb } from './fake-db.js';
 import { makeFakeGitHub } from './fake-github.js';
 import { protectionGate, spendGate } from './fixture-gates.js';
@@ -39,10 +40,14 @@ export const parse = (result) => result.structuredContent ?? JSON.parse(result.c
 /** The doors that exist today: the handler itself, and the MCP dispatcher. Later batches add `github_call` and the HTTPS API. */
 export function doorsFor(definition) {
   const registry = mergeNamespaces([{ tools: [definition.tool], handlers: { [definition.tool.name]: definition.handler } }]);
+  const withMeta = mergeNamespaces([meta, { tools: [definition.tool], handlers: { [definition.tool.name]: definition.handler } }]);
   return [
     { name: 'handler', call: async (world, args) => definition.handler(args, world.ctx) },
     { name: 'dispatch', call: async (world, args) => createDispatch({ credentials: world.credentials, gates: world.ctx.gates, fetch: world.gh.fetch, now: world.ctx.now })
-      .call(null, { registry, name: definition.tool.name, args, connection: world.connection, db: world.db }) }
+      .call(null, { registry, name: definition.tool.name, args, connection: world.connection, db: world.db }) },
+    // door 3 (C-2): the same tool run by name through github_call - every guard must apply exactly the same
+    { name: 'github_call', call: async (world, args) => createDispatch({ credentials: world.credentials, gates: world.ctx.gates, fetch: world.gh.fetch, now: world.ctx.now })
+      .call(null, { registry: withMeta, name: 'github_call', args: { name: definition.tool.name, args }, connection: world.connection, db: world.db }) }
   ];
 }
 

@@ -170,6 +170,10 @@ A connection's profile (`read_only`, `everyday`, `full`) decides which tools exi
 minted with every permission the installation has at `read` (`workflows` and `profile` exist only at write and are left out); unknown installation permissions refuse the
 token rather than send an empty list (which GitHub reads as "everything"). Fine-grained-token accounts cannot be narrowed. The home page prints `tools_by_profile`.
 
+### Listing and the meta-tools (C-2)
+
+`tools/list` is built by `toolsForListing(registry, profile, listing)` and `listedTool` (`src/core/registry.js`): `catalog` is every tool the profile may see, `compact` only tools marked `compact`; dangerous tools get PRODUCTION / SPENDS MONEY first and every tool is listed with its annotations. `?listing=` on the endpoint overrides the connection's choice. `github_call` / `github_batch` receive `ctx.callTool`, which is the dispatcher itself. `scripts/check-budgets.mjs` counts what is listed with `gpt-tokenizer`.
+
 ### Small results (C-1)
 
 Read replies go through `readReply` in `src/tools/dispatch.js`: summary form (tools defined with `defineRead` and a `summaryType`; `detail: 'full'` for the whole object) → shaping (`shapeResult`) → `fields` (keeps `untrusted`, brings `_local` times) → the full result is kept if anything will be cut → text caps → 8 KB fit. Rules live in `src/core/result-rules.js` (4,000 characters, 400 log lines, 8,192 bytes, 20 per page, 100 max). `kept_result` in a reply carries the handle; `github_get_result` reads it for the same connection only and shrinks a page that would not fit.

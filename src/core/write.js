@@ -62,7 +62,7 @@ export function marksOf(c) {
  * @param {(ctx, args) => string} spec.requestKey stable key for this intent (10-minute bucket included)
  */
 export function defineWrite(spec) {
-  const { name, description, properties = {}, required = [], declarations, target, read, classify, price, summarize, apply, readAfter, verify,
+  const { name, description, area, audience, compact, guidance, properties = {}, required = [], declarations, target, read, classify, price, summarize, apply, readAfter, verify,
     inverse = () => null, present = ({ after }) => after, explain = () => 'The change was not completed.', classifyError = () => 'uncertain', requestKey } = spec;
   if (!NAME.test(name ?? '')) throw new TypeError('A valid tool name is required.');
   if (typeof description !== 'string' || !description) throw new TypeError(`${name}: a description is required.`);
@@ -80,7 +80,8 @@ export function defineWrite(spec) {
     spend: !!declarations.spend, confirm: declarations.confirm ?? 'when-needed', cred: declarations.cred ?? 'I', profiles: Object.freeze([...profiles]) });
 
   const tool = Object.freeze({
-    name, description, writes: true, writeContract: 'defineWrite-v1', priced: typeof price === 'function', declarations: decl, profiles: decl.profiles,
+    name, description, ...(area ? { area } : {}), ...(audience ? { audience: Object.freeze([...audience]) } : {}), ...(compact ? { compact: true } : {}), ...(guidance ? { guidance } : {}),
+    writes: true, writeContract: 'defineWrite-v1', priced: typeof price === 'function', declarations: decl, profiles: decl.profiles,
     inputSchema: {
       type: 'object',
       properties: { ...properties, dryRun: { type: 'boolean', description: 'Preview only; nothing is sent' }, confirm: { type: 'boolean', description: 'Set true after reading the preview' },

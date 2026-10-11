@@ -1,32 +1,47 @@
-// Adapted from Robinson-AI-Systems/stripe-mcp scripts/check-budgets.mjs @ e2f90e8.
-// Starting form of the token-budget check (C-2 gives it the per-profile budgets): every listing description is at most
-// 160 characters and the whole catalog stays under 20,000 estimated tokens. With no tools registered it says so.
-// `--print` also prints the estimate.
+// Adapted from Robinson-AI-Systems/stripe-mcp scripts/check-budgets.mjs @ e2f90e8; completed for C-2 (BATCH-C C7).
+// Budgets are tests: fails when a listed description is over 160 characters, a tool's schema is over 1,500 tokens, the compact
+// listing is over 5,000 tokens or the everyday catalog listing is over 22,000. Tokens are counted with a pinned tokenizer
+// (gpt-tokenizer) on exactly what `tools/list` sends (`listedTool`). The counts are printed so CI shows the trend.
 import path from 'node:path';
+import { encode } from 'gpt-tokenizer';
+import { listedDescription, listedTool, toolsForListing } from '../src/core/registry.js';
 
 export const DESCRIPTION_LIMIT = 160;
-export const CATALOG_TOKEN_LIMIT = 20000;
-export const estimateTokens = (value) => Math.ceil(JSON.stringify(value).length / 4);
+export const SCHEMA_TOKEN_LIMIT = 1500;
+export const COMPACT_TOKEN_LIMIT = 5000;
+export const EVERYDAY_CATALOG_TOKEN_LIMIT = 22000;
+export const countTokens = (value) => encode(JSON.stringify(value)).length;
+
+/** Token counts for each listing a connection can get. */
+export function listingTokens(tools) {
+  const registry = { tools };
+  const of = (profile, listing) => countTokens(toolsForListing(registry, profile, listing).map(listedTool));
+  return { compact: of('full', 'compact'), everyday: of('everyday', 'catalog'), full: of('full', 'catalog'), read_only: of('read_only', 'catalog') };
+}
 
 /** @returns {string[]} failures for the given tool definitions. */
-export function checkBudgets(tools) {
+export function checkBudgets(tools, { count = countTokens } = {}) {
   const failures = [];
   for (const t of tools) {
-    if ((t.description || '').length > DESCRIPTION_LIMIT) failures.push(`${t.name}: description over ${DESCRIPTION_LIMIT} characters`);
+    if (listedDescription({ ...t, description: t.description || '' }).length > DESCRIPTION_LIMIT) failures.push(`${t.name}: description over ${DESCRIPTION_LIMIT} characters`);
+    if (t.inputSchema && count(t.inputSchema) >= SCHEMA_TOKEN_LIMIT) failures.push(`${t.name}: schema over ${SCHEMA_TOKEN_LIMIT} tokens`);
   }
-  if (estimateTokens(tools) > CATALOG_TOKEN_LIMIT) failures.push(`tool catalog over ${CATALOG_TOKEN_LIMIT} estimated tokens`);
+  const registry = { tools };
+  const compact = count(toolsForListing(registry, 'full', 'compact').map(listedTool));
+  if (compact >= COMPACT_TOKEN_LIMIT) failures.push(`compact listing is ${compact} tokens, limit ${COMPACT_TOKEN_LIMIT}`);
+  const everyday = count(toolsForListing(registry, 'everyday', 'catalog').map(listedTool));
+  if (everyday >= EVERYDAY_CATALOG_TOKEN_LIMIT) failures.push(`everyday catalog listing is ${everyday} tokens, limit ${EVERYDAY_CATALOG_TOKEN_LIMIT}`);
   return failures;
 }
 
 async function main() {
   const { registry } = await import('../src/tools/index.js');
   const tools = registry.tools;
-  if (!tools.length) console.log('Token budgets: 0 tools registered — nothing to check');
-  else {
-    const failures = checkBudgets(tools);
-    if (failures.length) { console.error(failures.join('\n')); process.exitCode = 1; }
-    else console.log(`Token budgets pass for ${tools.length} tools`);
-  }
-  if (process.argv.includes('--print')) console.log(`Catalog estimated tokens: ${estimateTokens(tools)}`);
+  if (!tools.length) { console.log('Token budgets: 0 tools registered — nothing to check'); return; }
+  const failures = checkBudgets(tools);
+  const t = listingTokens(tools);
+  if (failures.length) { console.error(failures.join('\n')); process.exitCode = 1; }
+  else console.log(`Token budgets pass for ${tools.length} tools`);
+  console.log(`Listing tokens: compact ${t.compact}/${COMPACT_TOKEN_LIMIT}, everyday catalog ${t.everyday}/${EVERYDAY_CATALOG_TOKEN_LIMIT}, full catalog ${t.full}, read_only catalog ${t.read_only}`);
 }
 if (process.argv[1] && import.meta.url === new URL(`file://${path.resolve(process.argv[1])}`).href) await main();

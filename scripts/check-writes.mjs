@@ -14,7 +14,7 @@ export function parseCatalog(text) {
     if (!line.startsWith('| `github_')) continue;
     const cells = line.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
     if (cells.length !== 8) continue;
-    rows.set(cells[0].replace(/`/g, ''), { name: cells[0].replace(/`/g, ''), safety: cells[2], cred: cells[4], profile: cells[6], card: cells[7] });
+    rows.set(cells[0].replace(/`/g, ''), { name: cells[0].replace(/`/g, ''), safety: cells[2], cred: cells[4], audience: cells[5], profile: cells[6], card: cells[7] });
   }
   return rows;
 }
@@ -45,6 +45,8 @@ export function checkWrites(tools, catalog) {
     const row = catalog?.get(tool.name);
     if (catalog && !row) failures.push(`${tool.name}: registered tool has no row in docs/TOOL-CATALOG.md`);
     const safety = row ? parseSafety(row.safety) : null;
+    if (!Array.isArray(tool.audience) || !tool.audience.length) failures.push(`${tool.name}: tool without an audience (B, O, Op)`);
+    else if (row && !sameSet(tool.audience, row.audience.split(',').map((a) => a.trim()))) failures.push(`${tool.name}: audience is ${tool.audience.join(',')} but the catalog says ${row.audience}`);
     if (!tool.writes) {
       if (safety && !safety.read) failures.push(`${tool.name}: the catalog says it changes things (${row.safety}) but the tool is read-only`);
       continue;
