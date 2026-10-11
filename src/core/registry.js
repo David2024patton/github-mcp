@@ -19,3 +19,14 @@ export function mergeNamespaces(modules) {
   }
   return { tools, handlers };
 }
+
+/** Write tools are available only to the profiles they list; read-only tools to every profile. */
+export const isToolVisible = (tool, profile) => !(tool.writes === true) || (Array.isArray(tool.profiles) && tool.profiles.includes(profile));
+
+/** The tools a connection with this profile may see and call. */
+export const toolsForProfile = (registry, profile) => registry.tools.filter((tool) => isToolVisible(tool, profile));
+
+/** How many tools each profile sees, for the home page. */
+export function profileCounts(registry, profiles = ['read_only', 'everyday', 'full']) {
+  return Object.fromEntries(profiles.map((profile) => [profile, toolsForProfile(registry, profile).length]));
+}

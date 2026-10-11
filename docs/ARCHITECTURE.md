@@ -162,6 +162,13 @@ status line. `src/tools/util.js` `shapeResult` runs on every result in `src/tool
 `_local` (Denver); whole cents gain `_display`; text from people whose `author_association` is not OWNER, MEMBER or COLLABORATOR is marked `untrusted: true`; a production
 connection's results start with `"mode": "PRODUCTION"`. The dispatcher still withholds anything credential-shaped that survives shaping.
 
+### Profiles and downscoped tokens (B-6)
+
+A connection's profile (`read_only`, `everyday`, `full`) decides which tools exist for it: read tools are visible to all, a write tool only to the profiles it lists
+(`src/core/registry.js` `toolsForProfile`); `tools/list` shows only those and a hidden tool called by name answers "unknown". For `read_only`, the installation token is
+minted with every permission the installation has at `read` (`workflows` and `profile` exist only at write and are left out); unknown installation permissions refuse the
+token rather than send an empty list (which GitHub reads as "everything"). Fine-grained-token accounts cannot be narrowed. The home page prints `tools_by_profile`.
+
 ## GitHub App permissions
 
 None granted yet. The requested list lives in `src/github/app-manifest.js` (A-5b; repository and organization permissions only, no account permissions until Batch O) and `docs/DEPLOY.md` (A-6); record the

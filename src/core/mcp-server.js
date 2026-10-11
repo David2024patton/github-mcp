@@ -5,6 +5,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { requireMcpToken } from './mcp-auth.js';
+import { toolsForProfile } from './registry.js';
 
 const unknownTool = (name) => ({ isError: true, content: [{ type: 'text', text: `Unknown or unavailable tool: ${String(name).slice(0, 80)}` }] });
 export const denyAll = async ({ name }) => unknownTool(name);
@@ -15,7 +16,7 @@ export function createMcpHandler({ db, registry, env = process.env, toConnection
     const connection = await requireMcpToken(req, res, db, env, { toConnection });
     if (!connection) return;
     const server = new Server(serverInfo, { capabilities: { tools: {} } });
-    server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: registry.tools.map(publicToolInfo) }));
+    server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: toolsForProfile(registry, connection.profile).map(publicToolInfo) }));
     server.setRequestHandler(CallToolRequestSchema, async (request) =>
       dispatch({ registry, name: request.params?.name, args: request.params?.arguments, connection, db }));
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });

@@ -15,6 +15,9 @@ const KEY_HELP = 'Credential storage is not set up on this server. Set TOKEN_ENC
 const b64url = (input) => Buffer.from(input).toString('base64url');
 const lower = (login) => String(login).toLowerCase();
 
+/** Permissions GitHub offers only at `write` (checked against the vendored description by `tests/unit/credentials-downscope.test.js`). */
+export const WRITE_ONLY_PERMISSIONS = Object.freeze(['workflows', 'profile']);
+
 /** Stable text for a downscoping request: 'all' when unscoped, else a short hash of its canonical JSON. */
 export function scopeKeyOf(scope) {
   if (!scope || (!scope.repositories?.length && !scope.repository_ids?.length && !scope.permissions)) return 'all';
@@ -68,16 +71,26 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
 
   const missing = (account, what) => new GithubClientError('no_credentials', `${account}: ${what} Open the setup page to fix it.`, { account });
 
+  /** A `read_only` connection gets every permission the installation has, at `read` only (permissions that cannot be read are left out), so a bug in a tool cannot write. */
+  function readOnlyScope(row, scope) {
+    const granted = row.installation_permissions && typeof row.installation_permissions === 'object' ? Object.keys(row.installation_permissions) : [];
+    const readable = granted.filter((name) => !WRITE_ONLY_PERMISSIONS.includes(name));
+    const wanted = scope?.permissions ? readable.filter((name) => Object.hasOwn(scope.permissions, name)) : readable;
+    if (!wanted.length) throw missing(row.login, 'its installation\'s permissions are not known yet, so a read-only token cannot be made. Press the check button on the setup page.');
+    return { ...(scope ?? {}), permissions: Object.fromEntries(wanted.map((name) => [name, 'read'])) };
+  }
+
   async function appOf(row) {
     const app = row.app_id == null ? null : await db.getApp(row.app_id);
     if (!app) throw missing(row.login, 'no GitHub App has been created for this account yet.');
     return app;
   }
 
-  async function installationToken(row, scope) {
+  async function installationToken(row, scope, profile) {
     if (row.installation_id == null || row.installation_status !== 'active') {
       throw missing(row.login, row.installation_status === 'suspended' ? 'its GitHub App installation is suspended.' : 'the GitHub App is not installed on this account yet.');
     }
+    scope = profile === 'read_only' ? readOnlyScope(row, scope) : scope;
     const scopeKey = scopeKeyOf(scope);
     const cached = await db.getInstallationToken(row.installation_id, scopeKey);
     if (cached) return open(cached.token_enc, contexts.installation(row.installation_id, scopeKey));
@@ -142,7 +155,7 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
 
   return {
     /** Called by `githubFor` once per request. Returns the plain token string, or throws a plain `no_credentials`. */
-    async token({ account, cred = 'I', scope } = {}) {
+    async token({ account, cred = 'I', scope, profile } = {}) {
       const row = await db.getAccount(account);
       if (!row) throw missing(account, 'it is not one of the accounts set up on this server.');
       if (cred === 'U') return await userToken(row);
@@ -156,7 +169,7 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
         if (row.fine_grained_expires_at && new Date(row.fine_grained_expires_at).getTime() <= now()) throw missing(row.login, 'its fine-grained token has expired.');
         return open(row.fine_grained_enc, contexts.fineGrained(row.login));
       }
-      return await installationToken(row, scope);
+      return await installationToken(row, scope, profile);
     },
 
     /** Stores the App returned by `POST /app-manifests/{code}/conversions`, encrypting its three secrets. Returns no secret. */

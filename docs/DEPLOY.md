@@ -48,7 +48,7 @@ says so in a red line after you try a step ("The server has no encryption key…
 
 ## Part 4 — Check the server is alive
 
-1. Open `<your address>/` — you should see a small page of facts: name "Robinson GitHub MCP", status, `tools: 2`. Nothing secret.
+1. Open `<your address>/` — you should see a small page of facts: name "Robinson GitHub MCP", status, a `tools` count and `tools_by_profile`. Nothing secret.
 2. Open `<your address>/.well-known/oauth-authorization-server` — you should see a block of text starting with `{"issuer"`.
 
 If either shows "temporarily unavailable", the database address (`DATABASE_URL`) is wrong or Neon is asleep for the first

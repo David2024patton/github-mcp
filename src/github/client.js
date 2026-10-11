@@ -86,7 +86,7 @@ function resolveAccount(connection, owner) {
 export async function githubFor(ctx, { owner, cred = 'I', scope } = {}) {
   if (!CREDENTIAL_KINDS.includes(cred)) throw new TypeError(`Unknown credential kind "${cred}".`);
   const account = resolveAccount(ctx.connection, owner);
-  const token = await ctx.credentials?.token({ account, cred, scope });
+  const token = await ctx.credentials?.token({ account, cred, scope, profile: ctx.connection?.profile });
   if (typeof token !== 'string' || !token) {
     throw new GithubClientError('no_credentials', `No GitHub credential is set up for ${account}. Open the setup page to add one.`, { account });
   }

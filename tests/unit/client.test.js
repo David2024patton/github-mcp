@@ -50,8 +50,8 @@ describe('GitHub client: the pinned API version and credentials', () => {
     await githubFor(ctx, { owner: 'EXAMPLE-USER', cred: 'U', scope: { repositories: ['hello'] } });
     await githubFor(ctx, {});
     expect(asked).toEqual([
-      { account: 'example-user', cred: 'U', scope: { repositories: ['hello'] } },
-      { account: 'example-org', cred: 'I', scope: undefined }
+      { account: 'example-user', cred: 'U', scope: { repositories: ['hello'] }, profile: 'everyday' },
+      { account: 'example-org', cred: 'I', scope: undefined, profile: 'everyday' }
     ]);
   });
 
