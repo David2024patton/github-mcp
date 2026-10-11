@@ -54,7 +54,7 @@ describe('createDb', () => {
       return [];
     };
     await createDb(sql).initSchema();
-    expect(statements).toHaveLength(14);
+    expect(statements).toHaveLength(15);
     const created = statements.filter((s) => /^CREATE TABLE IF NOT EXISTS /.test(s)).map((s) => s.match(/^CREATE TABLE IF NOT EXISTS (\w+)/)[1]);
     expect(created).toEqual([...SCHEMA_TABLES]);
     expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS change_log_request_key /.test(s))).toHaveLength(1);

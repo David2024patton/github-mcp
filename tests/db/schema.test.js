@@ -42,6 +42,13 @@ describe('foundation schema on throwaway Postgres', () => {
     expect(await rawQuery(`SELECT installation_key FROM gh_write_slots`)).toEqual([{ installation_key: 'keep-me' }]);
   });
 
+  it('creates a unique partial index so only one real write can hold a request key', async () => {
+    const [index] = (await indexes()).filter((row) => row.indexname === 'change_log_real_key');
+    expect(index).toBeDefined();
+    expect(index.indexdef).toMatch(/UNIQUE/);
+    expect(index.indexdef).toMatch(/dry_run = false/i);
+  });
+
   it('creates the change_log request-key index over (request_key, at)', async () => {
     const [index] = (await indexes()).filter((row) => row.indexname === 'change_log_request_key');
     expect(index).toBeDefined();

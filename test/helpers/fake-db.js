@@ -2,7 +2,7 @@
 // schema, A-3a adds the connector login store. Service-independent in-memory fake of createDb(): it mirrors the behavior
 // of src/db.js (hashed storage, single-use codes, atomic refresh) and is held to the same contract suite
 // (test/contract/oauth-contract.js) as real PostgreSQL.
-import { SCHEMA_TABLES, ETAG_BODY_LIMIT_BYTES, checkConnection, connectionSettings } from '../../src/db.js';
+import { SCHEMA_TABLES, ETAG_BODY_LIMIT_BYTES, capChangeValue, normalizeChange, checkConnection, connectionSettings } from '../../src/db.js';
 import { hashToken } from '../../src/core/oauth.js';
 
 export function createFakeDb({ clock = Date.now } = {}) {
@@ -21,6 +21,7 @@ export function createFakeDb({ clock = Date.now } = {}) {
   const oneTime = new Map();
   const rates = new Map();
   const etags = new Map();
+  const changes = [];
   const DAY_MS = 24 * 60 * 60 * 1000;
   let attemptId = 0;
   const settingsOf = (row) => connectionSettings({ ...row, accounts: row.accounts });
@@ -236,6 +237,33 @@ export function createFakeDb({ clock = Date.now } = {}) {
       let removed = 0;
       for (const [k, v] of etags) if (removed < 100 && v.stored_at < clock() - DAY_MS) { etags.delete(k); removed++; }
       return true;
+    },
+
+    // ---- Change log (B-1): same behavior as src/db.js ----
+    async addChangePreview(row) {
+      const r = normalizeChange(row);
+      const id = changes.length + 1;
+      changes.push({ id, at: new Date(clock()), ...r, dry_run: true, confirmed: null, after: null, github_request_id: null, inverse: null });
+      return id;
+    },
+    async claimChange(row) {
+      const r = normalizeChange(row);
+      if (!r.request_key) throw new TypeError('A real write needs a request key.');
+      const existing = changes.find((c) => !c.dry_run && c.request_key === r.request_key);
+      if (existing) return { claimed: false, existing: structuredClone(existing) };
+      const id = changes.length + 1;
+      changes.push({ id, at: new Date(clock()), ...r, dry_run: false, confirmed: null, after: null, github_request_id: null, inverse: null });
+      return { claimed: true, id };
+    },
+    async finishChange(id, { after = null, confirmed, githubRequestId = null, inverse = null }) {
+      const row = changes.find((c) => c.id === id && !c.dry_run);
+      if (!row) return false;
+      Object.assign(row, { after: structuredClone(capChangeValue(after)), confirmed, github_request_id: githubRequestId, inverse: inverse == null ? null : structuredClone(inverse) });
+      return true;
+    },
+    async getChangeByRequestKey(requestKey) {
+      const row = changes.find((c) => !c.dry_run && c.request_key === requestKey);
+      return row ? structuredClone(row) : null;
     },
 
     /** Test seam: the fake has no gh_accounts table, so tests seed the login page's account list here. */

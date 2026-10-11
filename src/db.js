@@ -68,6 +68,25 @@ export function productionSql() {
   return neon(url);
 }
 
+export const CHANGE_JSON_LIMIT_BYTES = 64 * 1024;
+
+/** A change-log JSON value, or a marker when it is over 64 KB (the log is a record, not an archive). */
+export function capChangeValue(value) {
+  const json = JSON.stringify(value ?? null);
+  const bytes = Buffer.byteLength(json);
+  return bytes > CHANGE_JSON_LIMIT_BYTES ? { truncated: true, bytes } : (value ?? null);
+}
+
+/** One change-log row in its stored shape (shared by the database and the fake so they cannot drift). */
+export function normalizeChange(row) {
+  if (!row?.tool || !row?.summary) throw new TypeError('A change-log row needs a tool and a summary.');
+  return {
+    account: row.account ?? null, repo: row.repo ?? null, mode: row.mode ?? null, connection: row.connection ?? null, tool: row.tool, target: row.target ?? null,
+    summary: String(row.summary).slice(0, 1000), before: capChangeValue(row.before), production: !!row.production, access_widening: !!row.accessWidening,
+    notifies: Array.isArray(row.notifies) ? row.notifies.map(String) : [], spend_cents: row.spendCents == null ? null : Math.round(row.spendCents), request_key: row.requestKey ?? null
+  };
+}
+
 /**
  * @param {Function} [sql] a Neon-shaped tagged-template query function (the production client by default)
  * @returns {{ initSchema(): Promise<void>, listTables(): Promise<string[]> }}
@@ -196,6 +215,7 @@ export function createDb(sql = productionSql()) {
         undone_by BIGINT
       )`;
       await sql`CREATE INDEX IF NOT EXISTS change_log_request_key ON change_log (request_key, at)`;
+      await sql`CREATE UNIQUE INDEX IF NOT EXISTS change_log_real_key ON change_log (request_key) WHERE dry_run = FALSE AND request_key IS NOT NULL`;
       await sql`CREATE TABLE IF NOT EXISTS one_time_secrets (
         id TEXT PRIMARY KEY,
         account TEXT,
@@ -506,6 +526,39 @@ export function createDb(sql = productionSql()) {
       await sql`DELETE FROM gh_etag_cache WHERE ctid IN (
         SELECT ctid FROM gh_etag_cache WHERE stored_at < now() - interval '24 hours' LIMIT 100)`;
       return true;
+    },
+
+    // ---- Change log (B-1). A real write claims its request key first; the unique partial index lets only one caller win. ----
+    /** Stores a preview (dry run) row. Many previews of one request are fine. Returns the row id. */
+    async addChangePreview(row) {
+      const r = normalizeChange(row);
+      const rows = await sql`INSERT INTO change_log (account, repo, mode, connection, tool, target, summary, before, dry_run, production, access_widening, notifies, spend_cents, request_key)
+        VALUES (${r.account}, ${r.repo}, ${r.mode}, ${r.connection}, ${r.tool}, ${r.target}, ${r.summary}, ${JSON.stringify(r.before)}::jsonb, TRUE, ${r.production}, ${r.access_widening},
+          ${r.notifies}::text[], ${r.spend_cents}, ${r.request_key}) RETURNING id`;
+      return Number(rows[0].id);
+    },
+    /** Claims the request key for a real write: `{ claimed: true, id }`, or `{ claimed: false, existing }` with the earlier row. */
+    async claimChange(row) {
+      const r = normalizeChange(row);
+      if (!r.request_key) throw new TypeError('A real write needs a request key.');
+      const rows = await sql`INSERT INTO change_log (account, repo, mode, connection, tool, target, summary, before, dry_run, confirmed, production, access_widening, notifies, spend_cents, request_key)
+        VALUES (${r.account}, ${r.repo}, ${r.mode}, ${r.connection}, ${r.tool}, ${r.target}, ${r.summary}, ${JSON.stringify(r.before)}::jsonb, FALSE, NULL, ${r.production}, ${r.access_widening},
+          ${r.notifies}::text[], ${r.spend_cents}, ${r.request_key})
+        ON CONFLICT (request_key) WHERE dry_run = FALSE AND request_key IS NOT NULL DO NOTHING RETURNING id`;
+      if (rows[0]) return { claimed: true, id: Number(rows[0].id) };
+      return { claimed: false, existing: await this.getChangeByRequestKey(r.request_key) };
+    },
+    /** Completes a claimed row: the read-back, whether it matched (`confirmed`), GitHub's request id and the inverse. */
+    async finishChange(id, { after = null, confirmed, githubRequestId = null, inverse = null }) {
+      const rows = await sql`UPDATE change_log SET after = ${JSON.stringify(capChangeValue(after))}::jsonb, confirmed = ${confirmed}, github_request_id = ${githubRequestId}, inverse = ${inverse == null ? null : JSON.stringify(inverse)}::jsonb
+        WHERE id = ${id} AND dry_run = FALSE RETURNING id`;
+      return rows.length === 1;
+    },
+    /** The real (non-preview) row for a request key, or null. `confirmed` is null while the write is still running. */
+    async getChangeByRequestKey(requestKey) {
+      const rows = await sql`SELECT id, at, account, repo, mode, tool, target, summary, before, after, confirmed, production, access_widening, notifies, spend_cents, request_key, github_request_id, inverse
+        FROM change_log WHERE request_key = ${requestKey} AND dry_run = FALSE LIMIT 1`;
+      return rows[0] ? { ...rows[0], id: Number(rows[0].id), spend_cents: rows[0].spend_cents == null ? null : Number(rows[0].spend_cents) } : null;
     },
 
     /** The accounts the login page offers. `production_enabled` decides whether production mode may be offered. */
