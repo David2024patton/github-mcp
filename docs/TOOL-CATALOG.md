@@ -289,7 +289,7 @@ Card(s): G-5.
 | `github_release_create` | Create a release (draft by default) with optional generated-notes preview; publishing creates the tag | C·Prod·M | F | I | B | F | G-5 built #55 |
 | `github_release_update` | Edit notes, name, flags; publish a draft | C·Prod·M | C | I | B | F | G-5 built #55 |
 | `github_release_delete` | Delete a release (Git tag preserved) | C·D·Prod | C | I | B | F | G-5 built #55 |
-| `github_release_upload_asset` | Attach a file to a release from a public URL (downloaded server-side, size-capped; no bytes in chat) | P·Prod* | F | I | B | F | G-5 |
+| `github_release_upload_asset` | Attach a file to a release from a public URL (downloaded server-side, size-capped; no bytes in chat) | P·Prod* | F | I | B | F | G-5 built #59 |
 | `github_release_delete_asset` | Remove a file attached to a release (a wrong or outdated build); production when the release is published | C·D·Prod* | C | I | B | F | G-5 built #56 |
 
 ## Pages and packages (`github_pages_*, github_package_*`) — 7
