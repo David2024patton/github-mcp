@@ -5,6 +5,11 @@ work units, stop-and-ask points and acceptance mapping. Cards implement from it;
 never silently change a decision. Changes are dated entries under "Amendments". Contract changes later batches inherit
 go in `CHANGES-SINCE-DESIGN.md`. New designs start from `TEMPLATE.md`.
 
+Execution navigation for remaining units lives in
+[REMAINING-WORK](../implementation-contracts/REMAINING-WORK.md); existing helper recipes and a worked G-4 packet
+live beside it. These make JIT cards concrete without freezing speculative future implementations or changing
+the approved design. Read only the current unit's heading.
+
 | Batch | File | Status |
 |---|---|---|
 | A Foundation (login, GitHub App credentials, client) | [BATCH-A](BATCH-A.md) | Approved 2026-10-10 (Chris, IN-00) |

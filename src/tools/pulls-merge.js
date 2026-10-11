@@ -75,7 +75,7 @@ const prMerge = defineGithubWrite({
 
 const prMergeAsync = defineGithubWrite({
   name: 'github_pr_merge_async', area: 'pr', audience: ['B'],
-  description: 'Same checks as github_pr_merge, but GitHub merges in the background (needed for stacked pull requests). Answers merged, failed, or pending with an id; read the pull request later for the result.',
+  description: 'Merge in the background at the exact checked head; reports merged or pending with a request id. Read the pull request again for completion.',
   properties: PROPS, required: ['repo', 'number', 'expectedHeadSha'],
   declarations: { production: 'when-target', confirm: 'always' },
   target,

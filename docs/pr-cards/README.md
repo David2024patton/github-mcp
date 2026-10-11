@@ -21,6 +21,18 @@ reason to stop. Designs govern behavior; cards cannot silently override them.
 
 Validate coverage with `python3 docs/pr-cards/validate-index.py` and the catalog with `python3 scripts/count-catalog.py`.
 
+## Extra execution detail (prepare once, reuse while coding)
+
+Use [IMPLEMENTATION-DETAIL](../implementation-contracts/IMPLEMENTATION-DETAIL.md) when preparing the card.
+Find the current unit in [REMAINING-WORK](../implementation-contracts/REMAINING-WORK.md), then cite only the needed
+[TOOL-RECIPES](../implementation-contracts/TOOL-RECIPES.md) heading. Record exact exports, argument-to-request mapping,
+before/after verification, fixture arrangements, forbidden side effects and ordered slices with focused commands.
+The [G-4 packet](../implementation-contracts/G-4-PACKET.md) is a worked example, not a READY card.
+
+Keep distant work as navigation rows with proposed paths; the JIT card resolves paths against actual code. Put large
+tables in a linked companion packet so a resumed implementer reads the exact current slice, not every future unit.
+Shared nine-check tests remain mandatory; compound workflows also need mutation-trace and partial-failure coverage.
+
 ## Effort guide for Sol 5.6
 
 Light: read tools in an area whose pattern already exists; docs cards. Medium: the trust layer and every guard, merges,
