@@ -4,7 +4,7 @@ Every tool this server will have, by area — the product scope. The implementin
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
 tool merges, its Card cell gains `built #<PR>`. Built so far: **2 tools** (`github_whoami`, `github_list_accounts`) — the registry (`src/tools/index.js`) exists
-and holds only the two A-5 tools until Batch B.
+and holds only the two A-5 tools. Every write tool below will be built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); no write tool exists yet.
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
 `—` reads only · `P` preview available (`dryRun`), no confirmation needed for ordinary targets · `C` always needs
