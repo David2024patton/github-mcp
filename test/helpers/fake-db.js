@@ -2,8 +2,14 @@
 // schema, A-3a adds the connector login store. Service-independent in-memory fake of createDb(): it mirrors the behavior
 // of src/db.js (hashed storage, single-use codes, atomic refresh) and is held to the same contract suite
 // (test/contract/oauth-contract.js) as real PostgreSQL.
-import { SCHEMA_TABLES, ETAG_BODY_LIMIT_BYTES, checkConnection, connectionSettings } from '../../src/db.js';
+import { SCHEMA_TABLES, ETAG_BODY_LIMIT_BYTES, checkConnection, connectionSettings, normalizeChange } from '../../src/db.js';
 import { hashToken } from '../../src/core/oauth.js';
+
+function changeViewOf(r) {
+  return structuredClone({ id: r.id, at: r.at, summary: r.summary, confirmed: r.confirmed, after: r.after ?? null, githubRequestId: r.githubRequestId ?? null,
+    tool: r.tool, account: r.account, repo: r.repo, mode: r.mode, production: r.production, dryRun: r.dryRun, requestKey: r.requestKey,
+    notifies: r.notifies ?? [], spendCents: r.spendCents ?? null, inverse: r.inverse ?? null, before: r.before ?? null });
+}
 
 export function createFakeDb({ clock = Date.now } = {}) {
   const rows = new Map();
@@ -21,6 +27,8 @@ export function createFakeDb({ clock = Date.now } = {}) {
   const oneTime = new Map();
   const rates = new Map();
   const etags = new Map();
+  const changes = [];
+  let changeId = 0;
   const DAY_MS = 24 * 60 * 60 * 1000;
   let attemptId = 0;
   const settingsOf = (row) => connectionSettings({ ...row, accounts: row.accounts });
@@ -208,6 +216,31 @@ export function createFakeDb({ clock = Date.now } = {}) {
       return { account: r.account, kind: r.kind, ciphertext: r.ciphertext };
     },
 
+    async recordChange(change) {
+      const c = normalizeChange(change);
+      if (c.dryRun === false && c.requestKey) throw new TypeError('A real write is recorded with claimChange.');
+      const row = { id: ++changeId, at: new Date(clock()), ...c, before: c.before && JSON.parse(c.before), after: c.after && JSON.parse(c.after), inverse: c.inverse && JSON.parse(c.inverse), github_request_id: c.githubRequestId };
+      changes.push(row);
+      return row.id;
+    },
+    async claimChange(change) {
+      const c = normalizeChange({ ...change, dryRun: false, confirmed: null });
+      if (!c.requestKey) throw new TypeError('claimChange needs a request key.');
+      const existing = changes.find((r) => r.requestKey === c.requestKey && r.dryRun === false);
+      if (existing) return { claimed: false, existing: changeViewOf(existing) };
+      const row = { id: ++changeId, at: new Date(clock()), ...c, after: null, githubRequestId: null, github_request_id: null, inverse: null, before: c.before && JSON.parse(c.before) };
+      changes.push(row);
+      return { claimed: true, id: row.id };
+    },
+    async finishChange(id, { summary, before, after, confirmed, githubRequestId = null, inverse = null, releaseKey = false }) {
+      const row = changes.find((r) => r.id === id);
+      if (!row) return false;
+      Object.assign(row, { summary, confirmed, githubRequestId, github_request_id: githubRequestId, after: after === undefined ? null : structuredClone(after), inverse: inverse ? structuredClone(inverse) : null });
+      if (before !== undefined) row.before = structuredClone(before);
+      if (releaseKey === true) row.requestKey = null;
+      return true;
+    },
+    async getChange(id) { const row = changes.find((r) => r.id === id); return row ? changeViewOf(row) : null; },
     async claimWriteSlot(installationKey, { spacingMs = 1000, maxWaitMs = 5000 } = {}) {
       if (typeof installationKey !== 'string' || !installationKey) throw new TypeError('claimWriteSlot needs an installation key.');
       const now = clock(); // no await between the check and the write: atomic like the real statement

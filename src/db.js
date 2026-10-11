@@ -72,6 +72,24 @@ export function productionSql() {
  * @param {Function} [sql] a Neon-shaped tagged-template query function (the production client by default)
  * @returns {{ initSchema(): Promise<void>, listTables(): Promise<string[]> }}
  */
+export const jsonOrNull = (v) => (v === undefined || v === null ? null : JSON.stringify(v));
+/** Fixed shape for a change-log row; unknown keys are ignored so a caller cannot write arbitrary columns. */
+export function normalizeChange(c = {}) {
+  if (typeof c.tool !== 'string' || !c.tool) throw new TypeError('A change needs a tool name.');
+  if (typeof c.summary !== 'string' || !c.summary) throw new TypeError('A change needs a summary.');
+  return {
+    account: c.account ?? null, repo: c.repo ?? null, mode: c.mode ?? null, connection: c.connection ?? null, tool: c.tool, target: c.target ?? null,
+    summary: c.summary.slice(0, 2000), before: jsonOrNull(c.before), after: jsonOrNull(c.after), dryRun: c.dryRun === true, confirmed: c.confirmed ?? null,
+    production: c.production === true, accessWidening: c.accessWidening === true, notifies: Array.isArray(c.notifies) ? c.notifies.slice(0, 50).map(String) : [],
+    spendCents: Number.isSafeInteger(c.spendCents) ? c.spendCents : null, requestKey: c.requestKey ?? null, githubRequestId: c.githubRequestId ?? null, inverse: jsonOrNull(c.inverse)
+  };
+}
+export function changeView(row) {
+  return { id: Number(row.id), at: row.at, summary: row.summary, confirmed: row.confirmed, after: row.after ?? null, githubRequestId: row.github_request_id ?? null,
+    ...(row.tool ? { tool: row.tool, account: row.account, repo: row.repo, mode: row.mode, production: row.production, dryRun: row.dry_run, requestKey: row.request_key,
+      notifies: row.notifies ?? [], spendCents: row.spend_cents == null ? null : Number(row.spend_cents), inverse: row.inverse ?? null, before: row.before ?? null } : {}) };
+}
+
 export function createDb(sql = productionSql()) {
   if (typeof sql !== 'function') throw new TypeError('createDb needs a Neon-shaped tagged-template query function.');
 
@@ -196,6 +214,8 @@ export function createDb(sql = productionSql()) {
         undone_by BIGINT
       )`;
       await sql`CREATE INDEX IF NOT EXISTS change_log_request_key ON change_log (request_key, at)`;
+      // One real (non-preview) write per request key, enforced by the database so two instances cannot both claim it (B-1).
+      await sql`CREATE UNIQUE INDEX IF NOT EXISTS change_log_request_once ON change_log (request_key) WHERE dry_run = FALSE AND request_key IS NOT NULL`;
       await sql`CREATE TABLE IF NOT EXISTS one_time_secrets (
         id TEXT PRIMARY KEY,
         account TEXT,
@@ -469,6 +489,54 @@ export function createDb(sql = productionSql()) {
           WHERE gh_write_slots.next_write_at <= now() + make_interval(secs => ${maxWait}::float8)
         RETURNING (EXTRACT(EPOCH FROM (next_write_at - make_interval(secs => ${spacing}::float8) - now())) * 1000)::float8 AS wait_ms`;
       return rows[0] ? { waitMs: Math.max(0, Math.round(rows[0].wait_ms)) } : null;
+    },
+
+    // ---- Change log (B-1). Rows hold plain-language summaries and small before/after facts, never a credential. ----
+
+    /** Writes a finished row (a preview, a refusal, an audit line). Returns its id. */
+    async recordChange(change) {
+      const c = normalizeChange(change);
+      if (c.dryRun === false && c.requestKey) throw new TypeError('A real write is recorded with claimChange.');
+      const rows = await sql`INSERT INTO change_log (account, repo, mode, connection, tool, target, summary, before, after, dry_run, confirmed,
+          production, access_widening, notifies, spend_cents, request_key, github_request_id, inverse)
+        VALUES (${c.account}, ${c.repo}, ${c.mode}, ${c.connection}, ${c.tool}, ${c.target}, ${c.summary}, ${c.before}::jsonb, ${c.after}::jsonb, ${c.dryRun},
+          ${c.confirmed}, ${c.production}, ${c.accessWidening}, ${c.notifies}, ${c.spendCents}, ${c.requestKey}, ${c.githubRequestId}, ${c.inverse}::jsonb)
+        RETURNING id`;
+      return Number(rows[0].id);
+    },
+
+    /**
+     * Claims a request key for one real write. Exactly one caller gets `{ claimed: true, id }` (the unique index decides, so
+     * two server instances cannot both); every other caller gets the existing row so it can report a replay.
+     */
+    async claimChange(change) {
+      const c = normalizeChange({ ...change, dryRun: false, confirmed: null });
+      if (!c.requestKey) throw new TypeError('claimChange needs a request key.');
+      const rows = await sql`INSERT INTO change_log (account, repo, mode, connection, tool, target, summary, before, after, dry_run, confirmed,
+          production, access_widening, notifies, spend_cents, request_key, github_request_id, inverse)
+        VALUES (${c.account}, ${c.repo}, ${c.mode}, ${c.connection}, ${c.tool}, ${c.target}, ${c.summary}, ${c.before}::jsonb, NULL, FALSE,
+          NULL, ${c.production}, ${c.accessWidening}, ${c.notifies}, ${c.spendCents}, ${c.requestKey}, NULL, NULL)
+        ON CONFLICT (request_key) WHERE dry_run = FALSE AND request_key IS NOT NULL DO NOTHING
+        RETURNING id`;
+      if (rows[0]) return { claimed: true, id: Number(rows[0].id) };
+      const existing = await sql`SELECT id, at, summary, confirmed, after, github_request_id FROM change_log
+        WHERE request_key = ${c.requestKey} AND dry_run = FALSE LIMIT 1`;
+      return { claimed: false, existing: existing[0] ? changeView(existing[0]) : null };
+    },
+
+    /** Completes a claimed row once GitHub answered and the read-back was compared. `releaseKey` frees the request key after a definitive rejection so a corrected retry is not mistaken for a replay. */
+    async finishChange(id, { summary, before, after, confirmed, githubRequestId = null, inverse = null, releaseKey = false }) {
+      const rows = await sql`UPDATE change_log SET summary = ${summary}, before = COALESCE(${before === undefined ? null : JSON.stringify(before)}::jsonb, before),
+          after = ${after === undefined ? null : JSON.stringify(after)}::jsonb, confirmed = ${confirmed}, github_request_id = ${githubRequestId},
+          inverse = ${inverse ? JSON.stringify(inverse) : null}::jsonb, request_key = CASE WHEN ${releaseKey === true} THEN NULL ELSE request_key END
+        WHERE id = ${id} RETURNING id`;
+      return rows.length === 1;
+    },
+
+    /** One row by id, or null. */
+    async getChange(id) {
+      const rows = await sql`SELECT * FROM change_log WHERE id = ${id}`;
+      return rows[0] ? changeView(rows[0]) : null;
     },
 
     /** Records GitHub's rate headers for an account and resource so every instance sees a block (A9). */

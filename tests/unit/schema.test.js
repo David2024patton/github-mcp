@@ -46,7 +46,7 @@ describe('createDb', () => {
     expect(() => createDb()).toThrow('DATABASE_URL is not configured. Set it in the server environment.');
   });
 
-  it('runs one static statement per call: 13 tables and 1 index, all IF NOT EXISTS, nothing destructive', async () => {
+  it('runs one static statement per call: 13 tables and 2 indexes, all IF NOT EXISTS, nothing destructive', async () => {
     const statements = [];
     const sql = async (strings, ...values) => {
       expect(values).toEqual([]);
@@ -54,10 +54,11 @@ describe('createDb', () => {
       return [];
     };
     await createDb(sql).initSchema();
-    expect(statements).toHaveLength(14);
+    expect(statements).toHaveLength(15);
     const created = statements.filter((s) => /^CREATE TABLE IF NOT EXISTS /.test(s)).map((s) => s.match(/^CREATE TABLE IF NOT EXISTS (\w+)/)[1]);
     expect(created).toEqual([...SCHEMA_TABLES]);
     expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS change_log_request_key /.test(s))).toHaveLength(1);
+    expect(statements.filter((s) => /^CREATE UNIQUE INDEX IF NOT EXISTS change_log_request_once .*WHERE dry_run = FALSE AND request_key IS NOT NULL/.test(s))).toHaveLength(1);
     for (const statement of statements) expect(statement).not.toMatch(/\b(DROP|DELETE|TRUNCATE|INSERT|UPDATE)\b|ALTER\s/i);
   });
 

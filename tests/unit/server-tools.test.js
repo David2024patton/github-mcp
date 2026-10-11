@@ -3,7 +3,8 @@ import crypto from 'node:crypto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createCredentials } from '../../src/github/credentials.js';
 import { createMcpHandler } from '../../src/core/mcp-server.js';
-import { createReadOnlyDispatch, validateArgs } from '../../src/tools/dispatch.js';
+import { createDispatch } from '../../src/tools/dispatch.js';
+import { validateArgs } from '../../src/core/validate.js';
 import { registry } from '../../src/tools/index.js';
 import { mergeNamespaces } from '../../src/core/registry.js';
 import { createGithubPolicy } from '../../src/oauth/policy.js';
@@ -31,7 +32,7 @@ async function build(scope = {}) {
   await db.upsertAccount({ login: 'other-org', accountId: 77, accountType: 'Organization', label: 'Other', credentialKind: 'app' });
   await db.recordRateState({ account: 'example-org', resource: 'core', remaining: 4321, resetAt: new Date('2026-10-10T20:00:00Z') });
   const connection = Object.freeze({ client_id: 'c', default_account: 'example-org', accounts: Object.freeze(['example-org', 'example-user']), mode: 'preview', profile: 'read_only', listing: 'compact', ...scope });
-  const dispatch = createReadOnlyDispatch({ env: ENV });
+  const dispatch = createDispatch({ env: ENV });
   const run = (name, args) => dispatch({ registry, name, args, connection, db });
   return { db, credentials, connection, run, dispatch };
 }
@@ -113,7 +114,7 @@ describe('the read-only dispatcher', () => {
     const schema = { type: 'object', properties: { a: { type: 'string', enum: ['x'] } }, required: ['a'] };
     expect(validateArgs(schema, { a: 'x' })).toBeNull();
     expect(validateArgs(schema, {})).toContain('required');
-    expect(validateArgs({ properties: { n: { type: 'number' } } }, { n: 1 })).toContain('unsupported');
+    expect(validateArgs({ properties: { n: { type: 'null' } } }, { n: 1 })).toContain('unsupported');
   });
 });
 
@@ -124,7 +125,7 @@ describe('over the MCP endpoint', () => {
   it('lists the two tools and runs them with a real connector token', async () => {
     const t = await build();
     await t.db.createAccessToken({ accessToken: ACCESS, refreshToken: 'b'.repeat(60), clientId: 'c', defaultAccount: 'example-org', accounts: ['example-org'], mode: 'preview', profile: 'read_only', listing: 'compact' });
-    const handler = createMcpHandler({ db: t.db, registry, env: ENV, toConnection: createGithubPolicy({ env: ENV }).toConnection, dispatch: createReadOnlyDispatch({ env: ENV }) });
+    const handler = createMcpHandler({ db: t.db, registry, env: ENV, toConnection: createGithubPolicy({ env: ENV }).toConnection, dispatch: createDispatch({ env: ENV }) });
     server = http.createServer((req, res) => {
       const chunks = [];
       req.on('data', (c) => chunks.push(c));
