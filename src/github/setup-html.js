@@ -33,7 +33,7 @@ function accountCard(a) {
 /**
  * @param {object} view `{ csrf, result?, revealed?, show?, accounts?, manifestForm?, installLink?, blocked?, keyHelp? }`
  */
-export function renderSetup({ csrf, result = '', revealed = null, show = '', accounts = null, manifestForm = null, installLink = null, blocked = '', keyHelp = '' }) {
+export function renderSetup({ csrf, result = '', revealed = null, show = '', accounts = null, manifestForm = null, installLink = null, blocked = '', keyHelp = '', productionNames = null }) {
   const form = (action, inner, button, extra = '') => `<form method="post" autocomplete="off">${hidden('csrf', csrf)}${hidden('action', action)}${extra}${inner}${passphrase}<button type="submit">${h(button)}</button></form>`;
   const login = '<label>GitHub account name (for example your organization or user name)<input name="login" required maxlength="39" autocomplete="off"></label>';
   const type = '<label>Account type<select name="accountType"><option value="Organization">Organization</option><option value="User">Personal user</option></select></label>';
@@ -55,6 +55,11 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
     '<h2>2. Install the App</h2><p>After the App is created this page shows an install link. When GitHub sends you back here, the account turns green above.</p>' +
     '<h2>3. Authorize as me (optional, for personal settings)</h2>' +
     form('start-user-auth', login.replace('GitHub account name (for example your organization or user name)', 'Account whose App you are authorizing'), 'Authorize on GitHub') +
+    '<h2>4. Turn on production for an account</h2><p>Production lets a connection change real branches, releases and settings, always asking first. It is off until you do two steps: ask Claude to turn it on for the account, then confirm here within 10 minutes.</p>' +
+    form('confirm-production', login.replace('GitHub account name (for example your organization or user name)', 'Account to turn production on for'), 'Turn on production') +
+    '<h2>Names that count as production</h2><p>A repository\'s default branch, its protected branches, tags, releases, settings and environments named production, prod or live always count as production. Add more names here (separated by commas; * is a wildcard). Built-in names cannot be removed.</p>' +
+    (productionNames ? `<p><small>Environments: ${h(productionNames.environments.join(', ') || 'none')} · Branches: ${h(productionNames.branches.join(', ') || 'none')}</small></p>` : '') +
+    form('set-production-names', '<label>Extra environment names<input name="environments" maxlength="400" autocomplete="off"></label><label>Extra branch names<input name="branches" maxlength="400" autocomplete="off"></label>', 'Save production names') +
     '<h2>Alternative: use a fine-grained token instead of a GitHub App</h2><p>Simpler, but no per-connection read-only tokens and no check runs. Classic tokens are refused.</p>' +
     form('add-fine-grained', login + '<label>Fine-grained personal access token<input type="password" name="token" required autocomplete="off"></label>', 'Verify and save encrypted token') +
     '<h2>Optional: notifications token</h2><p>GitHub only lets a classic token read notifications. It must have only the <em>notifications</em> scope; anything else is refused.</p>' +

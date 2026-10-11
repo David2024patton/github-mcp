@@ -188,16 +188,19 @@
         "B-1"
       ],
       "card": "docs/pr-cards/B-2.md",
-      "status": "APPROVED",
-      "migration": "none",
+      "status": "MERGED",
+      "migration": "additive",
       "budget": 400,
       "units": [
         "B-2"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [
         "IN-07",
         "IN-12"
+      ],
+      "pr": [
+        18
       ]
     },
     {

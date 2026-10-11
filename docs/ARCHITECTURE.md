@@ -59,6 +59,7 @@ secret-looking column name.
 | `gh_rate_state` | Last known GitHub rate headers and `blocked_until` per (account, resource) |
 | `gh_write_slots` | Next allowed write time per installation (write spacing across instances) |
 | `gh_etag_cache` | ETags and bodies for polled reads per (account, URL key) |
+| `server_settings` | Owner settings as key and JSON value (B-2: the extra production names; later cards add theirs) |
 
 Login store (A-3a, `createDb(sql)` in `src/db.js`): codes, access tokens, refresh credentials and client secrets are stored
 as SHA-256 hashes only; a code is deleted as it is consumed (single use); refresh is one atomic `UPDATE` on the same row for
@@ -127,6 +128,14 @@ refuse what the connection's mode forbids (a production change on a preview conn
 needs confirmation -> claim the request key (`change_log_request_once`, a unique index; an identical request in the same 10 minutes is a replay) -> send once ->
 read back and compare -> finish the row (inverse stored for undo). Refusals and previews are logged; a definite GitHub "no" frees the key, an uncertain outcome keeps it.
 Tests for any write tool use `test/helpers/write-contract.js` (nine checks through every door).
+
+### Production guard (B-2)
+
+`src/tools/production-guard.js` decides what is production: an organization or user scope, tags, releases, repository settings, environments (by name, required
+reviewers or wait timer), and refs (names, project-profile patterns, the default branch, a protected branch, any branch a ruleset applies to). Built-in names are
+`production`, `prod`, `live`; the owner can only add more (`server_settings`). A failed read counts as production. The gate `productionEnabledGate` then refuses a
+production change on a production connection unless the account's switch is on. The switch turns on in two steps: `github_enable_production` creates a single-use
+10-minute waiting request (`setup_states`, purpose `enable_production`); the passphrase on the setup page consumes it. `github_disable_production` turns it off at once.
 
 ## GitHub App permissions
 

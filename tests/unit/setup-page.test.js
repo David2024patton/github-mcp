@@ -426,3 +426,71 @@ describe('the page HTML', () => {
     expect(page).not.toContain('<img');
   });
 });
+
+describe('turning production on (B-2, step 2)', () => {
+  const ask = (t, ttlSeconds = 600) => t.db.createSetupState({ state: crypto.randomBytes(32).toString('base64url'), purpose: 'enable_production', accountHint: 'example-org', ttlSeconds });
+
+  it('confirms a waiting request with the passphrase, turns production on, and logs it', async () => {
+    const t = await build();
+    await withApp(t);
+    await ask(t);
+    const res = await t.post({ action: 'confirm-production', login: 'example-org' });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('Production is now ON for example-org');
+    expect((await t.db.getAccount('example-org')).production_enabled).toBe(true);
+    noSecrets(res);
+  });
+  it('the waiting request is single-use', async () => {
+    const t = await build();
+    await withApp(t);
+    await ask(t);
+    await t.post({ action: 'confirm-production', login: 'example-org' });
+    await t.db.setProductionEnabled('example-org', false);
+    const again = await t.post({ action: 'confirm-production', login: 'example-org' });
+    expect(again.statusCode).toBe(409);
+    expect((await t.db.getAccount('example-org')).production_enabled).not.toBe(true);
+  });
+  it('without a waiting request nothing changes', async () => {
+    const t = await build();
+    await withApp(t);
+    const res = await t.post({ action: 'confirm-production', login: 'example-org' });
+    expect(res.statusCode).toBe(409);
+    expect((await t.db.getAccount('example-org')).production_enabled).not.toBe(true);
+  });
+  it('an expired request does not count', async () => {
+    const t = await build();
+    await withApp(t);
+    await ask(t, -5);
+    expect((await t.post({ action: 'confirm-production', login: 'example-org' })).statusCode).toBe(409);
+  });
+  it('a wrong passphrase leaves the request in place and production off', async () => {
+    const t = await build();
+    await withApp(t);
+    await ask(t);
+    const res = await t.post({ action: 'confirm-production', login: 'example-org', passphrase: 'wrong-wrong-wrong' });
+    expect(res.statusCode).toBe(401);
+    expect(await t.db.hasPendingSetupState('enable_production', 'example-org')).toBe(true);
+  });
+  it('rejects bad or unknown account names, and a preview deployment', async () => {
+    const t = await build();
+    await withApp(t);
+    expect((await t.post({ action: 'confirm-production', login: 'bad-' })).statusCode).toBe(400);
+    expect((await t.post({ action: 'confirm-production', login: 'nobody' })).statusCode).toBe(404);
+    const preview = await build({ env: { ...PROD, VERCEL_ENV: 'preview' } });
+    await preview.open();
+    expect((await preview.post({ action: 'confirm-production', login: 'example-org' })).statusCode).toBe(403);
+  });
+  it('saves extra production names, keeps the built-in ones, and refuses bad names', async () => {
+    const t = await build();
+    await t.open();
+    const ok = await t.post({ action: 'set-production-names', environments: 'staging-live, eu-prod', branches: 'release/*' });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.body).toContain('eu-prod');
+    expect(ok.body).toContain('production');
+    const bad = await t.post({ action: 'set-production-names', environments: 'bad name!', branches: '' });
+    expect(bad.statusCode).toBe(400);
+    expect(bad.body).toContain('not a valid environment name');
+    const status = await t.post({ action: 'status' });
+    expect(status.body).toContain('eu-prod');
+  });
+});

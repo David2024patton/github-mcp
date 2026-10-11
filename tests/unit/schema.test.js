@@ -5,12 +5,12 @@ import { createFakeDb } from '../../test/helpers/fake-db.js';
 afterEach(() => { vi.unstubAllEnvs(); });
 
 describe('foundation schema constants', () => {
-  it('lists the 13 BATCH-A tables, frozen, without duplicates', () => {
-    expect(SCHEMA_TABLES).toHaveLength(13);
-    expect(new Set(SCHEMA_TABLES).size).toBe(13);
+  it('lists the 14 tables (13 from BATCH-A and the owner settings), frozen, without duplicates', () => {
+    expect(SCHEMA_TABLES).toHaveLength(14);
+    expect(new Set(SCHEMA_TABLES).size).toBe(14);
     expect(Object.isFrozen(SCHEMA_TABLES)).toBe(true);
     expect(SCHEMA_TABLES[0]).toBe('gh_apps');
-    expect(SCHEMA_TABLES.at(-1)).toBe('gh_etag_cache');
+    expect(SCHEMA_TABLES.at(-1)).toBe('server_settings');
   });
 
   it('names the per-connection fields every token refresh copies', () => {
@@ -46,7 +46,7 @@ describe('createDb', () => {
     expect(() => createDb()).toThrow('DATABASE_URL is not configured. Set it in the server environment.');
   });
 
-  it('runs one static statement per call: 13 tables and 2 indexes, all IF NOT EXISTS, nothing destructive', async () => {
+  it('runs one static statement per call: 14 tables and 2 indexes, all IF NOT EXISTS, nothing destructive', async () => {
     const statements = [];
     const sql = async (strings, ...values) => {
       expect(values).toEqual([]);
@@ -54,7 +54,7 @@ describe('createDb', () => {
       return [];
     };
     await createDb(sql).initSchema();
-    expect(statements).toHaveLength(15);
+    expect(statements).toHaveLength(16);
     const created = statements.filter((s) => /^CREATE TABLE IF NOT EXISTS /.test(s)).map((s) => s.match(/^CREATE TABLE IF NOT EXISTS (\w+)/)[1]);
     expect(created).toEqual([...SCHEMA_TABLES]);
     expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS change_log_request_key /.test(s))).toHaveLength(1);
