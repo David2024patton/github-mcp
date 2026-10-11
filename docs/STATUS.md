@@ -25,6 +25,10 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-11 — G-2 part 1, check, artifact and cache reads (PR #42):** `github_check_get_ci_state` (the Batch E helper as a tool: each check and status, required or not, overall green / red / pending / unknown), `github_check_get_run` (with annotations), `github_artifact_list`, `github_artifact_get_link` (link only, never the file), `github_cache_list`. Creating checks and statuses and deleting artifacts/caches follow in part 2.
+
+**2026-10-11 — G-1 part 2, Actions changes (PR #41):** `github_actions_set_workflow_enabled`, `_dispatch` (returns the run; production when the workflow file deploys to a production environment, or cannot be read), `_rerun`, `_cancel_run` (force needs confirm), `_delete_run`, `_review_pending_deployment` (owner's own sign-in). G-1 is complete.
+
 **2026-10-11 — G-1 part 1, Actions reads (PR #39):** `github_actions_list_workflows/list_runs/get_run`, `github_actions_get_job_log` and `_get_run_logs_summary` (short form only: failed steps first, error lines, last lines; long encoded text never returned), `_list_pending_deployments`. Starting, rerunning, cancelling and approving follow in part 2.
 
 **2026-10-11 — E-3 part 2, review changes (PR #38):** `github_review_create/submit/dismiss`, `github_review_reply`, `github_review_resolve_thread` (also reopens; no-op when already in that state), `github_review_request_reviewers`. Messages reaching outsiders ask first; an account approving its own pull request gets a plain explanation. E-3 is complete.

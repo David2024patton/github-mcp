@@ -17,7 +17,9 @@ describe('tool registry', () => {
       'github_pr_create', 'github_pr_update', 'github_pr_close', 'github_pr_set_draft', 'github_pr_update_branch',
       'github_review_list', 'github_review_list_threads', 'github_review_list_comments',
       'github_review_create', 'github_review_submit', 'github_review_dismiss', 'github_review_reply', 'github_review_resolve_thread', 'github_review_request_reviewers',
-      'github_actions_list_workflows', 'github_actions_list_runs', 'github_actions_get_run', 'github_actions_get_job_log', 'github_actions_get_run_logs_summary', 'github_actions_list_pending_deployments'];
+      'github_actions_list_workflows', 'github_actions_list_runs', 'github_actions_get_run', 'github_actions_get_job_log', 'github_actions_get_run_logs_summary', 'github_actions_list_pending_deployments',
+      'github_actions_set_workflow_enabled', 'github_actions_dispatch', 'github_actions_rerun', 'github_actions_cancel_run', 'github_actions_delete_run', 'github_actions_review_pending_deployment',
+      'github_check_get_ci_state', 'github_check_get_run', 'github_artifact_list', 'github_artifact_get_link', 'github_cache_list'];
     expect(registry.tools.map((t) => t.name)).toEqual(names);
     expect(Object.keys(registry.handlers)).toEqual(names);
     for (const tool of registry.tools) expect(tool.name).toMatch(/^github_[a-z_]+$/);

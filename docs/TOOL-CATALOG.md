@@ -3,7 +3,7 @@
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
-tool merges, its Card cell gains `built #<PR>`. Built so far: **87 tools** (`github_search_tools`, `github_describe_tool`, `github_call`, `github_batch`, `github_get_result`, `github_check_permissions`, `github_rate_status`, `github_where_is_setting`, `github_whoami`, `github_list_accounts`, `github_list_protected_resources`, `github_list_connections`, `github_recent_changes`, `github_enable_production`, `github_disable_production`, `github_set_spend_limit`, `github_set_default_account`, `github_revoke_connection`, `github_repo_list`, `github_repo_get`, `github_repo_find`, `github_repo_get_insights`, `github_repo_get_traffic`, `github_repo_list_activity`, `github_repo_get_custom_properties`, `github_repo_create`, `github_repo_create_from_template`, `github_repo_update_settings`, `github_repo_set_visibility`, `github_repo_set_default_branch`, `github_repo_rename`, `github_repo_set_archived`, `github_repo_transfer`, `github_repo_delete`, `github_repo_fork`, `github_repo_sync_fork`, `github_repo_set_custom_properties`, `github_repo_star`, `github_content_get`, `github_content_get_tree`, `github_content_get_archive_link`, `github_content_check_codeowners`, `github_commit_list`, `github_commit_get`, `github_commit_compare`, `github_commit_list_prs`, `github_git_get_ref`, `github_git_get_commit`, `github_content_put_file`, `github_content_delete_file`, `github_content_push_files`, `github_commit_comment`, `github_git_update_ref`, `github_branch_list`, `github_branch_get`, `github_branch_create`, `github_branch_rename`, `github_branch_delete`, `github_branch_merge`, `github_tag_list`, `github_tag_create`, `github_tag_delete`, `github_pr_list`, `github_pr_get`, `github_pr_get_diff`, `github_pr_list_files`, `github_pr_list_commits`, `github_review_list`, `github_review_list_threads`, `github_review_list_comments`, `github_review_create`, `github_review_submit`, `github_review_dismiss`, `github_review_reply`, `github_review_resolve_thread`, `github_review_request_reviewers`, `github_actions_list_workflows`, `github_actions_list_runs`, `github_actions_get_run`, `github_actions_get_job_log`, `github_actions_get_run_logs_summary`, `github_actions_list_pending_deployments`, `github_pr_create`, `github_pr_update`, `github_pr_close`, `github_pr_set_draft`, `github_pr_update_branch`) — the registry (`src/tools/index.js`) exists
+tool merges, its Card cell gains `built #<PR>`. Built so far: **98 tools** (`github_search_tools`, `github_describe_tool`, `github_call`, `github_batch`, `github_get_result`, `github_check_permissions`, `github_rate_status`, `github_where_is_setting`, `github_whoami`, `github_list_accounts`, `github_list_protected_resources`, `github_list_connections`, `github_recent_changes`, `github_enable_production`, `github_disable_production`, `github_set_spend_limit`, `github_set_default_account`, `github_revoke_connection`, `github_repo_list`, `github_repo_get`, `github_repo_find`, `github_repo_get_insights`, `github_repo_get_traffic`, `github_repo_list_activity`, `github_repo_get_custom_properties`, `github_repo_create`, `github_repo_create_from_template`, `github_repo_update_settings`, `github_repo_set_visibility`, `github_repo_set_default_branch`, `github_repo_rename`, `github_repo_set_archived`, `github_repo_transfer`, `github_repo_delete`, `github_repo_fork`, `github_repo_sync_fork`, `github_repo_set_custom_properties`, `github_repo_star`, `github_content_get`, `github_content_get_tree`, `github_content_get_archive_link`, `github_content_check_codeowners`, `github_commit_list`, `github_commit_get`, `github_commit_compare`, `github_commit_list_prs`, `github_git_get_ref`, `github_git_get_commit`, `github_content_put_file`, `github_content_delete_file`, `github_content_push_files`, `github_commit_comment`, `github_git_update_ref`, `github_branch_list`, `github_branch_get`, `github_branch_create`, `github_branch_rename`, `github_branch_delete`, `github_branch_merge`, `github_tag_list`, `github_tag_create`, `github_tag_delete`, `github_pr_list`, `github_pr_get`, `github_pr_get_diff`, `github_pr_list_files`, `github_pr_list_commits`, `github_review_list`, `github_review_list_threads`, `github_review_list_comments`, `github_review_create`, `github_review_submit`, `github_review_dismiss`, `github_review_reply`, `github_review_resolve_thread`, `github_review_request_reviewers`, `github_actions_list_workflows`, `github_actions_list_runs`, `github_actions_get_run`, `github_actions_get_job_log`, `github_actions_get_run_logs_summary`, `github_actions_list_pending_deployments`, `github_actions_set_workflow_enabled`, `github_actions_dispatch`, `github_actions_rerun`, `github_actions_cancel_run`, `github_actions_delete_run`, `github_actions_review_pending_deployment`, `github_check_get_ci_state`, `github_check_get_run`, `github_artifact_list`, `github_artifact_get_link`, `github_cache_list`, `github_pr_create`, `github_pr_update`, `github_pr_close`, `github_pr_set_draft`, `github_pr_update_branch`) — the registry (`src/tools/index.js`) exists
 and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Since B-5 every result of these tools is shaped (`src/tools/util.js`) and failures are explained by `src/tools/errors.js`. Since B-6 a connection sees only the tools its profile allows (`tools/list` and by-name calls). Every write tool below will be built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
@@ -218,17 +218,17 @@ Card(s): G-1.
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_actions_list_workflows` | Workflows in a repository with state and file path | — | C | I | B,Op | R | G-1 built #39 |
-| `github_actions_set_workflow_enabled` | Enable or disable a workflow | P·Prod* | C | I | B | F | G-1 |
-| `github_actions_dispatch` | Start a workflow (`workflow_dispatch`) on a ref with inputs; returns the run (API 2026-03-10) | P·Prod* | F | I | B,Op | E | G-1 |
+| `github_actions_set_workflow_enabled` | Enable or disable a workflow | P·Prod* | C | I | B | F | G-1 built #41 |
+| `github_actions_dispatch` | Start a workflow (`workflow_dispatch`) on a ref with inputs; returns the run (API 2026-03-10) | P·Prod* | F | I | B,Op | E | G-1 built #41 |
 | `github_actions_list_runs` | Runs by workflow, branch, event, status, actor, head SHA | — | C | I | B,Op | R | G-1 built #39 |
 | `github_actions_get_run` | One run: status, conclusion, jobs and steps, attempt, billable timing | — | C | I | B,Op | R | G-1 built #39 |
 | `github_actions_get_job_log` | A job's log: failed steps first, tail lines, error lines; never a raw base64 dump | — | F | I | B,Op | R | G-1 built #39 |
 | `github_actions_get_run_logs_summary` | Download a run's log archive server-side and return failing steps, error lines and annotations | — | F | I | B,Op | R | G-1 built #39 |
-| `github_actions_rerun` | Re-run a whole run, only its failed jobs, or one job | P·Prod* | C | I | B,Op | E | G-1 |
-| `github_actions_cancel_run` | Cancel a run (force-cancel needs confirm) | P | C | I | B,Op | E | G-1 |
-| `github_actions_delete_run` | Delete a run, or only its logs | C·D | C | I | Op | F | G-1 |
+| `github_actions_rerun` | Re-run a whole run, only its failed jobs, or one job | P·Prod* | C | I | B,Op | E | G-1 built #41 |
+| `github_actions_cancel_run` | Cancel a run (force-cancel needs confirm) | P | C | I | B,Op | E | G-1 built #41 |
+| `github_actions_delete_run` | Delete a run, or only its logs | C·D | C | I | Op | F | G-1 built #41 |
 | `github_actions_list_pending_deployments` | Runs waiting for an environment approval | — | N | I | Op | R | G-1 built #39 |
-| `github_actions_review_pending_deployment` | Approve or reject a waiting deployment | C·Prod* | N | U | Op | F | G-1 |
+| `github_actions_review_pending_deployment` | Approve or reject a waiting deployment | C·Prod* | N | U | Op | F | G-1 built #41 |
 
 ## Checks, statuses, artifacts and caches (`github_check_*, github_status_*, github_artifact_*, github_cache_*`) — 10
 
@@ -236,15 +236,15 @@ Card(s): G-2.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_check_get_ci_state` | CI state at a commit or PR head: every check run and status, which are required by rules, overall green/red/pending | — | N | I | B,Op | R | G-2 |
-| `github_check_get_run` | One check run with output summary and annotations | — | C | I | B | R | G-2 |
+| `github_check_get_ci_state` | CI state at a commit or PR head: every check run and status, which are required by rules, overall green/red/pending | — | N | I | B,Op | R | G-2 built #42 |
+| `github_check_get_run` | One check run with output summary and annotations | — | C | I | B | R | G-2 built #42 |
 | `github_check_create_run` | Create a check run on a commit (GitHub App only) | P | C | I | B | E | G-2 |
 | `github_check_update_run` | Update or complete a check run | P | C | I | B | E | G-2 |
 | `github_status_create` | Set a commit status (pending/success/failure/error) with a context | P | C | I | B | E | G-2 |
-| `github_artifact_list` | Artifacts of a run or repository with size and expiry | — | C | I | B | R | G-2 |
-| `github_artifact_get_link` | Short-lived download link for an artifact (bytes never pass through chat) | — | F | I | B | R | G-2 |
+| `github_artifact_list` | Artifacts of a run or repository with size and expiry | — | C | I | B | R | G-2 built #42 |
+| `github_artifact_get_link` | Short-lived download link for an artifact (bytes never pass through chat) | — | F | I | B | R | G-2 built #42 |
 | `github_artifact_delete` | Delete an artifact | C·D | C | I | Op | E | G-2 |
-| `github_cache_list` | Actions caches and total cache usage for a repository | — | N | I | B,Op | R | G-2 |
+| `github_cache_list` | Actions caches and total cache usage for a repository | — | N | I | B,Op | R | G-2 built #42 |
 | `github_cache_delete` | Delete caches by key or ID | C | N | I | B | E | G-2 |
 
 ## Secrets and variables (`github_secret_*, github_variable_*`) — 7
