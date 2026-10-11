@@ -134,3 +134,12 @@ more than the login chose, and a refresh copies those settings forward unchanged
 such a row for codes and tokens alike, so a bug in a later endpoint cannot write one. Whether `production` is allowed stays
 in the login endpoint (A-3b), which can see `gh_accounts.production_enabled` and `VERCEL_ENV`. Also: the copied login
 primitives had a crash on an empty submitted passphrase; fixed in this copy and flagged for the source and the hub core.
+
+**2026-10-10 — Login handlers take an injected policy; the MCP endpoint refuses every call until Batch B (A-3b).** Stripe's
+"core" login handler hard-codes its own account table and modes, which would break the rule that `src/core/` imports nothing
+service-specific. Here the core handlers (`oauth-handlers`, `mcp-auth`, `mcp-server`) take a policy or function for everything
+service-specific and the GitHub rules sit in `src/oauth/policy.js`, so the hub can extract the core unchanged. `/api/mcp` lists the
+registry but its default dispatcher refuses every `tools/call`: with no safety layer yet, a tool registered early must not be able
+to run. Production connections are refused unless the deployment is the production one (A10) and, at login, unless every selected
+account has `production_enabled`; a production token presented to a preview deployment gets a plain 403 so a client does not loop
+on sign-in. The database schema is created once per server instance, not on every request.

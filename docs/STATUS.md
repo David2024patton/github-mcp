@@ -1,14 +1,15 @@
 # STATUS — current work, blockers and next action
 
-Updated 2026-10-10. **The foundation is built (A-1, PR #1), its database schema exists (A-2, PR #7) and the login store is built (A-3a, PR #8):** Node 24
+Updated 2026-10-10. **The foundation is built (A-1, PR #1), its database schema exists (A-2, PR #7) and the connector login is built (A-3a, PR #8; A-3b, PR #9):** Node 24
 package with a committed lockfile, a fake GitHub for tests, the check scripts, throwaway-Postgres database tests, CI with
-one `ci` merge gate, and `src/db.js` creating the 13 foundation tables and storing connector logins. No tools or endpoints exist yet. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
+one `ci` merge gate, `src/db.js` creating the 13 foundation tables and storing connector logins, and the OAuth endpoints and `/api/mcp` (zero tools). No tools exist yet; no deployment exists. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
 repositories.
 
 ## Next
 
-- **A-3b — connector login endpoints:** `docs/pr-cards/A-3.md` (READY; A-3a merged, #8). Branch `ai/<tool>/a-3b-login-endpoints`
-  from `main`. Then **A-4** (GitHub client, vendored descriptions, finders; card written at its start).
+- **A-4 — GitHub client, vendored OpenAPI and GraphQL descriptions, operation finders, rate discipline:** card to be written at its
+  start (`work-index.json`, `docs/designs/BATCH-A.md` §1 A7–A9, §4 A-4). Branch `ai/<tool>/a-4-github-client` from `main`.
+  Then A-5 (setup page, Apps from manifests, credential store; needs IN-02…IN-05 to try for real).
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).
 
@@ -23,6 +24,17 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-10 — A-3b connector login endpoints (PR #9):** `api/oauth/{register,authorize,token}`, `api/well-known/*` (rewritten
+from `/.well-known/*` by `vercel.json`), `api/mcp.js`, `api/index.js`. Contract-generic `src/core/{http,oauth-handlers,mcp-auth,
+mcp-server}.js` take an injected policy; the GitHub rules are in `src/oauth/policy.js`: the authorize page lists the accounts
+(checkboxes + default), mode, profile, listing and the passphrase; **production is refused unless the deployment is the production
+one and every selected account has `production_enabled`**; settings are examined only after the passphrase is right; a missing
+`ADMIN_PASSPHRASE` fails closed; the code → token grant copies every connection setting from the issuing row, refresh rotates on the
+same row. `/api/mcp` authenticates the bearer and lists the registry's tools (none yet); every `tools/call` is refused by the default
+dispatcher until Batch B supplies a guarded one. `src/runtime.js` creates the schema once per instance. Tests: handler round trips,
+production refusals, lockout, escaping, MCP over a local HTTP server, and one full flow on throwaway Postgres.
+Nothing was run against a deployed server (none exists; IN-02).
 
 **2026-10-10 — A-3a connector login store (PR #8):** `src/core/oauth.js` (copied from `stripe-mcp` @ 90a49c0: token hashing,
 PKCE S256, redirect validation, client address, 5-failures-in-15-minutes lockout) with one fix — an empty submitted
@@ -76,7 +88,7 @@ first card A-1.
 ## Blocked
 
 Nothing in engineering. IN-00 and IN-01 answered; owner inputs IN-02 … IN-13 (`OWNER-INPUTS.md`; IN-14 answered: not needed)
-are open and none blocks A-3b … A-4.
+are open and none blocks A-4.
 
 ## Unverified (each has an owner card)
 
