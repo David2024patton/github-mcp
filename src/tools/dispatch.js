@@ -4,8 +4,9 @@
 //  - read-only tools (`readOnlyHint`) run with the connection and database;
 //  - write tools (`defineWrite-v1`) run with, in addition, the credentials and the ordered guard gates; the write layer itself
 //    refuses a profile that may not change anything, an account outside the connection, and a missing change log or gate list.
-// Anything else answers "unknown tool". Profile-based hiding of tools is added in B-6.
+// Anything else answers "unknown tool", and so does a write tool the connection's profile does not include (B-6: hidden by name, not just unlisted).
 import { validateArgs } from '../core/validate.js';
+import { isToolVisible } from '../core/registry.js';
 import { shapeResult } from './util.js';
 
 const SECRET_SHAPES = [/\bgh[pousr]_[A-Za-z0-9]{8,}/, /\bgithub_pat_[A-Za-z0-9_]{8,}/, /-----BEGIN [A-Z ]*PRIVATE KEY-----/];
@@ -18,7 +19,7 @@ export function createDispatch({ env = process.env, now = Date.now, fetch = glob
     const handler = tool && Object.hasOwn(registry.handlers, name) ? registry.handlers[name] : null;
     const isWrite = tool?.writes === true && tool.writeContract === 'defineWrite-v1';
     const isRead = tool?.annotations?.readOnlyHint === true && tool.writes !== true;
-    if (!handler || (!isWrite && !isRead)) return fail(`Unknown or unavailable tool: ${String(name).slice(0, 80)}`);
+    if (!handler || (!isWrite && !isRead) || !isToolVisible(tool, connection?.profile)) return fail(`Unknown or unavailable tool: ${String(name).slice(0, 80)}`);
     const problem = validateArgs(tool.inputSchema, args);
     if (problem) return fail(problem);
     let result;
