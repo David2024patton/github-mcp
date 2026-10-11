@@ -7,8 +7,8 @@ repositories.
 
 ## Next
 
-- **Batch D, D-2 part 2 — file and ref changes** (`docs/pr-cards/D-2.md`): `github_content_put_file`, `_delete_file`, `_push_files`, `github_commit_comment`, `github_git_update_ref`. Part 1 (ten reads) is in PR #30.
-- Batches A, B, C finished; Batch D cards D-2 and D-3 remain. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
+- **D-3 — branches and tags** (`docs/designs/BATCH-D.md` §3-§4; write the card first). D-2 (files, commits, git data) is built; Batch D then finishes.
+- Batches A, B, C finished; Batch D card D-3 remains. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).
@@ -24,6 +24,8 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-11 — D-2 part 2, file and ref changes (PR #31):** `github_content_put_file` and `_delete_file` (a branch must be named; the file's current version is read first and a change since you read it, `expectedSha`, is refused naming the new version; the undo restores the previous content, or deletes a file that did not exist), `github_content_push_files` (several files in one GitHub-signed commit, refused if the branch moved since `expectedHeadOid`), `github_commit_comment` (mentions of outsiders ask first), `github_git_update_ref` (moves a branch only from the commit it saw; shows how many commits a move would drop and refuses that without `force: true`; the default or a protected branch is production). Tests: 144 write-contract checks (feature and default branch variants, three doors, the real protected-resource rules) and 12 rule tests; every REST request and GraphQL document is validated against the vendored GitHub description.
 
 **2026-10-11 — D-2 part 1, code and commit reads (PR #30):** `github_content_get` (text, directory listing, binary files show size and link only, long text kept behind a handle), `github_content_get_tree` (real default branch, glob filter, GitHub's truncation reported), `github_content_get_archive_link` (the redirect link only), `github_content_check_codeowners` (line, column, kind and a plain fix; 'no CODEOWNERS file' is not 'no errors'), `github_commit_list/get/compare/list_prs` (patches cut at 1,500 characters per file), `github_git_get_ref`, `github_git_get_commit`. D-1 is merged (#27, #29).
 
