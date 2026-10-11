@@ -96,10 +96,11 @@ export function createFakeDb({ clock = Date.now } = {}) {
       for (const r of tokens.values()) if (r.client_id === clientId && r.kind === 'connector' && live(r) && r.accounts.includes(login)) { r.default_account = login; n += 1; }
       return n;
     },
-    async listChanges({ repo = null, tool = null, account = null, since = null, includePreviews = false, limit = 20 } = {}) {
+    async listChanges({ repo = null, tool = null, account = null, accounts = null, since = null, includePreviews = false, limit = 20 } = {}) {
+      const only = Array.isArray(accounts) ? accounts.map((a) => String(a).toLowerCase()) : null;
       const max = Math.min(Math.max(Number.isInteger(limit) ? limit : 20, 1), 100);
       const from = since ? new Date(since).getTime() : null;
-      return changes.filter((r) => (!repo || String(r.repo).toLowerCase() === repo.toLowerCase()) && (!tool || r.tool === tool) && (!account || String(r.account).toLowerCase() === account.toLowerCase())
+      return changes.filter((r) => (!repo || String(r.repo).toLowerCase() === repo.toLowerCase()) && (!tool || r.tool === tool) && (!account || String(r.account).toLowerCase() === account.toLowerCase()) && (!only || only.includes(String(r.account).toLowerCase()))
         && (from === null || r.at.getTime() >= from) && (includePreviews === true || r.dryRun === false)).sort((a, b) => b.id - a.id).slice(0, max)
         .map((r) => ({ ...changeViewOf(r), accessWidening: r.accessWidening === true }));
     },

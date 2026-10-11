@@ -364,10 +364,11 @@ export function createDb(sql = productionSql()) {
       return rows.length;
     },
     /** Change-log rows, newest first. Previews (dry runs) are left out unless asked for. */
-    async listChanges({ repo = null, tool = null, account = null, since = null, includePreviews = false, limit = 20 } = {}) {
+    async listChanges({ repo = null, tool = null, account = null, accounts = null, since = null, includePreviews = false, limit = 20 } = {}) {
+      const only = Array.isArray(accounts) ? accounts.map((a) => String(a).toLowerCase()) : null;
       const max = Math.min(Math.max(Number.isInteger(limit) ? limit : 20, 1), 100);
       const rows = await sql`SELECT * FROM change_log
-        WHERE (${repo}::text IS NULL OR lower(repo) = lower(${repo})) AND (${tool}::text IS NULL OR tool = ${tool}) AND (${account}::text IS NULL OR lower(account) = lower(${account}))
+        WHERE (${repo}::text IS NULL OR lower(repo) = lower(${repo})) AND (${tool}::text IS NULL OR tool = ${tool}) AND (${account}::text IS NULL OR lower(account) = lower(${account})) AND (${only}::text[] IS NULL OR lower(account) = ANY(${only}::text[]))
           AND (${since}::timestamptz IS NULL OR at >= ${since}::timestamptz) AND (${includePreviews === true} OR dry_run = FALSE) ORDER BY id DESC LIMIT ${max}`;
       return rows.map((r) => ({ ...changeView(r), accessWidening: r.access_widening === true }));
     },

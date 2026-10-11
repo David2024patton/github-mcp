@@ -75,6 +75,8 @@ export function runConnectionsContract(name, make) {
       expect((await db.listChanges({ repo: 'Example-Org/Other' })).map((c) => c.summary)).toEqual(['second']);
       expect((await db.listChanges({ tool: 'github_other_write' })).map((c) => c.summary)).toEqual(['second']);
       expect((await db.listChanges({ account: 'EXAMPLE-USER' })).map((c) => c.summary)).toEqual(['third']);
+      expect((await db.listChanges({ accounts: ['Example-User'] })).map((c) => c.summary)).toEqual(['third']);
+      expect((await db.listChanges({ accounts: [] })).length).toBe(0);
       expect((await db.listChanges({ limit: 1 })).map((c) => c.summary)).toEqual(['third']);
       expect((await db.listChanges({ limit: 0 })).length).toBe(1);
       expect((await db.listChanges({ since: new Date(Date.now() + 3600_000).toISOString() })).length).toBe(0);

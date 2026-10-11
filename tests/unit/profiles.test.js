@@ -45,7 +45,7 @@ describe('profiles decide which tools exist for a connection', () => {
   it('the real registry lists no write tool for read_only, fewer for everyday than full', () => {
     expect(toolsForProfile(registry, 'read_only').some((t) => t.writes)).toBe(false);
     const counts = profileCounts(registry);
-    expect(counts.read_only).toBeLessThan(counts.everyday);
+    expect(counts.read_only).toBeLessThanOrEqual(counts.everyday);
     expect(counts.everyday).toBeLessThan(counts.full);
     expect(counts.full).toBe(registry.tools.length);
     expect(toolsForProfile(registry, 'everyday').map((t) => t.name)).not.toContain('github_enable_production');

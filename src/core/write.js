@@ -49,6 +49,7 @@ export function marksOf(c) {
  * @param {{ production: 'always'|'when-target'|'never', accessWidening?: boolean, notifies?: boolean, spend?: boolean, confirm?: 'always'|'when-needed', cred?: string, profiles?: string[] }} spec.declarations
  * @param {(args, ctx) => { owner: string, repo?: string, ref?: string, environment?: string, scope: string }} spec.target
  * @param {(args, ctx, target) => Promise<any>} spec.read current state; may throw (a failed read counts as production)
+ * @param {(input) => number|Promise<number>} [spec.price] cents this change costs, from the price table (required when declarations.spend)
  * @param {(input) => object} spec.classify `{ production, accessWidening, notifies, spendCents }`, computed by the guard helpers
  * @param {(input) => string} spec.summarize one plain-English sentence naming the target
  * @param {(input) => Promise<any>} spec.apply sends the change; called at most once per request key
@@ -61,7 +62,7 @@ export function marksOf(c) {
  * @param {(ctx, args) => string} spec.requestKey stable key for this intent (10-minute bucket included)
  */
 export function defineWrite(spec) {
-  const { name, description, properties = {}, required = [], declarations, target, read, classify, summarize, apply, readAfter, verify,
+  const { name, description, properties = {}, required = [], declarations, target, read, classify, price, summarize, apply, readAfter, verify,
     inverse = () => null, present = ({ after }) => after, explain = () => 'The change was not completed.', classifyError = () => 'uncertain', requestKey } = spec;
   if (!NAME.test(name ?? '')) throw new TypeError('A valid tool name is required.');
   if (typeof description !== 'string' || !description) throw new TypeError(`${name}: a description is required.`);
@@ -69,6 +70,8 @@ export function defineWrite(spec) {
     if (typeof fn !== 'function') throw new TypeError(`${name}: ${label} must be a function.`);
   }
   if (!declarations || !PRODUCTION.includes(declarations.production)) throw new TypeError(`${name}: declarations.production must be one of ${PRODUCTION.join(', ')}.`);
+  if (declarations.spend && typeof price !== 'function') throw new TypeError(`${name}: a spend tool must give a price function (the cost is never taken from the arguments).`);
+  if (price !== undefined && typeof price !== 'function') throw new TypeError(`${name}: price must be a function.`);
   if (declarations.confirm !== undefined && !CONFIRM.includes(declarations.confirm)) throw new TypeError(`${name}: declarations.confirm must be one of ${CONFIRM.join(', ')}.`);
   const profiles = declarations.profiles ?? WRITE_PROFILES;
   if (!profiles.length || profiles.some((p) => !WRITE_PROFILES.includes(p))) throw new TypeError(`${name}: a write tool is available only in the everyday and full profiles.`);
@@ -77,7 +80,7 @@ export function defineWrite(spec) {
     spend: !!declarations.spend, confirm: declarations.confirm ?? 'when-needed', cred: declarations.cred ?? 'I', profiles: Object.freeze([...profiles]) });
 
   const tool = Object.freeze({
-    name, description, writes: true, writeContract: 'defineWrite-v1', declarations: decl, profiles: decl.profiles,
+    name, description, writes: true, writeContract: 'defineWrite-v1', priced: typeof price === 'function', declarations: decl, profiles: decl.profiles,
     inputSchema: {
       type: 'object',
       properties: { ...properties, dryRun: { type: 'boolean', description: 'Preview only; nothing is sent' }, confirm: { type: 'boolean', description: 'Set true after reading the preview' },
@@ -119,12 +122,22 @@ export function defineWrite(spec) {
     } catch {
       classification = normalizeClassification({ production: 'it could not be classified, so it is treated as production' }, { readFailed: true, declarations: decl });
     }
+    let priceFailed = false;
+    if (typeof price === 'function') {
+      try {
+        const cents = await price({ args, ctx, target: tgt, before, readFailed });
+        if (!Number.isSafeInteger(cents) || cents < 0) priceFailed = true;
+        else classification = { ...classification, spendCents: cents };
+      } catch { priceFailed = true; }
+    }
     const recordFields = () => ({ production: !!classification.production, accessWidening: !!classification.accessWidening, notifies: classification.notifies, spendCents: classification.spendCents || null });
     const refuse = async (by, reason) => {
       const text = `REFUSED (${by}): ${reason}`;
       try { await log({ summary: text, dryRun: true, confirmed: false, ...recordFields() }); } catch { /* the refusal still stands */ }
       return out({ done: false, status: 'refused_by_guard', refusedBy: by, error: reason, ...(classification.production ? { production: classification.production } : {}) }, true);
     };
+
+    if (priceFailed) return refuse('spend', 'The cost of this change could not be worked out, so it was refused.');
 
     // 1. The connection's mode. A preview connection never carries a production change; a production connection always confirms one.
     if (classification.production && connection.mode !== 'production') {

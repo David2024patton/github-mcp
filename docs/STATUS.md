@@ -7,7 +7,7 @@ repositories.
 
 ## Next
 
-- **B-7 — check-writes and declarations** (`docs/designs/BATCH-B.md` B7), then **B-8 — server tools** (`github_set_default_account`, `github_check_permissions`, `github_rate_status`, `github_list_connections`, `github_revoke_connection`, `github_recent_changes`, `github_where_is_setting`). Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
+- **B-8b — the rest of the server tools**: `github_check_permissions`, `github_rate_status`, `github_where_is_setting` (+ `src/data/dashboard-map.js`); then Batch C (small results, listings). Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).
@@ -23,6 +23,8 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-10 — B-7 check-writes + first half of B-8 (PR #23):** the write-safety check now compares every registered tool with its row in the tool catalog (production, access, notify, spend, confirm, credential, profile) and fails a tool with no row or a spend tool with no price function; `defineWrite` takes a `price` function that decides what a paid change costs (a failure refuses). New tools: `github_list_connections`, `github_recent_changes` (reads), `github_set_default_account`, `github_revoke_connection` (writes, full profile). `github_set_spend_limit` is now confirm-always and full-profile as the catalog said. Connection "last used" is recorded. Not built yet: B-8b.
 
 **2026-10-10 — A-5a credential store (PR #11):** every GitHub credential is encrypted at rest with AES-256-GCM (`TOKEN_ENCRYPTION_KEY`), each value sealed with a context that ties
 it to its account, App, installation and scope, so a copied ciphertext cannot be reused elsewhere; a wrong or missing key gives a plain message and never a secret. `createCredentials`
