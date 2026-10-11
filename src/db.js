@@ -19,7 +19,8 @@ export const SCHEMA_TABLES = Object.freeze([
   'one_time_secrets',
   'gh_rate_state',
   'gh_write_slots',
-  'gh_etag_cache'
+  'gh_etag_cache',
+  'server_settings'
 ]);
 
 /**
@@ -31,6 +32,8 @@ export const CONNECTION_FIELDS = Object.freeze(['default_account', 'accounts', '
 /** Cached bodies larger than this are not kept (A9). */
 export const ETAG_BODY_LIMIT_BYTES = 256 * 1024;
 
+/** What a single-use setup state can be for. `enable_production` is the first step of turning production on (B-2). */
+export const SETUP_PURPOSES = Object.freeze(['manifest', 'user_auth', 'enable_production']);
 export const CONNECTION_MODES = Object.freeze(['preview', 'production']);
 export const CONNECTION_PROFILES = Object.freeze(['read_only', 'everyday', 'full']);
 export const CONNECTION_LISTINGS = Object.freeze(['catalog', 'compact']);
@@ -246,6 +249,11 @@ export function createDb(sql = productionSql()) {
         stored_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         PRIMARY KEY (account, url_key)
       )`;
+      await sql`CREATE TABLE IF NOT EXISTS server_settings (
+        setting TEXT PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
     },
 
     /** Names of the tables in the connection's current schema, sorted. */
@@ -447,7 +455,7 @@ export function createDb(sql = productionSql()) {
 
     /** A pending setup step (manifest or user authorization) keyed by an unguessable state; used once, expires. */
     async createSetupState({ state, purpose, accountHint = null, codeVerifierEnc = null, ttlSeconds = 3600 }) {
-      if (!['manifest', 'user_auth'].includes(purpose)) throw new TypeError('Unknown setup purpose.');
+      if (!SETUP_PURPOSES.includes(purpose)) throw new TypeError('Unknown setup purpose.');
       if (typeof state !== 'string' || state.length < 32) throw new TypeError('A setup state must be an unguessable string.');
       const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
       await sql`INSERT INTO setup_states (state, purpose, account_hint, code_verifier_enc, expires_at)
@@ -459,6 +467,36 @@ export function createDb(sql = productionSql()) {
       const rows = await sql`DELETE FROM setup_states WHERE state = ${state} AND purpose = ${purpose} AND expires_at > now()
         RETURNING account_hint, code_verifier_enc`;
       return rows[0] ? { account_hint: rows[0].account_hint, code_verifier_enc: rows[0].code_verifier_enc } : null;
+    },
+
+    /** Atomic: consumes the newest unexpired state of a purpose for one account hint (the owner confirming a request a tool made). */
+    async consumeSetupStateByHint(purpose, accountHint) {
+      if (typeof accountHint !== 'string' || !accountHint) return null;
+      const rows = await sql`DELETE FROM setup_states WHERE state = (SELECT state FROM setup_states WHERE purpose = ${purpose}
+          AND lower(account_hint) = lower(${accountHint}) AND expires_at > now() ORDER BY expires_at DESC LIMIT 1)
+        RETURNING account_hint`;
+      return rows[0] ? { account_hint: rows[0].account_hint } : null;
+    },
+    /** Whether an unexpired state of that purpose exists for the account hint (does not consume it). */
+    async hasPendingSetupState(purpose, accountHint) {
+      const rows = await sql`SELECT 1 FROM setup_states WHERE purpose = ${purpose} AND lower(account_hint) = lower(${accountHint}) AND expires_at > now() LIMIT 1`;
+      return rows.length === 1;
+    },
+
+    /** An owner setting (JSON), or null. Settings hold names and numbers, never a credential. */
+    async getSetting(key) {
+      const rows = await sql`SELECT value FROM server_settings WHERE setting = ${key}`;
+      return rows[0] ? rows[0].value : null;
+    },
+    async setSetting(key, value) {
+      if (typeof key !== 'string' || !/^[a-z][a-z0-9_.]{0,62}$/.test(key)) throw new TypeError('A setting key is lowercase words.');
+      await sql`INSERT INTO server_settings (setting, value, updated_at) VALUES (${key}, ${JSON.stringify(value)}::jsonb, now())
+        ON CONFLICT (setting) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`;
+    },
+    /** Turns production on or off for one account. Returns false when the account is unknown. Used only by the setup page (on) and the disable tool (off). */
+    async setProductionEnabled(login, enabled) {
+      const rows = await sql`UPDATE gh_accounts SET production_enabled = ${enabled === true} WHERE lower(login) = lower(${login}) RETURNING login`;
+      return rows.length === 1;
     },
 
     async addOneTimeSecret({ id, account = null, kind, ciphertext, expiresAt }) {

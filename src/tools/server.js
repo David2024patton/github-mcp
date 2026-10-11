@@ -1,7 +1,10 @@
 // Tools that describe this server and the connection using them (A-5c). Read-only: they read the database and call no GitHub
 // endpoint. They show which credential types exist, never a credential, not even its last characters.
+import { randomBytes } from 'node:crypto';
 import { GITHUB_API_VERSION } from '../github/client.js';
-import { formatDenver } from '../github/errors.js';
+import { GithubClientError, formatDenver } from '../github/errors.js';
+import { defineGithubWrite } from './define-github-write.js';
+import { publicOrigin } from '../core/http.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
 const FIELDS = { type: 'array', items: { type: 'string', maxLength: 64 }, maxItems: 20, description: 'Only these fields of each account' };
@@ -71,7 +74,7 @@ async function listAccounts(args, ctx) {
 }
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
-export const tools = [
+const readTools = [
   {
     name: 'github_whoami',
     description: 'Accounts this connection can use, mode (PREVIEW/PRODUCTION), profile, credential types per account (I, U, K), API version, rate budget, spend limit.',
@@ -85,4 +88,56 @@ export const tools = [
     annotations: readOnly
   }
 ];
-export const handlers = { github_whoami: whoami, github_list_accounts: listAccounts };
+const readHandlers = { github_whoami: whoami, github_list_accounts: listAccounts };
+
+// ---- Production switch (B-2): ask here, confirm on the setup page; turning it off needs no passphrase. ----
+const PENDING_MINUTES = 10;
+const accountTarget = (args) => ({ owner: args.account, scope: 'server' });
+const readAccount = (args, ctx) => ctx.db.getAccount(args.account);
+const noAccount = (account) => new GithubClientError('outside_scope', `There is no connected account called "${account}".`, { account });
+const setupUrl = (ctx) => { try { return `${publicOrigin(ctx.env)}/api/github/setup`; } catch { return '/api/github/setup'; } };
+
+const enableProduction = defineGithubWrite({
+  name: 'github_enable_production',
+  description: 'Step 1 of turning production on for an account: you then confirm with your passphrase on the setup page.',
+  properties: { account: { type: 'string', maxLength: 39 } },
+  required: ['account'],
+  declarations: { production: 'never', accessWidening: true, confirm: 'always', profiles: ['full'] },
+  target: accountTarget,
+  read: readAccount,
+  classify: ({ args, before }) => (before ? { accessWidening: `production connections could then change ${args.account}\'s real repositories` } : {}),
+  summarize: ({ args, before }) => (before
+    ? `Start turning production ON for ${args.account} (today: ${before.production_enabled ? 'already on' : 'off'}). Nothing changes until you confirm on the setup page within ${PENDING_MINUTES} minutes`
+    : `There is no connected account called "${args.account}"`),
+  apply: async ({ args, ctx, before }) => {
+    if (!before) throw noAccount(args.account);
+    await ctx.db.createSetupState({ state: randomBytes(32).toString('base64url'), purpose: 'enable_production', accountHint: before.login, ttlSeconds: PENDING_MINUTES * 60 });
+  },
+  readAfter: async ({ args, ctx }) => ({ pending: await ctx.db.hasPendingSetupState('enable_production', args.account), enabled: (await ctx.db.getAccount(args.account))?.production_enabled === true }),
+  verify: ({ after }) => after.pending || after.enabled,
+  present: ({ args, ctx, after }) => (after.enabled
+    ? { production: 'already ON' }
+    : { next_step: `Open ${setupUrl(ctx)}, find "Turn on production", enter ${args.account} and your passphrase, within ${PENDING_MINUTES} minutes.`, expires_in_minutes: PENDING_MINUTES })
+});
+
+const disableProduction = defineGithubWrite({
+  name: 'github_disable_production',
+  description: 'Turn production OFF for an account at once; every production connection to it stops being able to change anything.',
+  properties: { account: { type: 'string', maxLength: 39 } },
+  required: ['account'],
+  declarations: { production: 'never', confirm: 'always', profiles: ['full'] },
+  target: accountTarget,
+  read: readAccount,
+  classify: () => ({}),
+  summarize: ({ args, before }) => (before ? `Turn production OFF for ${args.account} (today: ${before.production_enabled ? 'on' : 'already off'})` : `There is no connected account called "${args.account}"`),
+  apply: async ({ args, ctx, before }) => {
+    if (!before) throw noAccount(args.account);
+    await ctx.db.setProductionEnabled(args.account, false);
+  },
+  readAfter: async ({ args, ctx }) => (await ctx.db.getAccount(args.account))?.production_enabled === true,
+  verify: ({ after }) => after === false,
+  present: ({ args }) => ({ production: `OFF for ${args.account}. Turning it on again needs the setup page and your passphrase.` })
+});
+
+export const tools = [...readTools, enableProduction.tool, disableProduction.tool];
+export const handlers = { ...readHandlers, [enableProduction.tool.name]: enableProduction.handler, [disableProduction.tool.name]: disableProduction.handler };

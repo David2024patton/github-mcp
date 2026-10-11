@@ -2,7 +2,7 @@
 // schema, A-3a adds the connector login store. Service-independent in-memory fake of createDb(): it mirrors the behavior
 // of src/db.js (hashed storage, single-use codes, atomic refresh) and is held to the same contract suite
 // (test/contract/oauth-contract.js) as real PostgreSQL.
-import { SCHEMA_TABLES, ETAG_BODY_LIMIT_BYTES, checkConnection, connectionSettings, normalizeChange } from '../../src/db.js';
+import { SCHEMA_TABLES, SETUP_PURPOSES, ETAG_BODY_LIMIT_BYTES, checkConnection, connectionSettings, normalizeChange } from '../../src/db.js';
 import { hashToken } from '../../src/core/oauth.js';
 
 function changeViewOf(r) {
@@ -28,6 +28,7 @@ export function createFakeDb({ clock = Date.now } = {}) {
   const rates = new Map();
   const etags = new Map();
   const changes = [];
+  const settings = new Map();
   let changeId = 0;
   const DAY_MS = 24 * 60 * 60 * 1000;
   let attemptId = 0;
@@ -192,7 +193,7 @@ export function createFakeDb({ clock = Date.now } = {}) {
       for (const k of [...installTokens.keys()]) if (k.startsWith(`${installationId}\u0000`)) installTokens.delete(k);
     },
     async createSetupState({ state, purpose, accountHint = null, codeVerifierEnc = null, ttlSeconds = 3600 }) {
-      if (!['manifest', 'user_auth'].includes(purpose)) throw new TypeError('Unknown setup purpose.');
+      if (!SETUP_PURPOSES.includes(purpose)) throw new TypeError('Unknown setup purpose.');
       if (typeof state !== 'string' || state.length < 32) throw new TypeError('A setup state must be an unguessable string.');
       if (setupStates.has(state)) throw new Error('duplicate key value violates unique constraint "setup_states_pkey"');
       setupStates.set(state, { purpose, account_hint: accountHint, code_verifier_enc: codeVerifierEnc, expires_at: clock() + ttlSeconds * 1000 });
@@ -202,6 +203,28 @@ export function createFakeDb({ clock = Date.now } = {}) {
       if (!r || r.purpose !== purpose || r.expires_at <= clock()) return null;
       setupStates.delete(state);
       return { account_hint: r.account_hint, code_verifier_enc: r.code_verifier_enc };
+    },
+    async consumeSetupStateByHint(purpose, accountHint) {
+      if (typeof accountHint !== 'string' || !accountHint) return null;
+      const live = [...setupStates].filter(([, r]) => r.purpose === purpose && String(r.account_hint).toLowerCase() === accountHint.toLowerCase() && r.expires_at > clock())
+        .sort((a, b) => b[1].expires_at - a[1].expires_at);
+      if (!live.length) return null;
+      setupStates.delete(live[0][0]);
+      return { account_hint: live[0][1].account_hint };
+    },
+    async hasPendingSetupState(purpose, accountHint) {
+      return [...setupStates.values()].some((r) => r.purpose === purpose && String(r.account_hint).toLowerCase() === String(accountHint).toLowerCase() && r.expires_at > clock());
+    },
+    async getSetting(key) { return settings.has(key) ? structuredClone(settings.get(key)) : null; },
+    async setSetting(key, value) {
+      if (typeof key !== 'string' || !/^[a-z][a-z0-9_.]{0,62}$/.test(key)) throw new TypeError('A setting key is lowercase words.');
+      settings.set(key, structuredClone(value));
+    },
+    async setProductionEnabled(login, enabled) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r) return false;
+      r.production_enabled = enabled === true;
+      return true;
     },
     async addOneTimeSecret({ id, account = null, kind, ciphertext, expiresAt }) {
       if (oneTime.has(id)) throw new Error('duplicate key value violates unique constraint "one_time_secrets_pkey"');

@@ -122,7 +122,7 @@ describe('over the MCP endpoint', () => {
   let server;
   afterEach(async () => { if (server) await new Promise((resolve) => server.close(resolve)); server = null; });
 
-  it('lists the two tools and runs them with a real connector token', async () => {
+  it('lists the tools and runs the read-only ones with a real connector token', async () => {
     const t = await build();
     await t.db.createAccessToken({ accessToken: ACCESS, refreshToken: 'b'.repeat(60), clientId: 'c', defaultAccount: 'example-org', accounts: ['example-org'], mode: 'preview', profile: 'read_only', listing: 'compact' });
     const handler = createMcpHandler({ db: t.db, registry, env: ENV, toConnection: createGithubPolicy({ env: ENV }).toConnection, dispatch: createDispatch({ env: ENV }) });
@@ -145,7 +145,7 @@ describe('over the MCP endpoint', () => {
       return JSON.parse(text.split('\n').find((l) => l.startsWith('data:'))?.slice(5) ?? text);
     };
     const listed = await rpc('tools/list', {});
-    expect(listed.result.tools.map((x) => x.name)).toEqual(['github_whoami', 'github_list_accounts']);
+    expect(listed.result.tools.map((x) => x.name)).toEqual(['github_whoami', 'github_list_accounts', 'github_enable_production', 'github_disable_production']);
     const called = await rpc('tools/call', { name: 'github_list_accounts', arguments: {} });
     const out = JSON.parse(called.result.content[0].text);
     expect(out.accounts.map((a) => a.login)).toEqual(['example-org']);

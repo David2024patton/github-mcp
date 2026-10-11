@@ -10,6 +10,7 @@ import { buildManifest, isValidLogin, manifestFormUrl } from './app-manifest.js'
 import { bareOctokit } from './client.js';
 import { readBack } from './setup-readback.js';
 import { renderSetup, resultPage } from './setup-html.js';
+import { PRODUCTION_NAMES_KEY, cleanNames, productionNames } from '../tools/production-guard.js';
 
 const HTML = 'text/html; charset=utf-8';
 const CSP = "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://github.com; base-uri 'none'; frame-ancestors 'none'";
@@ -87,7 +88,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'status') {
       const accounts = [];
       for (const a of (await db.listAccounts()).slice(0, 10)) accounts.push(await readBack({ db, credentials, fetch }, a.login));
-      return page(200, { accounts });
+      return page(200, { accounts, productionNames: await productionNames(db) });
     }
     if (action === 'reveal') {
       if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
@@ -97,6 +98,8 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
           : page(410, { result: 'This one-time secret was used, expired, or does not exist.' });
       } catch { return page(400, { result: 'Unable to retrieve this secret.' }); }
     }
+    if (action === 'set-production-names') return await setProductionNames(p, page);
+    if (action === 'confirm-production') return await confirmProduction(p, page);
     if (!['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic'].includes(action)) return page(400, { result: 'Unknown action.' });
     if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
     if (!credentials.keyConfigured()) return page(503, { keyHelp: 'The server has no encryption key, so it will not store anything. Set TOKEN_ENCRYPTION_KEY (see docs/DEPLOY.md) and reload.' });
@@ -124,6 +127,30 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       return send(res, 303, '', HTML);
     }
     return await addToken(action, account, p, page);
+  }
+
+  /** Names the owner adds to the built-in production names. They can only widen what counts as production, never shrink the built-in list. */
+  async function setProductionNames(p, page) {
+    if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
+    const environments = cleanNames(p.environments, 'environment');
+    const branches = cleanNames(p.branches, 'branch');
+    if (environments.error || branches.error) return page(400, { result: environments.error || branches.error });
+    await db.setSetting(PRODUCTION_NAMES_KEY, { environments: environments.names, branches: branches.names });
+    return page(200, { result: 'Saved. These names now count as production in addition to the built-in ones.', productionNames: await productionNames(db) });
+  }
+
+  /** Step 2 of turning production on: the owner has asked Claude first (a pending request exists), and now proves it with the passphrase. */
+  async function confirmProduction(p, page) {
+    if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
+    if (!isValidLogin(p.login)) return page(400, { result: 'Enter a valid GitHub account name.' });
+    const row = await db.getAccount(p.login);
+    if (!row) return page(404, { result: 'That account is not set up on the server.' });
+    const pending = await db.consumeSetupStateByHint('enable_production', row.login);
+    if (!pending) return page(409, { result: `There is no waiting request for ${row.login}, or it expired (they last 10 minutes). Ask Claude to turn production on for ${row.login} first, then come back here.` });
+    await db.setProductionEnabled(row.login, true);
+    await db.recordChange({ account: row.login, mode: 'setup', tool: 'setup_confirm_production', target: row.login, summary: `Production turned ON for ${row.login} from the setup page`,
+      production: true, accessWidening: true, confirmed: true }).catch(() => {});
+    return page(200, { result: `Production is now ON for ${row.login}. Connections made in production mode can change its real repositories, always asking you first.` });
   }
 
   /** The two token boxes. A token is checked with GitHub before anything is stored, and only its last four characters are ever shown. */
