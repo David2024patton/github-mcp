@@ -148,9 +148,9 @@ Card(s): E-3.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_review_list` | Reviews on a PR (state, author, submitted at) | — | C | I | B,Op | R | E-3 built #PR |
-| `github_review_list_threads` | Review threads with resolved/outdated state, file and line, every comment (GraphQL) | — | N | I | B | R | E-3 built #PR |
-| `github_review_list_comments` | Inline review comments (REST), filterable by file | — | C | I | B | R | E-3 built #PR |
+| `github_review_list` | Reviews on a PR (state, author, submitted at) | — | C | I | B,Op | R | E-3 built #37 |
+| `github_review_list_threads` | Review threads with resolved/outdated state, file and line, every comment (GraphQL) | — | N | I | B | R | E-3 built #37 |
+| `github_review_list_comments` | Inline review comments (REST), filterable by file | — | C | I | B | R | E-3 built #37 |
 | `github_review_create` | Start or submit a review: comment, approve or request changes, with inline comments | P·M | C | I | B | E | E-3 |
 | `github_review_submit` | Submit a pending review | P·M | C | I | B | E | E-3 |
 | `github_review_dismiss` | Dismiss a review with a message | C·M | C | I | B | F | E-3 |
