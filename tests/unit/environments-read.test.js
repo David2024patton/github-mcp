@@ -65,8 +65,11 @@ describe('G-4 environment reads', () => {
     expect(await run(no, 'github_env_get', { ...R, environment: 'absent' })).toMatchObject({ not_found: 'absent' });
     const forbidden = await world();
     forbidden.gh.when(ONE).reply(403, { message: 'Forbidden' });
-    const res = await run(forbidden, 'github_env_get', { ...R, environment: 'production' });
-    expect(res.not_found).toBeUndefined();
-    expect(res.error).toBeDefined();
+    const dispatch = createDispatch({ credentials: forbidden.credentials, gates: [], fetch: forbidden.gh.fetch, now: forbidden.ctx.now });
+    const result = await dispatch({ registry, name: 'github_env_get', args: { ...R, environment: 'production' },
+      connection: forbidden.connection, db: forbidden.db });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/GitHub|permission|access|forbidden/i);
+    expect(result.content[0].text).not.toContain('not_found');
   });
 });
