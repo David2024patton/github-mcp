@@ -35,6 +35,9 @@ GitHub only as git commits pushed to an `ai/*` branch. Never copy source files t
    Do not restart work it lists as done.
 4. Read your card (`docs/pr-cards/<ID>.md`). If the roadmap says JIT (no card yet), write it first from the design
    (`docs/pr-cards/README.md`, 40–100 lines). Read only what the card's "Read only these" list says.
+   When preparing that card, use `docs/implementation-contracts/IMPLEMENTATION-DETAIL.md` and its unit's
+   `REMAINING-WORK.md` heading to record the exact edit/request/test map. While coding, reuse that packet;
+   do not re-read the full map or rediscover unchanged helpers each slice.
 
 ## 2. Never do these without Chris (AGENTS "Hard limits")
 
