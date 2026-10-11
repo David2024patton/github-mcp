@@ -7,7 +7,7 @@ repositories.
 
 ## Next
 
-- **Batch E — pull requests and reviews** (`docs/designs/BATCH-E.md`). E-1 is finished (reads #35 with the shared `ciState` helper; create/update/close/set_draft/update_branch #40). E-3 (review reads and changes) is built (PRs #37 and #38). E-2 is complete: exact-head merge tools (#46), plus list/create/append/unstack pull request stacks (#48). G-4 deployment reads are built (#51); deployment create/status writes are built (#52); G-4 branch/tag policies completed (#53); G-4 is complete. G-5 release metadata reads built in #54; guarded release create/update/delete built in #55; next: wire the checked public URL downloader into release uploads (#59); deletion #56, notes preview #57 and URL boundary #58 implemented. Batch D is finished.
+- **Batch E — pull requests and reviews** (`docs/designs/BATCH-E.md`). E-1 is finished (reads #35 with the shared `ciState` helper; create/update/close/set_draft/update_branch #40). E-3 (review reads and changes) is built (PRs #37 and #38). E-2 is complete: exact-head merge tools (#46), plus list/create/append/unstack pull request stacks (#48). G-4 deployment reads are built (#51); deployment create/status writes are built (#52); G-4 branch/tag policies completed (#53); G-4 is complete. G-5 release metadata reads built in #54; guarded release create/update/delete built in #55; next: G-5 COMPLETE after upload #59, deletion #56, notes #57 and secure URL boundary #58. Next: G-6 Pages and packages. Batch D is finished.
 - Batches A, B, C, D finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
@@ -24,6 +24,9 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-11 — G-5 asset upload (PR #59):** Authenticated binary upload to GitHub's exact release upload host with bounded public HTTPS source, duplicate/immutability/published-state protections, nine-contract checks and asset read-back. G-5 complete, G-6 next. No live asset changed.
+
 
 **2026-10-11 — G-5 public asset download boundary (PR #58):** Public HTTPS URLs only, pinned validated DNS A record, redirect and private-network refusal, streamed size/timeout caps. Unit fixtures prove denied metadata addresses, redirects and oversize responses. Integration into upload follows; no live download occurred.
 

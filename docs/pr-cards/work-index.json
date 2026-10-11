@@ -608,7 +608,7 @@
         "G-4"
       ],
       "card": "docs/pr-cards/G-5.md",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "migration": "none",
       "budget": 390,
       "units": [
@@ -621,7 +621,8 @@
         55,
         56,
         57,
-        58
+        58,
+        59
       ]
     },
     {

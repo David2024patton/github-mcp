@@ -110,7 +110,10 @@ export function makeFakeGitHub({ routes = [], baseUrl = 'https://api.github.com'
       body: parseBody(init.body),
       headers: lowerHeaders(init.headers)
     };
-    const hit = url.origin === base.origin
+    // Asset uploads are the only API calls made to the separate GitHub uploads host.
+    const trustedUpload = url.origin === 'https://uploads.github.com' && method === 'POST' &&
+      /^\/repos\/[^/]+\/[^/]+\/releases\/\d+\/assets$/.test(rawPath);
+    const hit = url.origin === base.origin || trustedUpload
       ? table.find((r) => r.method === method && r.regex.test(rawPath)) : undefined;
     if (!hit) {
       const record = { ...request, unmatched: true };
