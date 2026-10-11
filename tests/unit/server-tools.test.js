@@ -98,14 +98,15 @@ describe('the read-only dispatcher', () => {
     expect((await t.run('github_whoami', undefined)).isError).toBeUndefined();
   });
 
-  it('withholds a result that looks like a credential and hides internal errors', async () => {
+  it('hides anything shaped like a credential in a result and hides internal errors', async () => {
     const t = await build();
     const leaky = mergeNamespaces([{ tools: [{ name: 'github_leaky', description: 'x', inputSchema: { type: 'object', properties: {} }, annotations: { readOnlyHint: true } },
       { name: 'github_broken', description: 'x', inputSchema: { type: 'object', properties: {} }, annotations: { readOnlyHint: true } }],
     handlers: { github_leaky: async () => ({ value: 'ghs_FAKEinstallationtoken1' }), github_broken: async () => { throw new Error('postgres://user:pw@host'); } } }]);
     const a = await t.dispatch({ registry: leaky, name: 'github_leaky', args: {}, connection: t.connection, db: t.db });
-    expect(a.isError).toBe(true);
+    expect(a.isError).toBeUndefined();
     expect(a.content[0].text).not.toContain('ghs_');
+    expect(a.structuredContent.value).toBe('[hidden]');
     const b = await t.dispatch({ registry: leaky, name: 'github_broken', args: {}, connection: t.connection, db: t.db });
     expect(b.content[0].text).not.toContain('postgres');
   });
