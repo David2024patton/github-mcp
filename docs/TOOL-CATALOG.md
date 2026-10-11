@@ -110,15 +110,15 @@ Card(s): D-3.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_branch_list` | Branches with head SHA, protected flag and whether rules apply | — | F | I | B,Op | R | D-3 built #33 |
-| `github_branch_get` | One branch: head commit, protection, and every ruleset rule that applies (`GET /rules/branches/{branch}`) | — | C | I | B,Op | R | D-3 built #33 |
-| `github_branch_create` | New branch from any ref (default: the repo's default branch, not a guessed `main`) | P | F | I | B | E | D-3 built #33 |
-| `github_branch_rename` | Rename a branch (open PRs are retargeted by GitHub) | C·Prod* | C | I | B | F | D-3 built #33 |
-| `github_branch_delete` | Delete a branch (default branch always refused; protected needs production) | C·D·Prod* | F | I | B | E | D-3 built #33 |
-| `github_branch_merge` | Merge one branch into another directly (no PR) | P·Prod* | C | I | B | E | D-3 built #33 |
-| `github_tag_list` | Tags with their commits | — | C | I | B,Op | R | D-3 built #33 |
-| `github_tag_create` | Create a lightweight or annotated tag | C·Prod | N | I | B | F | D-3 built #33 |
-| `github_tag_delete` | Delete a tag | C·D·Prod | N | I | B | F | D-3 built #33 |
+| `github_branch_list` | Branches with head SHA, protected flag and whether rules apply | — | F | I | B,Op | R | D-3 built #34 |
+| `github_branch_get` | One branch: head commit, protection, and every ruleset rule that applies (`GET /rules/branches/{branch}`) | — | C | I | B,Op | R | D-3 built #34 |
+| `github_branch_create` | New branch from any ref (default: the repo's default branch, not a guessed `main`) | P | F | I | B | E | D-3 built #34 |
+| `github_branch_rename` | Rename a branch (open PRs are retargeted by GitHub) | C·Prod* | C | I | B | F | D-3 built #34 |
+| `github_branch_delete` | Delete a branch (default branch always refused; protected needs production) | C·D·Prod* | F | I | B | E | D-3 built #34 |
+| `github_branch_merge` | Merge one branch into another directly (no PR) | P·Prod* | C | I | B | E | D-3 built #34 |
+| `github_tag_list` | Tags with their commits | — | C | I | B,Op | R | D-3 built #34 |
+| `github_tag_create` | Create a lightweight or annotated tag | C·Prod | N | I | B | F | D-3 built #34 |
+| `github_tag_delete` | Delete a tag | C·D·Prod | N | I | B | F | D-3 built #34 |
 
 ## Pull requests (`github_pr_*`) — 15
 
