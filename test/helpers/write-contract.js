@@ -35,7 +35,8 @@ export async function makeWorld({ mode = 'preview', profile = 'everyday', accoun
   return { db, gh, credentials, connection, ctx };
 }
 
-const writes = (gh) => gh.calls.filter((c) => !['GET', 'HEAD'].includes(c.method));
+// A GraphQL query is a POST but changes nothing; only a mutation counts as a write.
+const writes = (gh) => gh.calls.filter((c) => !['GET', 'HEAD'].includes(c.method) && !(c.route === 'POST /graphql' && !/^\s*mutation\b/.test(String(c.body?.query ?? ''))));
 export const parse = (result) => result.structuredContent ?? JSON.parse(result.content[0].text);
 
 /** The doors that exist today: the handler itself, and the MCP dispatcher. Later batches add `github_call` and the HTTPS API. */
