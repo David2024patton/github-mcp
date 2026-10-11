@@ -22,7 +22,7 @@ const call = async (w, extra = {}) => parse(await doorsFor(def)[0].call(w, { ...
 const mutations = (w) => w.gh.calls.filter((x) => x.method === 'POST');
 runWriteContract({
   label: 'github_release_upload_asset', definition: def, args,
-  profile: 'full', production: false, needsConfirm: true,
+  profile: 'full', production: false, needsConfirm: false,
   arrange(gh, outcome) {
     gh.when(REL).reply(200, release);
     gh.when(UP).reply(201, uploaded);

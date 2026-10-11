@@ -7,7 +7,7 @@ const ASSET = 'GET /repos/{owner}/{repo}/releases/assets/{asset_id}';
 const DEL = 'DELETE /repos/{owner}/{repo}/releases/assets/{asset_id}';
 const file = { id: 7, name: 'build.zip', size: 512, download_count: 8 };
 const release = { id: 42, tag_name: 'v1', draft: true, immutable: false, assets: [file] };
-const def = { tool: assets.tools[0], handler: assets.handlers.github_release_delete_asset };
+const def = { tool: assets.tools.find((x) => x.name === 'github_release_delete_asset'), handler: assets.handlers.github_release_delete_asset };
 const args = { repo: 'hello', releaseId: 42, assetId: 7 };
 const sequence = (gh, route, bodies) => gh.when(route).replySequence(bodies.map((body) =>
   body === null ? { status: 404, body: { message: 'Not Found' } } : { status: 200, body }));

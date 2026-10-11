@@ -71,7 +71,7 @@ const uploaded = defineGithubWrite({
     sourceUrl: { type: 'string', minLength: 9, maxLength: 2048 },
     label: { type: 'string', maxLength: 255 } },
   required: ['repo', 'releaseId', 'name', 'sourceUrl'],
-  declarations: { production: 'when-target', confirm: 'always', profiles: ['full'] },
+  declarations: { production: 'when-target', confirm: 'when-needed', profiles: ['full'] },
   target: (args, ctx) => ({ owner: ownerOf(args, ctx), repo: args.repo, scope: 'repo' }),
   read: async (args, ctx, t) => {
     publicHttpsUrl(args.sourceUrl);

@@ -29,7 +29,7 @@ export function publicHttpsUrl(input) {
   let url;
   try { url = new URL(input); } catch { throw new TypeError('Asset source must be a valid public HTTPS URL.'); }
   if (url.protocol !== 'https:' || url.port && url.port !== '443' ||
-      url.username || url.password || url.hash || isIP(url.hostname) ||
+      url.username || url.password || url.hash || url.hostname.startsWith('[') || isIP(url.hostname) ||
       blockedSuffix.test(url.hostname)) {
     throw new TypeError('Asset source must be public HTTPS on port 443, without credentials, IP literals or fragments.');
   }
