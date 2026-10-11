@@ -1,4 +1,4 @@
-import { beforeAll, afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, afterAll, beforeEach } from 'vitest';
 import { createDb } from '../../src/db.js';
 import { openIsolatedSchema, closeIsolatedSchema, neonShapedQuery, rawQuery } from '../../test/helpers/pg-neon-adapter.js';
 import { runChangeLogContract } from '../../test/contract/change-log-contract.js';
