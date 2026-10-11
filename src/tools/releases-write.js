@@ -14,7 +14,8 @@ const ROUTES = {
   one: 'GET /repos/{owner}/{repo}/releases/{release_id}',
   byTag: 'GET /repos/{owner}/{repo}/releases/tags/{tag}',
   update: 'PATCH /repos/{owner}/{repo}/releases/{release_id}',
-  del: 'DELETE /repos/{owner}/{repo}/releases/{release_id}'
+  del: 'DELETE /repos/{owner}/{repo}/releases/{release_id}',
+  notes: 'POST /repos/{owner}/{repo}/releases/generate-notes'
 };
 const target = (args, ctx) => ({ owner: ownerOf(args, ctx), repo: args.repo, scope: 'repo', kind: 'release' });
 const path = (t, id) => ({ owner: t.owner, repo: t.repo, ...(id ? { release_id: id } : {}) });
@@ -40,16 +41,31 @@ const create = defineGithubWrite({
     name: { type: 'string', maxLength: 250 }, body: TEXT,
     targetCommitish: { type: 'string', minLength: 1, maxLength: 250 },
     draft: { type: 'boolean' }, prerelease: { type: 'boolean' },
-    generateReleaseNotes: { type: 'boolean', description: 'Defaults to true.' } },
+    generateReleaseNotes: { type: 'boolean', description: 'Defaults to true.' },
+    previewGeneratedNotes: { type: 'boolean', description: 'Also calculate notes during the preview; no release is created.' } },
   required: ['repo', 'tag'], declarations: { ...declarations, notifies: true }, target,
-  read: async (args, ctx, t) => ({
-    existing: await missing(async () => (await (await octo(ctx, t.owner)).request(
-      ROUTES.byTag, { ...path(t), tag: args.tag })).data)
-  }),
+  read: async (args, ctx, t) => {
+    const client = await octo(ctx, t.owner);
+    const existing = await missing(async () => (await client.request(
+      ROUTES.byTag, { ...path(t), tag: args.tag })).data);
+    if (!args.previewGeneratedNotes || existing) return { existing };
+    if (args.body !== undefined || args.generateReleaseNotes === false) {
+      throw refusal('Generated-notes preview requires GitHub-generated notes, not an explicit body or disabled generation.');
+    }
+    // GitHub's generate-notes POST is a computation only: it does not create a release or tag.
+    const { data } = await client.request(ROUTES.notes, {
+      ...path(t), tag_name: args.tag,
+      ...(args.targetCommitish ? { target_commitish: args.targetCommitish } : {})
+    });
+    if (typeof data?.body !== 'string' || typeof data?.name !== 'string') {
+      throw refusal('GitHub did not return a usable notes preview; no release was created.');
+    }
+    return { existing, generated: { name: data.name, body: data.body } };
+  },
   classify: classifications,
   summarize: ({ args, before, target: t }) => before.existing
     ? `Release "${args.tag}" already exists in ${describe(t)}. It will not be duplicated.`
-    : `Create ${args.draft === false ? 'PUBLISHED' : 'draft'} release "${args.tag}" in ${describe(t)}, ${args.generateReleaseNotes === false ? 'without' : 'with'} generated notes. Publishing creates the tag and notifies watchers. This cannot be automatically undone.`,
+    : `Create ${args.draft === false ? 'PUBLISHED' : 'draft'} release "${args.tag}" in ${describe(t)}, ${args.generateReleaseNotes === false ? 'without' : 'with'} generated notes. Publishing creates the tag and notifies watchers. This cannot be automatically undone.${before.generated ? ` Current GitHub notes preview (may change before creation): ${before.generated.name} — ${before.generated.body.slice(0, 600)}` : ''}`,
   apply: async ({ args, before, ctx, target: t }) => {
     if (before.existing) throw refusal(`Release "${args.tag}" already exists.`);
     return (await octo(ctx, t.owner)).request(ROUTES.create, {

@@ -286,7 +286,7 @@ Card(s): G-5.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_release_list` | Releases with tag, draft/prerelease flags and asset counts | — | C | I | B,Op | R | G-5 built #54 |
 | `github_release_get` | One release by ID, tag or 'latest', with assets | — | C | I | B,Op | R | G-5 built #54 |
-| `github_release_create` | Create a release (draft by default) with generated notes; publishing creates the tag | C·Prod·M | F | I | B | F | G-5 built #55 |
+| `github_release_create` | Create a release (draft by default) with optional generated-notes preview; publishing creates the tag | C·Prod·M | F | I | B | F | G-5 built #55 |
 | `github_release_update` | Edit notes, name, flags; publish a draft | C·Prod·M | C | I | B | F | G-5 built #55 |
 | `github_release_delete` | Delete a release (Git tag preserved) | C·D·Prod | C | I | B | F | G-5 built #55 |
 | `github_release_upload_asset` | Attach a file to a release from a public URL (downloaded server-side, size-capped; no bytes in chat) | P·Prod* | F | I | B | F | G-5 |
