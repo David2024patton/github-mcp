@@ -7,7 +7,7 @@ repositories.
 
 ## Next
 
-- **Batch E — pull requests and reviews** (`docs/designs/BATCH-E.md`). E-1 is finished (reads #35 with the shared `ciState` helper; create/update/close/set_draft/update_branch #40). E-3 (review reads and changes) is built (PRs #37 and #38). E-2 is complete: exact-head merge tools (#46), plus list/create/append/unstack pull request stacks (#48). G-4 deployment reads are built (#51); deployment create/status writes are built (#52); next are separate branch/tag policy operations; G-4 remains IN_PROGRESS. Batch D is finished.
+- **Batch E — pull requests and reviews** (`docs/designs/BATCH-E.md`). E-1 is finished (reads #35 with the shared `ciState` helper; create/update/close/set_draft/update_branch #40). E-3 (review reads and changes) is built (PRs #37 and #38). E-2 is complete: exact-head merge tools (#46), plus list/create/append/unstack pull request stacks (#48). G-4 deployment reads are built (#51); deployment create/status writes are built (#52); G-4 branch/tag policies completed (#53); G-4 is complete. Next: G-5 releases. Batch D is finished.
 - Batches A, B, C, D finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
@@ -24,6 +24,9 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-11 — G-4 part 3c, environment deployment branch/tag patterns (PR #53):** `github_env_policy_create/update/delete` are separately guarded from environment PUT. Require custom-policy mode and verified prior policy state, prevent duplicates and incomplete list interpretation, classify existing environment protection, demand confirmation and report only verified read-back. Full-profile owner tools, production and access guards retained. G-4 complete. Next: G-5 release reads, lifecycle and assets.
+
 
 **2026-10-11 — G-4 part 3b, guarded deployments (PR #52):** `github_deploy_create` prevents GitHub auto-merges, preserves required checks, guards existing/proposed production targets and verifies a created ID; 202 cannot masquerade as a deployment. `github_deploy_set_status` derives environment/ref from GitHub, guards production and verifies the exact new status ID. Three-door write contracts and denial fixtures added. No live deployment or credentials. Next: separate branch/tag policies; G-4 remains IN_PROGRESS.
 

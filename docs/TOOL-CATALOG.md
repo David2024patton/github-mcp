@@ -261,7 +261,7 @@ Card(s): G-3. Covers Actions, Dependabot, Codespaces and agent secrets at reposi
 | `github_variable_set` | Create or update a variable | P·Prod* | F | I | B | E | G-3 built #44 |
 | `github_variable_delete` | Delete a variable | C·Prod* | C | I | B | E | G-3 built #44 |
 
-## Environments and deployments (`github_env_*, github_deploy_*`) — 7
+## Environments and deployments (`github_env_*, github_deploy_*`) — 10
 
 Card(s): G-4.
 
@@ -271,6 +271,9 @@ Card(s): G-4.
 | `github_env_get` | One environment in full (reviewers, wait timer, branch and tag policies, custom rules) | — | C | I | B,O | R | G-4 built #49 |
 | `github_env_save` | Create or update an environment, its protection rules and branch policies | C·Prod* | F | I | B,O | F | G-4 built #50 |
 | `github_env_delete` | Delete an environment (its secrets and variables go with it) | C·D·Prod* | C | I | O | F | G-4 built #50 |
+| `github_env_policy_create` | Add a custom branch/tag deployment pattern | C·A·Prod* | C | I | O | F | G-4 built #53 |
+| `github_env_policy_update` | Rename an existing deployment branch/tag pattern | C·A·Prod* | C | I | O | F | G-4 built #53 |
+| `github_env_policy_delete` | Remove a deployment branch/tag pattern | C·A·Prod* | C | I | O | F | G-4 built #53 |
 | `github_deploy_list` | Deployments with their latest status, by environment and ref | — | C | I | B,Op | R | G-4 built #51 |
 | `github_deploy_create` | Create a deployment for a ref and environment | C·Prod* | C | I | B | E | G-4 built #52 |
 | `github_deploy_set_status` | Add a status to a deployment (in progress, success, failure, inactive) | P·Prod* | C | I | B | E | G-4 built #52 |
