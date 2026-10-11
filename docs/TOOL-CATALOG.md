@@ -90,18 +90,18 @@ Card(s): D-2.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_content_get` | A file's text (size-capped, handle for big files) or a directory listing, at any ref | — | F | I | B,Op | R | D-2 built #30 |
 | `github_content_get_tree` | Whole-repo file list at a ref (recursive tree), filtered by a glob | — | C | I | B | R | D-2 built #30 |
-| `github_content_put_file` | Create or update one file with a commit (checks the file's current version first) | P·Prod* | F | I | B | E | D-2 built #31 |
-| `github_content_delete_file` | Delete one file with a commit | C·Prod* | C | I | B | E | D-2 built #31 |
-| `github_content_push_files` | Commit several file changes at once on a branch, signed by GitHub (GraphQL `createCommitOnBranch`, expected head checked) | P·Prod* | N | I | B | E | D-2 built #31 |
+| `github_content_put_file` | Create or update one file with a commit (checks the file's current version first) | P·Prod* | F | I | B | E | D-2 built #32 |
+| `github_content_delete_file` | Delete one file with a commit | C·Prod* | C | I | B | E | D-2 built #32 |
+| `github_content_push_files` | Commit several file changes at once on a branch, signed by GitHub (GraphQL `createCommitOnBranch`, expected head checked) | P·Prod* | N | I | B | E | D-2 built #32 |
 | `github_content_get_archive_link` | Short-lived download link for a tarball or zipball of a ref | — | N | I | B | R | D-2 built #30 |
 | `github_content_check_codeowners` | Problems GitHub found in a CODEOWNERS file on a branch (bad lines, unknown users or teams), in plain words | — | C | I | B,O | R | D-2 built #30 |
 | `github_commit_list` | Commits on a branch or path, by author or date | — | C | I | B,Op | R | D-2 built #30 |
 | `github_commit_get` | One commit: message, author, files changed with stats (patch capped) | — | C | I | B,Op | R | D-2 built #30 |
 | `github_commit_compare` | Compare two refs: ahead/behind, commits, files (patches capped) | — | C | I | B,Op | R | D-2 built #30 |
 | `github_commit_list_prs` | Pull requests that contain a commit | — | C | I | B,Op | R | D-2 built #30 |
-| `github_commit_comment` | Comment on a commit (optionally on a line) | P·M | C | I | B | E | D-2 built #31 |
+| `github_commit_comment` | Comment on a commit (optionally on a line) | P·M | C | I | B | E | D-2 built #32 |
 | `github_git_get_ref` | One ref (branch or tag pointer) and its target | — | C | I | B | R | D-2 built #30 |
-| `github_git_update_ref` | Move a branch to another commit; force moves need `force: true` and are refused on production branches without a production connection | C·Prod* | F | I | B | F | D-2 built #31 |
+| `github_git_update_ref` | Move a branch to another commit; force moves need `force: true` and are refused on production branches without a production connection | C·Prod* | F | I | B | F | D-2 built #32 |
 | `github_git_get_commit` | Low-level commit object (tree, parents, verification) | — | C | I | B | R | D-2 built #30 |
 
 ## Branches and tags (`github_branch_*, github_tag_*`) — 9
