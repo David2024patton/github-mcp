@@ -4,7 +4,7 @@ import { SUMMARY_TYPES } from './summaries.js';
 
 const NAME = /^github_[a-z][a-z0-9_]*$/;
 export const DETAIL_PROPERTY = { type: 'string', enum: ['summary', 'full'], description: 'summary (default) or the whole object' };
-export const FIELDS_PROPERTY = { type: 'array', items: { type: 'string', maxLength: 64 }, maxItems: 20, description: 'Only these fields (dotted paths such as user.login)' };
+export const FIELDS_PROPERTY = { type: 'array', items: { type: 'string', maxLength: 64 }, maxItems: 20 };
 
 /**
  * @param {object} spec
