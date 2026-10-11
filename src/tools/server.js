@@ -8,6 +8,7 @@ import { publicOrigin } from '../core/http.js';
 import { protectedList } from './protect-guard.js';
 import { dollars as money } from '../github/prices.js';
 import { spendStatus } from './spend-guard.js';
+import { RULES, capText, fitToBudget, listKeyOf, pageOfBody, projectFields } from '../core/result-rules.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
 const FIELDS = { type: 'array', items: { type: 'string', maxLength: 64 }, maxItems: 20, description: 'Only these fields of each account' };
@@ -130,6 +131,42 @@ async function recentChanges(args, ctx) {
   return { count: changes.length, note: args.includePreviews === true ? 'Previews and refusals are included.' : 'Previews and refusals are left out (set includePreviews to see them).', changes: pick(changes, args.fields, 'id') };
 }
 
+/** Pages through a big result kept behind a handle (C-1). Only the connection that made it can read it. */
+async function getResult(args, ctx) {
+  const owner = ctx.connection.client_id ?? ctx.connection.pass_id;
+  const row = owner ? await ctx.db.getResult(args.handle, String(owner)) : null;
+  if (!row) throw new TypeError('That result was not found. Results are kept for 24 hours and only for the connection that made them; run the search again.');
+  // A page that would not fit gets a smaller page size (halved until it does); page_info says which size was used, so paging stays consistent.
+  const keep = { alsoKeep: ['untrusted', 'page_info'], twins: ['_local', '_display'] };
+  const listName = listKeyOf(row.body) === '' ? 'items' : listKeyOf(row.body);
+  const build = (size) => {
+    const page = pageOfBody(row.body, { page: args.page, pageSize: size });
+    let value = page.value;
+    let unknown = [];
+    if (args.fields?.length) {
+      const inList = listName && Array.isArray(value[listName]);
+      const target = projectFields(inList ? value[listName] : value, args.fields, keep);
+      unknown = target.unknown;
+      value = inList ? { page_info: value.page_info, [listName]: target.value } : target.value;
+    }
+    const capped = capText(value, { offset: args.offset ?? 0 });
+    return { capped, unknown, fit: fitToBudget(capped.value) };
+  };
+  const wanted = args.pageSize ?? RULES.pageSize;
+  let size = wanted;
+  let { capped, unknown, fit } = build(size);
+  while (size > 1 && fit.fitted) { size = Math.ceil(size / 2); ({ capped, unknown, fit } = build(size)); }
+  const reduced = size !== wanted;
+  return {
+    handle: args.handle, what: row.summary, ...(typeof fit.value === 'object' && !Array.isArray(fit.value) ? fit.value : { value: fit.value }),
+    ...(unknown.length ? { unknown_fields: unknown.slice(0, 10) } : {}),
+    ...(capped.cut.length ? { text_cut: capped.cut.slice(0, 10), more_text: 'Ask for that one field with fields and add the number of characters shown to offset.' } : {}),
+    ...(reduced ? { note: `Pages were made smaller to fit (${size} per page). Keep using pageSize ${size} to continue.` } : {}),
+    ...(fit.fitted ? { note: 'This page was still large and was shortened. Use a smaller pageSize or fewer fields.', shown: fit.shown, of: fit.of } : {}),
+    expires: when(row.expires_at)
+  };
+}
+
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 const readTools = [
   {
@@ -169,9 +206,25 @@ const readTools = [
       additionalProperties: false
     },
     annotations: readOnly
+  },
+  {
+    name: 'github_get_result',
+    description: 'Read the rest of a big result kept behind a handle (res_…): a page at a time, only some fields, or more of a long text. Kept 24 hours.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        handle: { type: 'string', pattern: '^res_[A-Za-z0-9_-]{20,64}$', maxLength: 70 }, page: { type: 'integer', minimum: 1, maximum: 100000 },
+        pageSize: { type: 'integer', minimum: 1, maximum: RULES.maxPageSize, description: `Default ${RULES.pageSize}` }, fields: FIELDS,
+        offset: { type: 'integer', minimum: 0, maximum: 100000000, description: 'Start long text this many characters in' }
+      },
+      required: ['handle'],
+      additionalProperties: false
+    },
+    annotations: readOnly,
+    keepsResult: false
   }
 ];
-const readHandlers = { github_whoami: whoami, github_list_accounts: listAccounts, github_list_protected_resources: listProtectedResources, github_list_connections: listConnections, github_recent_changes: recentChanges };
+const readHandlers = { github_whoami: whoami, github_list_accounts: listAccounts, github_list_protected_resources: listProtectedResources, github_list_connections: listConnections, github_recent_changes: recentChanges, github_get_result: getResult };
 
 // ---- Production switch (B-2): ask here, confirm on the setup page; turning it off needs no passphrase. ----
 const PENDING_MINUTES = 10;

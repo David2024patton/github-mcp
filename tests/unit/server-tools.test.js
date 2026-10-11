@@ -147,7 +147,7 @@ describe('over the MCP endpoint', () => {
     };
     const listed = await rpc('tools/list', {});
     // the connection is read_only: no write tool is listed (B-6)
-    expect(listed.result.tools.map((x) => x.name)).toEqual(['github_whoami', 'github_list_accounts', 'github_list_protected_resources', 'github_list_connections', 'github_recent_changes', 'github_check_permissions', 'github_rate_status', 'github_where_is_setting']);
+    expect(listed.result.tools.map((x) => x.name)).toEqual(['github_whoami', 'github_list_accounts', 'github_list_protected_resources', 'github_list_connections', 'github_recent_changes', 'github_get_result', 'github_check_permissions', 'github_rate_status', 'github_where_is_setting']);
     const called = await rpc('tools/call', { name: 'github_list_accounts', arguments: {} });
     const out = JSON.parse(called.result.content[0].text);
     expect(out.accounts.map((a) => a.login)).toEqual(['example-org']);
