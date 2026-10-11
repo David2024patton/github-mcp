@@ -6,6 +6,7 @@ import { CONNECTION_FIELDS } from '../../src/db.js';
 import { requireMcpToken } from '../../src/core/mcp-auth.js';
 import { createMcpHandler, denyAll } from '../../src/core/mcp-server.js';
 import { mergeNamespaces } from '../../src/core/registry.js';
+import { registry as builtRegistry } from '../../src/tools/index.js';
 import { createGithubPolicy } from '../../src/oauth/policy.js';
 import { handleOAuth } from '../../src/oauth/routes.js';
 import indexHandler from '../../api/index.js';
@@ -194,7 +195,7 @@ describe('routes and home page', () => {
   it('serves a home page with the tool count and nothing secret', async () => {
     const res = await call(indexHandler, request('GET', {}));
     expect(res.statusCode).toBe(200);
-    expect(json(res)).toMatchObject({ name: 'Robinson GitHub MCP', tools: 0, endpoint: '/api/mcp', oauth: '/.well-known/oauth-authorization-server' });
+    expect(json(res)).toMatchObject({ name: 'Robinson GitHub MCP', tools: builtRegistry.tools.length, endpoint: '/api/mcp', oauth: '/.well-known/oauth-authorization-server' });
     expect(res.headers['Cache-Control']).toBe('no-store');
   });
 });

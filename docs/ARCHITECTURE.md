@@ -4,7 +4,7 @@ This file describes what **exists**, and is updated in the same PR that ships it
 system is designed to become is in `docs/designs/`; do not copy design text here before it is built.
 
 As of 2026-10-10 (A-3b, PR #9): **the repository tooling, the foundation database layer, the connector login and the
-`/api/mcp` endpoint (zero tools) are built; no tools exist yet and nothing is deployed.** Built: `package.json`, check scripts, test helpers (fake GitHub, fake database, throwaway
+`/api/mcp` endpoint (two read-only tools) are built; nothing is deployed.** Built: `package.json`, check scripts, test helpers (fake GitHub, fake database, throwaway
 Postgres), CI, `src/db.js` (lazy Neon client, `createDb(sql)`, the 13 foundation tables, the login store), `src/core/{oauth,http,oauth-handlers,mcp-auth,mcp-server}.js`, `src/oauth/{policy,routes}.js`, `src/runtime.js`, `api/`.
 
 ## Infrastructure
@@ -16,7 +16,7 @@ Postgres), CI, `src/db.js` (lazy Neon client, `createDb(sql)`, the 13 foundation
 | Dependencies | Pinned exactly, `package-lock.json` committed; `npm ci`. Runtime: `@modelcontextprotocol/sdk` 1.32.1, `@neondatabase/serverless` 1.2.0, `@octokit/core` 7.0.8, `@octokit/plugin-paginate-rest` 16.0.0, `@octokit/plugin-throttling` 11.0.5, `@octokit/plugin-retry` 8.1.1, `@octokit/auth-app` 8.3.1, `@octokit/webhooks` 14.2.0, `libsodium-wrappers` 0.8.4. Dev: `vitest` 5.0.3, `pg` 8.23.1, `eslint` 10.12.0, `ajv` 8.20.0, `ajv-formats` 3.0.1, `graphql` 17.0.2 |
 | GitHub Actions CI | `.github/workflows/ci.yml` on `pull_request` and push to `main`; `permissions: contents: read`; no secrets; no `pull_request_target`; `actions/checkout@v7`, `actions/setup-node@v7`. Jobs: `check` (`npm run check`: secret scan, docs check, index validation, catalog count, lint, write-safety, token budgets, core imports), `unit` (`npm test`), `db` (`npm run test:db` on a Postgres 17 service from `public.ecr.aws/docker/library/postgres:17`), `shapes` (`npm run test:shapes`); aggregate **`ci`** (`if: always()`) fails unless all four are `success` — the single merge gate. A push cancels the branch's running CI |
 | Test harness | `test/helpers/fake-github.js` (`makeFakeGitHub()` → `{ fetch, calls, unmatched, graphql, when, routes }`, passed to Octokit as `request.fetch`; A-1 route list, A-4 adds the vendored description and validation); `test/helpers/fake-db.js` (`createFakeDb({ clock })`: key/value rows, `initSchema()`/`listTables()`, and the login store; `seedAccounts()` is its test seam for `gh_accounts`); `test/contract/oauth-contract.js` (one login-store contract run against the fake and real Postgres); `test/helpers/pg-neon-adapter.js` (isolated `github_mcp_test_*` schema, Neon-shaped tagged queries); `test/contract/db-contract.js`; `scripts/local-postgres-test.sh` (CI service via `TEST_DATABASE_URL`, else a temporary local cluster; localhost only) |
-| Tool registry | `src/tools/index.js` exports `registry` from `src/core/registry.js` `mergeNamespaces` (duplicate names throw); 0 tools. `/api/mcp` lists the registry and refuses every call (`denyAll`) until Batch B supplies a guarded dispatcher |
+| Tool registry | `src/tools/index.js` exports `registry` from `src/core/registry.js` `mergeNamespaces` (duplicate names throw); 2 tools (`github_whoami`, `github_list_accounts`, `src/tools/server.js`). `/api/mcp` dispatches through `src/tools/dispatch.js`, which is default-deny: it runs only tools marked `readOnlyHint`, checks arguments against the tool schema and withholds any result shaped like a credential; Batch B replaces it with the full safety layer |
 | Vercel project | Not created (IN-02) |
 | Neon database | Not created (IN-02) |
 | GitHub Apps | None created (IN-04; the setup page exists, A-5b) |
@@ -78,7 +78,7 @@ on throwaway localhost Postgres.
 | `/api/oauth/register` | `api/oauth/register.js` | Client registration (1–8 distinct HTTPS or localhost redirect URIs); the secret is returned once, stored hashed |
 | `/api/oauth/authorize` | `api/oauth/authorize.js` | GET: account checkboxes + default, mode, profile, listing, passphrase. POST: passphrase (5 wrong in 15 minutes lock the address), then the choices; `production` only on the production deployment and only when every selected account has `production_enabled` |
 | `/api/oauth/token` | `api/oauth/token.js` | `authorization_code` (single-use code, PKCE, copies every connection setting from the code) and `refresh_token` (atomic rotation on the same row, same client) |
-| `/api/mcp` | `api/mcp.js` | Streamable HTTP MCP: bearer check (production token on a non-production deployment → 403), `tools/list` from the registry (empty), every `tools/call` refused until Batch B |
+| `/api/mcp` | `api/mcp.js` | Streamable HTTP MCP: bearer check (production token on a non-production deployment → 403), `tools/list` from the registry (2 tools), `tools/call` through the read-only dispatcher (anything not marked read-only is refused until Batch B) |
 | `/` | `api/index.js` | Name, status and the registry's tool count; nothing secret |
 
 Every OAuth or MCP failure that is not a clean refusal answers 503 `temporarily_unavailable` with no detail. Planned: the HTTPS tool API and manifest (Batch R).
@@ -88,6 +88,8 @@ Every OAuth or MCP failure that is not a clean refusal answers 503 `temporarily_
 | `/api/github/setup` | `api/github/[action].js` | The owner's private page (A-5b). GET shows it, or finishes an App install (`?installation_id=`, read back from GitHub as the App). POST actions, each behind same-origin, CSRF token and passphrase: `status`, `start-app`, `start-user-auth`, `add-fine-grained`, `add-classic`, `reveal`. Credential steps need the production deployment and `TOKEN_ENCRYPTION_KEY` |
 | `/api/github/manifest-callback` | same | GitHub returns the one-time code after App creation; converted once, keys stored encrypted, nothing secret shown |
 | `/api/github/user-callback` | same | Owner authorization (PKCE S256); token exchanged server-side and stored encrypted |
+
+| `/api/github/webhook` | `api/github/webhook.js` | GitHub App deliveries (A-5c). Raw body; `X-Hub-Signature-256` checked against the stored webhook secret of the App named in `X-GitHub-Hook-Installation-Target-ID` (bad or unknown → 401, nothing stored). Handles `installation` (created, deleted, suspend, unsuspend, new_permissions_accepted), `installation_repositories` and `github_app_authorization` (revoked → owner sign-in dropped); anything else is acknowledged and ignored. Installations on accounts that do not own the App are ignored |
 
 One dynamic function serves the three (`src/github/routes.js`) because Vercel Hobby allows 12 functions; unknown names answer 404, failures 503 without detail.
 

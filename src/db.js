@@ -370,7 +370,7 @@ export function createDb(sql = productionSql()) {
       const rows = await sql`SELECT login, account_type, label, credential_kind, app_id, installation_id, repository_selection,
           installation_status, installation_permissions, user_login, (user_token_enc IS NOT NULL) AS has_user_token, user_token_expires_at,
           (fine_grained_enc IS NOT NULL) AS has_fine_grained, fine_grained_last4, (classic_enc IS NOT NULL) AS has_classic, classic_scopes,
-          classic_last4, plan_name, production_enabled, is_default, is_scratch, checked_at
+          classic_last4, plan_name, production_enabled, spend_limit_cents, is_default, is_scratch, checked_at
         FROM gh_accounts ORDER BY is_default DESC, login`;
       return rows.map((r) => ({ ...r, app_id: r.app_id == null ? null : Number(r.app_id), installation_id: r.installation_id == null ? null : Number(r.installation_id) }));
     },

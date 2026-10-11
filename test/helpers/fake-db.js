@@ -130,7 +130,7 @@ export function createFakeDb({ clock = Date.now } = {}) {
         repository_selection: r.repository_selection, installation_status: r.installation_status, installation_permissions: structuredClone(r.installation_permissions),
         user_login: r.user_login, has_user_token: r.user_token_enc != null, user_token_expires_at: r.user_token_expires_at, has_fine_grained: r.fine_grained_enc != null,
         fine_grained_last4: r.fine_grained_last4, has_classic: r.classic_enc != null, classic_scopes: r.classic_scopes && [...r.classic_scopes], classic_last4: r.classic_last4,
-        plan_name: r.plan_name, production_enabled: r.production_enabled, is_default: r.is_default, is_scratch: r.is_scratch, checked_at: r.checked_at
+        plan_name: r.plan_name, production_enabled: r.production_enabled, spend_limit_cents: r.spend_limit_cents ?? 0, is_default: r.is_default, is_scratch: r.is_scratch, checked_at: r.checked_at
       })).sort((a, b) => Number(b.is_default) - Number(a.is_default) || a.login.localeCompare(b.login));
     },
     async setInstallation(login, { installationId, repositorySelection, permissions, status }) {

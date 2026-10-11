@@ -1,14 +1,13 @@
 # STATUS — current work, blockers and next action
 
-Updated 2026-10-10. **The foundation is built (A-1, PR #1), its database schema exists (A-2, PR #7), the connector login is built (A-3a, PR #8; A-3b, PR #9) the GitHub client exists (A-4, PR #10) the encrypted credential store exists (A-5a, PR #11) and the private setup page exists (A-5b, PR #12):** Node 24
+Updated 2026-10-10. **The foundation is built (A-1, PR #1), its database schema exists (A-2, PR #7), the connector login is built (A-3a, PR #8; A-3b, PR #9) the GitHub client exists (A-4, PR #10) the encrypted credential store exists (A-5a, PR #11) and the private setup page exists (A-5b, PR #12) and the App webhook and first two tools exist (A-5c, PR #13):** Node 24
 package with a committed lockfile, a fake GitHub for tests, the check scripts, throwaway-Postgres database tests, CI with
-one `ci` merge gate, `src/db.js` creating the 13 foundation tables and storing connector logins, the OAuth endpoints and `/api/mcp` (zero tools), and `src/github/client.js` (pinned API version, request keys, write spacing, rate blocks, ETag cache) with GitHub's REST and GraphQL descriptions vendored, and `src/github/credentials.js` (encrypted Apps, installation tokens, user authorization, pasted tokens) with one-time secrets. No tools exist yet; no deployment exists. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
+one `ci` merge gate, `src/db.js` creating the 13 foundation tables and storing connector logins, the OAuth endpoints and `/api/mcp` (two read-only tools, `github_whoami` and `github_list_accounts`), and `src/github/client.js` (pinned API version, request keys, write spacing, rate blocks, ETag cache) with GitHub's REST and GraphQL descriptions vendored, and `src/github/credentials.js` (encrypted Apps, installation tokens, user authorization, pasted tokens) with one-time secrets. Two read-only tools exist; no deployment exists. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
 repositories.
 
 ## Next
 
-- **A-5c — GitHub webhook and the first two tools (`github_whoami`, `github_list_accounts`):** card is
-  `docs/pr-cards/A-5.md` ("A-5c — to build"). Branch `ai/claude/a-5c-webhook-tools` from `main`. Then A-6 (DEPLOY.md), then Batch B. Real GitHub steps need IN-02…IN-05.
+- **A-6 — `docs/DEPLOY.md`** (Vercel project, Neon database, environment variables, how to make the encryption key, the exact setup-page steps, the permissions list). Then **Batch B** (the safety layer, which replaces the temporary read-only dispatcher). Real GitHub steps need IN-02…IN-05.
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).

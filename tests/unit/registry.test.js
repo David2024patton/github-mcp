@@ -5,9 +5,10 @@ import { registry } from '../../src/tools/index.js';
 const make = (name) => ({ tools: [{ name }], handlers: { [name]: async () => null } });
 
 describe('tool registry', () => {
-  it('starts empty until the first tool card lands', () => {
-    expect(registry.tools).toEqual([]);
-    expect(Object.keys(registry.handlers)).toEqual([]);
+  it('holds exactly the tools built so far, each with a handler and only github_ names', () => {
+    expect(registry.tools.map((t) => t.name)).toEqual(['github_whoami', 'github_list_accounts']);
+    expect(Object.keys(registry.handlers)).toEqual(['github_whoami', 'github_list_accounts']);
+    for (const tool of registry.tools) expect(tool.name).toMatch(/^github_[a-z_]+$/);
   });
   it('merges namespaces in order', () => {
     const merged = mergeNamespaces([make('github_a'), make('github_b')]);
