@@ -147,6 +147,7 @@ head. After the lower PR merges, sync the successor once onto final `main`.
 ## Step 10 — Waiting and stopping
 
 - External waits are checkpoints: check once, act on anything new, then build the immediate successor.
+- **No rapid polling:** two identical check snapshots without progress end the current polling interval. Do not call status a third time until a meaningful independent slice is complete or a real 60-second bounded wait has elapsed. In no-shell/REST sessions, inspect job steps or logs once when useful; work on successor files without pushing the running predecessor, and report a precise PR/head/check recovery point if no independent work remains. A connector timeout or GraphQL UNKNOWN response is ambiguous: re-fetch the branch SHA and file content before retrying writes, because the previous mutation may have succeeded.
 - A quiet bounded CI wait is allowed: one `sleep 60` per command, at most 15 checks (~15 minutes) in total, then
   treat it as pending and do other work. Each check is one REST call at the **exact head SHA**:
 

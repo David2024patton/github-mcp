@@ -29,7 +29,7 @@ sections below when a step names them.
    smallest justified edit with its test — or report a true blocker. Never guess unsafely to save a read.
 8. **Checkpoints:** one coherent work unit with its tests → local commit → update the card's resume note. Publish the
    complete, checked tree with one push (a turn that must end pushes what it has with an exact resume note; no-shell workspaces push each slice — SESSION-START §6).
-9. **External waits are checkpoints, not a loop** (PLAYBOOK Step 10).
+9. **External waits are checkpoints, not a loop** (PLAYBOOK Step 10). Never repeat unchanged CI-status queries in rapid succession. After two identical pending reads, switch to a useful successor slice, inspect new job evidence once, or leave an exact recovery note. Recheck only after independent work or a bounded wait. Never push into an unfinished run.
 10. **Two-lane conveyor:** lane A builds the current card and its immediate successor; lane B handles CI/review/merge of
     the predecessor. At most two unmerged implementation PRs in a chain.
 11. **Finish before starting.** Every session begins with `docs/SESSION-START.md` §0: an open PR of yours with red CI

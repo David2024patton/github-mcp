@@ -583,7 +583,7 @@
         "G-3"
       ],
       "card": "docs/pr-cards/G-4.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "none",
       "budget": 350,
       "units": [
@@ -595,7 +595,8 @@
         49,
         50,
         51,
-        52
+        52,
+        53
       ]
     },
     {
