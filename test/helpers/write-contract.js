@@ -24,11 +24,13 @@ export async function makeWorld({ mode = 'preview', profile = 'everyday', accoun
   const db = createFakeDb({ clock: () => NOW });
   await db.initSchema();
   const gh = makeFakeGitHub();
-  const credentials = createCredentials({ db, env: ENV, fetch: gh.fetch, now: () => NOW });
+  const real = createCredentials({ db, env: ENV, fetch: gh.fetch, now: () => NOW });
   for (const login of accounts) {
     await db.upsertAccount({ login, accountId: 1000 + login.length, accountType: 'Organization', label: login, credentialKind: 'fine_grained' });
-    await credentials.storeFineGrained(login, 'github_pat_FAKE0123456789abcdefghij', { expiresAt: null });
+    await real.storeFineGrained(login, 'github_pat_FAKE0123456789abcdefghij', { expiresAt: null });
   }
+  // Tools that act as the owner (credential U) get a fake user token; everything else uses the real credential store.
+  const credentials = { ...real, token: (request) => (request?.cred === 'U' ? 'ghu_FAKEusertoken0123456789' : real.token(request)) };
   const connection = Object.freeze({ client_id: 'client-1', default_account: accounts[0], accounts: Object.freeze([...accounts]), mode, profile, listing: 'catalog' });
   const ctx = { connection, db, credentials, fetch: gh.fetch, now: () => NOW, sleep: async () => {}, retryAfterBaseValue: 1, gates };
   return { db, gh, credentials, connection, ctx };
@@ -64,14 +66,15 @@ export function doorsFor(definition) {
  * @param {number} [o.spendCents]
  * @param {object} [o.quietArgs] arguments for the same tool that need no confirmation (for an `M` tool: only own people)
  * @param {boolean} [o.conveyor] allowed under a `pr-only` protected resource
+ * @param {'everyday'|'full'} [o.profile] the connection profile to test with (a full-profile tool needs 'full')
  * @param {(opts) => Function[]} [o.gatesFor] `({ protectedLevel, spendLimitCents })` -> gates; defaults to the fixture gates
  */
 export function runWriteContract({ label, definition, args, arrange, needsConfirm, production = false, notifies = [], accessWidening = false, spendCents = 0, quietArgs = null,
-  conveyor = false, gatesFor = ({ protectedLevel, spendLimitCents }) => [...(protectedLevel ? [protectionGate(protectedLevel)] : []), spendGate({ limitCents: spendLimitCents ?? 0 })] }) {
+  conveyor = false, profile = 'everyday', gatesFor = ({ protectedLevel, spendLimitCents }) => [...(protectedLevel ? [protectionGate(protectedLevel)] : []), spendGate({ limitCents: spendLimitCents ?? 0 })] }) {
   for (const door of doorsFor(definition)) {
     describe(`write contract: ${label} through ${door.name}`, () => {
       const world = async (options = {}, replies = 'ok') => {
-        const w = await makeWorld({ ...options, ...(options.gates === undefined ? { gates: gatesFor({ spendLimitCents: options.spendLimitCents ?? 100000 }) } : {}) });
+        const w = await makeWorld({ profile, ...options, ...(options.gates === undefined ? { gates: gatesFor({ spendLimitCents: options.spendLimitCents ?? 100000 }) } : {}) });
         arrange(w.gh, replies);
         return w;
       };

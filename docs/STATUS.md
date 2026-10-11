@@ -7,7 +7,7 @@ repositories.
 
 ## Next
 
-- **D-1 part 2 — repository changes** (`docs/pr-cards/D-1.md`): create, create from template, settings, visibility, default branch, rename, archive, transfer, delete, fork, sync fork, custom properties, star. Part 1 (the seven read tools) is in PR #27.
+- **D-2 — files, commits and git data** (`docs/designs/BATCH-D.md` §3-§4; write the card first), then **D-3 — branches and tags**. D-1 (repositories) is built; Batch D then finishes. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Batch D — repositories, code, branches and tags** (`docs/designs/BATCH-D.md`, cards D-1…D-3): the first GitHub area tools, built with `defineRead` / `defineGithubWrite`. Batches A, B and C are finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
@@ -24,6 +24,8 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-11 — D-1 part 2, repository changes (PR #28):** 13 write tools, all preview-first: create and create-from-template (private by default; public is an access change), update settings (merge options are production; description, topics and feature switches are not), set visibility (public = access change + production), default branch, rename, archive, transfer (your own sign-in, production, access change), delete (type the name back; production), fork and star (your own sign-in), sync fork, set custom properties. Tests: 276 write-contract checks (13 tools x 3 doors) and 8 rule tests, every request validated against the vendored GitHub description. Batch D now continues with D-2.
 
 **2026-10-11 — D-1 part 1, repository reads (PR #27):** `github_repo_list` (organization or user, archived filter, capped), `github_repo_get` (merge options, rules on the real default branch, custom properties), `github_repo_find` (searches only this connection's accounts; typed `user:`/`org:` qualifiers are stripped), `github_repo_get_insights` (GitHub's 202 'still computing' asked at most 3 times), `github_repo_get_traffic`, `github_repo_list_activity`, `github_repo_get_custom_properties`. Read tools now receive the credentials (before, only writes did). Tests: 13 new, 650 unit total green.
 
