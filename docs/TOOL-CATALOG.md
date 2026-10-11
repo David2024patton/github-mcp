@@ -151,12 +151,12 @@ Card(s): E-3.
 | `github_review_list` | Reviews on a PR (state, author, submitted at) | — | C | I | B,Op | R | E-3 built #37 |
 | `github_review_list_threads` | Review threads with resolved/outdated state, file and line, every comment (GraphQL) | — | N | I | B | R | E-3 built #37 |
 | `github_review_list_comments` | Inline review comments (REST), filterable by file | — | C | I | B | R | E-3 built #37 |
-| `github_review_create` | Start or submit a review: comment, approve or request changes, with inline comments | P·M | C | I | B | E | E-3 built #PR |
-| `github_review_submit` | Submit a pending review | P·M | C | I | B | E | E-3 built #PR |
-| `github_review_dismiss` | Dismiss a review with a message | C·M | C | I | B | F | E-3 built #PR |
-| `github_review_reply` | Reply in a review thread | P·M | C | I | B | E | E-3 built #PR |
-| `github_review_resolve_thread` | Resolve or unresolve a review thread (GraphQL) | P | N | I | B | E | E-3 built #PR |
-| `github_review_request_reviewers` | Request or remove reviewers (users or teams) | P·M | C | I | B | E | E-3 built #PR |
+| `github_review_create` | Start or submit a review: comment, approve or request changes, with inline comments | P·M | C | I | B | E | E-3 built #38 |
+| `github_review_submit` | Submit a pending review | P·M | C | I | B | E | E-3 built #38 |
+| `github_review_dismiss` | Dismiss a review with a message | C·M | C | I | B | F | E-3 built #38 |
+| `github_review_reply` | Reply in a review thread | P·M | C | I | B | E | E-3 built #38 |
+| `github_review_resolve_thread` | Resolve or unresolve a review thread (GraphQL) | P | N | I | B | E | E-3 built #38 |
+| `github_review_request_reviewers` | Request or remove reviewers (users or teams) | P·M | C | I | B | E | E-3 built #38 |
 
 ## Issues (`github_issue_*`) — 15
 
