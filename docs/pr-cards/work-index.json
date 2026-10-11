@@ -473,14 +473,17 @@
         "E-1"
       ],
       "card": "docs/pr-cards/E-2.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 450,
       "units": [
         "E-2"
       ],
       "readiness": "WRITE_CARD_AT_START",
-      "ownerInputs": []
+      "ownerInputs": [],
+      "pr": [
+        46
+      ]
     },
     {
       "id": "E-3",
