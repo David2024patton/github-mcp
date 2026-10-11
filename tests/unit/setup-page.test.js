@@ -1,0 +1,428 @@
+import crypto from 'node:crypto';
+import { describe, expect, it } from 'vitest';
+import { createCredentials } from '../../src/github/credentials.js';
+import { createSetupHandlers } from '../../src/github/setup-page.js';
+import { createOneTimeStore } from '../../src/core/one-time-secrets.js';
+import { readEncryptionKey } from '../../src/core/crypto.js';
+import { missingPermissions } from '../../src/github/setup-readback.js';
+import { MANIFEST_PERMISSIONS } from '../../src/github/app-manifest.js';
+import { renderSetup, resultPage } from '../../src/github/setup-html.js';
+import { createFakeDb } from '../../test/helpers/fake-db.js';
+import { makeFakeGitHub } from '../../test/helpers/fake-github.js';
+import { call, request } from '../../test/helpers/http-harness.js';
+
+// Every key is generated at run time; token-looking values are obvious fakes.
+const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+const PEM = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+const ORIGIN = 'https://github-mcp.example.test';
+const PASS = 'fixture-admin-passphrase';
+const KEY = crypto.randomBytes(32).toString('base64url');
+const PROD = { VERCEL_ENV: 'production', PUBLIC_BASE_URL: ORIGIN, ADMIN_PASSPHRASE: PASS, TOKEN_ENCRYPTION_KEY: KEY };
+const CONVERSION = { id: 5150, slug: 'robinson-mcp-example-org', client_id: 'Iv1.fixtureclientid', client_secret: 'fixture-client-secret-value', pem: PEM,
+  webhook_secret: 'fixture-webhook-secret-value', owner: { login: 'example-org', id: 1001, type: 'Organization' }, permissions: { contents: 'write' } };
+const SECRET_SHAPES = [/ghp_[A-Za-z0-9]{6,}/, /github_pat_[A-Za-z0-9_]{6,}/, /ghs_[A-Za-z0-9]{6,}/, /BEGIN [A-Z ]*PRIVATE KEY/, /fixture-client-secret-value/, /fixture-webhook-secret-value/];
+
+async function build({ env = PROD } = {}) {
+  const db = createFakeDb();
+  await db.initSchema();
+  const gh = makeFakeGitHub();
+  const oauth = { calls: [], reply: { status: 200, body: { access_token: 'ghu_FAKEuserTokenValue1', expires_in: 28800, refresh_token: 'ghr_FAKErefreshValue1', refresh_token_expires_in: 15811200 } } };
+  const fetch = async (url, init) => {
+    if (String(url).startsWith('https://github.com/login/oauth/access_token')) {
+      oauth.calls.push(Object.fromEntries(new URLSearchParams(String(init.body))));
+      return new Response(JSON.stringify(oauth.reply.body), { status: oauth.reply.status, headers: { 'content-type': 'application/json' } });
+    }
+    return gh.fetch(url, init);
+  };
+  const credentials = createCredentials({ db, env, fetch });
+  const oneTimeStore = env.TOKEN_ENCRYPTION_KEY ? createOneTimeStore({ db, service: 'github', setupPath: '/api/github/setup', encryptionKey: readEncryptionKey(env) }) : undefined;
+  const handlers = createSetupHandlers({ db, credentials, oneTimeStore, env, fetch });
+  const page = { cookie: null, csrf: null };
+  const open = async () => {
+    const res = await call(handlers.setup, request('GET', {}));
+    page.cookie = /github_setup_csrf=([A-Za-z0-9_-]{43})/.exec(res.headers['Set-Cookie'])?.[1];
+    page.csrf = page.cookie;
+    return res;
+  };
+  const post = (fields, { origin = ORIGIN, csrf = page.csrf, cookie = page.cookie, ip } = {}) => call(handlers.setup, {
+    ...request('POST', { csrf, passphrase: PASS, ...fields }, { origin, cookie: cookie ? `github_setup_csrf=${cookie}` : '' }),
+    ...(ip ? { socket: { remoteAddress: ip } } : {})
+  });
+  return { db, gh, credentials, oneTimeStore, handlers, oauth, fetch, open, post, page };
+}
+const all = (res) => `${res.body}${JSON.stringify(res.headers)}`;
+const noSecrets = (res) => { for (const shape of SECRET_SHAPES) expect(all(res)).not.toMatch(shape); };
+const stateIn = (html) => /state=([A-Za-z0-9_-]{43})/.exec(html.replaceAll('&amp;', '&'))[1];
+
+describe('the setup page', () => {
+  it('shows the page with a fresh single-purpose cookie and a locked-down policy', async () => {
+    const t = await build();
+    const res = await t.open();
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['Set-Cookie']).toMatch(/HttpOnly; Secure; SameSite=Strict/);
+    expect(res.headers['Content-Security-Policy']).toContain("default-src 'none'");
+    expect(res.headers['Content-Security-Policy']).toContain("form-action 'self' https://github.com");
+    expect(res.body).toContain('Robinson GitHub MCP');
+    expect(res.body).not.toMatch(/<script/i);
+    expect(t.page.csrf).toHaveLength(43);
+  });
+
+  it('refuses a wrong method, an unset PUBLIC_BASE_URL and an unset passphrase without leaking anything', async () => {
+    const t = await build();
+    expect((await call(t.handlers.setup, request('DELETE', {}))).statusCode).toBe(405);
+    const noOrigin = await build({ env: { ...PROD, PUBLIC_BASE_URL: '' } });
+    expect((await call(noOrigin.handlers.setup, request('GET', {}))).statusCode).toBe(503);
+    const noPass = await build({ env: { ...PROD, ADMIN_PASSPHRASE: '' } });
+    await noPass.open();
+    expect((await noPass.post({ action: 'status' })).statusCode).toBe(503);
+  });
+
+  it('refuses a post from another site, with no cookie, with a mismatched token, or with a wrong or empty passphrase', async () => {
+    const t = await build();
+    await t.open();
+    expect((await t.post({ action: 'status' }, { origin: 'https://evil.example' })).statusCode).toBe(403);
+    expect((await t.post({ action: 'status' }, { origin: '' })).statusCode).toBe(403);
+    expect((await t.post({ action: 'status' }, { cookie: '' })).statusCode).toBe(403);
+    expect((await t.post({ action: 'status' }, { csrf: 'x'.repeat(43) })).statusCode).toBe(403);
+    expect((await t.post({ action: 'status', passphrase: 'nope' })).statusCode).toBe(401);
+    expect((await t.post({ action: 'status', passphrase: '' })).statusCode).toBe(401);
+    expect((await t.post({ action: 'status', passphrase: undefined })).statusCode).toBe(401);
+    expect((await t.post({ action: 'status' })).statusCode).toBe(200);
+  });
+
+  it('locks an address out after five wrong passphrases, even for the right one', async () => {
+    const t = await build();
+    await t.open();
+    for (let i = 0; i < 5; i += 1) expect((await t.post({ action: 'status', passphrase: `wrong-${i}` })).statusCode).toBe(401);
+    const locked = await t.post({ action: 'status' });
+    expect(locked.statusCode).toBe(429);
+    expect(locked.headers['Retry-After']).toBeDefined();
+    expect((await t.post({ action: 'status' }, { ip: '198.51.100.99' })).statusCode).toBe(200);
+  });
+
+  it('refuses every credential step off the production deployment, but still shows status', async () => {
+    const t = await build({ env: { ...PROD, VERCEL_ENV: 'preview' } });
+    await t.open();
+    for (const action of ['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'reveal']) {
+      const res = await t.post({ action, login: 'example-org', token: 'ghp_FAKE'.padEnd(40, 'x') });
+      expect(res.statusCode, action).toBe(403);
+      expect(res.body).toContain('production deployment');
+    }
+    expect((await t.post({ action: 'status' })).statusCode).toBe(200);
+    expect(await t.db.listAccounts()).toEqual([]);
+  });
+
+  it('says plainly when the encryption key is missing and stores nothing', async () => {
+    const t = await build({ env: { ...PROD, TOKEN_ENCRYPTION_KEY: '' } });
+    await t.open();
+    const res = await t.post({ action: 'start-app', login: 'example-org', accountType: 'Organization' });
+    expect(res.statusCode).toBe(503);
+    expect(res.body).toContain('TOKEN_ENCRYPTION_KEY');
+  });
+
+  it('rejects an unknown action and an invalid account name', async () => {
+    const t = await build();
+    await t.open();
+    expect((await t.post({ action: 'delete-everything', login: 'example-org' })).statusCode).toBe(400);
+    for (const login of ['', '-bad', 'bad-', 'has space', 'a'.repeat(40), '../etc', 'a/b', '<script>']) {
+      expect((await t.post({ action: 'start-app', login })).statusCode, login).toBe(400);
+    }
+  });
+});
+
+describe('creating the GitHub App', () => {
+  async function start(t, login = 'example-org', accountType = 'Organization') {
+    await t.open();
+    const res = await t.post({ action: 'start-app', login, accountType });
+    expect(res.statusCode).toBe(200);
+    return res;
+  }
+
+  it('prepares a private manifest for the right account type, with a single-use state', async () => {
+    const t = await build();
+    const org = await start(t);
+    expect(org.body).toContain('https://github.com/organizations/example-org/settings/apps/new');
+    const manifest = JSON.parse(/name="manifest" value="([^"]*)"/.exec(org.body)[1].replaceAll('&quot;', '"').replaceAll('&amp;', '&').replaceAll('&#39;', "'").replaceAll('&lt;', '<').replaceAll('&gt;', '>'));
+    expect(manifest).toMatchObject({ public: false, redirect_url: `${ORIGIN}/api/github/manifest-callback`, default_events: [] });
+    const user = await start(await build(), 'example-user', 'User');
+    expect(user.body).toContain('https://github.com/settings/apps/new');
+    noSecrets(org);
+  });
+
+  it('turns GitHub’s code into a stored, encrypted App, once, without showing any secret', async () => {
+    const t = await build();
+    const state = stateIn((await start(t)).body);
+    t.gh.when('POST /app-manifests/{code}/conversions').reply(201, CONVERSION);
+    const res = await call(t.handlers.manifestCallback, request('GET', { code: 'abcdef123456', state }));
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('GitHub App created');
+    expect(res.body).toContain('https://github.com/apps/robinson-mcp-example-org/installations/new');
+    noSecrets(res);
+    expect(await t.credentials.clientCredentials(5150)).toEqual({ clientId: 'Iv1.fixtureclientid', clientSecret: 'fixture-client-secret-value' });
+    expect(await t.db.getAccount('example-org')).toMatchObject({ app_id: 5150, credential_kind: 'app' });
+    expect(t.gh.invalid).toEqual([]);
+    const again = await call(t.handlers.manifestCallback, request('GET', { code: 'abcdef123456', state }));
+    expect(again.statusCode).toBe(400);
+  });
+
+  it('refuses an unknown, wrong-purpose or malformed state and a malformed code, and never calls GitHub', async () => {
+    const t = await build();
+    const userState = 'u'.repeat(43);
+    await t.db.createSetupState({ state: userState, purpose: 'user_auth', accountHint: 'example-org' });
+    for (const query of [{ code: 'abcdef123456', state: 'nope' }, { code: 'abcdef123456', state: userState }, { code: 'abcdef123456' }, {}]) {
+      expect((await call(t.handlers.manifestCallback, request('GET', query))).statusCode).toBe(400);
+    }
+    const state = stateIn((await start(t)).body);
+    expect((await call(t.handlers.manifestCallback, request('GET', { code: '<bad>', state }))).statusCode).toBe(400);
+    expect(t.gh.calls).toEqual([]);
+    expect((await call(t.handlers.manifestCallback, request('POST', { code: 'abcdef123456', state }))).statusCode).toBe(405);
+  });
+
+  it('answers with a plain failure and stores nothing when GitHub refuses the conversion', async () => {
+    const t = await build();
+    const state = stateIn((await start(t)).body);
+    t.gh.when('POST /app-manifests/{code}/conversions').reply(404, { message: 'Not Found' });
+    const res = await call(t.handlers.manifestCallback, request('GET', { code: 'abcdef123456', state }));
+    expect(res.statusCode).toBe(502);
+    expect(await t.db.listAccounts()).toEqual([]);
+    noSecrets(res);
+  });
+
+  it('refuses the callback itself off the production deployment', async () => {
+    const t = await build({ env: { ...PROD, VERCEL_ENV: 'preview' } });
+    await t.db.createSetupState({ state: 'm'.repeat(43), purpose: 'manifest', accountHint: 'example-org' });
+    t.gh.when('POST /app-manifests/{code}/conversions').reply(201, CONVERSION);
+    const res = await call(t.handlers.manifestCallback, request('GET', { code: 'abcdef123456', state: 'm'.repeat(43) }));
+    expect(res.statusCode).toBe(502);
+    expect(t.gh.calls).toEqual([]);
+    expect(await t.db.listAccounts()).toEqual([]);
+  });
+});
+
+async function withApp(t, { installed = true } = {}) {
+  await t.credentials.storeApp(CONVERSION, { ownerLogin: 'example-org', ownerType: 'Organization' });
+  await t.db.upsertAccount({ login: 'example-org', accountId: 1001, accountType: 'Organization', label: 'Example Org', credentialKind: 'app', appId: 5150 });
+  if (installed) await t.db.setInstallation('example-org', { installationId: 777, repositorySelection: 'all', permissions: MANIFEST_PERMISSIONS, status: 'active' });
+  await t.open();
+}
+
+describe('coming back from installing the App', () => {
+  const install = { id: 777, account: { login: 'example-org' }, repository_selection: 'selected', permissions: { contents: 'write' }, suspended_at: null };
+
+  it('records the installation after reading it from GitHub as the App, not from the URL', async () => {
+    const t = await build();
+    await withApp(t, { installed: false });
+    t.gh.when('GET /app/installations/{installation_id}').reply(200, install);
+    const res = await call(t.handlers.setup, request('GET', { installation_id: '777', setup_action: 'install' }));
+    expect(res.statusCode).toBe(200);
+    expect(await t.db.getAccount('example-org')).toMatchObject({ installation_id: 777, installation_status: 'active' });
+    const asApp = t.gh.calls.find((c) => c.route === 'GET /app/installations/{installation_id}');
+    expect(asApp.headers.authorization).toMatch(/^bearer ey/i);
+  });
+
+  it('records nothing for an installation that belongs to another account or does not exist', async () => {
+    const t = await build();
+    await withApp(t, { installed: false });
+    t.gh.when('GET /app/installations/{installation_id}').reply(200, { ...install, account: { login: 'someone-else' } });
+    expect((await call(t.handlers.setup, request('GET', { installation_id: '777' }))).statusCode).toBe(404);
+    t.gh.when('GET /app/installations/{installation_id}').reply(404, { message: 'Not Found' });
+    expect((await call(t.handlers.setup, request('GET', { installation_id: '999' }))).statusCode).toBe(404);
+    expect((await t.db.getAccount('example-org')).installation_id).toBeNull();
+  });
+
+  it('ignores a malformed installation id and shows the normal page', async () => {
+    const t = await build();
+    const res = await call(t.handlers.setup, request('GET', { installation_id: '12abc' }));
+    expect(res.body).toContain('private setup');
+  });
+});
+
+describe('showing the accounts', () => {
+  it('reads each account back from GitHub, lists what is missing, and keeps tokens out of the page', async () => {
+    const t = await build();
+    await withApp(t);
+    t.gh.when('GET /app').reply(200, { id: 5150, slug: 'robinson-mcp-example-org', name: 'robinson-mcp-example-org' });
+    t.gh.when('GET /app/installations/{installation_id}').reply(200, { id: 777, account: { login: 'example-org' }, repository_selection: 'all', permissions: { contents: 'write' }, suspended_at: null });
+    const res = await t.post({ action: 'status' });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('GitHub App created (robinson-mcp-example-org)');
+    expect(res.body).toContain('Installed on example-org');
+    expect(res.body).toMatch(/has not granted \d+ requested permission/);
+    noSecrets(res);
+  });
+
+  it('shows a suspended or missing installation, and a read-back failure, as plain sentences', async () => {
+    const t = await build();
+    await withApp(t);
+    t.gh.when('GET /app').reply(200, { id: 5150, slug: 's', name: 'n' });
+    t.gh.when('GET /app/installations/{installation_id}').reply(200, { id: 777, account: { login: 'example-org' }, repository_selection: 'all', permissions: MANIFEST_PERMISSIONS, suspended_at: '2026-10-01T00:00:00Z' });
+    expect((await t.post({ action: 'status' })).body).toContain('suspended');
+    t.gh.when('GET /app/installations/{installation_id}').reply(404, { message: 'Not Found' });
+    t.gh.when('GET /app/installations').reply(200, []);
+    expect((await t.post({ action: 'status' })).body).toContain('not installed');
+    t.gh.when('GET /app').reply(500, { message: 'boom' });
+    const failed = await t.post({ action: 'status' });
+    expect(failed.body).toContain('Could not read the GitHub App back');
+    noSecrets(failed);
+  });
+
+  it('computes missing permissions by level', () => {
+    expect(missingPermissions({ contents: 'admin' }, { contents: 'write' })).toEqual([]);
+    expect(missingPermissions({ contents: 'read' }, { contents: 'write' })).toEqual(['contents (read→write)']);
+    expect(missingPermissions({}, { issues: 'read' })).toEqual(['issues (none→read)']);
+  });
+});
+
+describe('authorizing as the owner (user authorization)', () => {
+  async function begin(t) {
+    const res = await t.post({ action: 'start-user-auth', login: 'example-org' });
+    expect(res.statusCode).toBe(303);
+    const location = new URL(res.headers.Location);
+    return { state: location.searchParams.get('state'), location };
+  }
+
+  it('sends the owner to GitHub with PKCE and a single-use state, then stores the encrypted token', async () => {
+    const t = await build();
+    await withApp(t);
+    const { state, location } = await begin(t);
+    expect(location.origin + location.pathname).toBe('https://github.com/login/oauth/authorize');
+    expect(location.searchParams.get('client_id')).toBe('Iv1.fixtureclientid');
+    expect(location.searchParams.get('code_challenge_method')).toBe('S256');
+    expect(location.searchParams.get('redirect_uri')).toBe(`${ORIGIN}/api/github/user-callback`);
+    expect(location.search).not.toContain('fixture-client-secret-value');
+    t.gh.when('GET /user').reply(200, { login: 'example-owner', id: 55 });
+    const res = await call(t.handlers.userCallback, request('GET', { code: 'fixturecode', state }));
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('example-owner');
+    noSecrets(res);
+    expect(res.body).not.toContain('ghu_FAKE');
+    const sent = t.oauth.calls[0];
+    expect(sent).toMatchObject({ client_id: 'Iv1.fixtureclientid', code: 'fixturecode', redirect_uri: `${ORIGIN}/api/github/user-callback` });
+    expect(crypto.createHash('sha256').update(sent.code_verifier).digest('base64url')).toBe(location.searchParams.get('code_challenge'));
+    expect(await t.db.getAccount('example-org')).toMatchObject({ user_login: 'example-owner' });
+    expect(JSON.stringify(await t.db.getAccount('example-org'))).not.toContain('ghu_FAKEuserTokenValue1');
+    const again = await call(t.handlers.userCallback, request('GET', { code: 'fixturecode', state }));
+    expect(again.statusCode).toBe(400);
+    expect(t.oauth.calls).toHaveLength(1);
+  });
+
+  it('needs the App created first, and refuses a state of the wrong purpose', async () => {
+    const t = await build();
+    await t.open();
+    expect((await t.post({ action: 'start-user-auth', login: 'example-org' })).statusCode).toBe(404);
+    await t.db.createSetupState({ state: 'm'.repeat(43), purpose: 'manifest', accountHint: 'example-org' });
+    expect((await call(t.handlers.userCallback, request('GET', { code: 'c', state: 'm'.repeat(43) }))).statusCode).toBe(400);
+    expect((await call(t.handlers.userCallback, request('GET', { code: 'c', state: 'unknown' }))).statusCode).toBe(400);
+    expect((await call(t.handlers.userCallback, request('GET', { state: 'm'.repeat(43) }))).statusCode).toBe(400);
+  });
+
+  it('saves nothing when GitHub refuses the exchange', async () => {
+    const t = await build();
+    await withApp(t);
+    const { state } = await begin(t);
+    t.oauth.reply = { status: 200, body: { error: 'bad_verification_code' } };
+    const res = await call(t.handlers.userCallback, request('GET', { code: 'fixturecode', state }));
+    expect(res.statusCode).toBe(502);
+    expect((await t.db.getAccount('example-org')).user_login ?? null).toBeNull();
+    noSecrets(res);
+  });
+});
+
+describe('tokens entered on the page', () => {
+  const FINE = 'github_pat_FAKE0123456789abcdefghij';
+  const CLASSIC = 'ghp_FAKE0123456789abcdefghij';
+
+  it('verifies a fine-grained token with GitHub, then stores it encrypted and shows only its last four characters', async () => {
+    const t = await build();
+    await t.open();
+    t.gh.when('GET /rate_limit').reply(200, { resources: {}, rate: { limit: 5000, remaining: 4999, reset: 1, used: 1 } }, { 'github-authentication-token-expiration': '2027-01-01 00:00:00 UTC' });
+    t.gh.when('GET /users/{username}').reply(200, { login: 'example-user', id: 55, type: 'User' });
+    const res = await t.post({ action: 'add-fine-grained', login: 'example-user', token: FINE, label: 'Personal' });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain(`ends in ${FINE.slice(-4)}`);
+    expect(all(res)).not.toContain(FINE);
+    expect(await t.db.getAccount('example-user')).toMatchObject({ credential_kind: 'fine_grained', label: 'Personal', fine_grained_last4: FINE.slice(-4) });
+    expect(JSON.stringify(await t.db.getAccount('example-user'))).not.toContain(FINE);
+    expect(await t.credentials.token({ account: 'example-user', cred: 'I' })).toBeTruthy();
+  });
+
+  it('refuses a classic token in the fine-grained box, a token GitHub rejects, and an unknown account', async () => {
+    const t = await build();
+    await t.open();
+    t.gh.when('GET /rate_limit').reply(200, { resources: {}, rate: { limit: 5000, remaining: 1, reset: 1, used: 1 } }, { 'x-oauth-scopes': 'repo' });
+    const classic = await t.post({ action: 'add-fine-grained', login: 'example-user', token: CLASSIC });
+    expect(classic.statusCode).toBe(400);
+    expect(classic.body).toContain('classic token');
+    t.gh.when('GET /rate_limit').reply(401, { message: 'Bad credentials' });
+    expect((await t.post({ action: 'add-fine-grained', login: 'example-user', token: FINE })).body).toContain('did not accept');
+    t.gh.when('GET /rate_limit').reply(200, { resources: {}, rate: { limit: 1, remaining: 1, reset: 1, used: 0 } });
+    t.gh.when('GET /users/{username}').reply(404, { message: 'Not Found' });
+    expect((await t.post({ action: 'add-fine-grained', login: 'nobody-here', token: FINE })).body).toContain('could not find');
+    expect((await t.post({ action: 'add-fine-grained', login: 'example-user', token: 'short' })).statusCode).toBe(400);
+    expect((await t.post({ action: 'add-fine-grained', login: 'example-user', token: `${FINE} extra` })).statusCode).toBe(400);
+    expect(await t.db.listAccounts()).toEqual([]);
+  });
+
+  it('will not turn an account that uses a GitHub App into a fine-grained-token account', async () => {
+    const t = await build();
+    await withApp(t);
+    t.gh.when('GET /rate_limit').reply(200, { resources: {}, rate: { limit: 5000, remaining: 1, reset: 1, used: 1 } });
+    t.gh.when('GET /users/{username}').reply(200, { login: 'example-org', id: 1001, type: 'Organization' });
+    const res = await t.post({ action: 'add-fine-grained', login: 'example-org', token: FINE });
+    expect(res.statusCode).toBe(409);
+    expect(await t.db.getAccount('example-org')).toMatchObject({ credential_kind: 'app', app_id: 5150 });
+  });
+
+  it('accepts a classic token only with exactly the notifications scope, for an account that already exists', async () => {
+    const t = await build();
+    await withApp(t);
+    t.gh.when('GET /rate_limit').reply(200, { resources: {}, rate: { limit: 5000, remaining: 1, reset: 1, used: 1 } }, { 'x-oauth-scopes': 'notifications' });
+    const ok = await t.post({ action: 'add-classic', login: 'example-org', token: CLASSIC });
+    expect(ok.statusCode).toBe(200);
+    expect(all(ok)).not.toContain(CLASSIC);
+    expect(await t.db.getAccount('example-org')).toMatchObject({ classic_last4: CLASSIC.slice(-4), classic_scopes: ['notifications'] });
+    expect(JSON.stringify(await t.db.getAccount('example-org'))).not.toContain(CLASSIC);
+    for (const scopes of ['notifications, repo', 'repo', '']) {
+      t.gh.when('GET /rate_limit').reply(200, { resources: {}, rate: { limit: 1, remaining: 1, reset: 1, used: 0 } }, { 'x-oauth-scopes': scopes });
+      expect((await t.post({ action: 'add-classic', login: 'example-org', token: CLASSIC })).statusCode, scopes).toBe(400);
+    }
+    t.gh.when('GET /rate_limit').reply(200, { resources: {}, rate: { limit: 1, remaining: 1, reset: 1, used: 0 } });
+    expect((await t.post({ action: 'add-classic', login: 'example-org', token: CLASSIC })).body).toContain('not a classic token');
+    t.gh.when('GET /rate_limit').reply(200, { resources: {}, rate: { limit: 1, remaining: 1, reset: 1, used: 0 } }, { 'x-oauth-scopes': 'notifications' });
+    expect((await t.post({ action: 'add-classic', login: 'unknown-account', token: CLASSIC })).statusCode).toBe(404);
+  });
+});
+
+describe('one-time secrets', () => {
+  it('shows a secret once on the page and then never again', async () => {
+    const t = await build();
+    await t.open();
+    const { id } = await t.oneTimeStore.issue({ account: 'example-org', kind: 'fixture-secret', secret: 'fixture-one-time-value' });
+    const show = await call(t.handlers.setup, request('GET', { show: id }));
+    expect(show.body).not.toContain('fixture-one-time-value');
+    const revealed = await t.post({ action: 'reveal', id });
+    expect(revealed.statusCode).toBe(200);
+    expect(revealed.body).toContain('fixture-one-time-value');
+    expect(revealed.body).toContain('Secret type: fixture-secret');
+    const second = await t.post({ action: 'reveal', id });
+    expect(second.statusCode).toBe(410);
+    expect(second.body).not.toContain('fixture-one-time-value');
+    expect((await t.post({ action: 'reveal', id: 'not-an-id' })).statusCode).toBe(410);
+    expect((await t.post({ action: 'reveal', id }, { origin: 'https://evil.example' })).statusCode).toBe(403);
+  });
+});
+
+describe('the page HTML', () => {
+  it('escapes everything it prints', () => {
+    const evil = '<img src=x onerror=alert(1)>"\'&';
+    const html = renderSetup({ csrf: evil, result: evil, revealed: evil, show: evil, blocked: evil, keyHelp: evil, installLink: evil,
+      manifestForm: { action: evil, manifest: evil },
+      accounts: [{ login: evil, label: evil, account_type: evil, credential_kind: 'app', app: { created: true, slug: evil, error: evil },
+        installation: { status: 'active', repository_selection: evil, missing_permissions: [evil] }, user: { authorized: true, login: evil },
+        classic: { present: true, last4: evil, scopes: [evil] }, fine_grained: {}, production_enabled: false, is_default: true }, { login: evil, error: evil }] });
+    expect(html).not.toContain('<img');
+    expect(html).not.toContain('onerror=alert(1)>');
+    const page = resultPage({ title: evil, message: evil, installSlug: evil });
+    expect(page).not.toContain('<img');
+  });
+});

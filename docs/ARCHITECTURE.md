@@ -19,7 +19,7 @@ Postgres), CI, `src/db.js` (lazy Neon client, `createDb(sql)`, the 13 foundation
 | Tool registry | `src/tools/index.js` exports `registry` from `src/core/registry.js` `mergeNamespaces` (duplicate names throw); 0 tools. `/api/mcp` lists the registry and refuses every call (`denyAll`) until Batch B supplies a guarded dispatcher |
 | Vercel project | Not created (IN-02) |
 | Neon database | Not created (IN-02) |
-| GitHub Apps | None created (IN-04, A-5) |
+| GitHub Apps | None created (IN-04; the setup page exists, A-5b) |
 | GitHub credentials | None stored |
 
 ## Environment variables
@@ -81,8 +81,15 @@ on throwaway localhost Postgres.
 | `/api/mcp` | `api/mcp.js` | Streamable HTTP MCP: bearer check (production token on a non-production deployment → 403), `tools/list` from the registry (empty), every `tools/call` refused until Batch B |
 | `/` | `api/index.js` | Name, status and the registry's tool count; nothing secret |
 
-Every OAuth or MCP failure that is not a clean refusal answers 503 `temporarily_unavailable` with no detail. Planned: the setup page
-and GitHub callbacks (`/api/github/*`, A-5), the HTTPS tool API and manifest (Batch R).
+Every OAuth or MCP failure that is not a clean refusal answers 503 `temporarily_unavailable` with no detail. Planned: the HTTPS tool API and manifest (Batch R).
+
+| Path | File | What it does |
+|---|---|---|
+| `/api/github/setup` | `api/github/[action].js` | The owner's private page (A-5b). GET shows it, or finishes an App install (`?installation_id=`, read back from GitHub as the App). POST actions, each behind same-origin, CSRF token and passphrase: `status`, `start-app`, `start-user-auth`, `add-fine-grained`, `add-classic`, `reveal`. Credential steps need the production deployment and `TOKEN_ENCRYPTION_KEY` |
+| `/api/github/manifest-callback` | same | GitHub returns the one-time code after App creation; converted once, keys stored encrypted, nothing secret shown |
+| `/api/github/user-callback` | same | Owner authorization (PKCE S256); token exchanged server-side and stored encrypted |
+
+One dynamic function serves the three (`src/github/routes.js`) because Vercel Hobby allows 12 functions; unknown names answer 404, failures 503 without detail.
 
 ## GitHub API version and descriptions
 
@@ -111,5 +118,5 @@ date, and a test checks the hash. Search them with `node scripts/openapi-find.mj
 
 ## GitHub App permissions
 
-None granted yet. The requested list lives in `src/github/app-manifest.js` (A-5) and `docs/DEPLOY.md` (A-6); record the
+None granted yet. The requested list lives in `src/github/app-manifest.js` (A-5b; repository and organization permissions only, no account permissions until Batch O) and `docs/DEPLOY.md` (A-6); record the
 permissions actually granted per account here once Chris installs the Apps.
