@@ -64,23 +64,23 @@ Card(s): D-1.
 | `github_repo_list` | Repositories of an org or user (type, visibility, sort, archived filter) | — | C | I | B,Op | R | D-1 built #27 |
 | `github_repo_get` | One repo: visibility, default branch, merge settings, protection summary, security features, custom properties | — | C | I | B,O,Op | R | D-1 built #27 |
 | `github_repo_find` | Plain-words search across Chris's accounts (name, topic, description) | — | N | I | Op | R | D-1 built #27 |
-| `github_repo_create` | New repository in an org or user account (private by default; public is access-widening) | P·A* | F | I | B | E | D-1 built #28 |
-| `github_repo_create_from_template` | New repository from a template repository | P·A* | C | I | B | E | D-1 built #28 |
-| `github_repo_update_settings` | Description, homepage, topics, features (issues, wiki, projects), merge options, delete-branch-on-merge, auto-merge allowed | P·Prod* | F | I | B,O | F | D-1 built #28 |
-| `github_repo_set_visibility` | Make a repository private or public (public = access-widening) | C·Prod·A* | F | I | O | F | D-1 built #28 |
-| `github_repo_set_default_branch` | Change the default branch | C·Prod | F | I | O | F | D-1 built #28 |
-| `github_repo_rename` | Rename a repository (GitHub keeps a redirect) | C·Prod | N | I | O | F | D-1 built #28 |
-| `github_repo_set_archived` | Archive (read-only) or unarchive a repository | C·Prod | F | I | O | F | D-1 built #28 |
-| `github_repo_transfer` | Transfer a repository to another owner | C·D·Prod·A | F | U | O | F | D-1 built #28 |
-| `github_repo_delete` | Delete a repository (cannot be undone by this server) | C·D·Prod | F | I | O | F | D-1 built #28 |
+| `github_repo_create` | New repository in an org or user account (private by default; public is access-widening) | P·A* | F | I | B | E | D-1 built #29 |
+| `github_repo_create_from_template` | New repository from a template repository | P·A* | C | I | B | E | D-1 built #29 |
+| `github_repo_update_settings` | Description, homepage, topics, features (issues, wiki, projects), merge options, delete-branch-on-merge, auto-merge allowed | P·Prod* | F | I | B,O | F | D-1 built #29 |
+| `github_repo_set_visibility` | Make a repository private or public (public = access-widening) | C·Prod·A* | F | I | O | F | D-1 built #29 |
+| `github_repo_set_default_branch` | Change the default branch | C·Prod | F | I | O | F | D-1 built #29 |
+| `github_repo_rename` | Rename a repository (GitHub keeps a redirect) | C·Prod | N | I | O | F | D-1 built #29 |
+| `github_repo_set_archived` | Archive (read-only) or unarchive a repository | C·Prod | F | I | O | F | D-1 built #29 |
+| `github_repo_transfer` | Transfer a repository to another owner | C·D·Prod·A | F | U | O | F | D-1 built #29 |
+| `github_repo_delete` | Delete a repository (cannot be undone by this server) | C·D·Prod | F | I | O | F | D-1 built #29 |
 | `github_repo_get_insights` | Languages, contributors, community profile and commit activity in one summary (retries GitHub's 202 'computing' answer) | — | C | I | Op | R | D-1 built #27 |
 | `github_repo_get_traffic` | Views, clones, top referrers and paths for the last 14 days | — | C | I | Op,O | R | D-1 built #27 |
 | `github_repo_list_activity` | Pushes, force pushes, branch creations and deletions, merges — who and when | — | C | I | Op,O | R | D-1 built #27 |
-| `github_repo_fork` | Fork a repository into an account | P | C | U | B | E | D-1 built #28 |
-| `github_repo_sync_fork` | Bring a fork's branch up to date with its upstream | P·Prod* | C | I | B | E | D-1 built #28 |
+| `github_repo_fork` | Fork a repository into an account | P | C | U | B | E | D-1 built #29 |
+| `github_repo_sync_fork` | Bring a fork's branch up to date with its upstream | P·Prod* | C | I | B | E | D-1 built #29 |
 | `github_repo_get_custom_properties` | Custom property values on a repository | — | N | I | O | R | D-1 built #27 |
-| `github_repo_set_custom_properties` | Set custom property values on a repository | P | N | I | O | F | D-1 built #28 |
-| `github_repo_star` | Star or unstar a repository as Chris | P | C | U | Op | E | D-1 built #28 |
+| `github_repo_set_custom_properties` | Set custom property values on a repository | P | N | I | O | F | D-1 built #29 |
+| `github_repo_star` | Star or unstar a repository as Chris | P | C | U | Op | E | D-1 built #29 |
 
 ## Files, commits and git data (`github_content_*, github_commit_*, github_git_*`) — 15
 
