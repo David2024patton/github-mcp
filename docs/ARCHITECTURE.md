@@ -170,6 +170,10 @@ A connection's profile (`read_only`, `everyday`, `full`) decides which tools exi
 minted with every permission the installation has at `read` (`workflows` and `profile` exist only at write and are left out); unknown installation permissions refuse the
 token rather than send an empty list (which GitHub reads as "everything"). Fine-grained-token accounts cannot be narrowed. The home page prints `tools_by_profile`.
 
+### Repository tools (D-1)
+
+`src/tools/repos.js` holds the 20 `github_repo_*` tools (7 reads with `defineRead`, 13 writes with `defineGithubWrite`); `src/tools/github-kit.js` is the small shared kit for area tools (`call`, `callOrNull`, `clientFor`, `refuse`, the owner/repo argument schemas). Reads reach GitHub through `ctx.credentials` (the dispatcher now passes it to every handler). Organizations and users use different list/create endpoints, chosen from the stored `account_type`. Statistics endpoints are asked up to three times while GitHub answers 202. Tools that act as the owner (`fork`, `transfer`, `star`) use credential `U`. The write-contract test helper accepts `profile` (a full-profile tool is tested with a full connection) and gives credential `U` a fake user token.
+
 ### Listing and the meta-tools (C-2)
 
 `tools/list` is built by `toolsForListing(registry, profile, listing)` and `listedTool` (`src/core/registry.js`): `catalog` is every tool the profile may see, `compact` only tools marked `compact`; dangerous tools get PRODUCTION / SPENDS MONEY first and every tool is listed with its annotations. `?listing=` on the endpoint overrides the connection's choice. `github_call` / `github_batch` receive `ctx.callTool`, which is the dispatcher itself. `scripts/check-budgets.mjs` counts what is listed with `gpt-tokenizer`.

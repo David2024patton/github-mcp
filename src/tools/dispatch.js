@@ -78,7 +78,7 @@ export function createDispatch({ env = process.env, now = Date.now, fetch = glob
     let result;
     try {
       const callTool = (innerName, innerArgs) => dispatch({ registry, name: innerName, args: innerArgs, connection, db });
-      result = await handler(args ?? {}, { connection, db, env, now, fetch, ...(isWrite ? { credentials, gates } : {}), ...(tool.usesRegistry ? { registry, callTool } : {}) });
+      result = await handler(args ?? {}, { connection, db, env, now, fetch, credentials, ...(isWrite ? { gates } : {}), ...(tool.usesRegistry ? { registry, callTool } : {}) });
     } catch (error) {
       return fail(error instanceof TypeError ? error.message : 'That tool could not complete right now. Nothing was changed.');
     }
