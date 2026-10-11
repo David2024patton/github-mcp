@@ -87,7 +87,7 @@ Delete it in the card's final commit.
 - Every search has a path and `| head -50`. Only commands that finish by themselves; `timeout 600` for slow ones.
 - Pipe long output through `| tail -80`. Same command fails twice → change approach or record the blocker.
 - After ~10 reads/searches without an edit, make the smallest next edit.
-- CI and reviews: check once, act on what is new, then do other work.
+- CI and reviews: check once, act on what is new, then do other work. Two identical pending status reads trigger the Step 10 anti-spin rule: inspect job evidence once, develop the immediate successor without pushing the pending predecessor, or record its exact head and pending check as a recovery point. A pending check is not a failure and never permission to merge.
 
 ## 6. Keep moving: problems are not blockers
 

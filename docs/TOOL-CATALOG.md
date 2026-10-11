@@ -593,7 +593,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Actions: workflows, runs, jobs and logs | 12 |
 | Checks, statuses, artifacts and caches | 10 |
 | Secrets and variables | 7 |
-| Environments and deployments | 7 |
+| Environments and deployments | 10 |
 | Releases | 7 |
 | Pages and packages | 7 |
 | Developer tools | 15 |
@@ -611,4 +611,4 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Project profiles | 3 |
 | Workflows | 17 |
 | Everything else on GitHub: the universal tools | 6 |
-| **Total** | **305** |
+| **Total** | **308** |
