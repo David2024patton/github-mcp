@@ -592,7 +592,8 @@
       "readiness": "WRITE_CARD_AT_START",
       "ownerInputs": [],
       "pr": [
-        49
+        49,
+        50
       ]
     },
     {
