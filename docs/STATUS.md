@@ -7,7 +7,7 @@ repositories.
 
 ## Next
 
-- **Batch E — pull requests and reviews** (`docs/designs/BATCH-E.md`). E-1 is finished (reads #35 with the shared `ciState` helper; create/update/close/set_draft/update_branch #40). E-3 (review reads and changes) is built (PRs #37 and #38). E-2 is complete: exact-head merge tools (#46), plus list/create/append/unstack pull request stacks (#48). G-4 deployment reads are built (#51); deployment create/status writes are built (#52); G-4 branch/tag policies completed (#53); G-4 is complete. G-5 release metadata reads built in #54; guarded release create/update/delete built in #55; next: release asset operations and notes generation. Batch D is finished.
+- **Batch E — pull requests and reviews** (`docs/designs/BATCH-E.md`). E-1 is finished (reads #35 with the shared `ciState` helper; create/update/close/set_draft/update_branch #40). E-3 (review reads and changes) is built (PRs #37 and #38). E-2 is complete: exact-head merge tools (#46), plus list/create/append/unstack pull request stacks (#48). G-4 deployment reads are built (#51); deployment create/status writes are built (#52); G-4 branch/tag policies completed (#53); G-4 is complete. G-5 release metadata reads built in #54; guarded release create/update/delete built in #55; next: release asset upload and notes generation; deletion implemented in #56. Batch D is finished.
 - Batches A, B, C, D finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
@@ -24,6 +24,9 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-11 — G-5 release asset deletion (PR #56):** Confirmed per-release asset membership, immutable protection, draft/published production classification, race recheck and read-back of deletion. No real assets were removed. Next: secure upload and generated notes.
+
 
 **2026-10-11 — G-5 part 2, guarded release lifecycle (PR #55):** `github_release_create/update/delete` use guarded request-key writes. Creation defaults to draft with generated notes; publishing requires production approval; published immutable releases refuse changes. Read-back verifies identities and preserved fields; release deletion leaves the Git tag. No live releases changed. G-5 remains IN_PROGRESS for assets and generated notes.
 
