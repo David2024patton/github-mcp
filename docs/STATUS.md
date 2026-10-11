@@ -1,14 +1,13 @@
 # STATUS — current work, blockers and next action
 
-Updated 2026-10-10. **The foundation is built (A-1, PR #1), its database schema exists (A-2, PR #7), the connector login is built (A-3a, PR #8; A-3b, PR #9) the GitHub client exists (A-4, PR #10) the encrypted credential store exists (A-5a, PR #11) and the private setup page exists (A-5b, PR #12):** Node 24
+Updated 2026-10-10. **The foundation is built (A-1, PR #1), its database schema exists (A-2, PR #7), the connector login is built (A-3a, PR #8; A-3b, PR #9) the GitHub client exists (A-4, PR #10) the encrypted credential store exists (A-5a, PR #11) the private setup page exists (A-5b, PR #12) and the GitHub webhook and first two tools exist (A-5c, PR #13):** Node 24
 package with a committed lockfile, a fake GitHub for tests, the check scripts, throwaway-Postgres database tests, CI with
-one `ci` merge gate, `src/db.js` creating the 13 foundation tables and storing connector logins, the OAuth endpoints and `/api/mcp` (zero tools), and `src/github/client.js` (pinned API version, request keys, write spacing, rate blocks, ETag cache) with GitHub's REST and GraphQL descriptions vendored, and `src/github/credentials.js` (encrypted Apps, installation tokens, user authorization, pasted tokens) with one-time secrets. No tools exist yet; no deployment exists. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
+one `ci` merge gate, `src/db.js` creating the 13 foundation tables and storing connector logins, the OAuth endpoints and `/api/mcp` (two tools, `github_whoami` and `github_list_accounts`, listed but not yet callable: Batch B's guarded dispatcher is what lets a tool run), and `src/github/client.js` (pinned API version, request keys, write spacing, rate blocks, ETag cache) with GitHub's REST and GraphQL descriptions vendored, and `src/github/credentials.js` (encrypted Apps, installation tokens, user authorization, pasted tokens) with one-time secrets. No deployment exists. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
 repositories.
 
 ## Next
 
-- **A-5c — GitHub webhook and the first two tools (`github_whoami`, `github_list_accounts`):** card is
-  `docs/pr-cards/A-5.md` ("A-5c — to build"). Branch `ai/claude/a-5c-webhook-tools` from `main`. Then A-6 (DEPLOY.md), then Batch B. Real GitHub steps need IN-02…IN-05.
+- **A-6 — `docs/DEPLOY.md` (docs only, light effort):** card `docs/pr-cards/A-6.md` (write it first if missing; JIT). Branch `ai/claude/a-6-deploy-doc` from `main`. Then Batch B (safety layer, `docs/designs/BATCH-B.md`). Real GitHub steps need IN-02…IN-05.
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).
@@ -24,6 +23,14 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-11 — A-5c webhook and server tools (PR #13):** `api/github/webhook.js` + `src/github/webhook.js`. GitHub's call is read as raw bytes (1 MB cap, 413 beyond), the App is found by `X-GitHub-Hook-Installation-Target-ID`, and
+`X-Hub-Signature-256` is checked in constant time with that App's own webhook secret; a bad, missing or malformed signature, an unknown App and a non-numeric App id all get the same plain 401 and change nothing. Verified events
+update the stored account: `installation` created (only for an account already set up for this very App), deleted, suspend (also drop cached installation tokens), unsuspend, new_permissions_accepted (new permissions stored, cached tokens
+dropped); `installation_repositories` (selection); `github_app_authorization` revoked (clears that user's stored sign-in). Everything else is acknowledged and ignored; no payload or secret is echoed or logged. `src/tools/server.js`:
+`github_whoami` (connection mode, profile, listing, default account, API version, per-account credentials present, rate budget left with Denver-time reset, spend limit in dollars) and `github_list_accounts`; both take `detail` and `fields`,
+only name the connection's own accounts, build every field by name (no ciphertext can leak), and need no GitHub call. Tests: `webhook` (12), `server-tools` (7), registry and home-page tests updated. 227 unit, 49 database, 15 shapes green.
+Not done / unverified: nothing has run against real GitHub (no App exists); the tools cannot be called until Batch B supplies the guarded dispatcher.
 
 **2026-10-10 — A-5a credential store (PR #11):** every GitHub credential is encrypted at rest with AES-256-GCM (`TOKEN_ENCRYPTION_KEY`), each value sealed with a context that ties
 it to its account, App, installation and scope, so a copied ciphertext cannot be reused elsewhere; a wrong or missing key gives a plain message and never a secret. `createCredentials`

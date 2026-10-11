@@ -88,8 +88,9 @@ Every OAuth or MCP failure that is not a clean refusal answers 503 `temporarily_
 | `/api/github/setup` | `api/github/[action].js` | The owner's private page (A-5b). GET shows it, or finishes an App install (`?installation_id=`, read back from GitHub as the App). POST actions, each behind same-origin, CSRF token and passphrase: `status`, `start-app`, `start-user-auth`, `add-fine-grained`, `add-classic`, `reveal`. Credential steps need the production deployment and `TOKEN_ENCRYPTION_KEY` |
 | `/api/github/manifest-callback` | same | GitHub returns the one-time code after App creation; converted once, keys stored encrypted, nothing secret shown |
 | `/api/github/user-callback` | same | Owner authorization (PKCE S256); token exchanged server-side and stored encrypted |
+| `/api/github/webhook` | `api/github/webhook.js` | GitHub's App webhook (A-5c): raw body, `X-Hub-Signature-256` checked with the App's own secret, only installation and sign-in-revoked events act, everything else acknowledged; bad signature or unknown App → 401, nothing stored |
 
-One dynamic function serves the three (`src/github/routes.js`) because Vercel Hobby allows 12 functions; unknown names answer 404, failures 503 without detail.
+One dynamic function serves the first three (`src/github/routes.js`) because Vercel Hobby allows 12 functions; unknown names answer 404, failures 503 without detail.
 
 ## GitHub API version and descriptions
 

@@ -194,7 +194,7 @@ describe('routes and home page', () => {
   it('serves a home page with the tool count and nothing secret', async () => {
     const res = await call(indexHandler, request('GET', {}));
     expect(res.statusCode).toBe(200);
-    expect(json(res)).toMatchObject({ name: 'Robinson GitHub MCP', tools: 0, endpoint: '/api/mcp', oauth: '/.well-known/oauth-authorization-server' });
+    expect(json(res)).toMatchObject({ name: 'Robinson GitHub MCP', tools: 2, endpoint: '/api/mcp', oauth: '/.well-known/oauth-authorization-server' });
     expect(res.headers['Cache-Control']).toBe('no-store');
   });
 });
