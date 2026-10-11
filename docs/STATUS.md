@@ -32,6 +32,8 @@ non-merged units at baseline `ed60e19`; `G-4-PACKET.md` supplies a worked reques
 them. No implementation card, queue, index status, owner input, runtime code or CI gate changed. E-2 (#46) and
 G-3 part 2 (#45) were in flight at inspection; their implementers reconcile this guidance at the PR boundary.
 
+**2026-10-11 — G-3 part 2, secrets (PR #45):** `github_secret_set` (Chris types the value on the private setup page via a link, or the server generates one), `github_secret_delete`, `github_secret_set_repo_access`; new table `secret_entry_requests`; values are sealed with GitHub's public key on the server and never stored, logged or shown to Claude. G-3 is complete; G-4 (environments and deployments) is next.
+
 **2026-10-11 — G-3 part 1, variables and the secret list (PR #44):** `github_variable_list`, `_set`, `_delete` (repository, environment or organization; the old value is kept for undo) and `github_secret_list` (names and dates only, never values). Sealed secret entry through the setup page (part 2) is next; G-3 stays in progress until then.
 
 **2026-10-11 — G-2 part 2, check, status, artifact and cache changes (PR #43):** `github_check_create_run` / `_update_run` (GitHub App only; a token is told so plainly), `github_status_create` (undo restores the previous state), `github_artifact_delete`, `github_cache_delete` (by id or exact key). Found and fixed a real bug class: a DELETE's extra parameters were sent as a body that GitHub ignores. G-2 is complete.

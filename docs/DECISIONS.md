@@ -207,3 +207,5 @@ commands once per JIT card. IMPLEMENTATION-DETAIL, TOOL-RECIPES, REMAINING-WORK 
 not speculative READY cards. No design override, test reduction, owner approval or model change is implied.
 The shared contract's one-write assertion remains intact; compound work additionally proves its mutation trace,
 partial failures and replay behavior. Planning does not edit in-flight E-2/G-3 cards or their index entries.
+
+**2026-10-11 — Secret values reach GitHub only from the setup page or the server's own random generator (G-3).** `github_secret_set` never accepts a value. By default it records a request and returns a link; Chris types the value on the passphrase-protected setup page, the server seals it with the place's public key and sends it, then forgets it (a failed send puts the request back). `valueFrom: generate` makes a random value that nobody reads. The design's `change_log_id` column on `secret_entry_requests` is dropped: the setup page writes its own change-log row. Showing a generated value once on the one-time page stays on the ROADMAP.

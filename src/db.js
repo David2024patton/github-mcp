@@ -22,7 +22,8 @@ export const SCHEMA_TABLES = Object.freeze([
   'gh_etag_cache',
   'server_settings',
   'protected_resources',
-  'result_store'
+  'result_store',
+  'secret_entry_requests'
 ]);
 export const RESULT_HANDLE = /^res_[A-Za-z0-9_-]{20,64}$/;
 
@@ -293,6 +294,17 @@ export function createDb(sql = productionSql()) {
         body JSONB NOT NULL
       )`;
       await sql`CREATE INDEX IF NOT EXISTS result_store_expires ON result_store (expires_at)`;
+      // A secret the owner will type on the setup page (G-3): who it is for and where it goes, never the value itself.
+      await sql`CREATE TABLE IF NOT EXISTS secret_entry_requests (
+        id TEXT PRIMARY KEY,
+        account TEXT NOT NULL,
+        scope JSONB NOT NULL,
+        mode TEXT NOT NULL,
+        connection TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        expires_at TIMESTAMPTZ NOT NULL,
+        completed_at TIMESTAMPTZ
+      )`;
     },
 
     /** Keeps a big result behind a handle. Also deletes up to 100 expired rows (no cron). */
@@ -567,6 +579,31 @@ export function createDb(sql = productionSql()) {
     async hasPendingSetupState(purpose, accountHint) {
       const rows = await sql`SELECT 1 FROM setup_states WHERE purpose = ${purpose} AND lower(account_hint) = lower(${accountHint}) AND expires_at > now() LIMIT 1`;
       return rows.length === 1;
+    },
+
+    /** A waiting request for the owner to type a secret on the setup page. `scope` says where it goes; the value is never stored. */
+    async createSecretRequest({ id, account, scope, connection = null, ttlSeconds = 1800 }) {
+      if (typeof id !== 'string' || id.length < 32) throw new TypeError('A secret request id must be an unguessable string.');
+      const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+      await sql`INSERT INTO secret_entry_requests (id, account, scope, mode, connection, expires_at)
+        VALUES (${id}, ${account}, ${JSON.stringify(scope)}::jsonb, 'setup-page', ${connection}, ${expiresAt})`;
+    },
+    /** The request if it is still waiting (not used, not expired), without using it. */
+    async getSecretRequest(id) {
+      if (typeof id !== 'string' || !id) return null;
+      const rows = await sql`SELECT id, account, scope, expires_at FROM secret_entry_requests WHERE id = ${id} AND completed_at IS NULL AND expires_at > now()`;
+      return rows[0] ? { id: rows[0].id, account: rows[0].account, scope: rows[0].scope, expires_at: rows[0].expires_at } : null;
+    },
+    /** Atomic: marks a waiting request used and returns it, or null (unknown, used, expired). Two submissions cannot both win. */
+    async claimSecretRequest(id) {
+      if (typeof id !== 'string' || !id) return null;
+      const rows = await sql`UPDATE secret_entry_requests SET completed_at = now() WHERE id = ${id} AND completed_at IS NULL AND expires_at > now()
+        RETURNING id, account, scope`;
+      return rows[0] ? { id: rows[0].id, account: rows[0].account, scope: rows[0].scope } : null;
+    },
+    /** Puts a claimed request back (GitHub refused the secret), so the owner can try again until it expires. */
+    async releaseSecretRequest(id) {
+      await sql`UPDATE secret_entry_requests SET completed_at = NULL WHERE id = ${id}`;
     },
 
     /** An owner setting (JSON), or null. Settings hold names and numbers, never a credential. */

@@ -28,3 +28,5 @@ for hand-building something is repeated `github_api_*` / `github_graphql_*` call
 - **Port fixes back** to the Stripe and Workspace servers when a copied contract file is improved here (until the hub's
   `robinson-mcp-core` package exists).
 - **More project profiles** (YardSync, Cortiware) when their repositories exist; `github_profile_draft` drafts them.
+
+- Show a server-generated secret value once on the one-time-secret page when Chris asks (G-3 follow-up; today a generated value is never visible).

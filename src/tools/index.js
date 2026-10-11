@@ -14,9 +14,10 @@ import * as actionsWrite from './actions-write.js';
 import * as checksRead from './checks-read.js';
 import * as checksWrite from './checks-write.js';
 import * as variables from './variables.js';
+import * as secrets from './secrets.js';
 import * as pullsRead from './pulls-read.js';
 import * as pullsWrite from './pulls-write.js';
 import * as pullsMerge from './pulls-merge.js';
 
 // Tool modules are added here as their cards land.
-export const registry = mergeNamespaces([meta, server, diagnostics, repos, reposWrite, codeRead, codeWrite, branches, pullsRead, pullsWrite, pullsMerge, reviews, reviewsWrite, actionsRead, actionsWrite, checksRead, checksWrite, variables]);
+export const registry = mergeNamespaces([meta, server, diagnostics, repos, reposWrite, codeRead, codeWrite, branches, pullsRead, pullsWrite, pullsMerge, reviews, reviewsWrite, actionsRead, actionsWrite, checksRead, checksWrite, variables, secrets]);

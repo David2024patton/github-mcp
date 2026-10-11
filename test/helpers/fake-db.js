@@ -24,6 +24,7 @@ export function createFakeDb({ clock = Date.now } = {}) {
   const accountRows = new Map();
   const installTokens = new Map();
   const setupStates = new Map();
+  const secretRequests = new Map();
   const oneTime = new Map();
   const rates = new Map();
   const etags = new Map();
@@ -253,6 +254,22 @@ export function createFakeDb({ clock = Date.now } = {}) {
     async hasPendingSetupState(purpose, accountHint) {
       return [...setupStates.values()].some((r) => r.purpose === purpose && String(r.account_hint).toLowerCase() === String(accountHint).toLowerCase() && r.expires_at > clock());
     },
+    async createSecretRequest({ id, account, scope, connection = null, ttlSeconds = 1800 }) {
+      if (typeof id !== 'string' || id.length < 32) throw new TypeError('A secret request id must be an unguessable string.');
+      if (secretRequests.has(id)) throw new Error('duplicate key value violates unique constraint "secret_entry_requests_pkey"');
+      secretRequests.set(id, { id, account, scope: structuredClone(scope), connection, expires_at: clock() + ttlSeconds * 1000, completed: false });
+    },
+    async getSecretRequest(id) {
+      const r = secretRequests.get(id);
+      return r && !r.completed && r.expires_at > clock() ? { id: r.id, account: r.account, scope: structuredClone(r.scope), expires_at: new Date(r.expires_at) } : null;
+    },
+    async claimSecretRequest(id) {
+      const r = secretRequests.get(id);
+      if (!r || r.completed || r.expires_at <= clock()) return null;
+      r.completed = true;
+      return { id: r.id, account: r.account, scope: structuredClone(r.scope) };
+    },
+    async releaseSecretRequest(id) { const r = secretRequests.get(id); if (r) r.completed = false; },
     async getSetting(key) { return settings.has(key) ? structuredClone(settings.get(key)) : null; },
     async setSetting(key, value) {
       if (typeof key !== 'string' || !/^[a-z][a-z0-9_.]{0,62}$/.test(key)) throw new TypeError('A setting key is lowercase words.');

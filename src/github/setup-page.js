@@ -7,11 +7,12 @@ import { createHash } from 'node:crypto';
 import { LOCKOUT_WINDOW_MINUTES, clientIp, evaluateLogin, randomToken, secretsMatch } from '../core/oauth.js';
 import { only, paramsOf, publicOrigin, send } from '../core/http.js';
 import { buildManifest, isValidLogin, manifestFormUrl } from './app-manifest.js';
-import { bareOctokit } from './client.js';
+import { bareOctokit, githubFor } from './client.js';
+import { putSecret, secretRoutes } from './secret-seal.js';
 import { readBack } from './setup-readback.js';
 import { renderSetup, resultPage } from './setup-html.js';
-import { PRODUCTION_NAMES_KEY, cleanNames, productionNames } from '../tools/production-guard.js';
-import { protectedList } from '../tools/protect-guard.js';
+import { PRODUCTION_NAMES_KEY, cleanNames, productionNames, productionReason } from '../tools/production-guard.js';
+import { matchingEntries, protectedList } from '../tools/protect-guard.js';
 import { OWN_PEOPLE_KEY, cleanLogins, extraOwnPeople } from '../tools/people-guard.js';
 import { spendStatus } from '../tools/spend-guard.js';
 import { dollars as money } from '../github/prices.js';
@@ -22,6 +23,7 @@ const COOKIE = 'github_setup_csrf';
 const OAUTH_TOKEN_URL = 'https://github.com/login/oauth/access_token';
 const NOT_PRODUCTION = 'Credentials can only be set up on the production deployment. Preview deployments share the database but never hold or add credentials.';
 const csrfCookie = (req) => new RegExp(`(?:^|;\\s*)${COOKIE}=([A-Za-z0-9_-]{43})`).exec(String(req.headers?.cookie || ''))?.[1] || null;
+const secretPlace = (s) => (s.level === 'org' ? `the ${s.owner} organization` : s.level === 'environment' ? `the ${s.environment} environment of ${s.owner}/${s.repo}` : `${s.owner}/${s.repo}`);
 const plainStatus = (error) => (error?.status ? `GitHub answered ${error.status}` : 'GitHub could not be reached');
 
 /** @param {{ db: object, credentials: object, oneTimeStore?: object, env?: object, fetch?: Function, now?: () => number }} deps */
@@ -48,7 +50,10 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     const installationId = Number(req.query?.installation_id);
     if (Number.isSafeInteger(installationId) && installationId > 0) return await installReturn(res, installationId);
     const csrf = newCsrf(res);
-    return frame(res, 200, renderSetup({ csrf, show: String(req.query?.show || '') }));
+    const wanted = String(req.query?.secret || '');
+    const waiting = wanted ? await db.getSecretRequest(wanted) : null;
+    const secretEntry = waiting ? { id: waiting.id, expires: new Date(waiting.expires_at).toUTCString(), summary: `Claude asked for ${waiting.scope.kind} secret ${waiting.scope.name} in ${secretPlace(waiting.scope)}.` } : null;
+    return frame(res, 200, renderSetup({ csrf, show: String(req.query?.show || ''), secretEntry, ...(wanted && !waiting ? { result: 'That secret request is unknown, already used or expired. Ask Claude to start it again.' } : {}) }));
   }
 
   /** GitHub sends the owner back here after installing. Nothing in the URL is trusted: the installation is read from GitHub as the App. */
@@ -102,6 +107,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
           : page(410, { result: 'This one-time secret was used, expired, or does not exist.' });
       } catch { return page(400, { result: 'Unable to retrieve this secret.' }); }
     }
+    if (action === 'enter-secret') return await enterSecret(p, page);
     if (action === 'set-production-names') return await setProductionNames(p, page);
     if (action === 'confirm-production') return await confirmProduction(p, page);
     if (action === 'set-spend-limit') return await setSpendLimit(p, page);
@@ -134,6 +140,41 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       return send(res, 303, '', HTML);
     }
     return await addToken(action, account, p, page);
+  }
+
+  /**
+   * The owner types a secret that Claude asked for. The request is claimed first (so a double click cannot send twice), the value is
+   * sealed for the place's public key and sent, and the request is put back if GitHub refuses so the owner can try again.
+   * The value is never stored, logged, recorded in the change log or put in any message.
+   */
+  async function enterSecret(p, page) {
+    if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
+    const value = typeof p.value === 'string' ? p.value : '';
+    if (!value || value.length > 48000) return page(400, { result: 'Enter the secret value (up to 48,000 characters).', secretEntry: null });
+    const request = await db.claimSecretRequest(String(p.id || ''));
+    if (!request) return page(410, { result: 'This secret request is unknown, already used or expired. Ask Claude to start it again.' });
+    const scope = request.scope;
+    const fail = async (status, result) => { await db.releaseSecretRequest(request.id).catch(() => {}); return page(status, { result: `${result} Nothing was saved; the link still works until it expires.` }); };
+    try {
+      const row = await db.getAccount(request.account);
+      if (!row) return await fail(404, 'That account is no longer set up on the server.');
+      if (scope.level === 'repo' || scope.level === 'environment') {
+        const hits = matchingEntries(await protectedList(db), { owner: scope.owner, repo: scope.repo });
+        if (hits.length) return await fail(403, `${scope.owner}/${scope.repo} is on your protected list, so secrets cannot be changed there from here.`);
+      }
+      const ctx = { connection: { default_account: row.login, accounts: [row.login], mode: 'production', profile: 'full' }, db, credentials, fetch, now: Date.now, sleep: (ms) => new Promise((r) => setTimeout(r, ms)) };
+      const production = await productionReason(ctx, { owner: scope.owner, ...(scope.repo ? { repo: scope.repo } : {}), ...(scope.environment ? { environment: scope.environment } : {}), scope: scope.level === 'org' ? 'org' : 'repo' });
+      if (production && row.production_enabled !== true) return await fail(403, `This is a production change (${production}) and production is off for ${row.login}.`);
+      const octokit = await githubFor(ctx, { owner: row.login });
+      await putSecret(octokit, scope, value, { visibility: scope.visibility, selectedRepositoryIds: scope.selectedRepositoryIds });
+      const routes = secretRoutes(scope);
+      const meta = await octokit.request(`GET ${routes.one}`, { ...routes.params, secret_name: scope.name }).then((r) => r.data, () => null);
+      const line = `Secret ${scope.name} (${scope.kind}) set in ${secretPlace(scope)} from the setup page`;
+      await db.recordChange({ account: row.login, mode: 'setup', tool: 'setup_enter_secret', target: `${secretPlace(scope)} ${scope.name}`, summary: meta ? line : `UNCONFIRMED: ${line}`, production: !!production, accessWidening: false, confirmed: !!meta }).catch(() => {});
+      return page(200, { result: meta ? `Done. ${scope.name} is saved in ${secretPlace(scope)} (GitHub shows it updated ${meta.updated_at}). GitHub never shows the value again.` : `GitHub accepted ${scope.name} but could not confirm it afterwards. Check ${secretPlace(scope)} on GitHub.` });
+    } catch (error) {
+      return await fail(error?.status === 403 || error?.status === 404 ? 403 : 502, `GitHub did not accept the secret (${plainStatus(error)}).`);
+    }
   }
 
   /** Names the owner adds to the built-in production names. They can only widen what counts as production, never shrink the built-in list. */
