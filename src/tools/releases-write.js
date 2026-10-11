@@ -96,10 +96,8 @@ const update = defineGithubWrite({
   verify: ({ args, before, after }) => !!after && after.id === args.releaseId &&
     ['name', 'body', 'draft', 'prerelease'].every((k) =>
       after[k] === (Object.hasOwn(args, k) ? args[k] : before.current[k])),
-  inverse: ({ args, before, target: t }) => before.current && before.current.draft && args.draft !== false
-    ? { tool: 'github_release_update', args: { owner: t.owner, repo: t.repo, releaseId: args.releaseId,
-      name: before.current.name, body: before.current.body ?? '',
-      draft: before.current.draft, prerelease: before.current.prerelease } } : null,
+  // No automatic undo: publication and immutable releases cannot be reconstructed safely.
+  inverse: () => null,
   present: ({ after }) => ({ release_id: after?.id, tag: after?.tag_name,
     draft: after?.draft, prerelease: after?.prerelease, html_url: after?.html_url })
 });
