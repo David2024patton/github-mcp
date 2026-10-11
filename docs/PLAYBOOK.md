@@ -84,13 +84,15 @@ private key or a connection string), docs check (`scripts/check-docs-updated.mjs
 
 ## Step 5 — Pushing and CI
 
-1. **Push once per CI cycle.** A push cancels the branch's running CI (workflow `concurrency`). Before the first push
+1. **Push once per CI cycle, and never while your PR's CI run is still in progress** (SESSION-START §6 "CI cadence"):
+   wait for every job, collect all failures, fix them together, then push. Before the first push
    from a fresh or shallow clone: `git fetch origin main`. Push with `git push -u origin <branch>`.
 2. **After a red run:** read all failures, reproduce each locally with 4b, fix every failure, push once.
 3. **Is it mine?** If the same test is red on `main`, it isn't: port the fix or make a tiny separate fix PR.
 4. **Same failure twice:** reproduce locally. **Third red run:** evidence-based diagnosis before any further push.
 5. "Flake" is not a cause. Never skip, retry-loop or quarantine.
-6. Put "CI runs used: N (red: R, cancelled: C)" in the PR description.
+6. Put "CI runs used: N (red: R, cancelled: C)" in the PR description; C should be 0 — a cancelled run means a push
+   arrived during a run.
 
 **When `main` moves while your PR is open:** sync once at the PR boundary with `git merge origin/main` — never rebase a
 pushed branch. Conflicts in STATUS, MASTER-ROADMAP or `work-index.json`: keep both sides, re-run the validator.
