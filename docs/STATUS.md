@@ -1,6 +1,6 @@
 # STATUS — current work, blockers and next action
 
-Updated 2026-10-10. **The foundation is built (A-1, PR #1), its database schema exists (A-2, PR #7), the connector login is built (A-3a, PR #8; A-3b, PR #9) the GitHub client exists (A-4, PR #10) the encrypted credential store exists (A-5a, PR #11) the private setup page exists (A-5b, PR #12) and the GitHub webhook and first two tools exist (A-5c, PR #13):** Node 24
+Updated 2026-10-10. **The foundation is built (A-1, PR #1), its database schema exists (A-2, PR #7), the connector login is built (A-3a, PR #8; A-3b, PR #9) the GitHub client exists (A-4, PR #10) the encrypted credential store exists (A-5a, PR #11) the private setup page exists (A-5b, PR #12) and the GitHub webhook and first two tools exist (A-5c, PR #14):** Node 24
 package with a committed lockfile, a fake GitHub for tests, the check scripts, throwaway-Postgres database tests, CI with
 one `ci` merge gate, `src/db.js` creating the 13 foundation tables and storing connector logins, the OAuth endpoints and `/api/mcp` (two tools, `github_whoami` and `github_list_accounts`, listed but not yet callable: Batch B's guarded dispatcher is what lets a tool run), and `src/github/client.js` (pinned API version, request keys, write spacing, rate blocks, ETag cache) with GitHub's REST and GraphQL descriptions vendored, and `src/github/credentials.js` (encrypted Apps, installation tokens, user authorization, pasted tokens) with one-time secrets. No deployment exists. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
 repositories.
@@ -24,7 +24,7 @@ repositories.
 
 ## Recent changes (newest first)
 
-**2026-10-11 — A-5c webhook and server tools (PR #13):** `api/github/webhook.js` + `src/github/webhook.js`. GitHub's call is read as raw bytes (1 MB cap, 413 beyond), the App is found by `X-GitHub-Hook-Installation-Target-ID`, and
+**2026-10-11 — A-5c webhook and server tools (PR #14):** `api/github/webhook.js` + `src/github/webhook.js`. GitHub's call is read as raw bytes (1 MB cap, 413 beyond), the App is found by `X-GitHub-Hook-Installation-Target-ID`, and
 `X-Hub-Signature-256` is checked in constant time with that App's own webhook secret; a bad, missing or malformed signature, an unknown App and a non-numeric App id all get the same plain 401 and change nothing. Verified events
 update the stored account: `installation` created (only for an account already set up for this very App), deleted, suspend (also drop cached installation tokens), unsuspend, new_permissions_accepted (new permissions stored, cached tokens
 dropped); `installation_repositories` (selection); `github_app_authorization` revoked (clears that user's stored sign-in). Everything else is acknowledged and ignored; no payload or secret is echoed or logged. `src/tools/server.js`:

@@ -5,7 +5,7 @@ Written 2026-10-10 for an empty repository. [STATUS](STATUS.md) holds current st
 ## What is next
 
 **Next:** **A-6** DEPLOY.md, then Batch B (safety layer).
-A-1 (repository, fake GitHub, CI, checks) merged in PR #1; A-2 (foundation schema) in PR #7; A-3 (connector login) in PRs #8 and #9; A-4 (GitHub client) in PR #10; A-5a (credential store) in PR #11; A-5b (setup page) in PR #12; A-5c (webhook, server tools) in PR #13. Plan approved by Chris
+A-1 (repository, fake GitHub, CI, checks) merged in PR #1; A-2 (foundation schema) in PR #7; A-3 (connector login) in PRs #8 and #9; A-4 (GitHub client) in PR #10; A-5a (credential store) in PR #11; A-5b (setup page) in PR #12; A-5c (webhook, server tools) in PR #14. Plan approved by Chris
 (IN-00, 2026-10-10).
 
 ## Order and why
@@ -43,7 +43,7 @@ by the approved design; write the card when its predecessor is real. Tool counts
 
 | Batch | Cards | Tools | Card status |
 |---|---|---|---|
-| A Foundation | A-1 repo, CI, fake GitHub · A-2 schema · A-3 login · A-4 GitHub client, vendored descriptions, finders · A-5 setup page, Apps from manifests, credential store, one-time secrets · A-6 DEPLOY.md | 2 | A-1 MERGED (#1); A-2 MERGED (#7); A-3 MERGED (#8, #9); A-4 MERGED (#10); A-5 split: A-5a MERGED (#11), A-5b MERGED (#12), A-5c MERGED (#13); A-6 onward JIT |
+| A Foundation | A-1 repo, CI, fake GitHub · A-2 schema · A-3 login · A-4 GitHub client, vendored descriptions, finders · A-5 setup page, Apps from manifests, credential store, one-time secrets · A-6 DEPLOY.md | 2 | A-1 MERGED (#1); A-2 MERGED (#7); A-3 MERGED (#8, #9); A-4 MERGED (#10); A-5 split: A-5a MERGED (#11), A-5b MERGED (#12), A-5c MERGED (#14); A-6 onward JIT |
 | B Trust | B-1 safety layer · B-2 production guard · B-3 self-protection and ownership · B-4 access/message/spend · B-5 errors and shaping · B-6 profiles and downscoped tokens · B-7 check-writes · B-8 server tools | 11 | JIT |
 | C Context | C-1 small results · C-2 listing modes, meta-tools, budgets | 5 | JIT |
 | D Code | D-1 repositories · D-2 files, commits, git data · D-3 branches and tags | 44 | JIT |
