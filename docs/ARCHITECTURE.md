@@ -155,6 +155,13 @@ reviewers, repositories of unconnected accounts), `accessChange`, `invitation` a
 and must fit the account's monthly limit (`gh_accounts.spend_limit_cents`) minus the month's spend (Denver calendar month, summed from `change_log.spend_cents`, rejected changes excluded).
 Only the setup page raises the limit; `github_set_spend_limit` only lowers it.
 
+### Errors and result shaping (B-5)
+
+`src/tools/errors.js` turns a GitHub failure into four parts (what happened, likely cause, what to do, one technical line with the request id); unknown errors keep the plain
+status line. `src/tools/util.js` `shapeResult` runs on every result in `src/tools/dispatch.js`: secret-named fields and token- or key-shaped text become `[hidden]`; times gain
+`_local` (Denver); whole cents gain `_display`; text from people whose `author_association` is not OWNER, MEMBER or COLLABORATOR is marked `untrusted: true`; a production
+connection's results start with `"mode": "PRODUCTION"`. The dispatcher still withholds anything credential-shaped that survives shaping.
+
 ## GitHub App permissions
 
 None granted yet. The requested list lives in `src/github/app-manifest.js` (A-5b; repository and organization permissions only, no account permissions until Batch O) and `docs/DEPLOY.md` (A-6); record the

@@ -168,8 +168,8 @@ describe('failures and retries', () => {
     expect(classifyGithubError(new GithubClientError('rate_limited', 'slow down'))).toBe('rejected');
     for (const status of [400, 403, 404, 409, 422, 429]) expect(classifyGithubError({ status })).toBe('rejected');
     for (const status of [408, 500, 502, 503, undefined]) expect(classifyGithubError({ status })).toBe('uncertain');
-    expect(explainGithubError(new GithubClientError('outside_scope', 'Not one of your accounts.'))).toBe('Not one of your accounts.');
-    expect(explainGithubError({ status: 403, response: { headers: { 'x-github-request-id': 'ABCD:1' } } })).toBe('GitHub refused the change (HTTP 403). Request id ABCD:1.');
+    expect(explainGithubError(new GithubClientError('outside_scope', 'Not one of your accounts.'))).toContain('Not one of your accounts.');
+    expect(explainGithubError({ status: 403, response: { headers: { 'x-github-request-id': 'ABCD:1' } } })).toContain('request id ABCD:1');
     expect(explainGithubError(new Error('socket hang up with token ghp_FAKE'))).not.toContain('ghp_');
   });
 });
