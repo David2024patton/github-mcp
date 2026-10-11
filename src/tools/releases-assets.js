@@ -32,14 +32,16 @@ const del = defineGithubWrite({
   read: async (args, ctx, t) => {
     const release = await getRelease(ctx, t, args.releaseId);
     const asset = await getAsset(ctx, t, args.assetId);
-    requireMatch(release, asset, args.assetId);
+    // Missing items still reach request-key replay: a successful prior deletion
+    // must be replayable even though its asset has vanished. apply fails closed.
     return { release, asset };
   },
   classify: async ({ ctx, target: t, before }) => ({
-    production: before.release.draft ? null : await productionReason(ctx, { ...t, kind: 'release' })
+    production: before.release?.draft === true ? null : await productionReason(ctx, { ...t, kind: 'release' })
   }),
-  summarize: ({ target: t, before }) =>
-    `Delete "${before.asset.name}" (${before.asset.download_count ?? 'unknown'} downloads) from ${before.release.draft ? 'draft' : 'published'} release "${before.release.tag_name}" in ${slug(t.owner, t.repo)}. The asset cannot be recovered automatically.`,
+  summarize: ({ args, target: t, before }) => !before.asset || !before.release
+    ? `Asset ${args.assetId} cannot be verified in release ${args.releaseId} in ${slug(t.owner, t.repo)}; no deletion will be sent.`
+    : `Delete "${before.asset.name}" (${before.asset.download_count ?? 'unknown'} downloads) from ${before.release.draft ? 'draft' : 'published'} release "${before.release.tag_name}" in ${slug(t.owner, t.repo)}. The asset cannot be recovered automatically.`,
   apply: async ({ args, before, ctx, target: t }) => {
     // A release published between preview and apply cannot inherit draft permissions.
     const latest = await getRelease(ctx, t, args.releaseId);
