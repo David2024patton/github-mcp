@@ -25,7 +25,7 @@ export const releaseView = (release, includeAssets = false) => ({
 
 export const releaseList = defineRead({
   name: 'github_release_list', area: 'release', audience: ['B', 'Op'],
-  description: 'List draft, prerelease and published releases with tag, dates and asset counts; no binary downloads.',
+  description: 'List release tags, draft flags, dates and asset counts.',
   properties: { owner: OWNER, repo: REPO,
     page: { type: 'integer', minimum: 1 },
     max: { type: 'integer', minimum: 1, maximum: 30 } },
@@ -42,7 +42,7 @@ export const releaseList = defineRead({
 
 export const releaseGet = defineRead({
   name: 'github_release_get', area: 'release', audience: ['B', 'Op'],
-  description: 'Get a release by ID or tag, or get the latest published release, with asset metadata and download links.',
+  description: 'Read a release by ID, tag or latest; asset metadata only.',
   properties: { owner: OWNER, repo: REPO,
     selector: { type: 'string', enum: ['id', 'tag', 'latest'] },
     releaseId: { type: 'integer', minimum: 1 },
