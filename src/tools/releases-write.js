@@ -20,13 +20,12 @@ const target = (args, ctx) => ({ owner: ownerOf(args, ctx), repo: args.repo, sco
 const path = (t, id) => ({ owner: t.owner, repo: t.repo, ...(id ? { release_id: id } : {}) });
 const get = async (ctx, t, id) => missing(async () =>
   (await (await octo(ctx, t.owner)).request(ROUTES.one, path(t, id))).data);
-const classifications = async ({ ctx, target: t }) => ({
+const classifications = async ({ ctx, target: t, args, before }) => ({
   production: await productionReason(ctx, t),
-  // A release may notify watchers when published. Keep conservative confirmation
-  // for draft lifecycle writes too; the catalog marks create as notifying.
-  notifies: true
+  ...((args.draft === false && (before?.current?.draft || !before?.current))
+    ? { notifies: ['repository watchers'] } : {})
 });
-const declarations = { production: 'always', notifies: true, confirm: 'always', profiles: ['full'] };
+const declarations = { production: 'always', confirm: 'always', profiles: ['full'] };
 const describe = (t) => slug(t.owner, t.repo);
 function assertMutable(current) {
   if (!current) throw refusal('Release not found.', 404);
@@ -42,7 +41,7 @@ const create = defineGithubWrite({
     targetCommitish: { type: 'string', minLength: 1, maxLength: 250 },
     draft: { type: 'boolean' }, prerelease: { type: 'boolean' },
     generateReleaseNotes: { type: 'boolean', description: 'Defaults to true.' } },
-  required: ['repo', 'tag'], declarations, target,
+  required: ['repo', 'tag'], declarations: { ...declarations, notifies: true }, target,
   read: async (args, ctx, t) => ({
     existing: await missing(async () => (await (await octo(ctx, t.owner)).request(
       ROUTES.byTag, { ...path(t), tag: args.tag })).data)
@@ -79,7 +78,7 @@ const update = defineGithubWrite({
   properties: { owner: OWNER, repo: REPO, releaseId: ID,
     name: { type: 'string', maxLength: 250 }, body: TEXT,
     draft: { type: 'boolean' }, prerelease: { type: 'boolean' } },
-  required: ['repo', 'releaseId'], declarations, target,
+  required: ['repo', 'releaseId'], declarations: { ...declarations, notifies: true }, target,
   read: async (args, ctx, t) => ({ current: await get(ctx, t, args.releaseId) }),
   classify: classifications,
   summarize: ({ args, before, target: t }) => before.current
