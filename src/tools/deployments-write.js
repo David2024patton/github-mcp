@@ -28,7 +28,7 @@ const readStatuses = async (ctx, t, id) =>
 
 const deployCreate = defineGithubWrite({
   name: 'github_deploy_create', area: 'deploy', audience: ['B'],
-  description: 'Request deployment of an existing ref to a named environment without auto-merging branches.',
+  description: 'Create a deployment without auto-merging branches.',
   properties: {
     owner: OWNER, repo: REPO, ref: REF, environment: ENV,
     task: { type: 'string', minLength: 1, maxLength: 100 },
@@ -77,7 +77,7 @@ const statusTarget = (args, ctx) => ({ owner: ownerOf(args, ctx), repo: args.rep
 
 const deployStatus = defineGithubWrite({
   name: 'github_deploy_set_status', area: 'deploy', audience: ['B'],
-  description: 'Add a status to an actual deployment, deriving its environment and ref from GitHub before guarding the change.',
+  description: 'Set status using the deployment's actual environment and ref.',
   properties: {
     owner: OWNER, repo: REPO, deploymentId: { type: 'integer', minimum: 1 },
     state: { type: 'string', enum: ['error', 'failure', 'pending', 'in_progress', 'queued', 'success', 'inactive'] },

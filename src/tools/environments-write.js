@@ -70,11 +70,11 @@ const argsFrom = (t, prior) => ({
 
 const envSave = defineGithubWrite({
   name: 'github_env_save', area: 'env', audience: ['B', 'O'],
-  description: 'Create or update deployment environment controls without clearing omitted reviewers, timers or branch policies.',
+  description: 'Save environment settings, preserving omitted protections.',
   properties: { owner: OWNER, repo: REPO, environment: ENV,
     waitTimer: { type: 'integer', minimum: 0, maximum: 43200 },
     preventSelfReview: { type: 'boolean' }, reviewers: REVIEWERS, deploymentBranchPolicy: POLICY,
-    clearDeploymentBranchPolicy: { type: 'boolean', description: 'Set true to remove the branch policy; mutually exclusive with deploymentBranchPolicy.' } },
+    clearDeploymentBranchPolicy: { type: 'boolean', description: 'Remove branch policy; cannot combine with policy object.' } },
   required: ['repo', 'environment'],
   declarations: { production: 'when-target', confirm: 'always', profiles: ['full'] },
   target,
@@ -109,7 +109,7 @@ const envSave = defineGithubWrite({
 
 const envDelete = defineGithubWrite({
   name: 'github_env_delete', area: 'env', audience: ['O'],
-  description: 'Permanently delete an environment, including its deployment rules, secrets and variables.',
+  description: 'Delete environment, rules, secrets and variables.',
   properties: { owner: OWNER, repo: REPO, environment: ENV },
   required: ['repo', 'environment'],
   declarations: { production: 'when-target', confirm: 'always', profiles: ['full'] },

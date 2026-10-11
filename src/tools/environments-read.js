@@ -47,10 +47,10 @@ async function countOrUnknown(client, route, params) {
 
 export const envList = defineRead({
   name: 'github_env_list', area: 'env', audience: ['B', 'O'],
-  description: 'List deployment environments and their protections; optionally check secrets and variables counts (never values).',
+  description: 'List environments, protections and optional secret/variable counts.',
   properties: { owner: OWNER, repo: REPO, page: { type: 'integer', minimum: 1 },
     max: { type: 'integer', minimum: 1, maximum: 30 },
-    includeCounts: { type: 'boolean', description: 'Read Actions secrets/variables counts for each returned environment; not their values' } },
+    includeCounts: { type: 'boolean', description: 'Count secrets and variables; never show values.' } },
   required: ['repo'],
   handler: (args, ctx) => plain(async () => {
     const { owner, octokit } = await readerFor(args, ctx);
@@ -77,7 +77,7 @@ export const envList = defineRead({
 
 export const envGet = defineRead({
   name: 'github_env_get', area: 'env', audience: ['B', 'O'],
-  description: 'Read an environment including reviewers, wait timer, custom protection rules and branch/tag policies.',
+  description: 'Read environment reviewers, timers and branch/tag rules.',
   properties: { owner: OWNER, repo: REPO, environment: ENV },
   required: ['repo', 'environment'],
   handler: (args, ctx) => plain(async () => {
