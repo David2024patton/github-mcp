@@ -3,7 +3,7 @@
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
-tool merges, its Card cell gains `built #<PR>`. Built so far: **53 tools** (`github_search_tools`, `github_describe_tool`, `github_call`, `github_batch`, `github_get_result`, `github_check_permissions`, `github_rate_status`, `github_where_is_setting`, `github_whoami`, `github_list_accounts`, `github_list_protected_resources`, `github_list_connections`, `github_recent_changes`, `github_enable_production`, `github_disable_production`, `github_set_spend_limit`, `github_set_default_account`, `github_revoke_connection`, `github_repo_list`, `github_repo_get`, `github_repo_find`, `github_repo_get_insights`, `github_repo_get_traffic`, `github_repo_list_activity`, `github_repo_get_custom_properties`, `github_repo_create`, `github_repo_create_from_template`, `github_repo_update_settings`, `github_repo_set_visibility`, `github_repo_set_default_branch`, `github_repo_rename`, `github_repo_set_archived`, `github_repo_transfer`, `github_repo_delete`, `github_repo_fork`, `github_repo_sync_fork`, `github_repo_set_custom_properties`, `github_repo_star`, `github_content_get`, `github_content_get_tree`, `github_content_get_archive_link`, `github_content_check_codeowners`, `github_commit_list`, `github_commit_get`, `github_commit_compare`, `github_commit_list_prs`, `github_git_get_ref`, `github_git_get_commit`, `github_content_put_file`, `github_content_delete_file`, `github_content_push_files`, `github_commit_comment`, `github_git_update_ref`) — the registry (`src/tools/index.js`) exists
+tool merges, its Card cell gains `built #<PR>`. Built so far: **62 tools** (`github_search_tools`, `github_describe_tool`, `github_call`, `github_batch`, `github_get_result`, `github_check_permissions`, `github_rate_status`, `github_where_is_setting`, `github_whoami`, `github_list_accounts`, `github_list_protected_resources`, `github_list_connections`, `github_recent_changes`, `github_enable_production`, `github_disable_production`, `github_set_spend_limit`, `github_set_default_account`, `github_revoke_connection`, `github_repo_list`, `github_repo_get`, `github_repo_find`, `github_repo_get_insights`, `github_repo_get_traffic`, `github_repo_list_activity`, `github_repo_get_custom_properties`, `github_repo_create`, `github_repo_create_from_template`, `github_repo_update_settings`, `github_repo_set_visibility`, `github_repo_set_default_branch`, `github_repo_rename`, `github_repo_set_archived`, `github_repo_transfer`, `github_repo_delete`, `github_repo_fork`, `github_repo_sync_fork`, `github_repo_set_custom_properties`, `github_repo_star`, `github_content_get`, `github_content_get_tree`, `github_content_get_archive_link`, `github_content_check_codeowners`, `github_commit_list`, `github_commit_get`, `github_commit_compare`, `github_commit_list_prs`, `github_git_get_ref`, `github_git_get_commit`, `github_content_put_file`, `github_content_delete_file`, `github_content_push_files`, `github_commit_comment`, `github_git_update_ref`, `github_branch_list`, `github_branch_get`, `github_branch_create`, `github_branch_rename`, `github_branch_delete`, `github_branch_merge`, `github_tag_list`, `github_tag_create`, `github_tag_delete`) — the registry (`src/tools/index.js`) exists
 and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Since B-5 every result of these tools is shaped (`src/tools/util.js`) and failures are explained by `src/tools/errors.js`. Since B-6 a connection sees only the tools its profile allows (`tools/list` and by-name calls). Every write tool below will be built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
@@ -110,15 +110,15 @@ Card(s): D-3.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_branch_list` | Branches with head SHA, protected flag and whether rules apply | — | F | I | B,Op | R | D-3 |
-| `github_branch_get` | One branch: head commit, protection, and every ruleset rule that applies (`GET /rules/branches/{branch}`) | — | C | I | B,Op | R | D-3 |
-| `github_branch_create` | New branch from any ref (default: the repo's default branch, not a guessed `main`) | P | F | I | B | E | D-3 |
-| `github_branch_rename` | Rename a branch (open PRs are retargeted by GitHub) | C·Prod* | C | I | B | F | D-3 |
-| `github_branch_delete` | Delete a branch (default branch always refused; protected needs production) | C·D·Prod* | F | I | B | E | D-3 |
-| `github_branch_merge` | Merge one branch into another directly (no PR) | P·Prod* | C | I | B | E | D-3 |
-| `github_tag_list` | Tags with their commits | — | C | I | B,Op | R | D-3 |
-| `github_tag_create` | Create a lightweight or annotated tag | C·Prod | N | I | B | F | D-3 |
-| `github_tag_delete` | Delete a tag | C·D·Prod | N | I | B | F | D-3 |
+| `github_branch_list` | Branches with head SHA, protected flag and whether rules apply | — | F | I | B,Op | R | D-3 built #33 |
+| `github_branch_get` | One branch: head commit, protection, and every ruleset rule that applies (`GET /rules/branches/{branch}`) | — | C | I | B,Op | R | D-3 built #33 |
+| `github_branch_create` | New branch from any ref (default: the repo's default branch, not a guessed `main`) | P | F | I | B | E | D-3 built #33 |
+| `github_branch_rename` | Rename a branch (open PRs are retargeted by GitHub) | C·Prod* | C | I | B | F | D-3 built #33 |
+| `github_branch_delete` | Delete a branch (default branch always refused; protected needs production) | C·D·Prod* | F | I | B | E | D-3 built #33 |
+| `github_branch_merge` | Merge one branch into another directly (no PR) | P·Prod* | C | I | B | E | D-3 built #33 |
+| `github_tag_list` | Tags with their commits | — | C | I | B,Op | R | D-3 built #33 |
+| `github_tag_create` | Create a lightweight or annotated tag | C·Prod | N | I | B | F | D-3 built #33 |
+| `github_tag_delete` | Delete a tag | C·D·Prod | N | I | B | F | D-3 built #33 |
 
 ## Pull requests (`github_pr_*`) — 15
 
