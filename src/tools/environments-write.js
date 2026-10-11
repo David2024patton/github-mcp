@@ -11,11 +11,22 @@ const ENV = { type: 'string', minLength: 1, maxLength: 100 };
 const REVIEWERS = { type: 'array', maxItems: 6, items: { type: 'object', additionalProperties: false,
   properties: { type: { type: 'string', enum: ['User', 'Team'] }, id: { type: 'integer', minimum: 1 } },
   required: ['type', 'id'] } };
-const POLICY = { type: ['object', 'null'], additionalProperties: false,
+// Our shared argument validator supports single JSON-schema types; use a distinct
+// explicit clearing flag rather than an unsupported nullable object schema.
+const POLICY = { type: 'object', additionalProperties: false,
   properties: { protected_branches: { type: 'boolean' }, custom_branch_policies: { type: 'boolean' } },
   required: ['protected_branches', 'custom_branch_policies'] };
 const ROUTE = '/repos/{owner}/{repo}/environments/{environment_name}';
-const target = (args, ctx) => ({ owner: ownerOf(args, ctx), repo: args.repo, environment: args.environment, scope: 'repo' });
+const target = (args, ctx) => {
+  if (Object.hasOwn(args, 'deploymentBranchPolicy') &&
+    (!args.deploymentBranchPolicy || typeof args.deploymentBranchPolicy !== 'object' || Array.isArray(args.deploymentBranchPolicy)))
+    throw new TypeError('deploymentBranchPolicy must be an object; use clearDeploymentBranchPolicy: true to remove it.');
+  if (Object.hasOwn(args, 'deploymentBranchPolicy') && Object.hasOwn(args, 'clearDeploymentBranchPolicy'))
+    throw new TypeError('Choose deploymentBranchPolicy or clearDeploymentBranchPolicy, not both.');
+  if (Object.hasOwn(args, 'clearDeploymentBranchPolicy') && args.clearDeploymentBranchPolicy !== true)
+    throw new TypeError('clearDeploymentBranchPolicy must be true when supplied.');
+  return { owner: ownerOf(args, ctx), repo: args.repo, environment: args.environment, scope: 'repo' };
+};
 const path = (target) => ({ owner: target.owner, repo: target.repo, environment_name: target.environment });
 const get = async (ctx, target) => readEnvironment(await octo(ctx, target.owner), target.owner, target.repo, target.environment);
 const sortReviewers = (list) => [...list].sort((a, b) => a.type.localeCompare(b.type) || a.id - b.id);
@@ -36,13 +47,14 @@ export function writableEnvironment(env) {
   };
 }
 function plan(args, current) {
-  if (!['waitTimer', 'preventSelfReview', 'reviewers', 'deploymentBranchPolicy'].some((key) => Object.hasOwn(args, key)))
+  if (!['waitTimer', 'preventSelfReview', 'reviewers', 'deploymentBranchPolicy', 'clearDeploymentBranchPolicy'].some((key) => Object.hasOwn(args, key)))
     throw refusal('Specify at least one environment setting to change.');
   const next = { ...current };
   if (Object.hasOwn(args, 'waitTimer')) next.wait_timer = args.waitTimer;
   if (Object.hasOwn(args, 'preventSelfReview')) next.prevent_self_review = args.preventSelfReview;
   if (Object.hasOwn(args, 'reviewers')) next.reviewers = sortReviewers(args.reviewers);
   if (Object.hasOwn(args, 'deploymentBranchPolicy')) next.deployment_branch_policy = args.deploymentBranchPolicy;
+  if (args.clearDeploymentBranchPolicy === true) next.deployment_branch_policy = null;
   const p = next.deployment_branch_policy;
   if (p && p.protected_branches === p.custom_branch_policies)
     throw refusal('Branch-policy modes must be opposite: protected_branches or custom_branch_policies, never both.');
@@ -51,7 +63,9 @@ function plan(args, current) {
 const argsFrom = (t, prior) => ({
   owner: t.owner, repo: t.repo, environment: t.environment,
   waitTimer: prior.wait_timer, preventSelfReview: prior.prevent_self_review,
-  reviewers: prior.reviewers, deploymentBranchPolicy: prior.deployment_branch_policy
+  reviewers: prior.reviewers, ...(prior.deployment_branch_policy
+    ? { deploymentBranchPolicy: prior.deployment_branch_policy }
+    : { clearDeploymentBranchPolicy: true })
 });
 
 const envSave = defineGithubWrite({
@@ -59,7 +73,8 @@ const envSave = defineGithubWrite({
   description: 'Create or update deployment environment controls without clearing omitted reviewers, timers or branch policies.',
   properties: { owner: OWNER, repo: REPO, environment: ENV,
     waitTimer: { type: 'integer', minimum: 0, maximum: 43200 },
-    preventSelfReview: { type: 'boolean' }, reviewers: REVIEWERS, deploymentBranchPolicy: POLICY },
+    preventSelfReview: { type: 'boolean' }, reviewers: REVIEWERS, deploymentBranchPolicy: POLICY,
+    clearDeploymentBranchPolicy: { type: 'boolean', description: 'Set true to remove the branch policy; mutually exclusive with deploymentBranchPolicy.' } },
   required: ['repo', 'environment'],
   declarations: { production: 'when-target', confirm: 'always', profiles: ['full'] },
   target,
@@ -82,8 +97,12 @@ const envSave = defineGithubWrite({
     const next = plan(args, writableEnvironment(before.current));
     return (await octo(ctx, t.owner)).request('PUT ' + ROUTE, { ...path(t), ...next });
   },
-  readAfter: async ({ ctx, target: t }) => writableEnvironment(await get(ctx, t)),
-  verify: ({ args, before, after }) => JSON.stringify(after) === JSON.stringify(plan(args, writableEnvironment(before.current))),
+  readAfter: async ({ ctx, target: t }) => {
+    const current = await get(ctx, t);
+    return current === null ? null : writableEnvironment(current);
+  },
+  verify: ({ args, before, after }) => after !== null &&
+    JSON.stringify(after) === JSON.stringify(plan(args, writableEnvironment(before.current))),
   inverse: ({ before, target: t }) => before.current ? { tool: 'github_env_save', args: argsFrom(t, writableEnvironment(before.current)) } : null,
   present: ({ target: t, after }) => ({ environment: t.environment, settings: after })
 });

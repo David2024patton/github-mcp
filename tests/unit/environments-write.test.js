@@ -67,7 +67,7 @@ describe('G-4 environment write behavior', () => {
     seq(w.gh, ROUTE, [[200, before], [200, before], [200, after]]);
     w.gh.when(PUT).reply(200, after);
     const result = await call('github_env_save', w, {
-      ...R, waitTimer: 0, preventSelfReview: false, reviewers: [], deploymentBranchPolicy: null, confirm: true
+      ...R, waitTimer: 0, preventSelfReview: false, reviewers: [], clearDeploymentBranchPolicy: true, confirm: true
     });
     expect(result.status).toBe('applied');
     expect(writes(w.gh)[0].body).toMatchObject({ wait_timer: 0, prevent_self_review: false,
@@ -97,6 +97,34 @@ describe('G-4 environment write behavior', () => {
     const result = await call('github_env_delete', w, { ...R, environment: 'production', confirm: true });
     expect(result.status).toBe('refused_by_guard');
     expect(writes(w.gh)).toEqual([]);
+  });
+
+  it('refuses an unsupported null policy argument before reading GitHub', async () => {
+    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    const out = await call('github_env_save', w, { ...R, deploymentBranchPolicy: null, confirm: true });
+    expect(out.status).toBe('refused');
+    expect(w.gh.calls).toEqual([]);
+  });
+
+  it('refuses simultaneously setting and clearing a policy, and false clearing flags', async () => {
+    for (const extraArgs of [
+      { deploymentBranchPolicy: policy, clearDeploymentBranchPolicy: true },
+      { clearDeploymentBranchPolicy: false }
+    ]) {
+      const w = await makeWorld({ mode: 'production', profile: 'full' });
+      const out = await call('github_env_save', w, { ...R, ...extraArgs, confirm: true });
+      expect(out.status).toBe('refused');
+      expect(w.gh.calls).toEqual([]);
+    }
+  });
+
+  it('cannot confirm success when the environment disappears after the PUT', async () => {
+    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    seq(w.gh, ROUTE, [[200, simple], [200, simple], [404, { message: 'Not Found' }]]);
+    w.gh.when(PUT).reply(200, simple);
+    const out = await call('github_env_save', w, { ...R, clearDeploymentBranchPolicy: true, confirm: true });
+    expect(out).toMatchObject({ status: 'unconfirmed', confirmed: false });
+    expect(writes(w.gh)).toHaveLength(1);
   });
 
   it('rejects contradictory branch modes and sends no PUT', async () => {
