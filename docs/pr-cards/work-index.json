@@ -451,16 +451,17 @@
         "D-3"
       ],
       "card": "docs/pr-cards/E-1.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
         "E-1"
       ],
-      "readiness": "PARTLY_BUILT_READS",
+      "readiness": "MERGED",
       "ownerInputs": [],
       "pr": [
-        35
+        35,
+        36
       ]
     },
     {

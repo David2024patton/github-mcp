@@ -13,7 +13,8 @@ describe('tool registry', () => {
       'github_content_get', 'github_content_get_tree', 'github_content_get_archive_link', 'github_content_check_codeowners', 'github_commit_list', 'github_commit_get', 'github_commit_compare', 'github_commit_list_prs', 'github_git_get_ref', 'github_git_get_commit',
       'github_content_put_file', 'github_content_delete_file', 'github_content_push_files', 'github_commit_comment', 'github_git_update_ref',
       'github_branch_list', 'github_branch_get', 'github_tag_list', 'github_branch_create', 'github_branch_rename', 'github_branch_delete', 'github_branch_merge', 'github_tag_create', 'github_tag_delete',
-      'github_pr_list', 'github_pr_get', 'github_pr_get_diff', 'github_pr_list_files', 'github_pr_list_commits'];
+      'github_pr_list', 'github_pr_get', 'github_pr_get_diff', 'github_pr_list_files', 'github_pr_list_commits',
+      'github_pr_create', 'github_pr_update', 'github_pr_close', 'github_pr_set_draft', 'github_pr_update_branch'];
     expect(registry.tools.map((t) => t.name)).toEqual(names);
     expect(Object.keys(registry.handlers)).toEqual(names);
     for (const tool of registry.tools) expect(tool.name).toMatch(/^github_[a-z_]+$/);
