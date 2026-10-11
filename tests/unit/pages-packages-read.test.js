@@ -9,13 +9,15 @@ const ORG = 'GET /orgs/{org}/packages';
 const USER = 'GET /users/{username}/packages';
 const ORG_V = 'GET /orgs/{org}/packages/{package_type}/{package_name}/versions';
 const USER_V = 'GET /users/{username}/packages/{package_type}/{package_name}/versions';
-const pkg = { id: 51, name: '@owner/library', package_type: 'npm', visibility: 'private',
+const pkg = { id: 51, name: 'library', package_type: 'npm', visibility: 'private',
   version_count: 2, owner: { login: 'example-org' } };
 const version = { id: 12, name: '1.2.0', metadata: { container: { tags: ['current'] } } };
 async function run(w, name, args) {
   const dispatch = createDispatch({ credentials: w.credentials, gates: [],
     fetch: w.gh.fetch, now: w.ctx.now });
-  return parse(await dispatch({ registry, name, args, connection: w.connection, db: w.db }));
+  const response = await dispatch({ registry, name, args, connection: w.connection, db: w.db });
+  if (response.isError) throw new Error(`${response.content?.[0]?.text ?? 'GitHub read failed'}; calls=${JSON.stringify(w.gh.calls)}; invalid=${JSON.stringify(w.gh.invalid)}`);
+  return parse(response);
 }
 describe('G-6 Pages and packages reads', () => {
   it('reads Pages settings plus latest build, preserving source and HTTPS state', async () => {
