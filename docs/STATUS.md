@@ -7,8 +7,8 @@ repositories.
 
 ## Next
 
-- **D-1 part 2 — repository changes** (`docs/pr-cards/D-1.md`): create, create from template, settings, visibility, default branch, rename, archive, transfer, delete, fork, sync fork, custom properties, star. Part 1 (the seven read tools) is in PR #27.
-- **Batch D — repositories, code, branches and tags** (`docs/designs/BATCH-D.md`, cards D-1…D-3): the first GitHub area tools, built with `defineRead` / `defineGithubWrite`. Batches A, B and C are finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
+- **Batch D, D-2 — files, commits and git data** (`docs/designs/BATCH-D.md` §3–4; write the card first). D-1 is finished (#27, #28).
+- Batches A, B, C finished; Batch D cards D-2 and D-3 remain. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).
@@ -24,6 +24,8 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-11 — D-1 part 2, repository changes (PR #28):** create, create from template, settings (merge options are production), visibility (public names its risk), default branch, rename, archive, transfer, delete, fork, sync fork, custom properties, star. Delete and transfer cannot be undone; the others record how to undo them. All nine write-contract checks pass through every door for every tool. D-1 is complete.
 
 **2026-10-11 — D-1 part 1, repository reads (PR #27):** `github_repo_list` (organization or user, archived filter, capped), `github_repo_get` (merge options, rules on the real default branch, custom properties), `github_repo_find` (searches only this connection's accounts; typed `user:`/`org:` qualifiers are stripped), `github_repo_get_insights` (GitHub's 202 'still computing' asked at most 3 times), `github_repo_get_traffic`, `github_repo_list_activity`, `github_repo_get_custom_properties`. Read tools now receive the credentials (before, only writes did). Tests: 13 new, 650 unit total green.
 
