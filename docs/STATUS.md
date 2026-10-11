@@ -25,7 +25,7 @@ repositories.
 
 ## Recent changes (newest first)
 
-**2026-10-11 — G-1 part 1, Actions reads (PR #PR):** `github_actions_list_workflows/list_runs/get_run`, `github_actions_get_job_log` and `_get_run_logs_summary` (short form only: failed steps first, error lines, last lines; long encoded text never returned), `_list_pending_deployments`. Starting, rerunning, cancelling and approving follow in part 2.
+**2026-10-11 — G-1 part 1, Actions reads (PR #39):** `github_actions_list_workflows/list_runs/get_run`, `github_actions_get_job_log` and `_get_run_logs_summary` (short form only: failed steps first, error lines, last lines; long encoded text never returned), `_list_pending_deployments`. Starting, rerunning, cancelling and approving follow in part 2.
 
 **2026-10-11 — E-3 part 2, review changes (PR #38):** `github_review_create/submit/dismiss`, `github_review_reply`, `github_review_resolve_thread` (also reopens; no-op when already in that state), `github_review_request_reviewers`. Messages reaching outsiders ask first; an account approving its own pull request gets a plain explanation. E-3 is complete.
 
