@@ -126,11 +126,11 @@ Card(s): E-1, E-2.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_pr_list` | Pull requests by state, base, head branch, author, label | — | C | I | B,Op | R | E-1 (built #34) |
-| `github_pr_get` | One PR: state, draft, head SHA, mergeable, review decision, required checks at head, unresolved thread count | — | C | I | B,Op | R | E-1 (built #34) |
-| `github_pr_get_diff` | The PR's diff (capped; handle for the rest) | — | C | I | B | R | E-1 (built #34) |
-| `github_pr_list_files` | Files changed with additions/deletions (patches capped) | — | C | I | B | R | E-1 (built #34) |
-| `github_pr_list_commits` | Commits in the PR | — | C | I | B | R | E-1 (built #34) |
+| `github_pr_list` | Pull requests by state, base, head branch, author, label | — | C | I | B,Op | R | E-1 (built #35) |
+| `github_pr_get` | One PR: state, draft, head SHA, mergeable, review decision, required checks at head, unresolved thread count | — | C | I | B,Op | R | E-1 (built #35) |
+| `github_pr_get_diff` | The PR's diff (capped; handle for the rest) | — | C | I | B | R | E-1 (built #35) |
+| `github_pr_list_files` | Files changed with additions/deletions (patches capped) | — | C | I | B | R | E-1 (built #35) |
+| `github_pr_list_commits` | Commits in the PR | — | C | I | B | R | E-1 (built #35) |
 | `github_pr_create` | Open a pull request (draft option; body footer records the tool and run) | P·M | C | I | B | E | E-1 |
 | `github_pr_update` | Title, body, base branch (retarget), state open/closed | P | F | I | B | E | E-1 |
 | `github_pr_set_draft` | Convert to draft or mark ready for review (GraphQL) | P | N | I | B | E | E-1 |
