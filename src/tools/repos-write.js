@@ -1,20 +1,15 @@
 // Repositories, change side (D-1 part 2). Every tool is a `defineGithubWrite`: it reads the repository first, the guards classify the
 // change (visibility and settings are production; making something public is an access change), the caller previews and confirms, one
 // request is sent through `githubFor`, and the result is read back and compared with the intent.
-import { githubFor } from '../github/client.js';
 import { defineGithubWrite } from './define-github-write.js';
+import { missing, octo, ownerOf, refusal, slug } from './github-write.js';
 import { productionReason } from './production-guard.js';
 
 const OWNER = { type: 'string', maxLength: 39, description: 'GitHub account (default: the connection\'s default account)' };
 const REPO = { type: 'string', minLength: 1, maxLength: 100 };
 const NAME = { type: 'string', minLength: 1, maxLength: 100, pattern: '^[A-Za-z0-9._-]+$' };
 const BOOL = { type: 'boolean' };
-const ownerOf = (args, ctx) => String(args.owner ?? ctx.connection.default_account);
 const repoTarget = (args, ctx) => ({ owner: ownerOf(args, ctx), repo: args.repo, scope: 'repo', kind: 'repo-settings' });
-const octo = (ctx, owner, cred = 'I') => githubFor(ctx, { owner, cred });
-const slug = (owner, repo) => `${owner}/${repo}`;
-const refusal = (message, status = 422) => Object.assign(new Error(message), { status });
-const missing = async (fn) => { try { return await fn(); } catch (error) { if (error?.status === 404) return null; throw error; } };
 const getRepo = async (ctx, owner, repo, cred = 'I') => (await (await octo(ctx, owner, cred)).request('GET /repos/{owner}/{repo}', { owner, repo })).data;
 const readRepo = (args, ctx, target) => getRepo(ctx, target.owner, target.repo);
 const afterRepo = ({ ctx, target }) => getRepo(ctx, target.owner, target.repo);
