@@ -33,7 +33,7 @@ function accountCard(a) {
 /**
  * @param {object} view `{ csrf, result?, revealed?, show?, accounts?, manifestForm?, installLink?, blocked?, keyHelp? }`
  */
-export function renderSetup({ csrf, result = '', revealed = null, show = '', accounts = null, manifestForm = null, installLink = null, blocked = '', keyHelp = '', productionNames = null, protectedList = null, spendLimits = null, ownPeopleExtra = null }) {
+export function renderSetup({ csrf, result = '', revealed = null, show = '', accounts = null, manifestForm = null, installLink = null, blocked = '', keyHelp = '', productionNames = null, protectedList = null, spendLimits = null, ownPeopleExtra = null, secretEntry = null }) {
   const form = (action, inner, button, extra = '') => `<form method="post" autocomplete="off">${hidden('csrf', csrf)}${hidden('action', action)}${extra}${inner}${passphrase}<button type="submit">${h(button)}</button></form>`;
   const login = '<label>GitHub account name (for example your organization or user name)<input name="login" required maxlength="39" autocomplete="off"></label>';
   const type = '<label>Account type<select name="accountType"><option value="Organization">Organization</option><option value="User">Personal user</option></select></label>';
@@ -45,6 +45,8 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
     (keyHelp ? `<p role="alert"><strong>${h(keyHelp)}</strong></p>` : '') +
     (result ? `<p role="status">${h(result)}</p>` : '') +
     (installLink ? `<p><a href="${h(installLink)}">Install the App on GitHub →</a></p>` : '') +
+    (secretEntry ? `<h2>Type a secret for GitHub</h2><p>${h(secretEntry.summary)}</p><p><small>The value is sealed with GitHub's public key on this server and sent straight to GitHub. It is not saved, not logged and never shown to Claude. Link is good until ${h(secretEntry.expires)}.</small></p>` +
+      form('enter-secret', '<label>Secret value<input type="password" name="value" required maxlength="48000" autocomplete="off"></label>', 'Seal and send to GitHub', hidden('id', secretEntry.id)) : '') +
     (revealed ? `<h2>One-time secret — copy it now</h2><pre>${h(revealed)}</pre><p>It has been deleted from the server and will not appear again.</p>` : '') +
     (manifestForm ? `<h2>Create the GitHub App</h2><p>GitHub will show you the App it is about to create. Check the account name, then click <em>Create GitHub App</em> on GitHub. The keys go straight to this server; you copy nothing.</p>
       <form method="post" action="${h(manifestForm.action)}">${hidden('manifest', manifestForm.manifest)}<button type="submit">Continue to GitHub</button></form>` : '') +

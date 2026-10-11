@@ -60,6 +60,7 @@ secret-looking column name.
 | `gh_write_slots` | Next allowed write time per installation (write spacing across instances) |
 | `gh_etag_cache` | ETags and bodies for polled reads per (account, URL key) |
 | `protected_resources` | The protected list (B-3): kind (`repo`, `installation`), lowercase target (`owner/name`, an installation number, or `*` for this server's own Apps), level (`pr-only`, `locked`), reason |
+| `secret_entry_requests` | A secret Chris will type on the setup page (G-3): who it is for and where it goes, 30-minute life, used once; never the value |
 | `result_store` | Big results kept 24 hours behind a `res_…` handle for one connection (C-1); expired rows are cleared on the next write |
 | `server_settings` | Owner settings as key and JSON value (B-2: the extra production names; later cards add theirs) |
 

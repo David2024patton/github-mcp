@@ -556,14 +556,18 @@
         "G-2"
       ],
       "card": "docs/pr-cards/G-3.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "additive",
       "budget": 450,
       "units": [
         "G-3"
       ],
       "readiness": "WRITE_CARD_AT_START",
-      "ownerInputs": []
+      "ownerInputs": [],
+      "pr": [
+        44,
+        "PR"
+      ]
     },
     {
       "id": "G-4",

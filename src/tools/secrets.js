@@ -34,7 +34,7 @@ const setupUrl = (ctx) => { try { return `${publicOrigin(ctx.env)}/api/github/se
 
 const secretSet = defineGithubWrite({
   name: 'github_secret_set', area: 'secret', audience: ['B', 'O'],
-  description: 'Create or replace a secret. You never send the value: by default Chris types it on his private setup page (a link is returned), or the server makes a random one (valueFrom generate). Organization secrets are production changes.',
+  description: 'Create or replace a secret. You never send the value: Chris types it on his setup page (link returned), or the server generates one.',
   properties: { owner: OWNER, repo: REPO, environment: ENVIRONMENT, kind: KIND, name: NAME,
     valueFrom: { type: 'string', enum: ['setup-page', 'generate'], description: 'setup-page (default): Chris types the value. generate: a random value nobody sees, for secrets only GitHub Actions needs' },
     bytes: { type: 'integer', minimum: 16, maximum: 64, description: 'With generate: size of the random value (default 32)' },
