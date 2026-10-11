@@ -197,3 +197,13 @@ cannot be narrowed per connection, so a read-only connection on such an account 
 **2026-10-10 — A read-only connection cannot even mint a writing token, and unknown permissions mean no token (B-6).** Hiding write tools is not enough on its own, so a `read_only` connection's installation token is requested with every granted permission at `read`; an empty permission list would mean "everything" to GitHub, so when the installation's permissions are not known the server refuses to mint instead. Accounts that use a fine-grained token cannot be narrowed this way and rely on the profile and the write layer.
 
 **2026-10-11 — Parameters of a DELETE (or PUT) that are not in the path must be written into the route as a query template (G-2).** Octokit sends every parameter that is not in the path as a JSON *body* for methods other than GET, and GitHub ignores a body on `DELETE …/actions/caches`, so a delete by key would have matched nothing or everything depending on the endpoint. The fake GitHub, which validates each request against the vendored description, reported "query must have required property 'key'". The fix is to write the route as `DELETE /repos/{owner}/{repo}/actions/caches{?key,ref}`. Any future tool whose DELETE/POST/PUT operation lists query parameters in the description must do the same; the request-shape check (`gh.invalid` empty) is what catches a miss.
+
+
+**2026-10-11 — Add execution packets to reduce repeated implementation discovery (Chris's request).**
+The approved plans already define behavior and safety. A second execution layer now records existing exports,
+argument-to-request translations, before/after observations, fixture arrangements, ordered edits and exact focused
+commands once per JIT card. IMPLEMENTATION-DETAIL, TOOL-RECIPES, REMAINING-WORK and the worked G-4 packet live in
+`docs/implementation-contracts/`; workflow entry points make them discoverable. Distant paths remain proposals,
+not speculative READY cards. No design override, test reduction, owner approval or model change is implied.
+The shared contract's one-write assertion remains intact; compound work additionally proves its mutation trace,
+partial failures and replay behavior. Planning does not edit in-flight E-2/G-3 cards or their index entries.
