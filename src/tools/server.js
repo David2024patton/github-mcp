@@ -4,7 +4,7 @@ import { GITHUB_API_VERSION } from '../github/client.js';
 import { formatDenver } from '../github/errors.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
-const FIELDS = { type: 'array', items: { type: 'string' }, maxItems: 20, description: 'Only these fields of each account' };
+const FIELDS = { type: 'array', items: { type: 'string', maxLength: 64 }, maxItems: 20, description: 'Only these fields of each account' };
 const dollars = (cents) => `$${((Number(cents) || 0) / 100).toFixed(2)}`;
 const when = (value) => (value ? formatDenver(value) : null);
 

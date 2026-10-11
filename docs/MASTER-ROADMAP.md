@@ -4,8 +4,8 @@ Written 2026-10-10 for an empty repository. [STATUS](STATUS.md) holds current st
 
 ## What is next
 
-**Next:** **Batch B** (the safety layer), starting with B-1.
-A-1 (repository, fake GitHub, CI, checks) merged in PR #1; A-2 (foundation schema) in PR #7; A-3 (connector login) in PRs #8 and #9; A-4 (GitHub client) in PR #10; A-5a (credential store) in PR #11; A-5b (setup page) in PR #12; A-5c (webhook, `github_whoami`, `github_list_accounts`) in PR #13; A-6 (`docs/DEPLOY.md`) in PR #15. Plan approved by Chris
+**Next:** **B-2** (production guard), then B-3 … B-8 of Batch B.
+A-1 (repository, fake GitHub, CI, checks) merged in PR #1; A-2 (foundation schema) in PR #7; A-3 (connector login) in PRs #8 and #9; A-4 (GitHub client) in PR #10; A-5a (credential store) in PR #11; A-5b (setup page) in PR #12; A-5c (webhook, `github_whoami`, `github_list_accounts`) in PR #13; A-6 (`docs/DEPLOY.md`) in PR #15; B-1 (write safety layer) in PR #16. Plan approved by Chris
 (IN-00, 2026-10-10).
 
 ## Order and why

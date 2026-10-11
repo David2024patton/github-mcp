@@ -16,7 +16,7 @@ Postgres), CI, `src/db.js` (lazy Neon client, `createDb(sql)`, the 13 foundation
 | Dependencies | Pinned exactly, `package-lock.json` committed; `npm ci`. Runtime: `@modelcontextprotocol/sdk` 1.32.1, `@neondatabase/serverless` 1.2.0, `@octokit/core` 7.0.8, `@octokit/plugin-paginate-rest` 16.0.0, `@octokit/plugin-throttling` 11.0.5, `@octokit/plugin-retry` 8.1.1, `@octokit/auth-app` 8.3.1, `@octokit/webhooks` 14.2.0, `libsodium-wrappers` 0.8.4. Dev: `vitest` 5.0.3, `pg` 8.23.1, `eslint` 10.12.0, `ajv` 8.20.0, `ajv-formats` 3.0.1, `graphql` 17.0.2 |
 | GitHub Actions CI | `.github/workflows/ci.yml` on `pull_request` and push to `main`; `permissions: contents: read`; no secrets; no `pull_request_target`; `actions/checkout@v7`, `actions/setup-node@v7`. Jobs: `check` (`npm run check`: secret scan, docs check, index validation, catalog count, lint, write-safety, token budgets, core imports), `unit` (`npm test`), `db` (`npm run test:db` on a Postgres 17 service from `public.ecr.aws/docker/library/postgres:17`), `shapes` (`npm run test:shapes`); aggregate **`ci`** (`if: always()`) fails unless all four are `success` — the single merge gate. A push cancels the branch's running CI |
 | Test harness | `test/helpers/fake-github.js` (`makeFakeGitHub()` → `{ fetch, calls, unmatched, graphql, when, routes }`, passed to Octokit as `request.fetch`; A-1 route list, A-4 adds the vendored description and validation); `test/helpers/fake-db.js` (`createFakeDb({ clock })`: key/value rows, `initSchema()`/`listTables()`, and the login store; `seedAccounts()` is its test seam for `gh_accounts`); `test/contract/oauth-contract.js` (one login-store contract run against the fake and real Postgres); `test/helpers/pg-neon-adapter.js` (isolated `github_mcp_test_*` schema, Neon-shaped tagged queries); `test/contract/db-contract.js`; `scripts/local-postgres-test.sh` (CI service via `TEST_DATABASE_URL`, else a temporary local cluster; localhost only) |
-| Tool registry | `src/tools/index.js` exports `registry` from `src/core/registry.js` `mergeNamespaces` (duplicate names throw); 2 tools (`github_whoami`, `github_list_accounts`, `src/tools/server.js`). `/api/mcp` dispatches through `src/tools/dispatch.js`, which is default-deny: it runs only tools marked `readOnlyHint`, checks arguments against the tool schema and withholds any result shaped like a credential; Batch B replaces it with the full safety layer |
+| Tool registry | `src/tools/index.js` exports `registry` from `src/core/registry.js` `mergeNamespaces` (duplicate names throw); 2 tools (`github_whoami`, `github_list_accounts`, `src/tools/server.js`). `/api/mcp` dispatches through `src/tools/dispatch.js` (`createDispatch`), which is default-deny: it runs read-only tools and `defineWrite-v1` tools only, checks arguments against the tool schema (`src/core/validate.js`) and withholds any result shaped like a credential; profile-based hiding arrives in B-6 |
 | Vercel project | Not created (IN-02) |
 | Neon database | Not created (IN-02) |
 | GitHub Apps | None created (IN-04; the setup page exists, A-5b) |
@@ -117,6 +117,16 @@ date, and a test checks the hash. Search them with `node scripts/openapi-find.mj
 | Reads | Retried twice on 5xx; `request: { etag: true }` sends `If-None-Match` from `gh_etag_cache` and returns the stored body on a 304 (`notModified: true`) |
 | Rate limits | Every response's headers go to `gh_rate_state`; a spent budget or a `retry-after` on 403/429 blocks that account and resource; waits are honoured only inside the 20 s budget, otherwise `rate_limited` with the reset in Denver time |
 | `requestKey(ctx, tool, args)` | `rmcp_<tool>_<sha256>_<10-minute bucket>`; ignores `dryRun`, `confirm`, `fields`, `detail`; a caller `requestKey` replaces the arguments |
+
+### Write layer (B-1)
+
+Every change-making tool is built with `defineGithubWrite` (`src/tools/define-github-write.js` over the contract-generic `src/core/write.js`). It always runs, in
+this order: connection and target checks (profile, account in the connection) -> read current state -> classify (production, access change, people notified, spend) ->
+refuse what the connection's mode forbids (a production change on a preview connection, including when the state could not be read) -> the ordered guard gates
+(`src/tools/gates.js`, `ctx.gates`) -> plain-English preview with marks (PRODUCTION, ACCESS CHANGE, NOTIFIES, COSTS) -> `dryRun` stops -> ask first when anything
+needs confirmation -> claim the request key (`change_log_request_once`, a unique index; an identical request in the same 10 minutes is a replay) -> send once ->
+read back and compare -> finish the row (inverse stored for undo). Refusals and previews are logged; a definite GitHub "no" frees the key, an uncertain outcome keeps it.
+Tests for any write tool use `test/helpers/write-contract.js` (nine checks through every door).
 
 ## GitHub App permissions
 
