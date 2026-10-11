@@ -64,7 +64,7 @@ async function readReply({ tool, args, raw, connection, db, mode }) {
   return { content: [{ type: 'text', text: JSON.stringify(body) }], structuredContent: body };
 }
 
-export function createDispatch({ env = process.env, now = Date.now, fetch = globalThis.fetch, credentials = null, gates = null } = {}) {
+export function createDispatch({ env = process.env, now = Date.now, fetch = globalThis.fetch, credentials = null, gates = null, sleep = undefined } = {}) {
   return async function dispatch({ registry, name, args, connection, db }) {
     const tool = registry.tools.find((t) => t.name === name);
     const handler = tool && Object.hasOwn(registry.handlers, name) ? registry.handlers[name] : null;
@@ -78,7 +78,7 @@ export function createDispatch({ env = process.env, now = Date.now, fetch = glob
     let result;
     try {
       const callTool = (innerName, innerArgs) => dispatch({ registry, name: innerName, args: innerArgs, connection, db });
-      result = await handler(args ?? {}, { connection, db, env, now, fetch, ...(isWrite ? { credentials, gates } : {}), ...(tool.usesRegistry ? { registry, callTool } : {}) });
+      result = await handler(args ?? {}, { connection, db, env, now, fetch, credentials, ...(sleep ? { sleep } : {}), ...(isWrite ? { gates } : {}), ...(tool.usesRegistry ? { registry, callTool } : {}) });
     } catch (error) {
       return fail(error instanceof TypeError ? error.message : 'That tool could not complete right now. Nothing was changed.');
     }
