@@ -5,12 +5,12 @@ import { createFakeDb } from '../../test/helpers/fake-db.js';
 afterEach(() => { vi.unstubAllEnvs(); });
 
 describe('foundation schema constants', () => {
-  it('lists the 16 tables (13 from BATCH-A, the owner settings, the protected list and the kept results), frozen, without duplicates', () => {
-    expect(SCHEMA_TABLES).toHaveLength(16);
-    expect(new Set(SCHEMA_TABLES).size).toBe(16);
+  it('lists the 17 tables (13 from BATCH-A, the owner settings, the protected list, the kept results and the secret entry requests), frozen, without duplicates', () => {
+    expect(SCHEMA_TABLES).toHaveLength(17);
+    expect(new Set(SCHEMA_TABLES).size).toBe(17);
     expect(Object.isFrozen(SCHEMA_TABLES)).toBe(true);
     expect(SCHEMA_TABLES[0]).toBe('gh_apps');
-    expect(SCHEMA_TABLES.at(-1)).toBe('result_store');
+    expect(SCHEMA_TABLES.at(-1)).toBe('secret_entry_requests');
   });
 
   it('names the per-connection fields every token refresh copies', () => {
@@ -46,7 +46,7 @@ describe('createDb', () => {
     expect(() => createDb()).toThrow('DATABASE_URL is not configured. Set it in the server environment.');
   });
 
-  it('runs one static statement per call: 16 tables and 3 indexes, all IF NOT EXISTS, nothing destructive', async () => {
+  it('runs one static statement per call: 17 tables and 3 indexes, all IF NOT EXISTS, nothing destructive', async () => {
     const statements = [];
     const sql = async (strings, ...values) => {
       expect(values).toEqual([]);
@@ -54,7 +54,7 @@ describe('createDb', () => {
       return [];
     };
     await createDb(sql).initSchema();
-    expect(statements).toHaveLength(19);
+    expect(statements).toHaveLength(20);
     const created = statements.filter((s) => /^CREATE TABLE IF NOT EXISTS /.test(s)).map((s) => s.match(/^CREATE TABLE IF NOT EXISTS (\w+)/)[1]);
     expect(created).toEqual([...SCHEMA_TABLES]);
     expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS change_log_request_key /.test(s))).toHaveLength(1);
