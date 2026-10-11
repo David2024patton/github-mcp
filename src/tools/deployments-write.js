@@ -77,7 +77,7 @@ const statusTarget = (args, ctx) => ({ owner: ownerOf(args, ctx), repo: args.rep
 
 const deployStatus = defineGithubWrite({
   name: 'github_deploy_set_status', area: 'deploy', audience: ['B'],
-  description: 'Set status using the deployment's actual environment and ref.',
+  description: 'Set status from the recorded deployment ref and environment.',
   properties: {
     owner: OWNER, repo: REPO, deploymentId: { type: 'integer', minimum: 1 },
     state: { type: 'string', enum: ['error', 'failure', 'pending', 'in_progress', 'queued', 'success', 'inactive'] },
