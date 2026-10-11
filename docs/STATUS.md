@@ -1,16 +1,15 @@
 # STATUS — current work, blockers and next action
 
-Updated 2026-10-10. **The foundation is built (A-1, PR #1), its database schema exists (A-2, PR #7), the connector login is built (A-3a, PR #8; A-3b, PR #9) and the GitHub client exists (A-4, PR #10):** Node 24
+Updated 2026-10-10. **The foundation is built (A-1, PR #1), its database schema exists (A-2, PR #7), the connector login is built (A-3a, PR #8; A-3b, PR #9) the GitHub client exists (A-4, PR #10) and the encrypted credential store exists (A-5a, PR #11):** Node 24
 package with a committed lockfile, a fake GitHub for tests, the check scripts, throwaway-Postgres database tests, CI with
-one `ci` merge gate, `src/db.js` creating the 13 foundation tables and storing connector logins, the OAuth endpoints and `/api/mcp` (zero tools), and `src/github/client.js` (pinned API version, request keys, write spacing, rate blocks, ETag cache) with GitHub's REST and GraphQL descriptions vendored. No tools exist yet; no deployment exists. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
+one `ci` merge gate, `src/db.js` creating the 13 foundation tables and storing connector logins, the OAuth endpoints and `/api/mcp` (zero tools), and `src/github/client.js` (pinned API version, request keys, write spacing, rate blocks, ETag cache) with GitHub's REST and GraphQL descriptions vendored, and `src/github/credentials.js` (encrypted Apps, installation tokens, user authorization, pasted tokens) with one-time secrets. No tools exist yet; no deployment exists. No GitHub App, credential, Vercel project or Neon database exists for this server; nothing here touches Chris's real
 repositories.
 
 ## Next
 
-- **A-5 — setup page, GitHub Apps from manifests, credential store, one-time secrets:** card to be written at its start
-  (`work-index.json`, `docs/designs/BATCH-A.md` §1 A4–A5, §4 A-5). Branch `ai/<tool>/a-5-setup-credentials` from `main`. It supplies
-  `ctx.credentials.token({ account, cred, scope })` to the A-4 client. Needs IN-02…IN-05 to try for real; everything before the real
-  GitHub steps is built and tested with fakes. Then A-6 (DEPLOY.md), then Batch B.
+- **A-5b — setup page, GitHub Apps from manifests, callbacks, webhook, server tools (`github_whoami`, `github_list_accounts`):** card is
+  `docs/pr-cards/A-5.md` ("A-5b — to build"). Branch `ai/<tool>/a-5b-setup-page` from `main`. Wires `ctx.credentials` (`createCredentials`) into `src/runtime.js`. Needs
+  IN-02…IN-05 to try for real; everything before the real GitHub steps is built and tested with fakes. Then A-6 (DEPLOY.md), then Batch B.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
 - **Queue:** A → B → C → D → E → G → V → F → H → O → P → W → U → R → X (`MASTER-ROADMAP.md`).
 
@@ -25,6 +24,15 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-10 — A-5a credential store (PR #11):** every GitHub credential is encrypted at rest with AES-256-GCM (`TOKEN_ENCRYPTION_KEY`), each value sealed with a context that ties
+it to its account, App, installation and scope, so a copied ciphertext cannot be reused elsewhere; a wrong or missing key gives a plain message and never a secret. `createCredentials`
+supplies the client's `token({ account, cred, scope })`: installation tokens minted with a hand-signed App JWT, cached until five minutes before expiry and downscoped per connection (each
+scope its own token); the owner's user token refreshed ten minutes before expiry (a lost refresh race uses the other instance's new tokens, a refused refresh asks for sign-in again); a
+fine-grained token for accounts that use one (cannot be narrowed — says so); the classic notifications token only for `K`. `storeApp` keeps the manifest flow's key, client secret and
+webhook secret as ciphertext. One-time secrets (ten minutes, read-and-delete) and setup states (single use, bound to a purpose) are stored. `listAccounts` never returns ciphertext.
+Also fixed A-4's test helper: nested body schemas now validate and JSON bodies are no longer type-coerced. Tests: 174 unit, database and request-shape suites green. No setup page yet (A-5b);
+no real credential exists.
 
 **2026-10-10 — A-4 GitHub client (PR #10):** `src/github/client.js` is the only file that imports `@octokit/*`. `githubFor(ctx, { owner, cred, scope })`
 refuses an account outside the connection (`outside_scope`) or without a credential (`no_credentials`), sends `X-GitHub-Api-Version: 2026-03-10` on

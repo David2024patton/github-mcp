@@ -14,6 +14,11 @@ export function createFakeDb({ clock = Date.now } = {}) {
   const attempts = [];
   const accounts = [];
   const slots = new Map();
+  const apps = new Map();
+  const accountRows = new Map();
+  const installTokens = new Map();
+  const setupStates = new Map();
+  const oneTime = new Map();
   const rates = new Map();
   const etags = new Map();
   const DAY_MS = 24 * 60 * 60 * 1000;
@@ -95,6 +100,113 @@ export function createFakeDb({ clock = Date.now } = {}) {
     async recordLoginAttempt(ip) { attempts.push({ id: ++attemptId, ip, at: clock(), success: false }); return attemptId; },
     async markLoginAttemptSucceeded(id) { const a = attempts.find((x) => x.id === id); if (a) a.success = true; },
     async countRecentFailedLogins(ip, minutes = 15) { return attempts.filter((a) => a.ip === ip && !a.success && a.at > clock() - minutes * 60000).length; },
+
+    // ---- GitHub Apps, accounts and credentials (A-5a): mirrors src/db.js and passes test/contract/credentials-contract.js ----
+    async saveApp(app) {
+      apps.set(Number(app.id), { id: Number(app.id), slug: app.slug, owner_login: app.ownerLogin, owner_type: app.ownerType, client_id: app.clientId,
+        client_secret_enc: app.clientSecretEnc, private_key_enc: app.privateKeyEnc, webhook_secret_enc: app.webhookSecretEnc, permissions: structuredClone(app.permissions ?? {}) });
+    },
+    async getApp(id) { return apps.has(Number(id)) ? structuredClone(apps.get(Number(id))) : null; },
+    async upsertAccount({ login, accountId, accountType, label, credentialKind = 'app', appId = null, isScratch = false }) {
+      const key = login.toLowerCase();
+      const existing = accountRows.get(key);
+      if (existing) {
+        Object.assign(existing, { account_type: accountType, label, credential_kind: credentialKind, app_id: appId ?? existing.app_id });
+        return;
+      }
+      if ([...accountRows.values()].some((r) => r.account_id === accountId)) throw new Error('duplicate key value violates unique constraint "gh_accounts_account_id_key"');
+      accountRows.set(key, {
+        login, account_id: accountId, account_type: accountType, label, credential_kind: credentialKind, app_id: appId, installation_id: null,
+        repository_selection: null, installation_permissions: null, installation_status: 'none', user_login: null, user_token_enc: null,
+        user_token_expires_at: null, user_refresh_enc: null, user_refresh_expires_at: null, fine_grained_enc: null, fine_grained_last4: null,
+        fine_grained_expires_at: null, classic_enc: null, classic_scopes: null, classic_last4: null, plan_name: null, production_enabled: false,
+        spend_limit_cents: 0, is_default: ![...accountRows.values()].some((r) => r.is_default), is_scratch: isScratch, added_at: new Date(clock()), checked_at: null
+      });
+    },
+    async getAccount(login) { const r = accountRows.get(String(login).toLowerCase()); return r ? structuredClone(r) : null; },
+    async listAccounts() {
+      return [...accountRows.values()].map((r) => ({
+        login: r.login, account_type: r.account_type, label: r.label, credential_kind: r.credential_kind, app_id: r.app_id, installation_id: r.installation_id,
+        repository_selection: r.repository_selection, installation_status: r.installation_status, installation_permissions: structuredClone(r.installation_permissions),
+        user_login: r.user_login, has_user_token: r.user_token_enc != null, user_token_expires_at: r.user_token_expires_at, has_fine_grained: r.fine_grained_enc != null,
+        fine_grained_last4: r.fine_grained_last4, has_classic: r.classic_enc != null, classic_scopes: r.classic_scopes && [...r.classic_scopes], classic_last4: r.classic_last4,
+        plan_name: r.plan_name, production_enabled: r.production_enabled, is_default: r.is_default, is_scratch: r.is_scratch, checked_at: r.checked_at
+      })).sort((a, b) => Number(b.is_default) - Number(a.is_default) || a.login.localeCompare(b.login));
+    },
+    async setInstallation(login, { installationId, repositorySelection, permissions, status }) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r) return false;
+      Object.assign(r, { installation_id: installationId, repository_selection: repositorySelection, installation_permissions: structuredClone(permissions ?? {}), installation_status: status, checked_at: new Date(clock()) });
+      return true;
+    },
+    async setInstallationStatus(login, status) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r) return false;
+      Object.assign(r, { installation_status: status, checked_at: new Date(clock()) });
+      return true;
+    },
+    async setUserAuthorization(login, { userLogin, tokenEnc, tokenExpiresAt, refreshEnc, refreshExpiresAt }) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r) return false;
+      Object.assign(r, { user_login: userLogin, user_token_enc: tokenEnc, user_token_expires_at: tokenExpiresAt, user_refresh_enc: refreshEnc, user_refresh_expires_at: refreshExpiresAt });
+      return true;
+    },
+    async clearUserAuthorization(login) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (r) Object.assign(r, { user_login: null, user_token_enc: null, user_token_expires_at: null, user_refresh_enc: null, user_refresh_expires_at: null });
+    },
+    async setFineGrainedToken(login, { enc, last4, expiresAt = null }) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r) return false;
+      Object.assign(r, { fine_grained_enc: enc, fine_grained_last4: last4, fine_grained_expires_at: expiresAt });
+      return true;
+    },
+    async setClassicToken(login, { enc, scopes, last4 }) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r) return false;
+      Object.assign(r, { classic_enc: enc, classic_scopes: [...scopes], classic_last4: last4 });
+      return true;
+    },
+    async setAccountPlan(login, planName) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (r) Object.assign(r, { plan_name: planName, checked_at: new Date(clock()) });
+    },
+    async getInstallationToken(installationId, scopeKey) {
+      const r = installTokens.get(`${installationId}\u0000${scopeKey}`);
+      return r && r.expires_at.getTime() > clock() + 5 * 60000 ? { token_enc: r.token_enc, expires_at: new Date(r.expires_at) } : null;
+    },
+    async putInstallationToken(installationId, scopeKey, tokenEnc, expiresAt) {
+      installTokens.set(`${installationId}\u0000${scopeKey}`, { token_enc: tokenEnc, expires_at: new Date(expiresAt) });
+      let removed = 0;
+      for (const [k, v] of installTokens) if (removed < 100 && v.expires_at.getTime() < clock()) { installTokens.delete(k); removed++; }
+    },
+    async deleteInstallationTokens(installationId) {
+      for (const k of [...installTokens.keys()]) if (k.startsWith(`${installationId}\u0000`)) installTokens.delete(k);
+    },
+    async createSetupState({ state, purpose, accountHint = null, codeVerifierEnc = null, ttlSeconds = 3600 }) {
+      if (!['manifest', 'user_auth'].includes(purpose)) throw new TypeError('Unknown setup purpose.');
+      if (typeof state !== 'string' || state.length < 32) throw new TypeError('A setup state must be an unguessable string.');
+      if (setupStates.has(state)) throw new Error('duplicate key value violates unique constraint "setup_states_pkey"');
+      setupStates.set(state, { purpose, account_hint: accountHint, code_verifier_enc: codeVerifierEnc, expires_at: clock() + ttlSeconds * 1000 });
+    },
+    async consumeSetupState(state, purpose) {
+      const r = setupStates.get(state);
+      if (!r || r.purpose !== purpose || r.expires_at <= clock()) return null;
+      setupStates.delete(state);
+      return { account_hint: r.account_hint, code_verifier_enc: r.code_verifier_enc };
+    },
+    async addOneTimeSecret({ id, account = null, kind, ciphertext, expiresAt }) {
+      if (oneTime.has(id)) throw new Error('duplicate key value violates unique constraint "one_time_secrets_pkey"');
+      oneTime.set(id, { account, kind, ciphertext, expires_at: new Date(expiresAt).getTime() });
+      let removed = 0;
+      for (const [k, v] of oneTime) if (removed < 100 && v.expires_at < clock()) { oneTime.delete(k); removed++; }
+    },
+    async consumeOneTimeSecret(id) {
+      const r = oneTime.get(id);
+      if (!r || r.expires_at <= clock()) return null;
+      oneTime.delete(id);
+      return { account: r.account, kind: r.kind, ciphertext: r.ciphertext };
+    },
 
     async claimWriteSlot(installationKey, { spacingMs = 1000, maxWaitMs = 5000 } = {}) {
       if (typeof installationKey !== 'string' || !installationKey) throw new TypeError('claimWriteSlot needs an installation key.');

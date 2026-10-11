@@ -161,3 +161,11 @@ Bookkeeping after a completed call (rate headers, ETag cache) never turns a succ
 **2026-10-10 — The fake GitHub refuses unknown top-level body fields (A-4).** GitHub's description almost never forbids extra fields, so a misspelled or
 foreign field (`mergeMethod`, `bypass_rules`) would validate and be silently ignored by GitHub. The test fake reports any top-level body field not named by
 the operation's schema as invalid (422), recorded in `invalid`; tests assert it is empty. Nested objects are validated by the schema as published.
+
+**2026-10-10 — Credentials are sealed with a context, App JWTs are signed by hand, and one refresh race is tolerated (A-5a).** Each encrypted value (App key, client secret,
+webhook secret, user and refresh tokens, pasted tokens, cached installation tokens, PKCE verifiers) is encrypted with its owner in the authentication data, so a database row copied
+to another account, App or scope fails to decrypt instead of being used. The App JWT is signed with `node:crypto` (RS256) rather than `@octokit/auth-app`, whose own network and cache
+layers sit beside our client, fake and rate state; the token request itself is an ordinary typed request the fake validates. GitHub refresh tokens work once, so when two instances
+refresh at the same moment one is refused; the loser re-reads the account and uses the winner's new tokens, and only clears the sign-in when nothing newer exists. A fine-grained token
+cannot be narrowed per connection, so a read-only connection on such an account is refused in words rather than silently given a full token. `upsertAccount` never changes
+`production_enabled`, spend limits, credentials or the default flag of an existing account.
