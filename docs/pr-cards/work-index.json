@@ -114,7 +114,7 @@
         "A-4"
       ],
       "card": "docs/pr-cards/A-5.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 550,
       "units": [
@@ -129,7 +129,8 @@
       ],
       "pr": [
         11,
-        12
+        12,
+        13
       ]
     },
     {
