@@ -27,7 +27,7 @@ async function proveRecordedScratch(ctx,target,args,existing){
 
 const scratchCreate=defineGithubWrite({
   name:'github_dev_create_scratch_repo',area:'dev',audience:['B'],
-  description:'Create a private, run-labelled repository only in an owner-verified, isolated scratch organization.',
+  description:'Create a verified private scratch repository.',
   properties:{owner:OWNER,runId:RUN,name:NAME},required:['runId','name'],
   declarations:{production:'never'},
   target:(args,ctx)=>{
