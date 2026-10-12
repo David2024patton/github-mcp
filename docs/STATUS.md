@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — #93 bounded all-runs inventory (candidate):** Adds scoped total-run counts and evidence-only `github_dev_list_runs({cleanupPreview:true})` readiness for up to 20 runs at a time. It identifies unresolved intents and truncated per-run journals without remote provider calls, approval, deletion or false claims of exhaustive scans. All-runs deletion remains unimplemented.
+
 - **2026-10-12 — #92 intent/object reconciliation (pending CI):** Run intent reads now include the actual run ID; cleanup reports and execution refuse recorded intents with missing, mismatched or duplicate object identities. Fake/Postgres contracts and adversarial planner/report tests establish the linkage. No owner-connected provider acceptance, production change or spending.
 
 - **2026-10-12 — #91 journal collision safety (pending exact-head CI):** Intent completion now records success only when its unique run-object row was actually inserted; a collision leaves the step pending and blocks cleanup instead of falsely completing it. Shared fake/Postgres tests exercise racing steps and already-recorded identities. No live GitHub acceptance, new authority or scratch mutation.

@@ -17,6 +17,10 @@ export function createFakeDevLedger({ clock = Date.now } = {}) {
       return true;
     },
     async getDevRun(a) { const v=scoped(a); return v ? structuredClone(v) : null; },
+    async countDevRuns({account,connection}) {
+      validateRun({id:'run-list',account,connection});
+      return [...runs.values()].filter(x=>x.account===account&&x.connection===connection).length;
+    },
     async listDevRuns({ account, connection, limit=20 }) {
       validateRun({ id:'run-list',account,connection }); boundedRunLimit(limit);
       return [...runs.values()].filter(x=>x.account===account&&x.connection===connection)

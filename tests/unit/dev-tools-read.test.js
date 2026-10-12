@@ -57,6 +57,30 @@ describe('V-1 public developer inspection',()=>{
     expect(saved.progress).toMatchObject({state:'partial',missing_object_count:13,
       ledger_identities_match:true,live_acceptance_verified:false});
   });
+  it('previews only the current connection\'s bounded cleanup journals without remote claims',async()=>{
+    const w=await world(),a={account:'example-org',connection:'client-1'};
+    await w.db.createDevRun({...a,id:'run-preview-a'});
+    await w.db.recordDevObject({...a,runId:'run-preview-a',type:'branch',owner:a.account,
+      repo:'host',objectId:'rtc/run-preview-a/one',createdSha:'a'.repeat(40)});
+    await w.db.createDevRun({...a,id:'run-preview-b'});
+    await w.db.claimDevIntent({...a,runId:'run-preview-b',stepId:'claim',
+      type:'branch',owner:a.account,repo:'host',objectName:'rtc/run-preview-b/one'});
+    await w.db.createDevRun({id:'run-preview-other',account:'example-org',connection:'other'});
+    const partial=body(await call(w,'github_dev_list_runs',{max:1}));
+    expect(partial).toMatchObject({count:1,total_count:2,more_may_exist:true});
+    const scan=body(await call(w,'github_dev_list_runs',{max:20,cleanupPreview:true}));
+    expect(scan).toMatchObject({count:2,total_count:2,all_runs_scanned:true,more_may_exist:false});
+    expect(scan.cleanup_previews).toHaveLength(2);
+    expect(scan.cleanup_previews.find(x=>x.run_id==='run-preview-a')).toMatchObject({
+      journal_ready:true,remaining_objects:1,remote_verified:false
+    });
+    expect(scan.cleanup_previews.find(x=>x.run_id==='run-preview-b')).toMatchObject({
+      journal_ready:false,can_request_confirmation:false
+    });
+    expect((await call(w,'github_dev_list_runs',{max:21,cleanupPreview:true})).isError).toBe(true);
+    expect((await call(w,'github_dev_list_runs',{runId:'run-preview-a',cleanupPreview:true})).isError).toBe(true);
+    expect((await w.db.listDevRuns(a)).length).toBe(2);
+  });
   it('refuses foreign accounts and IDs, and never exposes an unbounded run listing',async()=>{
     const w=await world();
     expect((await call(w,'github_dev_list_runs',{owner:'another-org'})).isError).toBe(true);
