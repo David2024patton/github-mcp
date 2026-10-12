@@ -4,6 +4,17 @@ import { areaOf } from '../core/meta.js';
 import { rtcMetadata,rtcManifest,rtcOpenApi } from './contract.js';
 
 const ALLOWED=new Set(['server','meta']);
+const MAX_REQUEST_BYTES=32768;
+// JSON has already been parsed by the HTTP door. Bound the complete wire
+// payload before allowing a tool dispatch, including multibyte strings.
+function boundedRequest(value) {
+  try {
+    const json=JSON.stringify(value);
+    return typeof json==='string'&&Buffer.byteLength(json,'utf8')<=MAX_REQUEST_BYTES;
+  }catch{
+    return false;
+  }
+}
 const messages={
   permission:'Owner-issued RTC pass required.',pass_expired:'RTC pass expired.',
   pass_revoked:'RTC pass revoked.',refused_by_guard:'Operation outside read-only scratch permission.',
@@ -142,14 +153,17 @@ export function createRtcHttpHandler({db,registry,dispatch}){
           return send(res,404,rtcError('not_found'));
         if(req.method==='GET')
           return send(res,200,{ok:true,result:rtcMetadata(allowed().find(t=>t.name===tool))});
-        if(req.method!=='POST'||!req.body||typeof req.body!=='object'||Array.isArray(req.body))
+        if(req.method!=='POST'||!req.body||typeof req.body!=='object'||
+          Array.isArray(req.body)||!boundedRequest(req.body))
           return send(res,400,rtcError('invalid_args'));
         const result=await run(tool,req.body,connection);
         return send(res,result.status,result.body);
       }
       if(route==='batch'){
         const calls=req.body?.calls;
-        if(req.method!=='POST'||!Array.isArray(calls)||calls.length===0||calls.length>10)
+        if(req.method!=='POST'||!req.body||typeof req.body!=='object'||
+          Array.isArray(req.body)||Object.keys(req.body).some(k=>k!=='calls')||
+          !boundedRequest(req.body)||!Array.isArray(calls)||calls.length===0||calls.length>10)
           return send(res,400,rtcError('invalid_args'));
         // Reject the whole batch before dispatching any read. A malformed later item
         // must not cause earlier reads to be executed under ambiguous arguments.

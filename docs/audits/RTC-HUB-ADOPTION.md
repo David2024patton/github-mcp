@@ -34,6 +34,10 @@ Previously the batch endpoint authenticated a pass only once, then reused the in
 
 This hardening does not lift the server/meta read-only scope or certify RTC 1. Hub direct/relay/Sandbox real read-only routes, full conformance, and connected custom OAuth acceptance remain unverified.
 
-## #116 RTC discovery and batch result follow-through
+## #116 RTC discovery and batch result follow-through (MERGED; CI verified)
 
 Reject ambiguous array/unknown/oversized discovery parameters before reading the scoped catalog. A batched read that stores oversized output now returns its connection-owned handle and summary for that individual call, without returning the retained payload. This closes the gap between single and batched reads. Unit tests cover both paths. RTC remains rtc:0; genuine Hub direct/relay/Sandbox, owner pass revocation, custom OAuth-connected testing and V-2 cleanup are still unverified.
+
+## #117 RTC HTTP wire limits
+
+Single read calls and batched calls now reject JSON bodies exceeding 32 KiB measured in UTF-8 bytes, with a strict top-level batch envelope. This bounds pass-only resource consumption before the dispatcher. Fake HTTP tests exercise valid small reads, oversized multibyte payloads, and unknown envelope keys. No external D-4 evidence, full RTC certification or real OAuth-connected cleanup claim.
