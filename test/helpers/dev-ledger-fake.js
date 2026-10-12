@@ -89,7 +89,7 @@ export function createFakeDevLedger({ clock = Date.now } = {}) {
         match[1].toLowerCase()!==account.toLowerCase()||
         !/^[a-f0-9]{40}$/.test(createdSha??''))
         throw new TypeError('Exact scratch repository birth identity and SHA are required.');
-      const [owner,repo]=match,run=scoped({id:runId,account,connection});
+      const [,owner,repo]=match,run=scoped({id:runId,account,connection});
       const row=intents.get(JSON.stringify([runId,stepId]));
       const key=JSON.stringify([runId,'repo',row?.owner,objectId]);
       if(!run||run.status!=='active'||row?.status!=='claimed'||
