@@ -65,7 +65,8 @@ export function createFakeDevLedger({ clock = Date.now } = {}) {
       const run=scoped({id:runId,account,connection}),row=intents.get(JSON.stringify([runId,stepId]));
       if(!run||run.status!=='active'||!['claimed','uncertain'].includes(row?.status))return false;
       const key=JSON.stringify([runId,row.object_type,row.owner,objectId]);
-      if(!objects.has(key))objects.set(key,{run_id:runId,object_type:row.object_type,owner:row.owner,repo:row.repo,
+      if(objects.has(key))return false;
+      objects.set(key,{run_id:runId,object_type:row.object_type,owner:row.owner,repo:row.repo,
         object_id:objectId,created_sha:createdSha,created_at:new Date(clock()),cleaned:false});
       row.status='recorded';row.object_id=objectId;row.created_sha=createdSha;row.updated_at=new Date(clock());
       return true;

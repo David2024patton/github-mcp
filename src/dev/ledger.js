@@ -86,20 +86,27 @@ export function createDevLedger(sql) {
           (createdSha != null && !/^[a-f0-9]{40}$/.test(createdSha))) throw new TypeError('Invalid created-object identity.');
       // One statement: the intent becomes recorded IFF the corresponding durable object
       // can be inserted. A failed write never leaves an untracked successful intent.
-      const rows = await sql`WITH claimed AS (
+      // Acquire the intent row before inserting. Only the worker that actually inserts
+      // the unique object may mark its step recorded; ON CONFLICT is not success.
+      const rows = await sql`WITH candidate AS (
+          SELECT i.run_id, i.object_type, i.owner, i.repo
+          FROM dev_run_intents i JOIN dev_runs r ON r.id = i.run_id
+          WHERE r.id = ${runId} AND r.account = ${account}
+            AND r.connection = ${connection} AND r.status = 'active'
+            AND i.step_id = ${stepId} AND i.status IN ('claimed', 'uncertain')
+          FOR UPDATE OF i
+        ), inserted AS (
+          INSERT INTO dev_run_objects (run_id, object_type, owner, repo, object_id, created_sha)
+          SELECT run_id, object_type, owner, repo, ${objectId}, ${createdSha} FROM candidate
+          ON CONFLICT (run_id, object_type, owner, object_id) DO NOTHING
+          RETURNING run_id, object_id
+        ), recorded AS (
           UPDATE dev_run_intents i SET status = 'recorded', object_id = ${objectId},
             created_sha = ${createdSha}, updated_at = now()
-          FROM dev_runs r WHERE r.id = i.run_id AND r.id = ${runId}
-            AND r.account = ${account} AND r.connection = ${connection}
-            AND r.status = 'active' AND i.step_id = ${stepId}
-            AND i.status IN ('claimed', 'uncertain')
-          RETURNING i.run_id, i.object_type, i.owner, i.repo, i.object_id, i.created_sha
-        ), recorded AS (
-          INSERT INTO dev_run_objects (run_id, object_type, owner, repo, object_id, created_sha)
-          SELECT run_id, object_type, owner, repo, object_id, created_sha FROM claimed
-          ON CONFLICT (run_id, object_type, owner, object_id) DO NOTHING RETURNING object_id
+          FROM inserted o WHERE i.run_id = o.run_id AND i.step_id = ${stepId}
+          RETURNING i.object_id
         )
-        SELECT object_id FROM claimed`;
+        SELECT object_id FROM recorded`;
       return rows.length === 1;
     },
     async listDevIntents({ runId, account, connection, limit = 50 }) {
