@@ -81,6 +81,25 @@ describe('V-1 public developer inspection',()=>{
     expect((await call(w,'github_dev_list_runs',{runId:'run-preview-a',cleanupPreview:true})).isError).toBe(true);
     expect((await w.db.listDevRuns(a)).length).toBe(2);
   });
+  it('pages stable scoped run IDs through opaque cursors and rejects forged handles',async()=>{
+    const w=await world();
+    for(const id of ['run-cursor-aa','run-cursor-bb','run-cursor-cc'])
+      await w.db.createDevRun({id,account:'example-org',connection:'client-1'});
+    const seen=[],cursors=new Set();
+    let cursor;
+    for(let i=0;i<4;i++){
+      const page=body(await call(w,'github_dev_list_runs',{max:1,...(cursor?{cursor}:{})}));
+      seen.push(...page.items.map(x=>x.id));
+      if(!page.next_cursor)break;
+      expect(cursors.has(page.next_cursor)).toBe(false);
+      cursors.add(page.next_cursor);cursor=page.next_cursor;
+    }
+    expect(seen).toEqual(['run-cursor-cc','run-cursor-bb','run-cursor-aa']);
+    expect((await call(w,'github_dev_list_runs',{cursor:'bad-cursor',max:1})).isError).toBe(true);
+    expect((await call(w,'github_dev_list_runs',{runId:'run-cursor-aa',cursor})).isError).toBe(true);
+    const complete=body(await call(w,'github_dev_list_runs',{max:10,cleanupPreview:true}));
+    expect(complete).toMatchObject({next_cursor:null,all_runs_scanned:true,snapshot_not_atomic:true});
+  });
   it('refuses foreign accounts and IDs, and never exposes an unbounded run listing',async()=>{
     const w=await world();
     expect((await call(w,'github_dev_list_runs',{owner:'another-org'})).isError).toBe(true);

@@ -21,10 +21,16 @@ export function createFakeDevLedger({ clock = Date.now } = {}) {
       validateRun({id:'run-list',account,connection});
       return [...runs.values()].filter(x=>x.account===account&&x.connection===connection).length;
     },
-    async listDevRuns({ account, connection, limit=20 }) {
+    async listDevRuns({ account, connection, limit=20, after=null }) {
       validateRun({ id:'run-list',account,connection }); boundedRunLimit(limit);
+      if(after&&(!/^[a-z][a-z0-9-]{2,42}$/.test(after.id??'')||
+        typeof after.createdAt!=='string'||!Number.isFinite(Date.parse(after.createdAt))))
+        throw new TypeError('Invalid run page boundary.');
       return [...runs.values()].filter(x=>x.account===account&&x.connection===connection)
-        .sort((a,b)=>b.created_at-a.created_at||b.id.localeCompare(a.id)).slice(0,limit).map(x=>structuredClone(x));
+        .filter(x=>!after||+x.created_at<Date.parse(after.createdAt)||
+          (+x.created_at===Date.parse(after.createdAt)&&x.id<after.id))
+        .sort((a,b)=>b.created_at-a.created_at||b.id.localeCompare(a.id))
+        .slice(0,limit).map(x=>structuredClone(x));
     },
     async recordDevObject({ runId, account, connection, type, owner, repo=null, objectId, createdSha=null }) {
       validateRun({ id:runId,account,connection }); validateRunObject({ type,owner,repo,objectId,createdSha });

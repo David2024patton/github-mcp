@@ -134,6 +134,22 @@ export function runDevLedgerContract(label, makeDb) {
       expect(await db.getDevRun({...a,id:runId})).toMatchObject({status:'cleaned',cleaned_at:expect.anything()});
       expect(await db.beginDevCleanup({...a,runId})).toBe(false);
     });
+    it('keyset-pages scoped runs without skipping identical timestamps',async()=>{
+      const db=await makeDb();
+      const ids=['run-page-aaa','run-page-bbb','run-page-ccc'];
+      for(const id of ids)await db.createDevRun({...a,id});
+      const all=await db.listDevRuns({...a,limit:50});
+      expect(all.filter(x=>ids.includes(x.id))).toHaveLength(3);
+      const paged=[];
+      let after=null;
+      for(let i=0;i<50;i++){
+        const rows=await db.listDevRuns({...a,limit:1,after});
+        if(!rows.length)break;
+        paged.push(rows[0].id);
+        after={createdAt:new Date(rows[0].created_at).toISOString(),id:rows[0].id};
+      }
+      expect(paged).toEqual((await db.listDevRuns({...a,limit:50})).map(x=>x.id));
+    });
     it('lists only this connection and rejects unbounded requests',async()=>{
       const db=await makeDb();
       expect(await db.createDevRun({...a,id:'run-ledger-003'})).toBe(true);

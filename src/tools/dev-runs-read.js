@@ -3,16 +3,17 @@ import { defineRead } from './define-read.js';
 import { listScenarioBlueprints, planScenario } from '../dev/scenarios.js';
 import { SEEDABLE } from './dev-seed-write.js';
 import { requireScratchOrg } from '../dev/scratch.js';
-import { boundedRunLimit } from '../dev/ledger.js';
+import { boundedRunLimit, encodeDevRunCursor, decodeDevRunCursor } from '../dev/ledger.js';
 import { summarizeDevProgress } from '../dev/progress.js';
 import { summarizeDevCleanup } from '../dev/cleanup-report.js';
 import { planDevCleanup } from '../dev/cleanup.js';
 
-const OWNER={type:'string',maxLength:39,description:'Connected account (default: your default account)'};
+const OWNER={type:'string',maxLength:39};
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
 const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9][A-Za-z0-9._-]*$'};
-const MAX={type:'integer',minimum:1,maximum:50,description:'Maximum records (default 20)'};
-const ALL_PREVIEW={type:'boolean',description:'Include bounded per-run journal cleanup readiness (never a remote or deletion claim).'};
+const MAX={type:'integer',minimum:1,maximum:50};
+const ALL_PREVIEW={type:'boolean'};
+const CURSOR={type:'string',minLength:12,maxLength:256,pattern:'^[A-Za-z0-9_-]{12,256}'};
 
 function scope(args,ctx) {
   const owner=String(args.owner??ctx.connection?.default_account??'');
@@ -40,20 +41,25 @@ const readScenarios=defineRead({
 });
 const readRuns=defineRead({
   name:'github_dev_list_runs',area:'dev',audience:['B'],
-  description:'Inspect scoped run IDs, object records, claims and incomplete state.',
-  properties:{owner:OWNER,runId:RUN,max:MAX,cleanupPreview:ALL_PREVIEW},
+  description:'Inspect scoped runs, object claims and cleanup previews.',
+  properties:{owner:OWNER,runId:RUN,max:MAX,cleanupPreview:ALL_PREVIEW,cursor:CURSOR},
   handler:async(args,ctx)=>{
     const {account,connection}=scope(args,ctx);
     const limit=boundedRunLimit(args.max??20);
     if(!args.runId){
       if(args.cleanupPreview&&limit>20)
         throw new TypeError('All-runs preview is limited to 20 runs per request.');
+      const after=args.cursor?decodeDevRunCursor(args.cursor):null;
       const [items,total]=await Promise.all([
-        ctx.db.listDevRuns({account,connection,limit}),
+        ctx.db.listDevRuns({account,connection,limit,after}),
         ctx.db.countDevRuns({account,connection})
       ]);
+      const last=items.at(-1);
+      const hasNext=last?(await ctx.db.listDevRuns({account,connection,limit:1,
+        after:{createdAt:new Date(last.created_at).toISOString(),id:last.id}})).length>0:false;
+      const next_cursor=hasNext?encodeDevRunCursor(last):null;
       if(!args.cleanupPreview)return {account,count:items.length,total_count:total,
-        more_may_exist:total>items.length,items};
+        more_may_exist:hasNext,next_cursor,snapshot_not_atomic:true,items};
       const cleanup_previews=[];
       for(const run of items){
         const [objects,intents]=await Promise.all([
@@ -72,10 +78,12 @@ const readRuns=defineRead({
           remote_verified:false,live_acceptance_verified:false});
       }
       return {account,count:items.length,total_count:total,
-        more_may_exist:total>items.length,all_runs_scanned:total===items.length,
-        cleanup_previews,note:'Evidence-only scoped journal preview, not GitHub verification. No deletion or cleanup confirmation performed.'};
+        more_may_exist:hasNext,next_cursor,all_runs_scanned:!args.cursor&&!hasNext&&total===items.length,
+        snapshot_not_atomic:true,cleanup_previews,
+        note:'This page is read-only and not an atomic snapshot of all runs. Follow next_cursor to inspect later pages; no GitHub verification or deletion performed.'};
     }
-    if(args.cleanupPreview)throw new TypeError('Use cleanupPreview without runId for the bounded all-runs journal scan.');
+    if(args.cleanupPreview||args.cursor)
+      throw new TypeError('cleanupPreview and cursor are for all-runs listing only.');
     const run=await ctx.db.getDevRun({id:args.runId,account,connection});
     if(!run)throw new TypeError('No development run with that ID belongs to this connection.');
     const [objects,intents]=await Promise.all([
