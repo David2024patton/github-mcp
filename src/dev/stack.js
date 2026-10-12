@@ -8,7 +8,6 @@ const SHA=/^[a-f0-9]{40}$/;
 export const stackBranch=(id,i)=>`rtc/${id}/stack-${i}`;
 export const stackPath=(id,i)=>`rtc/${id}/stack-${i}.md`;
 export const stackContent=(id,i)=>`RTC draft stack ${i} for rtc_run=${id}\n`;
-const mark=id=>`rtc_run=${id}`;
 export async function seedStack(ctx,{github,run}) {
   const p={owner:run.owner,repo:run.repo},id=run.runId;
   const repository=(await github.request('GET /repos/{owner}/{repo}',p)).data;

@@ -7,6 +7,7 @@ import { createOwnedFixtureBranch, commitOwnedFixtureFile } from '../dev/fixture
 import { planScenario } from '../dev/scenarios.js';
 import { seedStack, readStack, verifyStack } from '../dev/stack.js';
 import { seedReviewScenario, readReviewScenario, verifyReviewScenario } from '../dev/review-scenario.js';
+import { matchesRunDescription } from '../dev/run-marker.js';
 
 export const SEEDABLE=Object.freeze(['repo-basic','failing-ci','release-train','protected-main','stack-of-three','pr-with-threads']);
 const RELEASE_TAGS=Object.freeze(['v0.1.0','v0.2.0','v0.3.0']);
@@ -14,7 +15,6 @@ const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}
 const OWNER={type:'string',maxLength:39};
 const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9][A-Za-z0-9._-]*$'};
 const marker=id=>`rtc_run=${id}`;
-import { matchesRunDescription } from '../dev/run-marker.js';
 const filePath=id=>`.github/workflows/rtc-${id}.yml`;
 const branchName=id=>`rtc/${id}/failure-ref`;
 const topic=id=>`rtc-run-${id}`;

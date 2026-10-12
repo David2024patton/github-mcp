@@ -10,13 +10,13 @@ async function make(){
  await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',type:'label',owner:OWNER,repo:REPO,objectId:LABEL});
  w.gh.when('GET /repos/{owner}/{repo}').reply(200,{full_name:`${OWNER}/${REPO}`,default_branch:'main',private:true});
  w.gh.when('GET /repos/{owner}/{repo}/branches/{branch}').replySequence([
-  ...Array.from({length:6},()=>({status:200,body:{name:BR,protected:false,commit:{sha:SHA}}})),
+  ...Array.from({length:7},()=>({status:200,body:{name:BR,protected:false,commit:{sha:SHA}}})),
   {status:404,body:{message:'Not Found'}}
  ]);
  w.gh.when('GET /repos/{owner}/{repo}/rules/branches/{branch}').reply(200,[]);
  w.gh.when('DELETE /repos/{owner}/{repo}/git/refs/{ref}').reply(204);
  w.gh.when('GET /repos/{owner}/{repo}/labels/{name}').replySequence([
-  ...Array.from({length:3},()=>({status:200,body:{name:LABEL,description:`rtc_run=${RUN}`}})),
+  ...Array.from({length:4},()=>({status:200,body:{name:LABEL,description:`rtc_run=${RUN}`}})),
   {status:404,body:{message:'Not Found'}}
  ]);
  w.gh.when('GET /repos/{owner}/{repo}/issues').reply(200,[]);
@@ -27,7 +27,7 @@ describe('V-2 reserved run-label cleanup',()=>{
  it('removes only a recorded label after its exact owned branch and no foreign label users',async()=>{
    const w=await make();
    const out=parse(await def({runId:RUN,repo:REPO,confirm:true},w.ctx));
-   expect(out.status).toBe('applied');
+   expect(out.status, JSON.stringify({out,reads:w.gh.calls.filter(c=>c.method==='GET').map(c=>c.route)})).toBe('applied');
    expect(w.gh.calls.filter(c=>c.method==='DELETE').map(c=>c.route)).toEqual([
     'DELETE /repos/{owner}/{repo}/git/refs/{ref}','DELETE /repos/{owner}/{repo}/labels/{name}'
    ]);
