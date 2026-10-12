@@ -6,7 +6,7 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
-- **2026-10-12 — #93 bounded all-runs inventory (candidate):** Adds scoped total-run counts and evidence-only `github_dev_list_runs({cleanupPreview:true})` readiness for up to 20 runs at a time. It identifies unresolved intents and truncated per-run journals without remote provider calls, approval, deletion or false claims of exhaustive scans. All-runs deletion remains unimplemented.
+- **2026-10-12 — #93 bounded all-runs inventory (awaiting exact-head CI):** Adds scoped total-run counts and evidence-only `github_dev_list_runs({cleanupPreview:true})` readiness for up to 20 runs at a time. It identifies unresolved intents and truncated per-run journals without remote provider calls, approval, deletion or false claims of exhaustive scans. All-runs deletion remains unimplemented.
 
 - **2026-10-12 — #92 intent/object reconciliation (pending CI):** Run intent reads now include the actual run ID; cleanup reports and execution refuse recorded intents with missing, mismatched or duplicate object identities. Fake/Postgres contracts and adversarial planner/report tests establish the linkage. No owner-connected provider acceptance, production change or spending.
 
