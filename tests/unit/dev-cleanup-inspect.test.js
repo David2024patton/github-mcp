@@ -9,11 +9,18 @@ const OWNER='example-org',REPO='fixture',RUN='run-inspect-204';
 const data={full_name:`${OWNER}/${REPO}`,private:true,
   description:`Developer fixture for rtc_run=${RUN}`,default_branch:'main'};
 const EMPTY={total_count:0};
-async function world(){
+async function world({birth=false}={}){
   const w=await makeWorld({scratchAccount:true});
   await w.db.createDevRun({id:RUN,account:OWNER,connection:'client-1',scenarios:['repo-basic']});
-  await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
-    type:'repo',owner:OWNER,repo:REPO,objectId:`${OWNER}/${REPO}`,createdSha:'a'.repeat(40)});
+  const scope={runId:RUN,account:OWNER,connection:'client-1'};
+  if(birth){
+    await w.db.claimDevIntent({...scope,stepId:'seed-repo',
+      type:'repo',owner:OWNER,repo:REPO,objectName:REPO});
+    await w.db.completeDevBirthIntent({...scope,stepId:'seed-repo',
+      objectId:`${OWNER}/${REPO}`,createdSha:'a'.repeat(40),
+      labels:[{id:11,name:'bug',color:'d73a4a',description:null}]});
+  }else await w.db.recordDevObject({...scope,type:'repo',owner:OWNER,
+    repo:REPO,objectId:`${OWNER}/${REPO}`,createdSha:'a'.repeat(40)});
   w.gh.when('GET /repos/{owner}/{repo}').reply(200,data);
   for(const route of ['branches','pulls','issues','tags','releases','rulesets','hooks','milestones',
     'deployments','labels','issues/comments','pulls/comments'])
@@ -67,6 +74,29 @@ describe('V-2 exact remote read-only cleanup preflight',()=>{
     await expect(handler(args,{...w.ctx,connection:{...w.connection,mode:'production'}}))
       .rejects.toThrow(/preview-only/);
     expect(w.gh.calls).toEqual([]);
+  });
+  it('compares exact first-observed label IDs while deletion remains refused',async()=>{
+    const w=await world({birth:true});
+    w.gh.when('GET /repos/{owner}/{repo}/labels').reply(200,[
+      {id:11,name:'bug',color:'d73a4a',description:null},
+      {id:15,name:'foreign',color:'ff0000',description:'new'}]);
+    w.gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,
+      {ref:'refs/heads/main',object:{sha:'a'.repeat(40)}});
+    const out=await handler({...args,includeBirthLabels:true},w.ctx);
+    expect(out).toMatchObject({status:'blocked',blocker_code:'LABEL_PROVENANCE_UNVERIFIED',
+      birth_label_drift:{state:'compared',journal_binding_verified:true,
+        default_branch_commit_unchanged:true,exact_observation_unchanged:false,
+        creator_provenance_verified:false,deletion_authorized:false}});
+    expect(out.birth_label_drift.added_after_observation.map(x=>x.id)).toEqual([15]);
+    expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);
+    expect((await w.db.getDevRun({id:RUN,account:OWNER,connection:'client-1'})).status).toBe('active');
+  });
+  it('makes no creator claim when the first-create observation is absent',async()=>{
+    const w=await world();
+    const out=await handler({...args,includeBirthLabels:true},w.ctx);
+    expect(out.birth_label_drift).toMatchObject({journal_binding_verified:false,
+      creator_provenance_verified:false,deletion_authorized:false});
+    expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);
   });
   it('remains read-only through the MCP dispatcher',async()=>{
     const w=await world();
