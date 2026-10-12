@@ -60,5 +60,57 @@ export const packageDeleteVersion = defineGithubWrite({
   present: ({ args, target: t }) => ({ owner: t.owner, scope: t.scope, package: t.name,
     deleted_version_id: args.versionId, restore_window_days: 30 })
 });
-export const tools = [packageDeleteVersion.tool];
-export const handlers = { [packageDeleteVersion.tool.name]: packageDeleteVersion.handler };
+
+// A whole package deletion must name its exact version count, not imply an incomplete
+// first page contains every version. GitHub itself enforces the public download ceiling.
+const listVersions = async (ctx, t) => {
+  const { data } = await (await octo(ctx, t.owner)).request('GET ' + template(t) + '/versions', {
+    ...params(t), ...(t.scope === 'org' ? { per_page: 100, page: 1 } : {})
+  });
+  if (!Array.isArray(data)) throw refusal('GitHub did not return package versions.');
+  return data.map((v) => ({ id: v.id, name: v.name, download_count: v.download_count ?? null }));
+};
+const complete = (pkg, versions) => {
+  if (!pkg) throw refusal('Package not found; nothing can be deleted.', 404);
+  if (!Number.isInteger(pkg.version_count) || pkg.version_count < 0 || versions.length !== pkg.version_count)
+    throw refusal('Cannot verify the complete version inventory; whole-package deletion refused.');
+  if (pkg.visibility === 'public' && versions.some((v) => Number(v.download_count) > 5000))
+    throw refusal('GitHub forbids deleting public packages when any version exceeds 5,000 downloads.');
+};
+const listSignature = (versions) => JSON.stringify(versions.map((v) => [v.id, v.name, v.download_count]));
+export const packageDelete = defineGithubWrite({
+  name: 'github_package_delete', area: 'package', audience: ['B'],
+  description: 'Delete an entire verified package and all versions with a 30-day restore warning.',
+  properties: { ...packageProperties },
+  required: ['scope', 'packageType', 'packageName'],
+  declarations: { production: 'always', confirm: 'always', profiles: ['full'] },
+  target,
+  read: async (_args, ctx, t) => {
+    const pkg = await get(ctx, t);
+    return { pkg, versions: pkg ? await listVersions(ctx, t) : [] };
+  },
+  classify: async ({ ctx, target: t }) => ({ production: await productionReason(ctx, t) }),
+  summarize: ({ target: t, before }) => {
+    const count = before.pkg?.version_count;
+    return `Delete ALL ${count ?? 'unknown'} versions of ${t.scope} package "${t.owner}/${t.name}" (visibility ${before.pkg?.visibility ?? 'unknown'}). This breaks consumers and restoration is only possible for 30 days while the namespace stays unused. GitHub forbids deleting a public package if ANY version exceeds 5,000 downloads.`;
+  },
+  apply: async ({ before, ctx, target: t }) => {
+    complete(before.pkg, before.versions);
+    const pkg = await get(ctx, t);
+    const versions = pkg ? await listVersions(ctx, t) : [];
+    complete(pkg, versions);
+    if (snapshot(pkg) !== snapshot(before.pkg) || listSignature(versions) !== listSignature(before.versions))
+      throw refusal('Package or its version inventory changed after preview; request a new preview.');
+    return (await octo(ctx, t.owner)).request('DELETE ' + template(t), params(t));
+  },
+  readAfter: ({ ctx, target: t }) => get(ctx, t),
+  verify: ({ after, response }) => response.status === 204 && after === null,
+  inverse: () => null,
+  present: ({ before, target: t }) => ({
+    deleted_package: t.name, owner: t.owner, scope: t.scope,
+    deleted_version_count: before.versions.length, restore_window_days: 30
+  })
+});
+
+export const tools = [packageDeleteVersion.tool, packageDelete.tool];
+export const handlers = { [packageDeleteVersion.tool.name]: packageDeleteVersion.handler, [packageDelete.tool.name]: packageDelete.handler };
