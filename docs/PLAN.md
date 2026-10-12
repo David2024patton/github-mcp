@@ -68,10 +68,12 @@ next bounded implementation. Every line below maps to evidence named in its desi
 - [ ] Review threads listed, replied to and resolved (GraphQL validated); PR creation idempotent.
 
 ## Batch G — CI and delivery (`designs/BATCH-G.md`)
-- [ ] Every G-1 … G-6 tool built and marked.
-- [ ] Logs summarised server-side, never base64 (audit G5); dispatch returns the run; reruns bounded.
-- [ ] Secret values never pass through a tool: setup page or server-generated, sealed, read back (audit G14's pattern).
-- [ ] Releases, production environments and production deployments guarded; release assets fetched server-side from
+
+**Implementation acceptance closed 2026-10-12 (#66)** using `docs/audits/G-BATCH-CLOSEOUT.md`; all G-1…G-6 tools are built and contract-tested. Live connected-account testing remains separately gated by IN-02…IN-06 and is not asserted complete.
+- [x] Every G-1 … G-6 tool built and marked.
+- [x] Logs summarised server-side, never base64 (audit G5); dispatch returns the run; reruns bounded.
+- [x] Secret values never pass through a tool: setup page or server-generated, sealed, read back (audit G14's pattern).
+- [x] Releases, production environments and production deployments guarded; release assets fetched server-side from
   public HTTPS URLs only (audit G15).
 
 ## Batch V — Developer tools (`designs/BATCH-V.md`)

@@ -7,7 +7,7 @@ repositories.
 
 ## Next
 
-- **Batch E — pull requests and reviews** (`docs/designs/BATCH-E.md`). E-1 is finished (reads #35 with the shared `ciState` helper; create/update/close/set_draft/update_branch #40). E-3 (review reads and changes) is built (PRs #37 and #38). E-2 is complete: exact-head merge tools (#46), plus list/create/append/unstack pull request stacks (#48). G-4 deployment reads are built (#51); deployment create/status writes are built (#52); G-4 branch/tag policies completed (#53); G-4 is complete. G-5 release metadata reads built in #54; guarded release create/update/delete built in #55; next: G-5 COMPLETE after upload #59, deletion #56, notes #57 and secure URL boundary #58. Next: G-6 Pages save/disable built #61; package version deletion #62 built; whole-package deletion #63 and package restore #64 built. G-6 complete; Batch G phase-gate closeout and V-1 developer scenarios next (PR #65 begins durable V-1 run ledger and plan-only scenario compiler; seed/scratch mutations remain unbuilt). Batch D is finished.
+- **Batch G implementation COMPLETE:** G-1 through G-6 are built (#39–#64); acceptance evidence and limitations are in `docs/audits/G-BATCH-CLOSEOUT.md` (#66). **Next V-1:** real scenario execution with per-object recording, safe replay, and IN-06-gated scratch-only repositories. PR #65 shipped the run ledger and plans only; no live seed or scratch operations exist. Batch V remains IN_PROGRESS.
 - Batches A, B, C, D finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
@@ -24,6 +24,9 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-12 — Batch G phase-gate closeout (PR #66):** Cross-checked every G-1…G-6 tool catalog row, merged implementation PRs and PLAN acceptance. Implementation complete; no live account, deployment, App or production acceptance has been claimed. `docs/audits/G-BATCH-CLOSEOUT.md` records evidence and pending owner-dependent smoke tests. Current priority V-1, IN-06 still pending.
+
 
 **2026-10-12 — PR #65 (V-1 foundation + efficiency):** Durable account/connection-scoped run/object ledger and contract tests, deterministic plan-only blueprints, bounded task brief, two unit test shards with the same aggregate `ci`, shared fake-sleep injection across write-contract dispatcher doors (without changing production pacing), and permanent coherent-PR/anti-stall guidance. No V-1 GitHub seed or scratch writes exposed; IN-06 remains gated. Schema tests derive migration counts from declared tables; shared-contract dispatcher sleep has a regression test; complete fake organization membership avoids retryable 501 responses while 403-denial tests remain. Post-merge CI wall-time measurement pending.
 
