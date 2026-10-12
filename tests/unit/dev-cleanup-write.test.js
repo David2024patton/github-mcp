@@ -153,9 +153,29 @@ describe('V-2 protected run deletion',()=>{
       expect(w.gh.invalid).toEqual([]);
     }
   });
+  it('deletes a release-train scratch repo only when its exact draft and tags are still owned',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    for(const name of ['v0.1.0','v0.2.0','v0.3.0'])
+      await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+        type:'tag',owner:OWNER,repo:REPO,objectId:name,createdSha:'a'.repeat(40)});
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'release',owner:OWNER,repo:REPO,objectId:'123'});
+    w.gh.when('GET /repos/{owner}/{repo}/tags').reply(200,
+      ['v0.1.0','v0.2.0','v0.3.0'].map(name=>({name,commit:{sha:'a'.repeat(40)}})));
+    w.gh.when('GET /repos/{owner}/{repo}/releases').reply(200,[
+      {id:123,tag_name:'v0.3.0',draft:true,published_at:null,
+        body:`Draft release rtc_run=${RUN}`,assets:[]}
+    ]);
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(true);
+    expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(true);
+    expect(w.gh.invalid).toEqual([]);
+  });
   it('refuses a truncated release listing rather than deleting unseen artifacts',async()=>{
     const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
-    w.gh.when('GET /repos/{owner}/{repo}/releases').reply(200,[],
+    // A full page plus a next link is a finite, genuinely capped fixture.
+    w.gh.when('GET /repos/{owner}/{repo}/releases').reply(200,
+      Array.from({length:100},(_,i)=>({id:i+1,tag_name:'other',draft:true,assets:[]})),
       {link:'<https://api.github.com/repos/example-org/fixture/releases?page=2>; rel="next"'});
     const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
     expect(out.done).toBe(false);
