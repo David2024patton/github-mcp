@@ -1,0 +1,7 @@
+{
+  "repository": "Robinson-AI-Systems/github-mcp",
+  "requiredChecks": [
+    "release-policy",
+    "ci"
+  ]
+}
