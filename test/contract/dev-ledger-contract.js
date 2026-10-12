@@ -31,7 +31,7 @@ export function runDevLedgerContract(label, makeDb) {
       expect(await db.claimDevIntent({...intent,connection:'attacker'})).toBe(false);
       expect(await db.getDevIntent({...a,runId,stepId:'step-1'})).toMatchObject({status:'claimed',object_id:null});
       expect(await db.getDevIntent({...a,runId,stepId:'step-1',connection:'attacker'})).toBeNull();
-      expect(await db.claimDevIntent({...intent,stepId:'BAD STEP'})).rejects.toThrow(/step ID/);
+      await expect(db.claimDevIntent({...intent,stepId:'BAD STEP'})).rejects.toThrow(/step ID/);
     });
     it('records the created object and finished intent together, refuses duplicate completion and foreign scope',async()=>{
       const db=await makeDb(),runId='run-intent-102';
