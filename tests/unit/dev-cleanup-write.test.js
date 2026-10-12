@@ -634,3 +634,21 @@ describe('V-2 protected run deletion',()=>{
     expect(w.gh.calls).toHaveLength(0);
   });
 });
+
+describe('V-2 missing journaled scratch resources cannot be silently erased',()=>{
+  for(const [type,id] of [
+    ['branch',`rtc/${RUN}/deleted-ref`],['pr','101'],['issue','201'],
+    ['tag','v0.1.0'],['release','301'],['ruleset','401']
+  ]){
+    it(`refuses deletion when a recorded ${type} disappeared from remote inventory`,async()=>{
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+        type,owner:OWNER,repo:REPO,objectId:id,
+        createdSha:['branch','tag'].includes(type)?'a'.repeat(40):null});
+      const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(out.done).toBe(false);
+      expect(w.gh.calls.filter(c=>c.method==='DELETE'||c.method==='PATCH')).toHaveLength(0);
+      expect(w.gh.invalid).toEqual([]);
+    });
+  }
+});
