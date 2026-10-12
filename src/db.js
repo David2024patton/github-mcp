@@ -29,7 +29,8 @@ export const SCHEMA_TABLES = Object.freeze([
   'secret_entry_requests',
   'dev_runs',
   'dev_run_objects',
-  'dev_run_intents'
+  'dev_run_intents',
+  'dev_repo_birth_labels'
 ]);
 export const RESULT_HANDLE = /^res_[A-Za-z0-9_-]{20,64}$/;
 
@@ -364,6 +365,15 @@ export function createDb(sql = productionSql()) {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         PRIMARY KEY (run_id, step_id)
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS dev_repo_birth_labels (
+        run_id TEXT PRIMARY KEY REFERENCES dev_runs(id),
+        owner TEXT NOT NULL,
+        repo TEXT NOT NULL,
+        source_sha TEXT NOT NULL CHECK (source_sha ~ '^[a-f0-9]{40}$'),
+        labels JSONB NOT NULL,
+        captured_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        CHECK (jsonb_typeof(labels) = 'array')
       )`;
     },
 

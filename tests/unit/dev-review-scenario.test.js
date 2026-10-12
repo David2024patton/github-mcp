@@ -17,6 +17,7 @@ function reviewFixture(gh,outcome){
   {status:200,body:{...repo,...(outcome==='mismatch'?{private:false}:{})}}
  ]);
  gh.when('POST /orgs/{org}/repos').reply(201,repo);
+ gh.when('GET /repos/{owner}/{repo}/labels').reply(200,[]);
  let branchReads=0;
  gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,r=>{
   const main=r.params.ref==='heads/main';

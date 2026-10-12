@@ -1,7 +1,7 @@
 // Fake V-1 ledger behind the same contract as PostgreSQL. No global run visibility.
-import { validateRun, validateRunObject, boundedRunLimit } from '../../src/dev/ledger.js';
+import { validateRun, validateRunObject, boundedRunLimit, validateScratchBirthLabels } from '../../src/dev/ledger.js';
 export function createFakeDevLedger({ clock = Date.now } = {}) {
-  const runs = new Map(), objects = new Map(), intents = new Map();
+  const runs = new Map(), objects = new Map(), intents = new Map(), births = new Map();
   const scoped = ({ id, account, connection }) => {
     validateRun({ id, account, connection });
     const row = runs.get(id);
@@ -80,6 +80,30 @@ export function createFakeDevLedger({ clock = Date.now } = {}) {
         object_id:objectId,created_sha:createdSha,created_at:new Date(clock()),cleaned:false});
       row.status='recorded';row.object_id=objectId;row.created_sha=createdSha;row.updated_at=new Date(clock());
       return true;
+    },
+    async completeDevBirthIntent({runId,account,connection,stepId,objectId,createdSha,labels}) {
+      validateRun({id:runId,account,connection});
+      const inventory=validateScratchBirthLabels(labels);
+      const match=/^([^/]+)\/([^/]+)$/.exec(objectId??'');
+      if(!['seed-repo','create-scratch-repo'].includes(stepId)||!match||
+        match[1].toLowerCase()!==account.toLowerCase()||
+        !/^[a-f0-9]{40}$/.test(createdSha??''))
+        throw new TypeError('Exact scratch repository birth identity and SHA are required.');
+      const [,owner,repo]=match,run=scoped({id:runId,account,connection});
+      const row=intents.get(JSON.stringify([runId,stepId]));
+      const key=JSON.stringify([runId,'repo',row?.owner,objectId]);
+      if(!run||run.status!=='active'||row?.status!=='claimed'||
+        row.object_type!=='repo'||row.owner.toLowerCase()!==owner.toLowerCase()||
+        row.repo!==repo||row.object_name!==repo||objects.has(key)||births.has(runId))return false;
+      objects.set(key,{run_id:runId,object_type:'repo',owner:row.owner,repo,
+        object_id:objectId,created_sha:createdSha,created_at:new Date(clock()),cleaned:false});
+      births.set(runId,{owner,repo,source_sha:createdSha,labels:structuredClone(inventory),captured_at:new Date(clock())});
+      Object.assign(row,{status:'recorded',object_id:objectId,created_sha:createdSha,updated_at:new Date(clock())});
+      return true;
+    },
+    async getDevBirthLabels({runId,account,connection}) {
+      const run=scoped({id:runId,account,connection});
+      return run&&births.has(runId)?structuredClone(births.get(runId)):null;
     },
     async listDevIntents({runId,account,connection,limit=50}) {
       validateRun({id:runId,account,connection});boundedRunLimit(limit);

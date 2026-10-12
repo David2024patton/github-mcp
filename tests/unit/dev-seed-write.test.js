@@ -26,6 +26,7 @@ const arrange=(scenario)=>(gh,outcome)=>{
     {status:200,body:after}
   ]);
   gh.when('POST /orgs/{org}/repos').reply(201,after);
+  gh.when('GET /repos/{owner}/{repo}/labels').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,request=>({
     ref:`refs/${request.params.ref}`,object:{sha:COMMIT}
   }));
@@ -100,6 +101,7 @@ const releaseArrange=(gh,outcome)=>{
     {status:200,body:{...repo,...(outcome==='mismatch'?{private:false}:{})}}
   ]);
   gh.when('POST /orgs/{org}/repos').reply(201,repo);
+  gh.when('GET /repos/{owner}/{repo}/labels').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,
     request=>({ref:`refs/${request.params.ref}`,object:{sha:COMMIT}}));
   gh.when('POST /repos/{owner}/{repo}/git/refs').reply(201,
@@ -140,6 +142,7 @@ const protectedArrange=(gh,outcome)=>{
     {status:200,body:repo},{status:200,body:repo}
   ]);
   gh.when('POST /orgs/{org}/repos').reply(201,repo);
+  gh.when('GET /repos/{owner}/{repo}/labels').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,
     {ref:'refs/heads/main',object:{sha:COMMIT}});
   gh.when('POST /repos/{owner}/{repo}/rulesets').reply(201,rulesetFixture());
@@ -171,6 +174,7 @@ const stackFixture=(gh,outcome)=>{
     {status:200,body:repository({...repo,...(outcome==='mismatch'?{private:false}:{})})}
   ]);
   gh.when('POST /orgs/{org}/repos').reply(201,repo);
+  gh.when('GET /repos/{owner}/{repo}/labels').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,request=>{
     const name=request.params.ref,match=name.match(/stack-(\d)$/);
     const i=Number(match?.[1]??0);
