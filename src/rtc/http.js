@@ -34,7 +34,11 @@ async function authenticate(req,res,db){
   if(row.mode!=='preview'||row.profile!=='read_only'||row.listing!=='compact'||
     !/^rtc-[a-f0-9]{24}$/.test(row.client_id??'')||
     !Array.isArray(row.accounts)||row.accounts.length!==1||
-    row.accounts[0]!==row.default_account)
+    row.accounts[0]!==row.default_account||
+    !Array.isArray(row.areas)||row.areas.length!==2||
+    !row.areas.includes('server')||!row.areas.includes('meta')||
+    row.allow_writes!==false||row.production_access!==false||
+    Number(row.money_limit_cents)!==0)
     return deny(res,403,rtcError('refused_by_guard'));
   const account=await db.getAccount(row.default_account);
   if(!account||account.login!==row.default_account||account.is_scratch!==true||
@@ -46,7 +50,7 @@ async function authenticate(req,res,db){
     return deny(res,429,rtcError('rate_limited'));
   }
   return {client_id:row.client_id,default_account:row.default_account,
-    accounts:[row.default_account],mode:'preview',profile:'read_only',listing:'compact'};
+    accounts:[row.default_account],areas:[...row.areas],mode:'preview',profile:'read_only',listing:'compact'};
 }
 export function createRtcHttpHandler({db,registry,dispatch}){
   if(!db||!registry||typeof dispatch!=='function')
@@ -56,7 +60,14 @@ export function createRtcHttpHandler({db,registry,dispatch}){
     if(!allowed().some(t=>t.name===tool))return {status:403,body:rtcError('refused_by_guard')};
     const output=await dispatch({registry,name:tool,args,connection,db});
     if(output?.isError)return {status:400,body:rtcError('invalid_args')};
-    return {status:200,body:{ok:true,result:output?.structuredContent??null}};
+    const value=output?.structuredContent??null;
+    const kept=value?.kept_result;
+    if(kept?.handle && /^res_[A-Za-z0-9_-]{20,64}$/.test(kept.handle)) {
+      const {kept_result: _discarded,...summary}=value;
+      return {status:200,body:{ok:true,result:summary,handle:kept.handle,
+        summary:String(kept.what??'Large result'),mode:connection.mode}};
+    }
+    return {status:200,body:{ok:true,result:value,mode:connection.mode}};
   };
   return async(req,res,route)=>{
     if(route==='contract'||route==='openapi'){
@@ -69,7 +80,7 @@ export function createRtcHttpHandler({db,registry,dispatch}){
       if(!connection)return;
       if(route==='whoami'&&req.method==='GET')
         return send(res,200,{ok:true,result:{profile:'read_only',mode:'preview',
-          areas:[...ALLOWED],accounts:connection.accounts,allow_writes:false}});
+          areas:connection.areas,accounts:connection.accounts,allow_writes:false}});
       if(route==='tools'&&req.method==='GET'){
         const limit=Number(req.query?.limit??20),page=Number(req.query?.page??1);
         if(!Number.isInteger(limit)||limit<1||limit>100||

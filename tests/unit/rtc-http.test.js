@@ -13,7 +13,8 @@ const account={login:'scratch-org',is_scratch:true,production_enabled:false,
   account_type:'Organization',installation_status:'active',repository_selection:'all'};
 const token={client_id:'rtc-'+'a'.repeat(24),default_account:'scratch-org',
   accounts:['scratch-org'],mode:'preview',profile:'read_only',listing:'compact',
-  expires_at:new Date(Date.now()+3600000),revoked_at:null};
+  expires_at:new Date(Date.now()+3600000),revoked_at:null,
+  areas:['server','meta'],allow_writes:false,production_access:false,money_limit_cents:0};
 async function run(route,method='GET',payload={},options={}){
   const db={getRtcPass:async()=>({...token,...options.token}),
     getAccount:async()=>({...account,...options.account}),
@@ -41,6 +42,11 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
     const limited=await run('whoami','GET',{}, {limited:true});
     expect(limited.statusCode).toBe(429);
     expect(limited.headers['Retry-After']).toBe('60');
+    for(const bad of [{allow_writes:true},{production_access:true},{money_limit_cents:1},
+      {areas:['server']},{areas:['server','foreign']}]){
+      const refused=await run('whoami','GET',{}, {token:bad});
+      expect(refused.statusCode).toBe(403);
+    }
   });
   it('supports whoami, search, describe and guarded read call',async()=>{
     expect(json(await run('whoami')).result.profile).toBe('read_only');
@@ -48,6 +54,19 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
     expect(list.result.tools.map(t=>t.name)).toEqual(['github_whoami']);
     expect(json(await run('tool')).result.name).toBe('github_whoami');
     expect(json(await run('tool','POST',{})).result.name).toBe('github_whoami');
+  });
+  it('promotes only connection-owned retained handles to the RTC result envelope',async()=>{
+    const db={getRtcPass:async()=>token,getAccount:async()=>account,
+      consumeRtcPassRate:async()=>true};
+    const existing=createRtcHttpHandler({db,registry,dispatch:async()=>({
+      structuredContent:{items:[1],kept_result:{handle:'res_'+'a'.repeat(22),what:'fixture'}}
+    })});
+    const req=request('POST',{}, {authorization:'Bearer '+pass});
+    req.query={name:'github_whoami'};
+    const response=await call((a,b)=>existing(a,b,'tool'),req);
+    expect(json(response)).toMatchObject({ok:true,handle:'res_'+'a'.repeat(22),
+      result:{items:[1]},mode:'preview'});
+    expect(json(response).result).not.toHaveProperty('kept_result');
   });
   it('never calls write tools and refuses write batches',async()=>{
     expect((await run('tool','POST',{}, {tool:'github_delete_repo'})).statusCode).toBe(404);
