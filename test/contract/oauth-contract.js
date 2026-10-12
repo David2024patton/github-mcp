@@ -10,6 +10,26 @@ const SETTINGS = { default_account: 'example-org', accounts: ['example-org', 'ex
 
 export function runOAuthContract(name, make) {
   describe(`connector login store: ${name}`, () => {
+    it('reports only aggregate custom-MCP client/session readiness, including expired and revoked behavior',async()=>{
+      const db=await make();
+      expect(await db.getConnectorOAuthReadiness()).toEqual({
+        registered_clients:0,unrevoked_sessions:0,usable_access_tokens:0,refresh_credentials:0});
+      await db.createOAuthClient({clientId:'readiness-client',clientSecret:'not-a-real-secret',
+        redirectUris:[REDIRECT],clientName:'Fixture'});
+      expect(await db.getConnectorOAuthReadiness()).toMatchObject({registered_clients:1,
+        unrevoked_sessions:0,usable_access_tokens:0,refresh_credentials:0});
+      await db.createAccessToken({accessToken:'readiness-live',refreshToken:'readiness-refresh',
+        clientId:'readiness-client',...SCOPE});
+      expect(await db.getConnectorOAuthReadiness()).toEqual({
+        registered_clients:1,unrevoked_sessions:1,usable_access_tokens:1,refresh_credentials:1});
+      await db.createAccessToken({accessToken:'readiness-expired',refreshToken:'expired-refresh',
+        clientId:'readiness-client',ttlSeconds:-20,...SCOPE});
+      expect(await db.getConnectorOAuthReadiness()).toEqual({
+        registered_clients:1,unrevoked_sessions:2,usable_access_tokens:1,refresh_credentials:2});
+      expect(await db.revokeAccessToken('readiness-live')).toBe(true);
+      expect(await db.getConnectorOAuthReadiness()).toEqual({
+        registered_clients:1,unrevoked_sessions:1,usable_access_tokens:0,refresh_credentials:1});
+    });
     it('registers a client keeping only the hash of its secret', async () => {
       const db = await make();
       await db.createOAuthClient({ clientId: 'client-1', clientSecret: 'fixture-secret-not-real', redirectUris: [REDIRECT], clientName: 'Example' });

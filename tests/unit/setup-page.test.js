@@ -130,6 +130,43 @@ describe('the setup page', () => {
   });
 });
 
+describe('protected connector OAuth readiness on owner setup',()=>{
+  it('keeps registration counts hidden from GET and only reveals aggregates after passphrase',async()=>{
+    const t=await build();
+    const get=await t.open();
+    expect(get.body).not.toContain('Registered clients:');
+    const denied=await t.post({action:'status'},{origin:'https://not-owner.example.test'});
+    expect(denied.statusCode).toBe(403);
+    expect(denied.body).not.toContain('Registered clients:');
+    const status=await t.post({action:'status'});
+    expect(status.statusCode).toBe(200);
+    expect(status.body).toContain('Custom MCP OAuth connection status');
+    expect(status.body).toContain('Registered clients: 0');
+    expect(status.body).toContain('client_registration_required');
+    expect(status.body).toContain('https://github-mcp.example.test/api/mcp');
+    noSecrets(status);
+  });
+  it('distinguishes registered but unauthorized clients from authorized connector sessions',async()=>{
+    const t=await build();await t.open();
+    await t.db.createOAuthClient({clientId:'private-client-id',
+      clientSecret:'private-client-secret',redirectUris:['https://client.example.test/cb']});
+    const waiting=await t.post({action:'status'});
+    expect(waiting.body).toContain('owner_authorization_required');
+    expect(waiting.body).not.toContain('private-client-id');
+    expect(waiting.body).not.toContain('private-client-secret');
+    await t.db.createAccessToken({accessToken:'private-connector-access',refreshToken:'private-refresh',
+      clientId:'private-client-id',defaultAccount:'example-org',accounts:['example-org']});
+    const active=await t.post({action:'status'});
+    expect(active.body).toContain('connection_records_present');
+    expect(active.body).not.toContain('private-connector-access');
+    expect(active.body).not.toContain('private-refresh');
+    expect(active.body).not.toContain('private-client-id');
+    noSecrets(active);
+    await t.db.revokeAccessToken('private-connector-access');
+    const revoked=await t.post({action:'status'});
+    expect(revoked.body).toContain('owner_authorization_required');
+  });
+});
 describe('creating the GitHub App', () => {
   async function start(t, login = 'example-org', accountType = 'Organization') {
     await t.open();
