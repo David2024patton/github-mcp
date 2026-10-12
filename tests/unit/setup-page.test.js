@@ -675,3 +675,18 @@ describe('canonical setup URL and strict mobile-browser error guidance', () => {
     });
   });
 });
+
+
+describe('same-origin Referrer-Policy for actual HTML form navigations', () => {
+  it('sends same-origin on setup pages and POST-returned forms, while keeping refusal pages no-referrer', async()=>{
+    const t=await build();
+    const getRes=await t.open();
+    expect(getRes.headers['Referrer-Policy']).toBe('same-origin');
+    const success=await t.post({action:'status'});
+    expect(success.statusCode).toBe(200);
+    expect(success.headers['Referrer-Policy']).toBe('same-origin');
+    const reject=await t.post({action:'status'},{origin:'null'});
+    expect(reject.statusCode).toBe(403);
+    expect(reject.headers['Referrer-Policy']).toBe('no-referrer');
+  });
+});
