@@ -18,6 +18,8 @@ function arrange(gh,outcome){
   gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[{name:'main',commit:{sha:'a'.repeat(40)}}]);
   gh.when('GET /repos/{owner}/{repo}/pulls').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/issues').reply(200,[]);
+  gh.when('GET /repos/{owner}/{repo}/tags').reply(200,[]);
+  gh.when('GET /repos/{owner}/{repo}/releases').reply(200,[]);
   gh.when('DELETE /repos/{owner}/{repo}').reply(204);
 }
 runWriteContract({label:'github_dev_cleanup exact scratch',definition:def,
@@ -120,6 +122,61 @@ describe('V-2 protected run deletion',()=>{
     w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
       {name:'main',commit:{sha:'a'.repeat(40)}},{name:branch,commit:{sha:'c'.repeat(40)}}
     ]);
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(false);
+  });
+  it('refuses foreign tags, retargeted tags and published or unrecorded releases',async()=>{
+    for(const scenario of ['foreign-tag','retargeted-tag','foreign-release','published-release','release-assets']){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      const recordedTag={runId:RUN,account:OWNER,connection:'client-1',
+        type:'tag',owner:OWNER,repo:REPO,objectId:'v0.1.0',createdSha:'a'.repeat(40)};
+      const tag={name:'v0.1.0',commit:{sha:'a'.repeat(40)}};
+      if(scenario!=='foreign-tag')await w.db.recordDevObject(recordedTag);
+      const release={id:123,tag_name:'v0.1.0',draft:true,published_at:null,
+        body:`Draft fixture rtc_run=${RUN}`,assets:[]};
+      if(['published-release','release-assets'].includes(scenario))
+        await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+          type:'release',owner:OWNER,repo:REPO,objectId:'123'});
+      w.gh.when('GET /repos/{owner}/{repo}/tags').reply(200,[
+        scenario==='retargeted-tag'?{...tag,commit:{sha:'b'.repeat(40)}}:tag
+      ]);
+      if(scenario.includes('release')){
+        w.gh.when('GET /repos/{owner}/{repo}/releases').reply(200,[
+          {...release,...(scenario==='published-release'?{draft:false,published_at:'2026-10-12T00:00:00Z'}:
+            scenario==='release-assets'?{assets:[{id:456}]}:{})}
+        ]);
+      }
+      const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(out.done).toBe(false);
+      expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(false);
+      expect(w.gh.invalid).toEqual([]);
+    }
+  });
+  it('deletes a release-train scratch repo only when its exact draft and tags are still owned',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    for(const name of ['v0.1.0','v0.2.0','v0.3.0'])
+      await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+        type:'tag',owner:OWNER,repo:REPO,objectId:name,createdSha:'a'.repeat(40)});
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'release',owner:OWNER,repo:REPO,objectId:'123'});
+    w.gh.when('GET /repos/{owner}/{repo}/tags').reply(200,
+      ['v0.1.0','v0.2.0','v0.3.0'].map(name=>({name,commit:{sha:'a'.repeat(40)}})));
+    w.gh.when('GET /repos/{owner}/{repo}/releases').reply(200,[
+      {id:123,tag_name:'v0.3.0',draft:true,published_at:null,
+        body:`Draft release rtc_run=${RUN}`,assets:[]}
+    ]);
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(true);
+    expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(true);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('refuses a truncated release listing rather than deleting unseen artifacts',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    // A full page plus a next link is a finite, genuinely capped fixture.
+    w.gh.when('GET /repos/{owner}/{repo}/releases').reply(200,
+      Array.from({length:100},(_,i)=>({id:i+1,tag_name:'other',draft:true,assets:[]})),
+      {link:'<https://api.github.com/repos/example-org/fixture/releases?page=2>; rel="next"'});
     const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
     expect(out.done).toBe(false);
     expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(false);
