@@ -70,7 +70,7 @@ describe('non-scratch safety hardening',()=>{
   });
   const output=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
   expect(output.done).toBe(false);
-  expect(w.gh.calls.filter(c=>['PATCH','DELETE'].includes(c.method)).toHaveLength(0);
+  expect(w.gh.calls.filter(c=>['PATCH','DELETE'].includes(c.method))).toHaveLength(0);
  });
 
 });
