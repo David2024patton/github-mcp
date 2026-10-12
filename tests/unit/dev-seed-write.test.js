@@ -26,6 +26,9 @@ const arrange=(scenario)=>(gh,outcome)=>{
     {status:200,body:after}
   ]);
   gh.when('POST /orgs/{org}/repos').reply(201,after);
+  gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,request=>({
+    ref:`refs/${request.params.ref}`,object:{sha:COMMIT}
+  }));
   gh.when('PUT /repos/{owner}/{repo}/contents/{path}').reply(201,{
     content:{path:PATH,sha:'a'.repeat(40)},commit:{sha:COMMIT}
   });
@@ -53,6 +56,7 @@ describe('V-1 real multi-step GitHub scenario safeguards',()=>{
     expect(out).toMatchObject({status:'applied',done:true,confirmed:true});
     const list=await w.db.listDevObjects({runId:ID,account:OWNER,connection:'client-1'});
     expect(list.map(x=>x.object_type).sort()).toEqual(['label','repo','workflow_file']);
+    expect(list.find(x=>x.object_type==='repo').created_sha).toBe(COMMIT);
     expect(list.map(x=>x.object_id).sort()).toEqual([PATH,LABEL,`${OWNER}/${REPO}`].sort());
     for(const step of ['seed-repo','seed-workflow','seed-label'])
       expect(await w.db.getDevIntent({runId:ID,account:OWNER,connection:'client-1',stepId:step}))
@@ -136,6 +140,8 @@ const protectedArrange=(gh,outcome)=>{
     {status:200,body:repo},{status:200,body:repo}
   ]);
   gh.when('POST /orgs/{org}/repos').reply(201,repo);
+  gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,
+    {ref:'refs/heads/main',object:{sha:COMMIT}});
   gh.when('POST /repos/{owner}/{repo}/rulesets').reply(201,rulesetFixture());
   gh.when('GET /repos/{owner}/{repo}/rulesets/{ruleset_id}').reply(200,
     rulesetFixture(outcome==='mismatch'?{enforcement:'disabled'}:{}));

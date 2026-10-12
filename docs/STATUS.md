@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — #102 scratch initial commit journal (MERGED after exact-head CI):** Both private scratch repository creation doors now independently read and durably record their initial default-branch commit SHA inside the existing atomic run intent. Invalid GitHub ref/readback remains uncertain, not blindly replayed. Fake request-shape and no-duplicate tests; this is offline only, not connected acceptance.
+
 - **2026-10-12 — #101 standalone cleanup identity (MERGED after CI):** Host cleanup refuses a missing recorded branch SHA and any recorded PR with mismatched numeric ID, merged_at, non-draft state (even closed), foreign base repository or altered head SHA. Fake three-door negative regressions protect host repos. No live credentials or scratch actions.
 
 - **2026-10-12 — #100 finite pagination boundary (MERGED after gated CI):** Shared GitHub pagination now has a maximum of 10000 items, an independent bounded-page cap, and refuses malformed list data and reports non-exhaustive inventory on a repeated empty or tiny linked page. This prevents infinite preflight pagination from stalling or incorrectly completing scratch deletion. No connected OAuth acceptance or real scratch deletion claimed.

@@ -8,6 +8,7 @@ import { planScenario } from '../dev/scenarios.js';
 import { seedStack, readStack, verifyStack } from '../dev/stack.js';
 import { seedReviewScenario, readReviewScenario, verifyReviewScenario } from '../dev/review-scenario.js';
 import { matchesRunDescription } from '../dev/run-marker.js';
+import { captureScratchOrigin } from '../dev/scratch-origin.js';
 
 export const SEEDABLE=Object.freeze(['repo-basic','failing-ci','release-train','protected-main','stack-of-three','pr-with-threads']);
 const RELEASE_TAGS=Object.freeze(['v0.1.0','v0.2.0','v0.3.0']);
@@ -68,7 +69,8 @@ export const seed=defineGithubWrite({
           description:`Developer fixture for ${marker(args.runId)} (${args.scenario})`})).data;
         if(!same(result?.full_name,`${target.owner}/${args.repo}`)||result.private!==true)
           throw refusal('GitHub did not create the expected private scratch repository.');
-        return {objectId:result.full_name};
+        return {objectId:result.full_name,createdSha:await captureScratchOrigin(github,{
+          owner:target.owner,repo:args.repo,runId:args.runId,created:result})};
       }});
     if(args.scenario==='pr-with-threads'){
       const objects=await seedReviewScenario(ctx,{github,run});
