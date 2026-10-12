@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — #96 exact per-branch tip evidence (MERGED after exact-head CI):** Scratch repository deletion now binds each run-owned branch to its own recorded creation commit, matching fixture-file commit, or exact recorded review revision. A SHA from another run-owned branch/file cannot authorize deletion. Adversarial fake-GitHub tests block cross-branch and cross-file substitutions before DELETE. Offline only; OAuth acceptance and all-runs deletion remain unverified.
+
 - **Session handoff for #96–#100:** PRs #91–#94 are merged; #95 has its own final gated review/merge in progress. V-1/V-2 are still IN_PROGRESS. Real custom OAuth-connected scratch acceptance, full all-runs cleanup and owner-authorized remote deletion are not proven. Keep production disabled and spending at $0; do not substitute standard GitHub connector acceptance.
 
 - **2026-10-12 — #95 scratch deletion isolation (final PR review; exact-head CI and merge gates required):** Before a whole scratch repository is deleted, inspect bounded live branch, PR and issue inventories and refuse unjournaled or changed resources, including on repeated pre-delete check. Require an exact rather than prefix run marker on scratch creation readback. All checks use fake GitHub, never actual custom connected credentials. No production/spend authority changes.
