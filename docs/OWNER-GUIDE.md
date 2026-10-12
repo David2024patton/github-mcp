@@ -17,7 +17,7 @@ settings, access or spending always shows you a preview and waits for your OK.
 | "Set up a new repo for my project the standard way." | Private repo, `main` protected by a rule requiring `ci`, merge commits, secret scanning, labels — previewed first | W/P |
 | "Is GitHub set up right for Appliance Desk?" | Every row of the Appliance Desk list: ok, fixed with your OK, or exactly what to click | P |
 | "Set the STRIPE_KEY secret for this repo." | Gives you a link to type the value on your setup page — the value never goes through chat | G |
-| "Give me a throwaway repo to test this workflow." / "Clean up that test run." | A scratch repository in your scratch organization, then removes exactly what the run created | V |
+| "Give me a throwaway repo to test this workflow." / "Clean up that test run." | Planned full workflow: scratch repo with run-owned objects and exact cleanup. **Not yet available end-to-end:** V-1 seeds implemented, V-2 cleanup unbuilt and custom OAuth connection absent as of 2026-10-12. Do not run a live seed without verified cleanup. | V |
 | "Send my app a test GitHub webhook." | Replays a real delivery into the app you are building, correctly signed | V |
 | "Review my GitHub organization." | Members and two-factor, security features, apps and tokens, spending, anything needing attention | O |
 | "Who has access to my repos?" | Members, outside collaborators, teams, deploy keys, apps and tokens; anything unusual flagged | O/W |
@@ -29,3 +29,7 @@ settings, access or spending always shows you a preview and waits for your OK.
 | "Undo that." | Reverses the last change when it has a clean opposite; says plainly when it doesn't (for example a merge needs a revert PR) | X |
 | "Make a 24-hour read-only pass for Codex." | A pass shown once on your setup page; the agent uses it through Robinson's Toolkit or the HTTPS API | R |
 | Anything else on GitHub | The universal tools find the right GitHub operation and run it with the same safety | U |
+
+## Live testing status — 2026-10-12 UTC
+
+The separate `robinson-ai-scratch` organization is owner-designated; its own custom App is installed, active on All repositories, with 41 recorded permissions, production OFF and spend $0. The custom server responded correctly to OAuth discovery and refused unauthenticated MCP calls, but no custom-MCP OAuth connection or scratch repo write has yet been completed. When testing resumes, connect **this server's** `/api/mcp` endpoint, not the platform's standard GitHub connector. First choose only the scratch account with mode `preview` and profile `read_only`; for guarded scratch writes use `everyday` only after cleanup/recovery is verified. Owner stopped testing for the day; no further owner action is requested now.

@@ -3,9 +3,7 @@
 This file describes what **exists**, and is updated in the same PR that ships it (DRIFT-PROTOCOL checklist B). What the
 system is designed to become is in `docs/designs/`; do not copy design text here before it is built.
 
-As of 2026-10-10 (A-3b, PR #9): **the repository tooling, the foundation database layer, the connector login and the
-`/api/mcp` endpoint (two read-only tools) are built; nothing is deployed.** Built: `package.json`, check scripts, test helpers (fake GitHub, fake database, throwaway
-Postgres), CI, `src/db.js` (lazy Neon client, `createDb(sql)`, the 13 foundation tables, the login store), `src/core/{oauth,http,oauth-handlers,mcp-auth,mcp-server}.js`, `src/oauth/{policy,routes}.js`, `src/runtime.js`, `api/`.
+**Current live overlay (2026-10-12 UTC; reviewed main #82):** Deployed to Vercel with a dedicated Neon database and the owner's custom GitHub App for `robinson-ai-scratch` installed, all-repositories and owner-designated scratch. Twenty SQL tables initialized. The foundation paragraph formerly here described the A-3b historical state; check STATUS and the V-1 card for current implementation and pending custom OAuth-connected acceptance. Production writes remain disabled.
 
 ## Infrastructure
 
@@ -16,11 +14,11 @@ Postgres), CI, `src/db.js` (lazy Neon client, `createDb(sql)`, the 13 foundation
 | Dependencies | Pinned exactly, `package-lock.json` committed; `npm ci`. Runtime: `@modelcontextprotocol/sdk` 1.32.1, `@neondatabase/serverless` 1.2.0, `@octokit/core` 7.0.8, `@octokit/plugin-paginate-rest` 16.0.0, `@octokit/plugin-throttling` 11.0.5, `@octokit/plugin-retry` 8.1.1, `@octokit/auth-app` 8.3.1, `@octokit/webhooks` 14.2.0, `libsodium-wrappers` 0.8.4. Dev: `vitest` 5.0.3, `pg` 8.23.1, `eslint` 10.12.0, `ajv` 8.20.0, `ajv-formats` 3.0.1, `graphql` 17.0.2 |
 | GitHub Actions CI | `.github/workflows/ci.yml` on `pull_request` and push to `main`; `permissions: contents: read`; no secrets; no `pull_request_target`; `actions/checkout@v7`, `actions/setup-node@v7`. Jobs: `check` (`npm run check`: secret scan, docs check, index validation, catalog count, lint, write-safety, token budgets, core imports), `unit` (`npm test`), `db` (`npm run test:db` on a Postgres 17 service from `public.ecr.aws/docker/library/postgres:17`), `shapes` (`npm run test:shapes`); aggregate **`ci`** (`if: always()`) fails unless all four are `success` — the single merge gate. A push cancels the branch's running CI |
 | Test harness | `test/helpers/fake-github.js` (`makeFakeGitHub()` → `{ fetch, calls, unmatched, graphql, when, routes }`, passed to Octokit as `request.fetch`; A-1 route list, A-4 adds the vendored description and validation); `test/helpers/fake-db.js` (`createFakeDb({ clock })`: key/value rows, `initSchema()`/`listTables()`, and the login store; `seedAccounts()` is its test seam for `gh_accounts`); `test/contract/oauth-contract.js` (one login-store contract run against the fake and real Postgres); `test/helpers/pg-neon-adapter.js` (isolated `github_mcp_test_*` schema, Neon-shaped tagged queries); `test/contract/db-contract.js`; `scripts/local-postgres-test.sh` (CI service via `TEST_DATABASE_URL`, else a temporary local cluster; localhost only) |
-| Tool registry | `src/tools/index.js` exports `registry` from `src/core/registry.js` `mergeNamespaces` (duplicate names throw); 2 tools (`github_whoami`, `github_list_accounts`, `src/tools/server.js`). `/api/mcp` dispatches through `src/tools/dispatch.js` (`createDispatch`), which is default-deny: it runs read-only tools and `defineWrite-v1` tools only, checks arguments against the tool schema (`src/core/validate.js`) and withholds any result shaped like a credential; profile-based hiding arrives in B-6 |
-| Vercel project | Not created (IN-02) |
-| Neon database | Not created (IN-02) |
-| GitHub Apps | None created (IN-04; the setup page exists, A-5b) |
-| GitHub credentials | None stored |
+| Tool registry | `src/tools/index.js` exports the current registry and delegates to `createDispatch`; all read and write tool exposure follows profile and safety policies. Many additional batches have shipped since the initial two read-only foundation tools; see `docs/TOOL-CATALOG.md` and source/CI for exact current counts. |
+| Vercel project | `github-mcp` (`prj_ucMxAIVs2JW3u6DZUejhSPECAvXY`) on existing paid team; READY production from reviewed main `343b26777af1f57f6e98fdbf625e496ebb1c8800`; canonical URL `https://github-mcp-chris-projects-de6cd1bf.vercel.app` |
+| Neon database | Independent project `green-surf-51243848` / database `github_mcp`, fixed 0.25 CU and 5-minute autosuspend; 20 application tables verified initialized |
+| GitHub Apps | Custom `robinson-mcp-robinson-ai-scratch` App installed on `robinson-ai-scratch`, active All repositories with 41 matching stored permission entries. Separate normal organization/personal Apps still pending |
+| GitHub credentials | Custom scratch GitHub App credentials held encrypted by the server. No custom OAuth clients or active connection tokens at live checkpoint. Never disclose/rotate `TOKEN_ENCRYPTION_KEY` without deliberate migration. |
 
 ## Environment variables
 
@@ -71,8 +69,7 @@ with no accounts, a default account outside the list, or an unknown mode, profil
 by the login endpoint, A-3b). Failed logins are counted per address in `login_attempts` (5 in 15 minutes lock it).
 
 Index: `change_log_request_key` on `change_log (request_key, at)` (replay lookup). Later batches add their own tables,
-always `IF NOT EXISTS`, and list them here when they exist. No Neon database exists yet (IN-02): the schema has run only
-on throwaway localhost Postgres.
+always `IF NOT EXISTS`, and list them here when they exist. The production Neon database now has 20 application tables initialized (IN-02); throwaway Postgres remains the CI acceptance test database.
 
 ## Endpoints
 
@@ -189,12 +186,11 @@ Read replies go through `readReply` in `src/tools/dispatch.js`: summary form (to
 
 ## GitHub App permissions
 
-None granted yet. The requested list lives in `src/github/app-manifest.js` (A-5b; repository and organization permissions only, no account permissions until Batch O) and `docs/DEPLOY.md` (A-6); record the
-permissions actually granted per account here once Chris installs the Apps.
+The owner-installed custom scratch App has 41/41 recorded installation permissions matching its App permission record, active across All repositories (2026-10-12). No production write switch is enabled; other real-work account Apps are not yet installed. The desired manifest lives in `src/github/app-manifest.js` and `docs/DEPLOY.md`; do not conflate the ChatGPT standard GitHub connector's installation with this server.
 
 ## Developer scenario ledger (V-1 part 1, PR #65)
 
-`dev_runs` and `dev_run_objects` are additive tables created by `createDb.initSchema()`; `createDevLedger(sql)` offers atomic account+connection-scoped run creation, exact object recording, and bounded lists. The same behavior is asserted for PostgreSQL and the fake. `src/dev/scenarios.js` is plan-only: no V-1 external writes exist until the next approved slice passes its write contracts and the owner scratch gate IN-06. Unit CI uses two file-level shards under the unchanged aggregate `ci` gate.
+`dev_runs` and `dev_run_objects` are additive tables created by `createDb.initSchema()`; `createDevLedger(sql)` offers atomic account+connection-scoped run creation, exact object recording, and bounded lists. The same behavior is asserted for PostgreSQL and the fake. `src/dev/scenarios.js` is plan-only: six scratch-only executable scenarios and guarded private scratch creation exist in code with fake, database and request-shape tests; owner IN-06 designation is verified but authenticated custom-MCP read/write/cleanup acceptance is not. Unit CI uses two file-level shards under the unchanged aggregate `ci` gate.
 
 
 ## V-1 execution-intent journal (#67)
@@ -205,7 +201,13 @@ permissions actually granted per account here once Chris installs the Apps.
 **#68 read exposure:** `src/tools/dev-runs-read.js` registers `github_dev_list_scenarios` and `github_dev_list_runs`. Scenario plans say `plan_only` and `execution_available: false` until a real safe seed exists. Run reads are scoped to the connected account and client ID, with bounded saved-object and claimed/uncertain/recorded-step details via `listDevIntents`; no GitHub API call or mutation. Scratch eligibility is derived solely from the server's `gh_accounts.is_scratch` and `account_type`, never asserted by caller arguments.
 
 
-**V-1 scratch gate (#69).** `src/dev/scratch.js` trusts only `gh_accounts` metadata: `is_scratch`, Organization, a configured GitHub App and active installation across all repositories; production connections or enabled production switch refuse before a GitHub read. `src/dev/execute.js` is the shared one-winner step claim and object journal for GitHub mutations, with an uncertain state on unknown outcomes. `src/tools/dev-scratch-write.js` exposes guarded `github_dev_create_scratch_repo`; it creates a private, `rtc_run=<runId>`-described repository and records the returned exact `full_name`. Fixture App credentials are mocks for tests only; no IN-06 real account has been enabled.
+**V-1 scratch gate (#69).** `src/dev/scratch.js` trusts only `gh_accounts` metadata: `is_scratch`, Organization, a configured GitHub App and active installation across all repositories; production connections or enabled production switch refuse before a GitHub read. `src/dev/execute.js` is the shared one-winner step claim and object journal for GitHub mutations, with an uncertain state on unknown outcomes. `src/tools/dev-scratch-write.js` exposes guarded `github_dev_create_scratch_repo`; it creates a private, `rtc_run=<runId>`-described repository and records the returned exact `full_name`. Fixture App credentials are mocks for tests only; the owner has now enabled one real scratch account, but no real run-owned write has been executed.
 
 
-**#70 scenario execution:** `src/tools/dev-seed-write.js` runs the first two approved scenarios (`repo-basic`, `failing-ci`) against actual pinned GitHub routes with shared owner-only scratch verification and one-winner step journal. Each creates a private run-labelled repository, a run-specific YAML workflow (manual `workflow_dispatch` only; no surprise CI billing) and either a labelled GitHub repository label or a `rtc/<runId>/failure-ref` branch pointing at the recorded workflow commit. Readback checks the file contents, repo visibility/marker, final object and all exact IDs in the scoped ledger. The other five scenarios are explicitly not implemented; they remain plan-only in `github_dev_list_scenarios`. IN-06 and actual GitHub workflow dispatch are not complete.
+**#70 scenario execution:** `src/tools/dev-seed-write.js` runs the first two approved scenarios (`repo-basic`, `failing-ci`) against actual pinned GitHub routes with shared owner-only scratch verification and one-winner step journal. Each creates a private run-labelled repository, a run-specific YAML workflow (manual `workflow_dispatch` only; no surprise CI billing) and either a labelled GitHub repository label or a `rtc/<runId>/failure-ref` branch pointing at the recorded workflow commit. Readback checks the file contents, repo visibility/marker, final object and all exact IDs in the scoped ledger. Later PRs added four more runnable scenarios (six total); `webhook-target` remains plan-only pending V-4. Owner IN-06 configuration is now verified; OAuth-connected scratch write and actual workflow dispatch are not.
+
+## Verified runtime and connected-acceptance boundaries (2026-10-12 UTC; draft #83)
+
+- Production HTTP responses from a temporary network-restricted Vercel sandbox: authorization-server OAuth discovery GET 200; protected-resource metadata GET 200; `/api/github/setup` GET 200; `/api/mcp` GET/JSON-RPC initialize POST without token 401 + proper Bearer resource-metadata challenge. **The landing-page `/` route incorrectly returns 404**, despite the code's intended `api/index.js` route (investigate Vercel routing and add regression).
+- Neon state: `oauth_clients=0`, active `oauth_tokens=0`, `dev_runs=0`, `dev_run_objects=0`. GitHub App installation stored active, all repositories, 41 matching permissions, `is_scratch=true`, `production_enabled=false`, spend limit $0; owner audit confirms enablement. No actual custom MCP OAuth grant exists yet. Standard GitHub connector use to administer the repository does **not** prove the custom server works.
+- The temporary Vercel sandbox was stopped after testing. **No external GitHub resources were created/modified/deleted** through the custom server. Do not perform a live scratch-repository test before owner-authorized preview OAuth and verified run-owned cleanup/recovery (V-2 cleanup unbuilt). Encryption key rotation after real App registration requires a migration/re-enrollment plan.
