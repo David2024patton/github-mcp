@@ -37,7 +37,7 @@ const readScenarios=defineRead({
 });
 const readRuns=defineRead({
   name:'github_dev_list_runs',area:'dev',audience:['B'],
-  description:'Inspect owned development runs, exact object IDs, step claims and fail-closed progress evidence.'
+  description:'Inspect owned development runs, exact object IDs, step claims and fail-closed progress evidence.',
   properties:{owner:OWNER,runId:RUN,max:MAX},
   handler:async(args,ctx)=>{
     const {account,connection}=scope(args,ctx);
