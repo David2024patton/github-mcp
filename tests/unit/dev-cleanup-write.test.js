@@ -22,6 +22,8 @@ function arrange(gh,outcome){
   gh.when('GET /repos/{owner}/{repo}/releases').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/hooks').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/rulesets').reply(200,[]);
+  gh.when('GET /repos/{owner}/{repo}/issues/comments').reply(200,[]);
+  gh.when('GET /repos/{owner}/{repo}/pulls/comments').reply(200,[]);
   gh.when('DELETE /repos/{owner}/{repo}').reply(204);
 }
 runWriteContract({label:'github_dev_cleanup exact scratch',definition:def,
@@ -362,6 +364,45 @@ describe('V-2 protected run deletion',()=>{
     const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
     expect(out.done).toBe(false);
     expect(w.gh.calls.some(c=>c.method==='DELETE')).toBe(false);
+  });
+  it('refuses foreign issue or review comments before scratch deletion',async()=>{
+    for(const [route,items] of [
+      ['GET /repos/{owner}/{repo}/issues/comments',[{id:30,body:'not ours'}]],
+      ['GET /repos/{owner}/{repo}/pulls/comments',[{id:31,body:'foreign review'}]]
+    ]){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      w.gh.when(route).reply(200,items);
+      const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(out.done).toBe(false);
+      expect(w.gh.calls.some(c=>c.method==='DELETE')).toBe(false);
+      expect(w.gh.invalid).toEqual([]);
+    }
+  });
+  it('requires the exact original review comment ID, commit, body and PR',async()=>{
+    const {inspectScratchComments}=await import('../../src/dev/cleanup-comments.js');
+    const w=await makeWorld({scratchAccount:true});arrange(w.gh,'ok');
+    const objects=[
+      {object_type:'pr',object_id:'47',owner:OWNER,repo:REPO},
+      {object_type:'review_comment',object_id:'501',owner:OWNER,repo:REPO,created_sha:'a'.repeat(40)}
+    ];
+    const valid={id:501,commit_id:'a'.repeat(40),path:`rtc/${RUN}/review.md`,
+      body:`rtc_run=${RUN} review discussion 1`,
+      pull_request_url:`https://api.github.com/repos/${OWNER}/${REPO}/pulls/47`};
+    w.gh.when('GET /repos/{owner}/{repo}/pulls/comments').reply(200,[valid]);
+    await expect(inspectScratchComments(await (await import('../../src/github/client.js'))
+      .githubFor(w.ctx,{owner:OWNER}),{owner:OWNER,repo:REPO,run:{id:RUN},objects}))
+      .resolves.toMatchObject({review_comment_count:1});
+    for(const changed of [
+      {...valid,commit_id:'b'.repeat(40)},
+      {...valid,body:`rtc_run=${RUN}-other review discussion 1`},
+      {...valid,pull_request_url:`https://api.github.com/repos/${OWNER}/${REPO}/pulls/55`}
+    ]){
+      w.gh.when('GET /repos/{owner}/{repo}/pulls/comments').reply(200,[changed]);
+      await expect(inspectScratchComments(await (await import('../../src/github/client.js'))
+        .githubFor(w.ctx,{owner:OWNER}),{owner:OWNER,repo:REPO,run:{id:RUN},objects}))
+        .rejects.toThrow(/Deletion refused/);
+    }
+    expect(w.gh.invalid).toEqual([]);
   });
   it('never allows a production connection to perform developer cleanup',async()=>{
     const w=await makeWorld({scratchAccount:true,mode:'production'});await prepare(w);arrange(w.gh,'ok');
