@@ -80,7 +80,7 @@ export function doorsFor(definition) {
  * @param {(opts) => Function[]} [o.gatesFor] `({ protectedLevel, spendLimitCents })` -> gates; defaults to the fixture gates
  */
 export function runWriteContract({ label, definition, args, arrange, needsConfirm, production = false, notifies = [], accessWidening = false, spendCents = 0, quietArgs = null,
-  conveyor = false, profile = 'everyday', scratchAccount = false, gatesFor = ({ protectedLevel, spendLimitCents }) => [...(protectedLevel ? [protectionGate(protectedLevel)] : []), spendGate({ limitCents: spendLimitCents ?? 0 })] }) {
+  conveyor = false, profile = 'everyday', scratchAccount = false, previewOnly = false, gatesFor = ({ protectedLevel, spendLimitCents }) => [...(protectedLevel ? [protectionGate(protectedLevel)] : []), spendGate({ limitCents: spendLimitCents ?? 0 })] }) {
   for (const door of doorsFor(definition)) {
     describe(`write contract: ${label} through ${door.name}`, () => {
       const world = async (options = {}, replies = 'ok') => {
@@ -155,12 +155,12 @@ export function runWriteContract({ label, definition, args, arrange, needsConfir
       }
 
       it('7. a locked resource refuses everything; pr-only refuses what is not pull-request work', async () => {
-        const locked = await world({ mode: 'production', gates: gatesFor({ protectedLevel: 'locked' }) });
+        const locked = await world({ mode: previewOnly ? 'preview' : 'production', gates: gatesFor({ protectedLevel: 'locked' }) });
         const out = parse(await door.call(locked, { ...args, confirm: true }));
         expect(out).toMatchObject({ status: 'refused_by_guard' });
         expect(out.refusedBy).toContain('locked');
         expect(writes(locked.gh)).toEqual([]);
-        const prOnly = await world({ mode: 'production', gates: gatesFor({ protectedLevel: 'pr-only' }) });
+        const prOnly = await world({ mode: previewOnly ? 'preview' : 'production', gates: gatesFor({ protectedLevel: 'pr-only' }) });
         const res = parse(await door.call(prOnly, { ...args, confirm: true }));
         if (conveyor) expect(res.status).not.toBe('refused_by_guard');
         else expect(res).toMatchObject({ status: 'refused_by_guard' });
