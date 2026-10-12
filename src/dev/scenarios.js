@@ -3,7 +3,12 @@ import { validateRun } from './ledger.js';
 const SPEC = Object.freeze({
   'repo-basic': { scratch: true, objects: [['repo','scratch-repo'],['workflow_file','ci-pass'],['label','rtc-run']] },
   'failing-ci': { scratch: true, objects: [['repo','scratch-repo'],['workflow_file','ci-fails'],['branch','failure-ref']] },
-  'pr-with-threads': { scratch: false, objects: [['branch','review-ref'],['pr','draft-review'],['review_thread','first'],['review_thread','second'],['review_thread','outdated']] },
+  'pr-with-threads': { scratch: true, objects: [['repo','scratch-repo'],['label','rtc-run'],['branch','review-ref'],
+ ['fixture_file','review.md'],['pr','draft-review'],['pr_label','review-label'],
+ ['review_comment','first-comment'],['review_thread','first-thread'],
+ ['review_comment','second-comment'],['review_thread','second-thread'],
+ ['review_comment','third-comment'],['review_thread','outdated-thread'],
+ ['fixture_revision','review.md-revision']] },
   'stack-of-three': { scratch: true, objects: [['repo','scratch-repo'],['label','rtc-run'],
     ['branch','stack-1'],['fixture_file','stack-1.md'],['pr','draft-1'],['pr_label','draft-1-label'],
     ['branch','stack-2'],['fixture_file','stack-2.md'],['pr','draft-2'],['pr_label','draft-2-label'],
