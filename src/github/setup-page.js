@@ -3,7 +3,7 @@
 // (with the same lockout as the connector login), a same-origin form post and a double-submit CSRF token, and every
 // credential step is refused unless this is the production deployment. The redirects from GitHub carry an unguessable
 // `state` created only after the passphrase was accepted; a state works once and expires.
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { LOCKOUT_WINDOW_MINUTES, clientIp, evaluateLogin, randomToken, secretsMatch } from '../core/oauth.js';
 import { only, paramsOf, publicOrigin, send } from '../core/http.js';
 import { buildManifest, isValidLogin, manifestFormUrl } from './app-manifest.js';
@@ -128,6 +128,36 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'confirm-production') return await confirmProduction(p, page);
     if (action === 'set-spend-limit') return await setSpendLimit(p, page);
     if (action === 'set-scratch') return await setScratch(p, page);
+    if (action === 'create-rtc-pass') {
+      if(!isProduction())return page(403,{blocked:NOT_PRODUCTION});
+      if(!oneTimeStore)return page(503,{keyHelp:'Set TOKEN_ENCRYPTION_KEY before issuing a pass.'});
+      const account=String(p.login||''),days=Number(p.days||1);
+      if(!isValidLogin(account)||!Number.isInteger(days)||days<1||days>30)
+        return page(400,{result:'Choose an approved scratch organization and an expiry of 1–30 days.'});
+      const pass='rtc_pass_'+randomBytes(32).toString('base64url');
+      const passId=randomBytes(12).toString('hex');
+      const created=await db.createRtcPass({pass,passId,account,expiresAt:new Date(Date.now()+days*86400000)});
+      if(!created)return page(403,{result:'Pass creation refused: account must be an active, all-repositories, production-disabled scratch Organization.'});
+      try {
+        const one=await oneTimeStore.issue({account,kind:'rtc-read-only-pass',secret:pass});
+        await db.recordChange({account,mode:'setup',tool:'setup_create_rtc_pass',
+          target:passId,summary:'Issued one-day to 30-day preview/read-only RTC test pass',
+          confirmed:true,production:false}).catch(()=>{});
+        return page(200,{result:`Read-only preview RTC pass ${passId} created (expires in ${days} day(s)). Open ${one.setupPath} in this browser, then reveal it once. Revoke it here after testing.`});
+      }catch {
+        await db.revokeRtcPass(passId);
+        return page(503,{result:'Pass reveal could not be prepared. The newly issued pass was revoked.'});
+      }
+    }
+    if (action === 'revoke-rtc-pass') {
+      if(!isProduction())return page(403,{blocked:NOT_PRODUCTION});
+      const passId=String(p.passId||'');
+      if(!/^[a-f0-9]{24}$/.test(passId))return page(400,{result:'Enter the 24-character pass identifier.'});
+      const revoked=await db.revokeRtcPass(passId);
+      if(revoked)await db.recordChange({mode:'setup',tool:'setup_revoke_rtc_pass',
+        target:passId,summary:'Revoked an RTC test pass',confirmed:true,production:false}).catch(()=>{});
+      return page(revoked?200:404,{result:revoked?'RTC pass revoked immediately.':'No active RTC pass with that identifier.'});
+    }
     if (action === 'set-own-people') return await setOwnPeople(p, page);
     if (action === 'save-protected' || action === 'remove-protected') return await editProtected(action, p, page);
     if (!['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic'].includes(action)) return page(400, { result: 'Unknown action.' });

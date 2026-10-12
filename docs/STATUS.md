@@ -6,6 +6,10 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **#107 — RTC pass foundation + submitted-review safety (pending CI):** Owner passphrase/CSRF-protected setup issues only short-lived preview/read_only passes for independently designated scratch organizations, displayed once via the existing encrypted one-time secret page and revocable by ID. Database stores hashed passes, enforces atomic per-pass rate limits, and the MCP OAuth door still rejects pass kind. HTTPS RTC read-only tools are not yet exposed; hub D-4 real routes remain unverified. Scratch cleanup also refuses non-run submitted PR reviews.
+
+- **#107 — foreign submitted-review safeguard (pending CI):** Scratch deletion now enumerates formal PR reviews per recorded draft and refuses any submitted review or incomplete pagination. Inline run comments are separate and do not authorize destroying approval decisions. Added no-DELETE regression and fixture coverage; no real scratch/OAuth acceptance.
+
 - **#106 — bounded all-runs selection (pending exact-head CI):** Read-only cleanup previews now return an explicit at-most-five-run selection with separately reported blocked/excess IDs and incomplete-page warnings. Every selected run still requires a fresh preflight and separately confirmed write; no bulk deletion or remote proof is claimed. Custom OAuth acceptance and real scratch cleanup remain unverified.
 
 - **2026-10-12 — #105 foreign scratch comment isolation (MERGED after exact-head CI):** Before private scratch deletion, boundedly list issue comments and PR review comments. V-1 never creates issue comments, so any presence refuses deletion; review comments require recorded exact IDs, unchanged commit/path/body and a journaled run PR. Reject missing, foreign, changed or truncated results. This is mock-only and not custom OAuth acceptance.
