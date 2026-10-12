@@ -102,10 +102,11 @@ const readRuns=defineRead({
     if(args.repo)throw new TypeError('repo is only valid for remoteCleanupPreview.');
     const run=await ctx.db.getDevRun({id:args.runId,account,connection});
     if(!run)throw new TypeError('No development run with that ID belongs to this connection.');
-    const [objects,intents,birth]=await Promise.all([
+    const [objects,intents,birth,execution]=await Promise.all([
       ctx.db.listDevObjects({runId:args.runId,account,connection,limit}),
       ctx.db.listDevIntents({runId:args.runId,account,connection,limit}),
-      ctx.db.getDevBirthLabels({runId:args.runId,account,connection})
+      ctx.db.getDevBirthLabels({runId:args.runId,account,connection}),
+      ctx.db.getDevCleanupExecution({runId:args.runId,account,connection})
     ]);
     const moreMayExist=objects.length===limit||intents.length===limit;
     const progress=summarizeDevProgress({run,objects,intents,limit,moreMayExist});
@@ -113,6 +114,9 @@ const readRuns=defineRead({
     const birth_label_observation=summarizeScratchBirth({run,objects,intents,birth,
       listingComplete:!moreMayExist,includeLabels:args.includeBirthLabels===true});
     return {run,objects,intents,limit,more_may_exist:moreMayExist,progress,cleanup,birth_label_observation,
+      cleanup_execution:execution?{state:'active_or_unresolved',acquired_at:execution.acquired_at,
+        automatic_takeover_allowed:false,
+        next_action:'Verify the old worker has stopped, reconcile journal and remote outcomes, then obtain explicit owner authorization for scoped administrative recovery.'}:null,
       note:'Recorded IDs prove only journal persistence, not connected GitHub acceptance. Uncertain steps must be reconciled.'};
   }
 });

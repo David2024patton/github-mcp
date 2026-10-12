@@ -24,6 +24,13 @@ function arrange(gh,kind) {
 runWriteContract({label:'github_dev_cleanup standalone exact branch',definition:def,
   args:{runId:RUN,repo:REPO},needsConfirm:true,previewOnly:true,expectedWrites:1,prepare,arrange});
 describe('non-scratch safety hardening',()=>{
+ it('refuses a second cleanup executor before any host mutation',async()=>{
+  const w=await makeWorld();await prepare(w);arrange(w.gh,'ok');
+  await w.db.claimDevCleanupExecution({runId:RUN,account:OWNER,connection:'client-1',
+   executorId:'11111111-1111-4111-8111-111111111111'});
+  expect(parse(await def.handler({runId:RUN,repo:REPO,confirm:true,requestKey:'different-request'},w.ctx)).done).toBe(false);
+  expect(w.gh.calls.filter(c=>['PATCH','POST','DELETE'].includes(c.method))).toHaveLength(0);
+ });
  it('stops after PR closure if any exact draft identity changes on readback',async()=>{
   for(const change of [
    {number:13},{id:99},{draft:false},{body:`Changed <!-- rtc_run=${RUN} -->`},

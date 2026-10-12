@@ -8,6 +8,7 @@ import {summarizeScratchBirth} from '../dev/birth-report.js';
 
 function reasonCode(error) {
   const s=String(error?.message??'').toLowerCase();
+  if(/active or unresolved cleanup execution/.test(s))return 'CLEANUP_EXECUTION_UNRESOLVED';
   if(/unrecorded or ambiguous label|recorded scratch labels|label was repurposed/.test(s))
     return 'LABEL_PROVENANCE_UNVERIFIED';
   if(/inventory|capped|pagination|truncated|incomplete|total_count/.test(s))
@@ -73,6 +74,8 @@ export async function inspectCleanupPreview(args,ctx){
     const base={runId:args.runId,owner,repo:args.repo};
     let state;
     try{
+      if(await ctx.db.getDevCleanupExecution({runId:args.runId,account:owner,connection:ctx.connection.client_id}))
+        throw refusal('This run has an active or unresolved cleanup execution; resolve it before requesting another cleanup.');
       // Same scoped journal, exact repo and scratch-org checks as destructive
       // cleanup. Never hold an open-world GitHub read error to mean "empty".
       state=await readCleanupRun(ctx,owner,args.repo,args.runId);

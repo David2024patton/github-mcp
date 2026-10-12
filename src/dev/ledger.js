@@ -1,5 +1,9 @@
 // V-1: account- and connection-scoped run ledger; all SQL statements are static.
 export const RUN_ID = /^[a-z][a-z0-9-]{2,42}$/;
+export function validateCleanupExecutor(id) {
+  if(typeof id!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(id))
+    throw new TypeError('A server-generated cleanup executor UUID is required.');
+}
 const TYPES = new Set(['repo','branch','pr','issue','label','webhook','check_run','tag','release','workflow_file','fixture_file','forwarder','ruleset','review_thread','review_comment','fixture_revision','pr_label']);
 export function validateRun({ id, account, connection }) {
   if (!RUN_ID.test(id ?? '')) throw new TypeError('Run ID must contain 3–43 lowercase letters, digits or hyphens and start with a letter.');
@@ -213,6 +217,32 @@ export function createDevLedger(sql) {
         ORDER BY i.created_at, i.step_id LIMIT ${limit}`;
     },
 
+    // A persistent exclusive execution claim is separate from the lifecycle
+    // freeze. No TTL: time passing cannot prove a remote DELETE has finished.
+    async claimDevCleanupExecution({runId,account,connection,executorId}) {
+      validateRun({id:runId,account,connection});validateCleanupExecutor(executorId);
+      const rows=await sql`INSERT INTO dev_cleanup_executions (run_id,executor_id)
+        SELECT id,${executorId}::uuid FROM dev_runs
+        WHERE id=${runId} AND account=${account} AND connection=${connection}
+          AND status IN ('active','cleaning')
+        ON CONFLICT (run_id) DO NOTHING RETURNING run_id`;
+      return rows.length===1;
+    },
+    async releaseDevCleanupExecution({runId,account,connection,executorId}) {
+      validateRun({id:runId,account,connection});validateCleanupExecutor(executorId);
+      const rows=await sql`DELETE FROM dev_cleanup_executions e USING dev_runs r
+        WHERE r.id=e.run_id AND r.id=${runId} AND r.account=${account}
+          AND r.connection=${connection} AND e.executor_id=${executorId}::uuid
+        RETURNING e.run_id`;
+      return rows.length===1;
+    },
+    async getDevCleanupExecution({runId,account,connection}) {
+      validateRun({id:runId,account,connection});
+      const rows=await sql`SELECT e.acquired_at FROM dev_cleanup_executions e
+        JOIN dev_runs r ON r.id=e.run_id WHERE r.id=${runId}
+          AND r.account=${account} AND r.connection=${connection}`;
+      return rows[0]??null;
+    },
     // Run freeze is atomic with the unresolved-intent test; it prevents seeds from racing teardown.
     async beginDevCleanup({runId,account,connection}) {
       validateRun({id:runId,account,connection});

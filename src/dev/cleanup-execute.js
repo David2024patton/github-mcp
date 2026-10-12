@@ -8,6 +8,7 @@ import { inspectTestResources, cleanupTestResources } from './cleanup-non-scratc
 import { inspectScratchComments } from './cleanup-comments.js';
 import { assertScratchJournalCoverage } from './cleanup-inventory.js';
 import { assertScenarioResourceBounds } from './scenario-ownership.js';
+import { withCleanupExecution } from './cleanup-execution.js';
 
 const equal = (a,b) => String(a??'').toLowerCase() === String(b??'').toLowerCase();
 const getRepo = (github,owner,repo) => missing(async()=>(await github.request('GET /repos/{owner}/{repo}',{owner,repo})).data);
@@ -302,6 +303,9 @@ export async function readCleanupRun(ctx,owner,repo,runId) {
   return {run,plan,objects,existing,deleteRepository:!!root};
 }
 export async function executeCleanup(ctx,{owner,repo,runId,before}) {
+  return withCleanupExecution(ctx,{owner,runId},()=>executeExclusiveCleanup(ctx,{owner,repo,runId,before}));
+}
+async function executeExclusiveCleanup(ctx,{owner,repo,runId,before}) {
   if(!before.deleteRepository)return cleanupTestResources(ctx,{owner,repo,runId,before});
   await requireScratchOrg(ctx,owner);
   const connection=ctx.connection.client_id,db=ctx.db;
