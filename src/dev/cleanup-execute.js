@@ -76,7 +76,7 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     const saved=objects.filter(x=>x.object_type==='pr'&&x.object_id===String(p?.number)&&
       x.owner.toLowerCase()===owner.toLowerCase()&&x.repo===repo);
     if(!Number.isSafeInteger(p?.number)||p.number<1||numbers.has(p.number)||
-      saved.length!==1||p.merged!==false||p.draft!==true||
+      saved.length!==1||p.merged===true||p.merged_at!=null||p.draft!==true||
       !['open','closed'].includes(p.state)||
       !matchesRunFooter(p.body,run.id)||
       typeof head!=='string'||!head.startsWith(`rtc/${run.id}/`)||

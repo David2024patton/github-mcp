@@ -243,6 +243,26 @@ describe('V-2 protected run deletion',()=>{
       expect(w.gh.invalid).toEqual([]);
     }
   });
+  it('refuses a merged scratch PR even if it keeps the original run marker',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    const branch=`rtc/${RUN}/review`;
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'branch',owner:OWNER,repo:REPO,objectId:branch,createdSha:'a'.repeat(40)});
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'pr',owner:OWNER,repo:REPO,objectId:'101',createdSha:'a'.repeat(40)});
+    w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
+      {name:'main',commit:{sha:'a'.repeat(40)}},{name:branch,commit:{sha:'a'.repeat(40)}}
+    ]);
+    w.gh.when('GET /repos/{owner}/{repo}/pulls').reply(200,[{
+      number:101,draft:true,state:'closed',merged_at:'2026-10-12T00:00:00Z',
+      body:`<!-- rtc_run=${RUN} -->`,
+      head:{ref:branch,sha:'a'.repeat(40),repo:{full_name:`${OWNER}/${REPO}`}},
+      base:{ref:'main',repo:{full_name:`${OWNER}/${REPO}`}}
+    }]);
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(false);
+  });
   it('accepts a run-recorded draft PR only while its head and base remain exact',async()=>{
     const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
     const branch=`rtc/${RUN}/review`;
@@ -254,7 +274,7 @@ describe('V-2 protected run deletion',()=>{
       {name:'main',commit:{sha:'a'.repeat(40)}},{name:branch,commit:{sha:'a'.repeat(40)}}
     ]);
     w.gh.when('GET /repos/{owner}/{repo}/pulls').reply(200,[{
-      number:101,merged:false,draft:true,state:'closed',
+      number:101,merged_at:null,draft:true,state:'closed',
       body:`<!-- rtc_run=${RUN} -->`,
       head:{ref:branch,sha:'a'.repeat(40),repo:{full_name:`${OWNER}/${REPO}`}},
       base:{ref:'main',repo:{full_name:`${OWNER}/${REPO}`}}
