@@ -25,6 +25,9 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-12 — V-1 exact thread ID mapping (PR #77):** Bounded GraphQL review-thread enumeration maps durably recorded numeric inline comment IDs to actual thread node IDs. Refuses incomplete pagination and ambiguous matches; verifies exact identity and `isOutdated` independently. The full scenario remains pending, as does IN-06 owner-gated live acceptance.
+
+
 **2026-10-12 — V-1 review-comment foundation (PR #76):** Added strictly run-owned inline PR comment creation with exact recorded PR/head SHA, persisted numeric IDs and independent original-line/commit readback. Refuses foreign/stale PR targets and uncertain automatic replay. Does not misidentify a review comment as a GraphQL thread; GraphQL thread mapping follows. IN-06/live acceptance pending.
 
 
