@@ -36,7 +36,7 @@ export const packageDeleteVersion = defineGithubWrite({
   description: 'Delete a verified package version; recovery may be possible for 30 days.',
   properties: { ...packageProperties, versionId: ID },
   required: ['scope', 'packageType', 'packageName', 'versionId'],
-  declarations: { production: 'when-target', confirm: 'always', profiles: ['full'] },
+  declarations: { production: 'always', confirm: 'always', profiles: ['full'] },
   target,
   read: async (args, ctx, t) => ({
     pkg: await get(ctx, t), version: await get(ctx, t, args.versionId)
@@ -83,7 +83,7 @@ export const packageDelete = defineGithubWrite({
   description: 'Delete an entire verified package and all versions with a 30-day restore warning.',
   properties: { ...packageProperties },
   required: ['scope', 'packageType', 'packageName'],
-  declarations: { production: 'when-target', confirm: 'always', profiles: ['full'] },
+  declarations: { production: 'always', confirm: 'always', profiles: ['full'] },
   target,
   read: async (_args, ctx, t) => {
     const pkg = await get(ctx, t);
