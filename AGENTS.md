@@ -245,3 +245,8 @@ python3 scripts/count-catalog.py
 PRs target `main`. Follow [the daily release policy](.github/RELEASE-POLICY.md): only the daily scheduled job updates `live`; Vercel builds only `live`. Do not request or wait for a Vercel preview deployment, manually deploy production, or promote at a development batch boundary. Keep all existing local/Actions tests mandatory; this policy introduces no new application build/browser requirement where none existed. This newer owner instruction supersedes older batch/weekly release guidance.
 
 The dependency-free infrastructure release script is exempt from the application-only GitHub client rule: it uses the built-in Actions token, the same pinned API version, explicit timeout and read-only check lookup. It never loads the application or its database/provider credentials on a release runner.
+
+
+## Verified hosting and main protections — October 12, 2026
+
+Follow [the verified hosting-cost operating policy](docs/HOSTING-COST-POLICY.md). Saved exact-main protection requires GitHub Actions `ci` **and** `release-policy`; preserve existing review/agent merge flow, daily checked `main` → `live`, disabled automatic previews, low compute caps and all owner gates. Do not wait for Vercel preview checks or manually deploy at a batch boundary. Record this infrastructure checkpoint in the next substantive PR's status ledger; no documentation-only PR.
