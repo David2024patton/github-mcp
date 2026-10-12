@@ -84,8 +84,8 @@ export function defineWrite(spec) {
     writes: true, writeContract: 'defineWrite-v1', priced: typeof price === 'function', declarations: decl, profiles: decl.profiles,
     inputSchema: {
       type: 'object',
-      properties: { ...properties, dryRun: { type: 'boolean', description: 'Preview only; nothing is sent' }, confirm: { type: 'boolean', description: 'Set true after reading the preview' },
-        requestKey: { type: 'string', maxLength: 128, description: 'Optional: your own key so a retry is never a second change' } },
+      properties: { ...properties, dryRun: { type: 'boolean', description: 'Preview; no write.' }, confirm: { type: 'boolean', description: 'Confirm preview.' },
+        requestKey: { type: 'string', maxLength: 128, description: 'Stable retry key.' } },
       ...(required.length ? { required } : {}),
       additionalProperties: false
     },
