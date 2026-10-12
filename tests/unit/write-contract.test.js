@@ -1,4 +1,5 @@
-import { runWriteContract } from '../../test/helpers/write-contract.js';
+import { describe, expect, it } from 'vitest';
+import { runWriteContract, doorsFor, makeWorld, parse } from '../../test/helpers/write-contract.js';
 import { sampleLabel, sampleSetting, sampleComment, sampleCollaborator, sampleSeat, SEAT_PRICE_CENTS } from '../../test/helpers/sample-writes.js';
 
 const R = { owner: 'example-org', repo: 'hello' };
@@ -48,4 +49,28 @@ runWriteContract({
     seq(gh, 'GET /orgs/{org}/copilot/billing/seats', { seats: [] }, { seats: outcome === 'ok' ? [{ assignee: { login: 'dev-one' } }] : [] });
     gh.when('POST /orgs/{org}/copilot/billing/selected_users').reply(201, { seats_created: 1 });
   }
+});
+
+describe('bounded fake write spacing across all execution doors', () => {
+  it('injects simulated sleep through dispatch and github_call without bypassing reserved write slots', async () => {
+    for (const door of doorsFor(sampleLabel).filter((item) => item.name !== 'handler')) {
+      const w = await makeWorld();
+      const waits = [];
+      w.ctx.sleep = async (ms) => { waits.push(ms); };
+      w.gh.when('GET /repos/{owner}/{repo}/issues/{issue_number}/labels').replySequence([
+        { status: 200, body: [] },
+        { status: 200, body: [{ name: 'first' }] },
+        { status: 200, body: [{ name: 'first' }] },
+        { status: 200, body: [{ name: 'first' }, { name: 'second' }] }
+      ]);
+      w.gh.when('POST /repos/{owner}/{repo}/issues/{issue_number}/labels')
+        .reply(200, [{ name: 'first' }, { name: 'second' }]);
+      const first = parse(await door.call(w, { ...R, issue_number: 7, label: 'first' }));
+      const second = parse(await door.call(w, { ...R, issue_number: 7, label: 'second' }));
+      expect(first.status).toBe('applied');
+      expect(second.status).toBe('applied');
+      expect(waits).toEqual([1000]);
+      expect(w.gh.invalid).toEqual([]);
+    }
+  });
 });
