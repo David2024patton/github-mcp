@@ -6,7 +6,7 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
-- **2026-10-12 — #94 stable paginated run inventory (corrected: exact-head CI pending):** Adds a strict opaque, account-scoped keyset cursor to the existing read-only run inventory. The all-runs cleanup preview remains journal-only, explicitly non-atomic and never enables deletion; malformed/foreign cursors are refused. Disposable Postgres and fake pagination contracts cover equal timestamp run ordering.
+- **2026-10-12 — #94 stable paginated run inventory (refreshed: exact-head CI pending):** Adds a strict opaque, account-scoped keyset cursor to the existing read-only run inventory. The all-runs cleanup preview remains journal-only, explicitly non-atomic and never enables deletion; malformed/foreign cursors are refused. Disposable Postgres and fake pagination contracts cover equal timestamp run ordering.
 
 - **2026-10-12 — #93 bounded all-runs inventory (awaiting exact-head CI):** Adds scoped total-run counts and evidence-only `github_dev_list_runs({cleanupPreview:true})` readiness for up to 20 runs at a time. It identifies unresolved intents and truncated per-run journals without remote provider calls, approval, deletion or false claims of exhaustive scans. All-runs deletion remains unimplemented.
 
