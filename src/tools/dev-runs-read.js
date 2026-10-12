@@ -96,7 +96,7 @@ const readRuns=defineRead({
     if(args.cleanupPreview||args.cursor)
       throw new TypeError('cleanupPreview and cursor are for all-runs listing only.');
     if(args.remoteCleanupPreview){
-      if(!args.repo||args.includeBirthLabels)throw new TypeError('Remote cleanup inspection requires repo and cannot be combined with birth-label details.');
+      if(!args.repo)throw new TypeError('Remote cleanup inspection requires repo.');
       return inspectCleanupPreview({...args,owner:account},ctx);
     }
     if(args.repo)throw new TypeError('repo is only valid for remoteCleanupPreview.');
