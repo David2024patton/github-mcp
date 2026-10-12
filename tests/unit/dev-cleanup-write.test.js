@@ -26,6 +26,7 @@ function arrange(gh,outcome){
   gh.when('GET /repos/{owner}/{repo}/milestones').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/deployments').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/environments').reply(200,{total_count:0,environments:[]});
+  gh.when('GET /repos/{owner}/{repo}/labels').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/issues/comments').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/pulls/comments').reply(200,[]);
   gh.when('DELETE /repos/{owner}/{repo}').reply(204);
@@ -488,12 +489,33 @@ describe('V-2 protected run deletion',()=>{
     const name=`rtc-run-${RUN}`;
     await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
       type:'label',owner:OWNER,repo:REPO,objectId:name});
+    w.gh.when('GET /repos/{owner}/{repo}/labels').reply(200,
+      [{name,description:`rtc_run=${RUN}`,color:'0969da'}]);
     w.gh.when('GET /repos/{owner}/{repo}/labels/{name}').reply(200,
       {name,description:`rtc_run=${RUN}`,color:'0969da'});
     const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
     expect(out.done).toBe(true);
     expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(true);
     expect(w.gh.invalid).toEqual([]);
+  });
+  it('blocks foreign, duplicate and incomplete label inventories before deleting scratch',async()=>{
+    const route='GET /repos/{owner}/{repo}/labels';
+    for(const variant of [
+      {status:200,items:[{name:'customer-priority',color:'ff0000'}]},
+      {status:200,items:[{name:'bug'},{name:'bug'}]},
+      {status:403,items:{message:'Forbidden'}},
+      {status:200,items:Array.from({length:100},(_,i)=>({name:`label-${i}`}))}
+    ]){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      if(Array.isArray(variant.items)&&variant.items.length===100)
+        w.gh.when(route).reply(200,variant.items,
+          {link:'<https://api.github.com/repos/example-org/fixture/labels?page=2>; rel="next"'});
+      else w.gh.when(route).reply(variant.status,variant.items);
+      const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(out.done,JSON.stringify(variant).slice(0,100)).toBe(false);
+      expect(w.gh.calls.some(x=>x.method==='DELETE'||x.method==='PATCH')).toBe(false);
+      expect(w.gh.invalid).toEqual([]);
+    }
   });
   it('refuses orphaned PR-label associations without any GitHub mutation',async()=>{
     const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');

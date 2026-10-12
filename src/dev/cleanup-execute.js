@@ -26,7 +26,7 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     !Array.isArray(objects)||!run?.id)
     throw refusal('Scratch repository default branch and exact run journal are required.');
   const common={owner,repo,per_page:100};
-  const [branches,pulls,issues,tags,releases,rulesets,hooks,milestones,deployments,environments]=await Promise.all([
+  const [branches,pulls,issues,tags,releases,rulesets,hooks,milestones,deployments,environments,labels]=await Promise.all([
     listAll(github,'GET /repos/{owner}/{repo}/branches',common,{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/pulls',{...common,state:'all'},{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/issues',{...common,state:'all'},{max:100}),
@@ -38,9 +38,10 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     // would be erased with its parent repository; never silently consume it.
     listAll(github,'GET /repos/{owner}/{repo}/milestones',{...common,state:'all'},{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/deployments',common,{max:100}),
-    github.request('GET /repos/{owner}/{repo}/environments',common)
+    github.request('GET /repos/{owner}/{repo}/environments',common),
+    listAll(github,'GET /repos/{owner}/{repo}/labels',common,{max:100})
   ]);
-  const inventories=[branches,pulls,issues,tags,releases,rulesets,hooks,milestones,deployments];
+  const inventories=[branches,pulls,issues,tags,releases,rulesets,hooks,milestones,deployments,labels];
   if(inventories.some(x=>x.capped||!Array.isArray(x.items)))
     throw refusal('Scratch inventory is incomplete; repository deletion refused.');
   if(milestones.items.length||deployments.items.length)
@@ -186,6 +187,21 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
   // independently of the PR's immutable head. Verify their exact live forms
   // before a whole-repository delete, rather than trusting journal IDs alone.
   const savedLabels=objects.filter(x=>x.object_type==='label');
+  // An exact recorded label does not authorize erasing unrelated repository
+  // labels. GitHub may add defaults on creation; these too remain foreign
+  // until captured in an independently verified run-owned baseline.
+  const listedLabels=new Set();
+  for(const label of labels.items){
+    const name=label?.name;
+    if(typeof name!=='string'||!name||listedLabels.has(name)||
+      savedLabels.filter(x=>x.object_id===name&&x.repo===repo&&
+        x.owner.toLowerCase()===owner.toLowerCase()).length!==1)
+      throw refusal('Scratch repository contains an unrecorded or ambiguous label; deletion refused.');
+    listedLabels.add(name);
+  }
+  if(listedLabels.size!==savedLabels.length||
+    savedLabels.some(x=>!listedLabels.has(x.object_id)))
+    throw refusal('The recorded scratch labels do not match the complete live label inventory.');
   for(const label of savedLabels) {
     const name=label.object_id;
     if(label.repo!==repo||label.owner.toLowerCase()!==owner.toLowerCase()||
@@ -211,7 +227,7 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
   }
   return {branch_count:branches.items.length,pr_count:pulls.items.length,issue_count:issues.items.length,tag_count:tags.items.length,release_count:releases.items.length,
     ruleset_count:rulesets.items.length,webhook_count:0,milestone_count:0,
-    deployment_count:0,environment_count:0,verified_pulls:verifiedPulls};
+    deployment_count:0,environment_count:0,label_count:listedLabels.size,verified_pulls:verifiedPulls};
 }
 
 export async function readCleanupRun(ctx,owner,repo,runId) {
