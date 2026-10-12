@@ -53,6 +53,26 @@ function association(objects,run,o) {
     throw refusal('PR-label association has no exact run-owned PR and label.');
   return {number:Number(m[1]),name:m[2]};
 }
+const getIssue=(gh,owner,repo,n)=>missing(async()=>(await gh.request('GET /repos/{owner}/{repo}/issues/{issue_number}',{
+  owner,repo,issue_number:n
+})).data);
+async function inspectOwnedIssue(gh,run,owner,repo,o,initial) {
+  const number=Number(o.object_id);
+  if(!Number.isSafeInteger(number)||number<1)throw refusal('Invalid recorded issue number.');
+  const issue=await getIssue(gh,owner,repo,number);
+  if(!issue) {
+    if(initial)throw refusal('Recorded issue was deleted or moved; reconcile before cleanup.');
+    throw refusal('The issue cannot be read back. No result will be assumed.');
+  }
+  if(issue.pull_request||!String(issue.body??'').includes(marker(run.id))||
+    !['open','closed'].includes(issue.state)||
+    (issue.state==='closed'&&issue.state_reason!=='not_planned'))
+    throw refusal('This issue is not the unmerged run-created issue recorded in the journal.');
+  const cleanedLabel=await getLabel(gh,owner,repo,'rtc-cleaned');
+  if(!cleanedLabel||cleanedLabel.name!=='rtc-cleaned')
+    throw refusal('A repository-owned rtc-cleaned label must already exist for issue cleanup.');
+  return {number,issue};
+}
 async function inspectLabel(gh,run,owner,repo,objects,o,initial) {
   if(!ownedLabel(run.id,o.object_id))throw refusal('Only reserved run-created labels may be deleted.');
   const label=await getLabel(gh,owner,repo,o.object_id);
@@ -79,8 +99,8 @@ async function inspectPrLabel(gh,run,owner,repo,objects,o,initial) {
 }
 // Preflight checks every action before beginning any mutation. A rerun still checks its uncleaned objects.
 export async function inspectTestResources(ctx,{run,owner,repo,objects}) {
-  if(objects.length===0||objects.some(o=>o.repo!==repo||!['pr','branch','label','pr_label'].includes(o.object_type)))
-    throw refusal('Standalone cleanup accepts only recorded PRs, test branches and run-owned labels in one existing repository.');
+  if(objects.length===0||objects.some(o=>o.repo!==repo||!['pr','branch','label','pr_label','issue'].includes(o.object_type)))
+    throw refusal('Standalone cleanup accepts recorded issues, PRs, test branches and owned labels in one existing repository.');
   if(!objects.some(o=>o.object_type==='branch'))
     throw refusal('Standalone cleanup requires an exact recorded run-owned branch.');
   const gh=await octo(ctx,owner),initial=run.status==='active';
@@ -90,6 +110,7 @@ export async function inspectTestResources(ctx,{run,owner,repo,objects}) {
       await branchIsSafe(ctx,gh,run,owner,repo,o,initial);
     } else if(o.object_type==='pr') await prIsSafe(gh,run,owner,repo,objects,o,initial);
     else if(o.object_type==='label') await inspectLabel(gh,run,owner,repo,objects,o,initial);
+    else if(o.object_type==='issue') await inspectOwnedIssue(gh,run,owner,repo,o,initial);
     else await inspectPrLabel(gh,run,owner,repo,objects,o,initial);
   }
   return true;
@@ -114,6 +135,28 @@ export async function cleanupTestResources(ctx,{owner,repo,runId,before}) {
     if(!after||after.state!=='closed'||after.merged===true)throw refusal('Closed PR could not be read back.');
     if(!(await db.markDevObjectCleaned({runId,account,connection,type:o.object_type,owner:o.owner,objectId:o.object_id})))
       throw refusal('PR cleanup identity was not recorded.');
+    processed++;
+  }
+  // GitHub cannot delete issues. Close only journaled run issues as not_planned,
+  // apply an existing cleanup label and verify both effects independently.
+  for(const o of objects.filter(x=>!x.cleaned&&x.object_type==='issue')) {
+    const {number,issue}=await inspectOwnedIssue(gh,run,owner,repo,o,before.run.status==='active');
+    if(issue.state==='open')await gh.request('PATCH /repos/{owner}/{repo}/issues/{issue_number}',{
+      owner,repo,issue_number:number,state:'closed',state_reason:'not_planned'
+    });
+    const closed=await getIssue(gh,owner,repo,number);
+    if(closed?.state!=='closed'||closed?.state_reason!=='not_planned')
+      throw refusal('Issue closure could not be independently verified.');
+    if(!closed.labels?.some(x=>x.name==='rtc-cleaned'))
+      await gh.request('POST /repos/{owner}/{repo}/issues/{issue_number}/labels',{
+        owner,repo,issue_number:number,labels:['rtc-cleaned']
+      });
+    const after=await getIssue(gh,owner,repo,number);
+    if(after?.state!=='closed'||after?.state_reason!=='not_planned'||
+      !after.labels?.some(x=>x.name==='rtc-cleaned'))
+      throw refusal('The cleanup label and issue state were not verified.');
+    if(!(await db.markDevObjectCleaned({runId,account,connection,type:o.object_type,owner:o.owner,objectId:o.object_id})))
+      throw refusal('Recorded issue completion was not persisted.');
     processed++;
   }
   // Drop only recorded associations after their run PR has been safely closed.
