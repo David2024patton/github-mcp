@@ -10,6 +10,7 @@ import { buildManifest, isValidLogin, manifestFormUrl } from './app-manifest.js'
 import { bareOctokit, githubFor } from './client.js';
 import { putSecret, secretRoutes } from './secret-seal.js';
 import { readBack, missingPermissions } from './setup-readback.js';
+import { canonicalSetupUrl } from './setup-canonical.js';
 import { renderSetup, resultPage } from './setup-html.js';
 import { PRODUCTION_NAMES_KEY, cleanNames, productionNames, productionReason } from '../tools/production-guard.js';
 import { matchingEntries, protectedList } from '../tools/protect-guard.js';
@@ -30,9 +31,12 @@ const plainStatus = (error) => (error?.status ? `GitHub answered ${error.status}
 export function createSetupHandlers({ db, credentials, oneTimeStore, env = process.env, fetch = globalThis.fetch }) {
   const isProduction = () => env.VERCEL_ENV === 'production';
 
-  function frame(res, status, body) {
+  function frame(res, status, body, containsForm = false) {
     res.setHeader('Content-Security-Policy', CSP);
-    res.setHeader('Referrer-Policy', 'no-referrer');
+    // HTML navigation form POSTs can send Origin: null under no-referrer.
+    // same-origin exposes no Referer to GitHub/external websites, but preserves
+    // the true Origin for this page's same-origin form submissions.
+    res.setHeader('Referrer-Policy', containsForm ? 'same-origin' : 'no-referrer');
     return send(res, status, body, HTML);
   }
   function newCsrf(res) {
@@ -46,14 +50,23 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
 
   // ---- GET /api/github/setup (the page, and the install redirect from GitHub) ----
   async function setupGet(req, res) {
-    if (!origin(res)) return;
+    const canonicalOrigin = origin(res);
+    if (!canonicalOrigin) return;
+    if (isProduction()) {
+      const canonicalUrl = canonicalSetupUrl(req, canonicalOrigin);
+      if (canonicalUrl) {
+        res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('Location', canonicalUrl);
+        return res.status(302).end();
+      }
+    }
     const installationId = Number(req.query?.installation_id);
     if (Number.isSafeInteger(installationId) && installationId > 0) return await installReturn(res, installationId);
     const csrf = newCsrf(res);
     const wanted = String(req.query?.secret || '');
     const waiting = wanted ? await db.getSecretRequest(wanted) : null;
     const secretEntry = waiting ? { id: waiting.id, expires: new Date(waiting.expires_at).toUTCString(), summary: `Claude asked for ${waiting.scope.kind} secret ${waiting.scope.name} in ${secretPlace(waiting.scope)}.` } : null;
-    return frame(res, 200, renderSetup({ csrf, show: String(req.query?.show || ''), secretEntry, ...(wanted && !waiting ? { result: 'That secret request is unknown, already used or expired. Ask Claude to start it again.' } : {}) }));
+    return frame(res, 200, renderSetup({ csrf, show: String(req.query?.show || ''), secretEntry, ...(wanted && !waiting ? { result: 'That secret request is unknown, already used or expired. Ask Claude to start it again.' } : {}) }), true);
   }
 
   /** GitHub sends the owner back here after installing. Nothing in the URL is trusted: the installation is read from GitHub as the App. */
@@ -79,7 +92,10 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
   async function setupPost(req, res) {
     const expectedOrigin = origin(res);
     if (!expectedOrigin) return;
-    if (String(req.headers?.origin || '') !== expectedOrigin) return send(res, 403, { error: 'forbidden', description: 'Origin check failed' });
+    if (String(req.headers?.origin || '') !== expectedOrigin) return frame(res, 403, resultPage({
+      title: 'Secure browser required',
+      message: `Browser origin did not match the required HTTPS setup address. Open ${expectedOrigin}/api/github/setup in Chrome or another full browser, not an embedded browser, and submit again. No setting was changed.`
+    }));
     let p;
     try { p = paramsOf(req); } catch { return send(res, 400, { error: 'invalid_request' }); }
     const cookie = csrfCookie(req);
@@ -88,11 +104,11 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     const login = await evaluateLogin({ ip: clientIp(req), supplied: p.passphrase, expected: env.ADMIN_PASSPHRASE, store: db });
     if (login.status === 'locked') {
       res.setHeader('Retry-After', String(LOCKOUT_WINDOW_MINUTES * 60));
-      return frame(res, 429, renderSetup({ csrf: cookie, result: 'Too many attempts. Try again later.' }));
+      return frame(res, 429, renderSetup({ csrf: cookie, result: 'Too many attempts. Try again later.' }), true);
     }
-    if (login.status !== 'ok') return frame(res, 401, renderSetup({ csrf: cookie, result: 'Incorrect administrator passphrase.' }));
+    if (login.status !== 'ok') return frame(res, 401, renderSetup({ csrf: cookie, result: 'Incorrect administrator passphrase.' }), true);
 
-    const page = (status, view) => frame(res, status, renderSetup({ csrf: cookie, ...view }));
+    const page = (status, view) => frame(res, status, renderSetup({ csrf: cookie, ...view }), true);
     const action = String(p.action || '');
     if (action === 'status') {
       const accounts = [];

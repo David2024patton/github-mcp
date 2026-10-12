@@ -129,6 +129,9 @@ tried against real GitHub yet. If creating the App fails on one of them, the fix
 
 ## If something goes wrong
 
+**Mobile setup form error (`Secure browser required`):** Open `https://github-mcp-chris-projects-de6cd1bf.vercel.app/api/github/setup` directly in Chrome or another full browser, not the ChatGPT in-app browser. Alternate `vercel.app` setup aliases now redirect to the configured URL before creating a session cookie. The setup form uses `Referrer-Policy: same-origin` instead of `no-referrer`: browser specifications make ordinary HTML form POSTs send `Origin: null` under `no-referrer`, which the server correctly refuses. Only the forms use this policy; callback/error result pages keep `no-referrer`. The administrator setup still requires an exact HTTPS `Origin`, a SameSite=Strict CSRF cookie, its matching form token, and the private administrator passphrase. The server does not weaken these checks for embedded browsers that omit the `Origin` header.
+
+
 | You see | Meaning | Do this |
 |---|---|---|
 | "Credentials can only be set up on the production deployment" | You opened a preview deployment's address | Use the production address (`PUBLIC_BASE_URL`) |
