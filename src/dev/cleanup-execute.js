@@ -25,13 +25,15 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     !Array.isArray(objects)||!run?.id)
     throw refusal('Scratch repository default branch and exact run journal are required.');
   const common={owner,repo,per_page:100};
-  const [branches,pulls,issues]=await Promise.all([
+  const [branches,pulls,issues,tags,releases]=await Promise.all([
     listAll(github,'GET /repos/{owner}/{repo}/branches',common,{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/pulls',{...common,state:'all'},{max:100}),
-    listAll(github,'GET /repos/{owner}/{repo}/issues',{...common,state:'all'},{max:100})
+    listAll(github,'GET /repos/{owner}/{repo}/issues',{...common,state:'all'},{max:100}),
+    listAll(github,'GET /repos/{owner}/{repo}/tags',common,{max:100}),
+    listAll(github,'GET /repos/{owner}/{repo}/releases',common,{max:100})
   ]);
-  if(branches.capped||pulls.capped||issues.capped||
-    !Array.isArray(branches.items)||!Array.isArray(pulls.items)||!Array.isArray(issues.items))
+  const inventories=[branches,pulls,issues,tags,releases];
+  if(inventories.some(x=>x.capped||!Array.isArray(x.items)))
     throw refusal('Scratch inventory is incomplete; repository deletion refused.');
   const owns=(type,id)=>objects.some(x=>x.object_type===type&&
     x.object_id===String(id)&&x.owner.toLowerCase()===owner.toLowerCase()&&x.repo===repo);
@@ -80,7 +82,32 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
         !owns('issue',i.number)||!matchesRunFooter(i.body,run.id)))
       throw refusal('An unrecorded or changed issue exists in the scratch repository. Deletion refused.');
   }
-  return {branch_count:branches.items.length,pr_count:pulls.items.length,issue_count:issues.items.length};
+  // A recorded release does not give the run permission to destroy later
+  // published releases or independently created Git tags in the same repo.
+  // The release-train seed creates only three lightweight tags and one draft.
+  const names=new Set();
+  for(const t of tags.items) {
+    const saved=objects.filter(x=>x.object_type==='tag'&&x.object_id===t?.name&&
+      x.owner.toLowerCase()===owner.toLowerCase()&&x.repo===repo);
+    if(typeof t?.name!=='string'||names.has(t.name)||saved.length!==1||
+      !/^[a-f0-9]{40}$/.test(saved[0].created_sha??'')||
+      t.commit?.sha!==saved[0].created_sha)
+      throw refusal('An unrecorded or retargeted Git tag exists in the scratch repository. Deletion refused.');
+    names.add(t.name);
+  }
+  const ids=new Set();
+  for(const release of releases.items) {
+    const id=release?.id;
+    const saved=objects.filter(x=>x.object_type==='release'&&x.object_id===String(id)&&
+      x.owner.toLowerCase()===owner.toLowerCase()&&x.repo===repo);
+    if(!Number.isSafeInteger(id)||id<=0||ids.has(id)||saved.length!==1||
+      release.draft!==true||release.published_at!=null||
+      !matchesRunDescription(release.body,run.id)||
+      !names.has(release.tag_name)||!Array.isArray(release.assets)||release.assets.length!==0)
+      throw refusal('An unrecorded, published or changed release exists in the scratch repository. Deletion refused.');
+    ids.add(id);
+  }
+  return {branch_count:branches.items.length,pr_count:pulls.items.length,issue_count:issues.items.length,tag_count:tags.items.length,release_count:releases.items.length};
 }
 
 export async function readCleanupRun(ctx,owner,repo,runId) {
