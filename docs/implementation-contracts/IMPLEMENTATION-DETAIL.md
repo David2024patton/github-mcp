@@ -4,6 +4,8 @@ Use this page when writing a JIT card; during implementation read only the card 
 This is execution guidance for Sol 5.6, not a new design or a permission grant. AGENTS, approved designs,
 PLAN and the drift protocol retain their authority. No model change, reduced test gate or fixed speed claim.
 
+Throughput and grouping rules live in [THROUGHPUT](THROUGHPUT.md). For a fast, narrow start run `npm run task:brief -- <card-id>`; the generated brief does not replace the actual card, design or approval gates.
+
 ## 1. What the extra layer supplies
 
 The design answers **what must be true**. A card also answers **where to edit, which existing contract to reuse,

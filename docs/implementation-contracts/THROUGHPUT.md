@@ -1,0 +1,25 @@
+# Throughput contract — evidence-driven development without weaker gates
+Updated 2026-10-12; referenced by AGENTS, SESSION-START, PLAYBOOK and IMPLEMENTATION-DETAIL. This is execution guidance, not an approval to change designs or real GitHub resources.
+
+## Observed bottlenecks (actual #60–#64)
+- The unchanged full unit job commonly occupied over 200 seconds after check/shapes completed in seconds. #60 post-merge unit ran about 233 seconds (23:43:27–23:47:20 UTC). Before: one `npm test` per CI run. After #65: two deterministic Vitest file shards in parallel; the aggregate `ci` still fails if either shard fails, with no excluded tests. Measure first exact-head run before claiming wall-time savings.
+- #60 used unsupported `page` / `per_page` on GET user package versions. #62 initially declared `when-target` with catalog `C·D·Prod`; the exact checker requires `always`. #64 restore passed an explicitly undefined optional argument through dispatcher fixtures; corrected to omit it. These were preventable with pinned OpenAPI and tool-contract comparison before CI.
+- #63 database job failed before test execution because the public ECR Docker image was throttled; the failed job rerun succeeded with no code change. Distinguish infrastructure failures from code failures using exact job logs; never weaken database assertions.
+- Related Pages and package operations spanned #60–#64, each incurring an independent full CI/review/merge cycle. This made security review manageable, but future same-risk operations should be grouped *before* creating a PR.
+
+## Default grouping and execution recipe
+1. Reconcile exact current main, your open PRs, unresolved threads and CI first. Run `npm run task:brief -- V-1` for the immediate card (replace ID). Read its design heading, nearest working helper and the single needed recipe, not all documents.
+2. Map related operations and tests together: read, create/update, delete/restore only when they share an approval/risk model. Separate different destructive/auth/spend security boundaries so reviewers can reason about them. Aim for a cohesive 450–800 production lines; ~800 is the hard ceiling, never a filler target. Do not invent a tool before its real implementation exists.
+3. Before each new API operation run `node scripts/openapi-find.mjs --show "<METHOD /route>"`; record supported path/query/body fields and credential class on the card. Use `defineRead`, `defineGithubWrite`, `githubFor`, `productionReason`, and `runWriteContract` rather than new bypass paths.
+4. Reuse a focused contract fixture for each risk area (real and fake SQL share one assertion body). For optional arguments, *omit* absent properties in dispatched fixtures, don't send undefined. Read GitHub API responses independently before reporting a write confirmed.
+5. Validate an incremental slice with `npx vitest run tests/unit/<file>`, `npx eslint <files>`, then database/request-shape tests when touched. Before publishing run `npm run check` and every applicable full suite. With no shell, one draft PR CI cycle per complete slice; never push while its prior run is incomplete.
+6. On failure capture all completed job logs, categorize `code / API shape / metadata / infrastructure`. Fix all code failures in one batch; rerun failed jobs only on clean infrastructure errors. Never poll identical pending checks repeatedly. Keep the specific branch/head/run/action in a ≤20-line progress note.
+7. Finish the current PR: self-review the entire diff against `docs/AI-PR-READ-FIRST.md`; resolve threads; confirm exact-head `ci` success; merge with expected-head SHA. Then update STATUS, card and work-index as merged, with measured CI timing when available.
+
+## Reusable V-1 foundation now in code
+- `src/dev/ledger.js` exposes `createDevLedger(sql)`, `validateRun`, `validateRunObject` and the bounded list rule. Real `createDb` and `test/helpers/fake-db.js` use the same contract in `test/contract/dev-ledger-contract.js`. Record exact object IDs before cleanup; every row and query is account/connection scoped.
+- `src/dev/scenarios.js` produces seven deterministic, explicitly plan-only blueprints. Scratch-only plans refuse unverified scratch input. Execution and external writes remain V-1 follow-ons, not falsely marked built.
+- `scripts/task-brief.mjs` reads only the work index and named card, then prints scoped current details and focused paths. `npm run task:brief -- V-1` is the standard startup shortcut; no credential/network access.
+
+## Measurement
+Keep per-PR `check/unit/db/shapes/ci` durations, number of PRs per cohesive area, production lines and correction pushes. #65 first sharded CI establishes the *after* figure; do not state a speedup until measured. Preserve all owner gates, exact-head CI, test assertions and the documented no-shell route.

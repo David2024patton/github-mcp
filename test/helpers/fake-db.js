@@ -4,6 +4,7 @@
 // (test/contract/oauth-contract.js) as real PostgreSQL.
 import { RESULT_HANDLE, SCHEMA_TABLES, SETUP_PURPOSES, ETAG_BODY_LIMIT_BYTES, PROTECTED_SEEDED_KEY, checkConnection, checkProtected, connectionSettings, normalizeChange } from '../../src/db.js';
 import { hashToken } from '../../src/core/oauth.js';
+import { createFakeDevLedger } from './dev-ledger-fake.js';
 
 function changeViewOf(r) {
   return structuredClone({ id: r.id, at: r.at, summary: r.summary, confirmed: r.confirmed, after: r.after ?? null, githubRequestId: r.githubRequestId ?? null,
@@ -39,6 +40,7 @@ export function createFakeDb({ clock = Date.now } = {}) {
   const live = (row) => row && row.revoked_at == null && row.kind === 'connector';
 
   return {
+    ...createFakeDevLedger({ clock }),
     async initSchema() { for (const name of SCHEMA_TABLES) tables.add(name); },
     async listTables() { return [...tables].sort(); },
     async putResult({ handle, connection, summary = null, body, ttlSeconds = 86400 }) {

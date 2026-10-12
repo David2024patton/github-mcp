@@ -13,7 +13,7 @@ sections below when a step names them.
 
 ## Working without stalling (mandatory; written with Sol 5.6 at medium effort in mind)
 
-1. **Read by section.** Files over ~300 lines (`docs/TOOL-CATALOG.md`, `docs/designs/BATCH-*.md`, the vendored GitHub
+1. **Use the bounded card brief first:** after SESSION-START §0, run `npm run task:brief -- <card-id>` (or the equivalent scoped GitHub reads if no shell), then open only its named card and references. **Read by section.** Files over ~300 lines (`docs/TOOL-CATALOG.md`, `docs/designs/BATCH-*.md`, the vendored GitHub
    description and schema): find the heading or name with `grep -n`, then read ≤150 lines with `sed -n 'A,Bp'`. Never
    read `vendor/github-openapi/*.json` or `vendor/github-graphql/*.graphql` whole; query them with
    `node scripts/openapi-find.mjs "<words>"` and `node scripts/graphql-find.mjs <name>` once A-4 exists.

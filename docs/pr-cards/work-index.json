@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-10",
+  "updated": "2026-10-12",
   "order": [
     "A",
     "B",
@@ -659,15 +659,18 @@
         "G-6"
       ],
       "card": "docs/pr-cards/V-1.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "additive",
       "budget": 500,
       "units": [
         "V-1"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [
         "IN-06"
+      ],
+      "pr": [
+        65
       ]
     },
     {

@@ -10,7 +10,7 @@ against GitHub's own published description instead).
    starting anything new. Never discard local work.
 2. Read the card. If the roadmap row says JIT, write the card first from the design and current code
    (`docs/pr-cards/README.md`). A missing card is work, not a reason to stop.
-3. Read only what the card names, a section at a time.
+3. Run `npm run task:brief -- <card-id>` for a bounded automatic index/card digest; read only its relevant paths and the card's instructions.
 4. Check `docs/OWNER-INPUTS.md` only for inputs this card needs. Build what doesn't depend on a missing answer; keep
    the dependent behavior off; list the ID.
 
@@ -48,8 +48,7 @@ While implementing:
 
 ### Step 3a — PR size
 
-About 500 production lines (tests/docs not counted), about 15 production files, hard stop ~800 lines, at most one
-migration, one risk area (credentials / guards / tools-of-one-area / doors). Measure before opening the PR:
+Target 450–800 production lines when cohesive and justified (tests/docs not counted); ~800 remains the hard stop, not a quota. Group related same-API, same-safety operations with one reusable helper and fixtures; smaller complete PRs are valid. Separate destructive/auth/financial risk for independent review where appropriate. At most one migration and one risk area per PR. The authoritative grouping examples and measurement checklist are in `docs/implementation-contracts/THROUGHPUT.md`. Measure before opening the PR:
 
 ```bash
 git diff --shortstat origin/<base>...HEAD -- api src packages scripts ':!**/*.test.*'

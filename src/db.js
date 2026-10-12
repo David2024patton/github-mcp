@@ -4,6 +4,7 @@
 // (*_hash) only; no column holds a plain token, key or secret.
 import { neon } from '@neondatabase/serverless';
 import { hashToken } from './core/oauth.js';
+import { createDevLedger } from './dev/ledger.js';
 
 /** The 13 foundation tables, in BATCH-A §2 order. Later batches add their own tables and their own lists. */
 export const SCHEMA_TABLES = Object.freeze([
@@ -23,7 +24,9 @@ export const SCHEMA_TABLES = Object.freeze([
   'server_settings',
   'protected_resources',
   'result_store',
-  'secret_entry_requests'
+  'secret_entry_requests',
+  'dev_runs',
+  'dev_run_objects'
 ]);
 export const RESULT_HANDLE = /^res_[A-Za-z0-9_-]{20,64}$/;
 
@@ -119,6 +122,7 @@ export function createDb(sql = productionSql()) {
   if (typeof sql !== 'function') throw new TypeError('createDb needs a Neon-shaped tagged-template query function.');
 
   return {
+    ...createDevLedger(sql),
     /** Creates the foundation tables and index if they are missing. One statement per call (Neon's HTTP driver). */
     async initSchema() {
       await sql`CREATE TABLE IF NOT EXISTS gh_apps (
@@ -305,6 +309,29 @@ export function createDb(sql = productionSql()) {
         expires_at TIMESTAMPTZ NOT NULL,
         completed_at TIMESTAMPTZ
       )`;
+      await sql`CREATE TABLE IF NOT EXISTS dev_runs (
+        id TEXT PRIMARY KEY,
+        account TEXT NOT NULL,
+        connection TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        scenarios TEXT[] NOT NULL DEFAULT '{}',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        status TEXT NOT NULL DEFAULT 'active',
+        cleaned_at TIMESTAMPTZ
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS dev_runs_scope ON dev_runs (account, connection, created_at DESC)`;
+      await sql`CREATE TABLE IF NOT EXISTS dev_run_objects (
+        run_id TEXT NOT NULL REFERENCES dev_runs(id),
+        object_type TEXT NOT NULL,
+        owner TEXT NOT NULL,
+        repo TEXT,
+        object_id TEXT NOT NULL,
+        created_sha TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        cleaned BOOLEAN NOT NULL DEFAULT FALSE,
+        PRIMARY KEY (run_id, object_type, owner, object_id)
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS dev_run_objects_pending ON dev_run_objects (run_id, cleaned)`;
     },
 
     /** Keeps a big result behind a handle. Also deletes up to 100 expired rows (no cron). */
