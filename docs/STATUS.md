@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — V-2 #86 standalone cleanup:** Extend the existing guarded `github_dev_cleanup` to a recorded test-branch/PR-only run in an existing host repository. Reads GitHub production/protection rules for exact `rtc/<run>/` branches, refuses changed SHA/foreign refs or PRs, closes exact run PRs then removes only owned refs, with readback and per-object scoped ledger updates. Host repository is never deleted in this mode. Unsupported standalone resource types still refuse; no connected scratch or real-host acceptance.
+
 - **2026-10-12 — V-2 #85 guarded scratch cleanup:** Added `github_dev_cleanup` through the normal confirm-always write pipeline, exact private run-marker verification, atomic run freeze, recorded PR closure/readback, repository delete/readback and per-object durable completion. Owner-verified scratch and preview-only connection remain mandatory. CI fake transport and readback tests; **no live OAuth or scratch deletion acceptance**. V-2 non-repository cleanup and all-runs remain for later.
 
 - **2026-10-12 — V-2 #84 cleanup foundation:** Connection-scoped atomic cleanup freeze blocks new writes; exact-object completion and run close require verified per-object cleanup. A pure ID-only planner refuses ambiguous, incomplete, foreign or uncertain inventories. No live deletion or external mutation. Next: guarded V-2 execution and independent GitHub readback.
