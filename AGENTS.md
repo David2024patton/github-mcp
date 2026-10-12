@@ -48,6 +48,28 @@ sections below when a step names them.
     No check may be inferred green from its earlier successful siblings. If the chat must stop, leave
     the exact PR, head SHA, failing job, route/field, fix and next command in the card and STATUS.
 
+### Blocker remediation before deferral (mandatory; owner direction 2026-10-12)
+
+A blocker on one **operation, external acceptance gate or candidate PR** is not a
+project-wide stop signal. Before entering it as deferred, classify the real cause:
+code defect, configuration failure, obsolete dependency, previously answered
+owner decision, incomplete journal/remote reconciliation, or unavailable external
+authentication/permission/evidence. Examine the exact error, failing CI, API
+contract and current owner inputs. Apply every authorized remedy, and prove it
+with meaningful local/fake/DB or independent provider tests as appropriate.
+
+A failed test/CI, mismatched catalog count or unimplemented safe operation is
+**work to fix**, not a deferral. If the missing evidence is external, record its
+exact source, impact, re-entry trigger and next action; do not forge an OAuth
+connection, assert a guessed resource owner, re-ask an answered owner question,
+widen privileges, alter production, or bypass destruction gates. Resume the
+highest-priority approved **independent** functionality from the actual roadmap.
+Inspect all relevant remaining eligible cards before claiming a project-wide
+block. Continue the normal up-to-five substantive PR sequence without filler.
+Only stop early after demonstrating that **all** remaining approved independent
+work is unavailable or a genuine execution limitation prevents further progress.
+Never issue the next-session continuation prompt to avoid resolving a blocker.
+
 ## Outcome-first development and continuation (owner direction, 2026-10-12)
 
 Plan each session around the highest-priority **eligible user/developer capability and

@@ -306,7 +306,7 @@ Card(s): G-6.
 | `github_package_delete` | Delete a whole package with all its versions (restorable for 30 days; GitHub refuses public packages with over 5,000 downloads) | C·D·Prod | C | I | B | F | G-6 built #63 |
 | `github_package_restore_version` | Restore a deleted package or package version (within 30 days) | C·Prod | C | I | B | F | G-6 built #64 |
 
-## Developer tools (`github_dev_*`) — 15
+## Developer tools (`github_dev_*`) — 16
 
 Card(s): V-1 … V-5. The owner alone can enable an exact Organization as `is_scratch` through the authenticated setup page after live All-repositories App verification; no connection/tool argument can elevate this flag. Preview-only (contract §10): every `github_dev_*` tool refuses production targets before reading anything, records every object it creates in a run, and tags it `rtc_run=<runId>` (`docs/designs/BATCH-V.md`).
 
@@ -575,7 +575,7 @@ an organization; scheduled reminders; interaction limits beyond 6 months. The fu
 
 ## Totals
 
-**Totals:** 308 tools: 302 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 309 tools: 303 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 133, everyday adds 81
 (everyday lists 214), full adds 94 (full lists 308). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
@@ -598,7 +598,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Environments and deployments | 10 |
 | Releases | 7 |
 | Pages and packages | 7 |
-| Developer tools | 15 |
+| Developer tools | 16 |
 | Branch protection and rulesets | 9 |
 | Webhooks | 8 |
 | Collaborators and deploy keys | 7 |
@@ -613,7 +613,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Project profiles | 3 |
 | Workflows | 17 |
 | Everything else on GitHub: the universal tools | 6 |
-| **Total** | **308** |
+| **Total** | **309** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 

@@ -63,6 +63,14 @@ answered, update the code/roadmap and requeue the newly eligible work **now**;
 do not re-ask or let it disappear from the roadmap. Continue approved independent
 work when external acceptance is blocked.
 
+**Blocker-remediation rule:** Before reporting a blocked milestone, identify
+its root cause (code, CI, configuration, dependency, owner decision, incomplete
+remote evidence, missing external permission), try the authorized fix and verify
+the result. A constraint on one operation is not a project-wide stop. Isolate
+missing external TEST/OAuth approval and keep destructive safeguards intact;
+inspect the actual remaining roadmap and continue the next eligible substantial
+implementation PR. No early continuation prompt while eligible work exists.
+
 Five substantial safely merged PRs is the ordinary session planning boundary,
 not its goal. Preserve existing tests, reviews, dependency order, owner/destructive
 approvals, scoped credentials, production OFF, $0 spend, cost limits, disabled
