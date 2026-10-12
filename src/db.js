@@ -26,7 +26,8 @@ export const SCHEMA_TABLES = Object.freeze([
   'result_store',
   'secret_entry_requests',
   'dev_runs',
-  'dev_run_objects'
+  'dev_run_objects',
+  'dev_run_intents'
 ]);
 export const RESULT_HANDLE = /^res_[A-Za-z0-9_-]{20,64}$/;
 
@@ -332,6 +333,20 @@ export function createDb(sql = productionSql()) {
         PRIMARY KEY (run_id, object_type, owner, object_id)
       )`;
       await sql`CREATE INDEX IF NOT EXISTS dev_run_objects_pending ON dev_run_objects (run_id, cleaned)`;
+      await sql`CREATE TABLE IF NOT EXISTS dev_run_intents (
+        run_id TEXT NOT NULL REFERENCES dev_runs(id),
+        step_id TEXT NOT NULL,
+        object_type TEXT NOT NULL,
+        owner TEXT NOT NULL,
+        repo TEXT,
+        object_name TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'claimed' CHECK (status IN ('claimed', 'uncertain', 'recorded')),
+        object_id TEXT,
+        created_sha TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (run_id, step_id)
+      )`;
     },
 
     /** Keeps a big result behind a handle. Also deletes up to 100 expired rows (no cron). */
