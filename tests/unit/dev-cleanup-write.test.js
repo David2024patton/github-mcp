@@ -4,8 +4,8 @@ import * as mod from '../../src/tools/dev-cleanup-write.js';
 const RUN='run-clean-204',REPO='fixture',OWNER='example-org';
 const repo={full_name:`${OWNER}/${REPO}`,private:true,description:`Developer fixture for rtc_run=${RUN}`,default_branch:'main'};
 const def={tool:mod.tools[0],handler:mod.handlers.github_dev_cleanup};
-async function prepare(world){
-  await world.db.createDevRun({id:RUN,account:OWNER,connection:'client-1',scenarios:['repo-basic']});
+async function prepare(world,scenario='repo-basic'){
+  await world.db.createDevRun({id:RUN,account:OWNER,connection:'client-1',scenarios:[scenario]});
   await world.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
     type:'repo',owner:OWNER,repo:REPO,objectId:`${OWNER}/${REPO}`,createdSha:'a'.repeat(40)});
 }
@@ -210,7 +210,7 @@ describe('V-2 protected run deletion',()=>{
     }
   });
   it('deletes a release-train scratch repo only when its exact draft and tags are still owned',async()=>{
-    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    const w=await makeWorld({scratchAccount:true});await prepare(w,'release-train');arrange(w.gh,'ok');
     for(const name of ['v0.1.0','v0.2.0','v0.3.0'])
       await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
         type:'tag',owner:OWNER,repo:REPO,objectId:name,createdSha:'a'.repeat(40)});
@@ -252,7 +252,7 @@ describe('V-2 protected run deletion',()=>{
   });
   it('requires unchanged recorded required-ci scratch ruleset and refuses drift',async()=>{
     for(const altered of [false,true]){
-      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      const w=await makeWorld({scratchAccount:true});await prepare(w,'protected-main');arrange(w.gh,'ok');
       await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
         type:'ruleset',owner:OWNER,repo:REPO,objectId:'321'});
       w.gh.when('GET /repos/{owner}/{repo}/rulesets').reply(200,[
@@ -342,7 +342,7 @@ describe('V-2 protected run deletion',()=>{
     expect(w.gh.invalid).toEqual([]);
   });
   it('accepts a run-recorded draft PR only while its head and base remain exact',async()=>{
-    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    const w=await makeWorld({scratchAccount:true});await prepare(w,'pr-with-threads');arrange(w.gh,'ok');
     const branch=`rtc/${RUN}/review`;
     await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
       type:'branch',owner:OWNER,repo:REPO,objectId:branch,createdSha:'a'.repeat(40)});
@@ -414,7 +414,7 @@ describe('V-2 protected run deletion',()=>{
       base:{ref:'main',repo:{full_name:`${OWNER}/${REPO}`}}
     };
     for(const changed of [null,{draft:false},{head:{...before.head,sha:'b'.repeat(40)}}]){
-      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      const w=await makeWorld({scratchAccount:true});await prepare(w,'pr-with-threads');arrange(w.gh,'ok');
       for(const [type,id] of [['branch',branch],['pr','101']])
         await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
           type,owner:OWNER,repo:REPO,objectId:id,createdSha:'a'.repeat(40)});
@@ -651,4 +651,18 @@ describe('V-2 missing journaled scratch resources cannot be silently erased',()=
       expect(w.gh.invalid).toEqual([]);
     });
   }
+});
+
+describe('V-2 scenario cannot acquire extra whole-repository deletion authority',()=>{
+  it('refuses a real but unexpected tag in a repo-basic run, despite matching journal and remote',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'tag',owner:OWNER,repo:REPO,objectId:'v0.1.0',createdSha:'a'.repeat(40)});
+    w.gh.when('GET /repos/{owner}/{repo}/tags').reply(200,[
+      {name:'v0.1.0',commit:{sha:'a'.repeat(40)}}]);
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.filter(c=>c.method==='DELETE'||c.method==='PATCH')).toHaveLength(0);
+    expect(w.gh.invalid).toEqual([]);
+  });
 });

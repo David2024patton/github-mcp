@@ -17,6 +17,17 @@ const SPEC = Object.freeze({
   'protected-main': { scratch: true, objects: [['repo','scratch-repo'],['ruleset','required-ci']] },
   'webhook-target': { scratch: true, objects: [['repo','scratch-repo'],['forwarder','target'],['webhook','test-hook']] }
 });
+// Keep the executable subset separate from the plan-only webhook blueprint.
+export const EXECUTABLE_SCENARIOS = Object.freeze([
+  'repo-basic','failing-ci','release-train','protected-main','stack-of-three','pr-with-threads'
+]);
+export function scenarioObjectLimits(name) {
+  const spec=SPEC[name];
+  if(!spec)throw new TypeError('Unknown development scenario.');
+  const limits=Object.create(null);
+  for(const [type] of spec.objects)limits[type]=(limits[type]??0)+1;
+  return limits;
+}
 export function listScenarioBlueprints() {
   return Object.entries(SPEC).map(([name,spec])=>({
     name, scratch_required:spec.scratch, planned_object_count:spec.objects.length,
