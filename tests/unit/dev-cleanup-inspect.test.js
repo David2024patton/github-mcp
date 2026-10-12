@@ -29,7 +29,7 @@ const args={repo:REPO,runId:RUN};
 describe('V-2 exact remote read-only cleanup preflight',()=>{
   it('inspects all supported remote inventories without any GitHub writes or run freeze',async()=>{
     const w=await world();
-    const out=parse(await handler(args,w.ctx));
+    const out=await handler(args,w.ctx);
     expect(out).toMatchObject({status:'remote_snapshot_accepted',
       deletion_authorized:false,destructive_operations_performed:false,
       inventory_counts:{branches:1,labels:0},snapshot_atomic:false});
@@ -42,7 +42,7 @@ describe('V-2 exact remote read-only cleanup preflight',()=>{
     const w=await world();
     w.gh.when('GET /repos/{owner}/{repo}/labels')
       .reply(200,[{id:7,name:'bug',color:'d73a4a'}]);
-    const out=parse(await handler(args,w.ctx));
+    const out=await handler(args,w.ctx);
     expect(out).toMatchObject({status:'blocked',
       blocker_code:'LABEL_PROVENANCE_UNVERIFIED',phase:'scratch_remote_inventory',
       deletion_authorized:false});
