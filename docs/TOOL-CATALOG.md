@@ -316,7 +316,7 @@ Card(s): V-1 … V-5. The owner alone can enable an exact Organization as `is_sc
 | `github_dev_seed` | Build a scenario in the scratch account or on test branches: repos, branches, commits, PRs, issues, labels, workflow files; preview lists every object | P | N | I | B | E | V-1 built #70–#80 (six runnable scratch scenarios; read-only run progress, webhook-target pending V-4) |
 | `github_dev_list_runs` | Connection-scoped runs, exact durable objects, intents and fail-closed progress (never live acceptance) | — | N | — | B | R | V-1 built #68 |
 | `github_dev_create_scratch_repo` | Throwaway repository in the scratch account, tagged with the run | P | N | I | B | E | V-1 built #69 |
-| `github_dev_cleanup` | Remove exactly the objects a run created (preview, then confirm); reports per object | C | N | I | B | E | V-2 |
+| `github_dev_cleanup` | Remove exactly the objects a run created (preview, then confirm); reports per object | C | N | I | B | E | V-2 built #85 (private scratch repository only; non-scratch pending) |
 | `github_dev_create_test_branch` | Branch `rtc/<run>/<name>` from any ref in an allowed repo (never production) | P | N | I | B | E | V-3 |
 | `github_dev_open_test_pr` | Draft PR from a test branch, labelled with the run | P | N | I | B | E | V-3 |
 | `github_dev_dispatch_and_wait` | Start a workflow on a test ref and wait up to 45 s; returns the run, or a handle to check later | P | N | I | B | E | V-3 |

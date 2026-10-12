@@ -86,12 +86,13 @@ export function doorsFor(definition) {
  * @param {(opts) => Function[]} [o.gatesFor] `({ protectedLevel, spendLimitCents })` -> gates; defaults to the fixture gates
  */
 export function runWriteContract({ label, definition, args, arrange, needsConfirm, production = false, notifies = [], accessWidening = false, spendCents = 0, quietArgs = null,
-  conveyor = false, profile = 'everyday', scratchAccount = false, previewOnly = false, expectedWrites = 1, advanceClockOnSleep = false, gatesFor = ({ protectedLevel, spendLimitCents }) => [...(protectedLevel ? [protectionGate(protectedLevel)] : []), spendGate({ limitCents: spendLimitCents ?? 0 })] }) {
+  conveyor = false, profile = 'everyday', scratchAccount = false, previewOnly = false, expectedWrites = 1, advanceClockOnSleep = false, prepare = null, gatesFor = ({ protectedLevel, spendLimitCents }) => [...(protectedLevel ? [protectionGate(protectedLevel)] : []), spendGate({ limitCents: spendLimitCents ?? 0 })] }) {
   for (const door of doorsFor(definition)) {
     describe(`write contract: ${label} through ${door.name}`, () => {
       const world = async (options = {}, replies = 'ok') => {
         const w = await makeWorld({ profile, scratchAccount, advanceClockOnSleep, ...options, ...(options.gates === undefined ? { gates: gatesFor({ spendLimitCents: options.spendLimitCents ?? 100000 }) } : {}) });
         arrange(w.gh, replies);
+        if (prepare) await prepare(w);
         return w;
       };
       const mode = production ? 'production' : 'preview';
