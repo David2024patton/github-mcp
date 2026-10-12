@@ -44,6 +44,29 @@ function parseResultQuery(query={}) {
   if(Object.keys(query).some(k=>!['handle','page','pageSize','offset','fields'].includes(k)))return null;
   return paging;
 }
+function parseToolsQuery(query={}) {
+  if(!query||typeof query!=='object'||Array.isArray(query)||
+    Object.keys(query).some(k=>!['limit','page','q','area','audience','listing'].includes(k)))
+    return null;
+  const numeric=(key,fallback,max)=>{
+    const value=query[key];
+    if(value===undefined)return fallback;
+    if(typeof value!=='string'||!/^[0-9]+$/.test(value))return null;
+    const n=Number(value);
+    return Number.isSafeInteger(n)&&n>=1&&n<=max?n:null;
+  };
+  const limit=numeric('limit',20,100),page=numeric('page',1,1000);
+  if(limit===null||page===null)return null;
+  const bounded=(key,max)=>{
+    const value=query[key]??'';
+    return typeof value==='string'&&value.length<=max?value:null;
+  };
+  const q=bounded('q',200),area=bounded('area',64),audience=bounded('audience',64);
+  const listing=query.listing??'compact';
+  if(q===null||area===null||audience===null||
+    !['catalog','compact'].includes(listing))return null;
+  return {limit,page,q:q.toLowerCase(),area,audience,listing};
+}
 async function authenticate(req,res,db){
   const bearer=/^Bearer (rtc_pass_[A-Za-z0-9_-]{43})$/.exec(String(req.headers?.authorization??''));
   if(!bearer)return deny(res,401,rtcError('permission'));
@@ -102,14 +125,9 @@ export function createRtcHttpHandler({db,registry,dispatch}){
         return send(res,200,{ok:true,result:{profile:'read_only',mode:'preview',
           areas:connection.areas,accounts:connection.accounts,allow_writes:false}});
       if(route==='tools'&&req.method==='GET'){
-        const limit=Number(req.query?.limit??20),page=Number(req.query?.page??1);
-        if(!Number.isInteger(limit)||limit<1||limit>100||
-          !Number.isInteger(page)||page<1||page>1000)
-          return send(res,400,rtcError('invalid_args'));
-        const q=String(req.query?.q??'').toLowerCase();
-        const area=String(req.query?.area??'');
-        const audience=String(req.query?.audience??'');
-        const listing=req.query?.listing==='catalog'?'catalog':'compact';
+        const query=parseToolsQuery(req.query);
+        if(!query)return send(res,400,rtcError('invalid_args'));
+        const {limit,page,q,area,audience,listing}=query;
         let tools=allowed().filter(t=>(!area||areaOf(t)===area)&&
           (!audience||rtcMetadata(t).audience.includes(audience))&&
           (!q||t.name.toLowerCase().includes(q)||t.description.toLowerCase().includes(q)));
@@ -156,7 +174,10 @@ export function createRtcHttpHandler({db,registry,dispatch}){
           const item=calls[i];
           const result=await run(item.name,item.args??{},current);
           if(result.status!==200)return send(res,result.status,result.body);
-          results.push({name:item.name,ok:true,result:result.body.result});
+          // A retained result must remain retrievable after a batch call.
+          // Its original connection-owned handle is never expanded here.
+          results.push({name:item.name,ok:true,result:result.body.result,
+            ...(result.body.handle?{handle:result.body.handle,summary:result.body.summary}:{})});
         }
         return send(res,200,{ok:true,result:{results}});
       }
