@@ -195,3 +195,8 @@ permissions actually granted per account here once Chris installs the Apps.
 ## Developer scenario ledger (V-1 part 1, PR #65)
 
 `dev_runs` and `dev_run_objects` are additive tables created by `createDb.initSchema()`; `createDevLedger(sql)` offers atomic account+connection-scoped run creation, exact object recording, and bounded lists. The same behavior is asserted for PostgreSQL and the fake. `src/dev/scenarios.js` is plan-only: no V-1 external writes exist until the next approved slice passes its write contracts and the owner scratch gate IN-06. Unit CI uses two file-level shards under the unchanged aggregate `ci` gate.
+
+
+## V-1 execution-intent journal (#67)
+
+`src/dev/ledger.js` (mounted in `createDb(sql)`) now reserves each scenario step in additive `dev_run_intents` before any external call. Its `(run_id, step_id)` key gives exactly one worker a claim. A request that might have reached GitHub is marked `uncertain`, never automatically replayed. `completeDevIntent` is one PostgreSQL statement using data-modifying CTEs: mark the exact step `recorded` and insert the real returned GitHub ID in `dev_run_objects` atomically. Every operation checks account and connection; fake and isolated PostgreSQL share `runDevLedgerContract`. No real GitHub seed tool is enabled by the journal alone; IN-06 still gates live scratch work.
