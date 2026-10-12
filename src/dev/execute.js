@@ -28,8 +28,9 @@ export async function runDevMutationOnce(ctx,{runId,account,connection,stepId,ty
           objectId:created.objectId,createdSha:created.createdSha,labels:created.birthLabels})
       : await db.completeDevIntent({runId,account,connection,stepId,objectId:created.objectId,createdSha:created.createdSha??null});
     if(!saved)throw new TypeError('The created object could not be durably recorded; inspect the run before further changes.');
-    const {birthLabels: _birthLabels,...result}=created;
-    return {...result,replayed:false};
+    const result={...created,replayed:false};
+    delete result.birthLabels;
+    return result;
   }catch(error){
     await db.markDevIntentUncertain({runId,account,connection,stepId}).catch(()=>{});
     throw error;

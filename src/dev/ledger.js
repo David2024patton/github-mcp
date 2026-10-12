@@ -188,7 +188,7 @@ export function createDevLedger(sql) {
         ), birth AS (
           INSERT INTO dev_repo_birth_labels (run_id,owner,repo,source_sha,labels)
           SELECT run_id,${owner},${repo},${createdSha},${JSON.stringify(inventory)}::jsonb FROM inserted
-          ON CONFLICT (run_id) DO NOTHING RETURNING run_id
+          RETURNING run_id
         ), recorded AS (
           UPDATE dev_run_intents i SET status='recorded',object_id=${objectId},
             created_sha=${createdSha},updated_at=now()
