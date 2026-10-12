@@ -1,6 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {makeWorld,parse,runWriteContract} from '../../test/helpers/write-contract.js';
 import * as seed from '../../src/tools/dev-seed-write.js';
+import {seedReviewScenario} from '../../src/dev/review-scenario.js';
 
 const ID='run-seeded-101',REPO='seed-demo',OWNER='example-org',MARK=`rtc_run=${ID}`;
 const SHA0='a'.repeat(40),SHA1='b'.repeat(40),SHA2='c'.repeat(40),
@@ -63,6 +64,18 @@ runWriteContract({label:'github_dev_seed(pr-with-threads)',definition:def,
  arrange:reviewFixture,scratchAccount:true,previewOnly:true,needsConfirm:false,
  expectedWrites:10,advanceClockOnSleep:true});
 describe('V-1 real three review threads, exactly one outdated',()=>{
+ it('refuses another run ID in the scratch repository description before creating a fixture',async()=>{
+  const calls=[];
+  const github={request:async(route)=>{
+    calls.push(route);
+    return {data:{full_name:OWNER+'/'+REPO,private:true,default_branch:'main',
+      description:'Developer fixture for rtc_run='+ID+'-other (pr-with-threads)'}};
+  }};
+  await expect(seedReviewScenario({}, {github,run:{owner:OWNER,repo:REPO,runId:ID}}))
+    .rejects.toThrow(/run-marked/);
+  expect(calls).toEqual(['GET /repos/{owner}/{repo}']);
+ });
+
  it('records thirteen exact objects and updates only the line behind the third thread',async()=>{
   const w=await makeWorld({scratchAccount:true,advanceClockOnSleep:true});
   reviewFixture(w.gh,'ok');

@@ -2,6 +2,7 @@
 import { missing, refusal, octo } from '../tools/github-write.js';
 import { listAll } from '../github/client.js';
 import { productionReason } from '../tools/production-guard.js';
+import { matchesRunFooter } from './run-marker.js';
 const eq=(a,b)=>String(a??'').toLowerCase()===String(b??'').toLowerCase();
 const marker=id=>`rtc_run=${id}`;
 const ownRef=(runId,ref)=>typeof ref==='string'&&ref.startsWith(`rtc/${runId}/`)&&
@@ -32,7 +33,7 @@ const prIsSafe=async(gh,run,owner,repo,objects,o,initial)=>{
   }
   const head=objects.find(b=>b.object_type==='branch'&&b.object_id===p?.head?.ref);
   if(p.merged===true||!['open','closed'].includes(p.state)||(p.state==='open'&&p.draft!==true)||
-    !String(p.body??'').includes(marker(run.id))||
+    !matchesRunFooter(p.body,run.id)||
     !ownRef(run.id,p.head?.ref)||!eq(p.head?.repo?.full_name,`${owner}/${repo}`)||
     !head||(head.created_sha&&p.head?.sha!==head.created_sha))
     throw refusal('PR does not match its recorded run-owned draft branch; cleanup refused.');
@@ -64,7 +65,7 @@ async function inspectOwnedIssue(gh,run,owner,repo,o,initial) {
     if(initial)throw refusal('Recorded issue was deleted or moved; reconcile before cleanup.');
     throw refusal('The issue cannot be read back. No result will be assumed.');
   }
-  if(issue.pull_request||!String(issue.body??'').includes(marker(run.id))||
+  if(issue.pull_request||!matchesRunFooter(issue.body,run.id)||
     !['open','closed'].includes(issue.state)||
     (issue.state==='closed'&&issue.state_reason!=='not_planned'))
     throw refusal('This issue is not the unmerged run-created issue recorded in the journal.');

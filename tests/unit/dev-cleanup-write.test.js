@@ -34,6 +34,15 @@ describe('V-2 protected run deletion',()=>{
     expect(result.done).toBe(false);
     expect(w.gh.calls.filter(c=>c.method==='DELETE')).toHaveLength(0);
   });
+  it('refuses a prefix-collision scratch marker before deleting any repository',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);
+    w.gh.when('GET /repos/{owner}/{repo}').reply(200,{
+      ...repo,description:'Developer fixture rtc_run='+RUN+'-other (repo-basic)'
+    });
+    const result=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(result.done).toBe(false);
+    expect(w.gh.calls.filter(c=>c.method==='DELETE')).toHaveLength(0);
+  });
   it('never allows a production connection to perform developer cleanup',async()=>{
     const w=await makeWorld({scratchAccount:true,mode:'production'});await prepare(w);arrange(w.gh,'ok');
     const result=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));

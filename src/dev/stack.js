@@ -2,6 +2,7 @@
 import {createOwnedFixtureBranch,commitOwnedFixtureFile} from './fixtures.js';
 import {createOwnedDraftPr,createOwnedRunLabel,labelOwnedDraftPr} from './pull-fixtures.js';
 import {refusal} from '../tools/github-write.js';
+import {matchesRunDescription} from './run-marker.js';
 
 const SHA=/^[a-f0-9]{40}$/;
 export const stackBranch=(id,i)=>`rtc/${id}/stack-${i}`;
@@ -12,7 +13,7 @@ export async function seedStack(ctx,{github,run}) {
   const p={owner:run.owner,repo:run.repo},id=run.runId;
   const repository=(await github.request('GET /repos/{owner}/{repo}',p)).data;
   const base=repository?.default_branch;
-  if(repository?.private!==true||!String(repository?.description??'').includes(mark(id))||
+  if(repository?.private!==true||!matchesRunDescription(repository?.description,id)||
     !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$/.test(base??'')||base.includes('..'))
     throw refusal('A private, run-owned scratch repository with a safe default branch is required.');
   const ref=(await github.request('GET /repos/{owner}/{repo}/git/ref/{ref}',{

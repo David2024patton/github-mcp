@@ -6,6 +6,7 @@ import {createOwnedReviewComment} from './review-fixtures.js';
 import {recordExactReviewThread,listExactReviewThreads} from './review-threads.js';
 import {reviseOwnedReviewFixture} from './review-revision.js';
 import {refusal} from '../tools/github-write.js';
+import {matchesRunDescription,matchesRunFooter} from './run-marker.js';
 
 const SHA=/^[a-f0-9]{40}$/;
 export const reviewBranch=id=>`rtc/${id}/review`;
@@ -17,7 +18,7 @@ export async function seedReviewScenario(ctx,{github,run}){
  const p={owner:run.owner,repo:run.repo},id=run.runId;
  const repo=(await github.request('GET /repos/{owner}/{repo}',p)).data;
  const base=repo?.default_branch;
- if(repo?.private!==true||!String(repo.description??'').includes(`rtc_run=${id}`)||
+ if(repo?.private!==true||!matchesRunDescription(repo.description,id)||
    !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$/.test(base??'')||base.includes('..'))
    throw refusal('A private run-marked scratch repository is required.');
  const head=(await github.request('GET /repos/{owner}/{repo}/git/ref/{ref}',{
@@ -84,7 +85,7 @@ export function verifyReviewScenario({id,after,response}){
     after.pr?.number!==number||after.pr.draft!==true||after.pr.state!=='open'||
     after.pr.head?.ref!==reviewBranch(id)||after.pr.head?.sha!==rev||
     after.pr.base?.ref!==after.repository.default_branch||
-    !String(after.pr.body??'').includes(`rtc_run=${id}`)||
+    !matchesRunFooter(after.pr.body,id)||
     !after.labels?.some(x=>x.name==='rtc-run')||
     after.file?.path!==reviewPath(id)||typeof after.file.content!=='string'||
     Buffer.from(after.file.content.replace(/\s/g,''),'base64').toString('utf8')!==updatedReview(id)||

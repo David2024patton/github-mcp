@@ -4,6 +4,7 @@ import { RUN_ID } from './ledger.js';
 import { runDevMutationOnce } from './execute.js';
 import { isOwnedFixtureBranch } from './fixtures.js';
 import { refusal } from '../tools/github-write.js';
+import { matchesRunFooter } from './run-marker.js';
 
 const SHA=/^[a-f0-9]{40}$/;
 const LABEL='rtc-run';
@@ -44,7 +45,7 @@ export async function createOwnedDraftPr(ctx,{github,run,stepId,head,base,defaul
       })).data;
       if(!Number.isSafeInteger(p?.number)||p.number<=0||p.draft!==true||
         p.state!=='open'||p.head?.ref!==head||p.base?.ref!==base||
-        !String(p.body??'').includes(`rtc_run=${run.runId}`))
+        !matchesRunFooter(p.body,run.runId))
         throw refusal('GitHub did not confirm the exact run-owned draft PR.');
       return {objectId:String(p.number),createdSha:expectedHeadSha};
     }});

@@ -45,6 +45,15 @@ describe('V-2 recorded issue close-only cleanup',()=>{
   expect(out.done).toBe(false);
   expect(w.gh.calls.filter(x=>['PATCH','POST','DELETE'].includes(x.method))).toHaveLength(0);
  });
+ it('refuses a longer run ID within a recorded issue footer without mutating GitHub',async()=>{
+  const w=await world();
+  w.gh.when('GET /repos/{owner}/{repo}/issues/{issue_number}').reply(200,{
+    ...issue,body:'Fixture <!-- rtc_run='+RUN+'-other -->'
+  });
+  const out=parse(await mod.handlers.github_dev_cleanup({runId:RUN,repo:REPO,confirm:true},w.ctx));
+  expect(out.done).toBe(false);
+  expect(w.gh.calls.filter(x=>['PATCH','POST','DELETE'].includes(x.method))).toHaveLength(0);
+ });
  it('refuses issue cleanup when the shared rtc-cleaned label was not provisioned',async()=>{
   const w=await world();
   w.gh.when('GET /repos/{owner}/{repo}/labels/{name}').reply(404,{message:'Not Found'});

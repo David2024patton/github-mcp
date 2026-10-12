@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — V-2 #90 exact run-marker isolation:** Corrected a cleanup ownership weakness: prefix matching could mistake a longer run ID's marker for the shorter run. Scratch seeding and cleanup, standalone PR/issue cleanup, draft verification and review fixture checks now require an exact run marker: a bounded description token or complete `<!-- rtc_run=<id> -->` footer. Adversarial tests refuse lookalike repositories, PRs and issues before mutations. No OAuth, production, spend or live scratch authority changed; V-2 all-runs and remaining resource types are still pending.
+
 - **2026-10-12 — V-2 #89 durable per-object report:** Both `github_dev_list_runs(runId)` and confirmed `github_dev_cleanup` now use a shared evidence-only cleanup report: exact owned IDs, per-object journal state, pending/uncertain steps, truncated or conflicting rows, remaining count and explicit safe-resume guidance. Report never claims remote absence or OAuth acceptance from ledger flags; confirmed write separately reports fresh remote verification for that call. No new external permissions or mutating API paths.
 
 - **2026-10-12 — V-2 #88 exact issue cleanup:** For existing host repositories, added a guarded close-only path for run-journaled issues. It verifies exact run footer and issue-not-PR identity, requires the pre-existing `rtc-cleaned` label, closes with GitHub's `not_planned` reason and confirms both state and label before journaling cleanup. No issue deletion or host repository changes outside recorded run items. Partial outcomes remain visible for retry; no connected acceptance.

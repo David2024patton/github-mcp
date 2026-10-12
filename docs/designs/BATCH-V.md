@@ -109,6 +109,9 @@ Tools: `github_dev_check_integration`. Tests: each spec item ok / missing with t
 
 ## Amendments
 
+**2026-10-12 — Exact recorded-run ownership markers (#90).** A text prefix search for `rtc_run=<id>` is not proof of ownership when another valid run ID starts with that ID. Preserve generated fixture formats while requiring an exact description/release marker token or complete PR/issue HTML footer for V-1 readback and V-2 cleanup. No new GitHub authority, external tests or production permissions.
+
+
 (Dated entries only.)
 
 
