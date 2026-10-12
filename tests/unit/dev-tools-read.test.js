@@ -79,7 +79,7 @@ describe('V-1 public developer inspection',()=>{
     expect((await call(intruder,'github_dev_list_runs',{runId:id,includeBirthLabels:true})).isError).toBe(true);
     expect((await call(w,'github_dev_list_runs',{includeBirthLabels:true})).isError).toBe(true);
   });
-  it('previews only the current connection's bounded cleanup journals without remote claims',async()=>{
+  it("previews only the current connection's bounded cleanup journals without remote claims",async()=>{
     const w=await world(),a={account:'example-org',connection:'client-1'};
     await w.db.createDevRun({...a,id:'run-preview-a'});
     await w.db.recordDevObject({...a,runId:'run-preview-a',type:'branch',owner:a.account,
