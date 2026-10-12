@@ -222,7 +222,7 @@ export function createDb(sql = productionSql()) {
         hit_count INTEGER NOT NULL DEFAULT 0
       )`;
       await sql`CREATE TABLE IF NOT EXISTS rtc_pass_scopes (
-        token_hash TEXT PRIMARY KEY REFERENCES oauth_tokens(token_hash) ON DELETE CASCADE,
+        token_hash TEXT PRIMARY KEY,
         areas TEXT[] NOT NULL DEFAULT ARRAY['server','meta'],
         allow_writes BOOLEAN NOT NULL DEFAULT FALSE,
         production_access BOOLEAN NOT NULL DEFAULT FALSE,

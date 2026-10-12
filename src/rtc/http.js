@@ -63,7 +63,7 @@ export function createRtcHttpHandler({db,registry,dispatch}){
     const value=output?.structuredContent??null;
     const kept=value?.kept_result;
     if(kept?.handle && /^res_[A-Za-z0-9_-]{20,64}$/.test(kept.handle)) {
-      const {kept_result,...summary}=value;
+      const {_kept_result,...summary}=value;
       return {status:200,body:{ok:true,result:summary,handle:kept.handle,
         summary:String(kept.what??'Large result'),mode:connection.mode}};
     }
