@@ -32,7 +32,8 @@ describe('Pinned Hub RTC 1 conformance runner',()=>{
         return {client_id:'rtc-'+'a'.repeat(24),default_account:'scratch-org',
           accounts:['scratch-org'],mode:'preview',profile:'read_only',listing:'compact',
           expires_at:value===expired?new Date(0):new Date(Date.now()+60000),
-          revoked_at:value===revoked?new Date():null};
+          revoked_at:value===revoked?new Date():null,
+          areas:['server','meta'],allow_writes:false,production_access:false,money_limit_cents:0};
       },
       async getAccount(){return account;},
       async consumeRtcPassRate(){return true;}

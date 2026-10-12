@@ -23,7 +23,12 @@ describe('RTC pass-only credentials in isolated Postgres',()=>{
   expect(await db.createRtcPass({pass,account:'scratch-org',passId,expiresAt})).toBe('rtc-'+passId);
   const stored=await db.getRtcPass(pass);
   expect(stored).toMatchObject({profile:'read_only',mode:'preview',listing:'compact',
-    default_account:'scratch-org',accounts:['scratch-org']});
+    default_account:'scratch-org',accounts:['scratch-org'],areas:['server','meta'],
+    allow_writes:false,production_access:false});
+  expect(Number(stored.money_limit_cents)).toBe(0);
+  const scoped=await rawQuery('SELECT areas,allow_writes,production_access,money_limit_cents FROM rtc_pass_scopes');
+  expect(scoped[0].areas).toEqual(['server','meta']);
+  await expect(rawQuery("UPDATE rtc_pass_scopes SET allow_writes=TRUE")).rejects.toThrow();
   expect(await db.getAccessToken(pass)).toBeNull();
   expect(JSON.stringify(await rawQuery('SELECT * FROM oauth_tokens'))).not.toContain(pass);
   expect(await db.revokeRtcPass(passId)).toBe(true);

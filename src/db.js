@@ -16,6 +16,7 @@ export const SCHEMA_TABLES = Object.freeze([
   'oauth_codes',
   'oauth_tokens',
   'rtc_pass_rate',
+  'rtc_pass_scopes',
   'login_attempts',
   'change_log',
   'one_time_secrets',
@@ -219,6 +220,17 @@ export function createDb(sql = productionSql()) {
         token_hash TEXT PRIMARY KEY,
         window_start TIMESTAMPTZ NOT NULL DEFAULT now(),
         hit_count INTEGER NOT NULL DEFAULT 0
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS rtc_pass_scopes (
+        token_hash TEXT PRIMARY KEY REFERENCES oauth_tokens(token_hash) ON DELETE CASCADE,
+        areas TEXT[] NOT NULL DEFAULT ARRAY['server','meta'],
+        allow_writes BOOLEAN NOT NULL DEFAULT FALSE,
+        production_access BOOLEAN NOT NULL DEFAULT FALSE,
+        money_limit_cents BIGINT NOT NULL DEFAULT 0,
+        CHECK (allow_writes = FALSE),
+        CHECK (production_access = FALSE),
+        CHECK (money_limit_cents = 0),
+        CHECK (array_length(areas,1) = 2 AND areas @> ARRAY['server','meta']::text[])
       )`;
       await sql`CREATE TABLE IF NOT EXISTS login_attempts (
         id BIGSERIAL PRIMARY KEY,
@@ -427,22 +439,31 @@ export function createDb(sql = productionSql()) {
         !Number.isFinite(expiresAt.getTime())||expiresAt<=new Date()||
         expiresAt>new Date(Date.now()+30*86400000))
         throw new TypeError('Invalid RTC pass scope or expiry.');
-      const rows=await sql`INSERT INTO oauth_tokens
-        (token_hash,client_id,default_account,accounts,mode,profile,listing,kind,expires_at)
+      // Single SQL statement: either both the bearer and its immutable restrictive scope
+      // exist, or neither exists. A partially configured pass is never usable.
+      const rows=await sql`WITH created AS (
+        INSERT INTO oauth_tokens
+          (token_hash,client_id,default_account,accounts,mode,profile,listing,kind,expires_at)
         SELECT ${hashToken(pass)}, ${'rtc-'+passId}, a.login, ARRAY[a.login], 'preview',
           'read_only','compact','pass',${expiresAt}
         FROM gh_accounts a WHERE a.login=${account} AND a.is_scratch=TRUE
           AND a.production_enabled=FALSE AND a.account_type='Organization'
           AND a.installation_status='active' AND a.repository_selection='all'
-        RETURNING client_id`;
+        RETURNING token_hash,client_id
+      ), scoped AS (
+        INSERT INTO rtc_pass_scopes(token_hash,areas,allow_writes,production_access,money_limit_cents)
+        SELECT token_hash,ARRAY['server','meta'],FALSE,FALSE,0 FROM created
+        RETURNING token_hash
+      ) SELECT created.client_id FROM created JOIN scoped USING(token_hash)`;
       return rows[0]?.client_id??null;
     },
     /** Unknown, expired and revoked are distinct but no token bytes are returned. */
     async getRtcPass(pass) {
       if(!/^rtc_pass_[A-Za-z0-9_-]{43}$/.test(pass))return null;
-      const rows=await sql`SELECT client_id,default_account,accounts,mode,profile,listing,
-        expires_at,revoked_at FROM oauth_tokens
-        WHERE token_hash=${hashToken(pass)} AND kind='pass'`;
+      const rows=await sql`SELECT t.client_id,t.default_account,t.accounts,t.mode,t.profile,t.listing,
+        t.expires_at,t.revoked_at,s.areas,s.allow_writes,s.production_access,s.money_limit_cents
+        FROM oauth_tokens t JOIN rtc_pass_scopes s ON s.token_hash=t.token_hash
+        WHERE t.token_hash=${hashToken(pass)} AND t.kind='pass'`;
       return rows[0]??null;
     },
     async revokeRtcPass(passId) {
