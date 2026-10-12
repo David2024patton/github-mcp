@@ -22,7 +22,7 @@ function arrange(gh,kind) {
  gh.when('DELETE /repos/{owner}/{repo}/git/refs/{ref}').reply(204);
 }
 runWriteContract({label:'github_dev_cleanup standalone exact branch',definition:def,
-  args:{runId:RUN,repo:REPO},needsConfirm:true,expectedWrites:1,prepare,arrange});
+  args:{runId:RUN,repo:REPO},needsConfirm:true,previewOnly:true,expectedWrites:1,prepare,arrange});
 describe('non-scratch safety hardening',()=>{
  it('does not delete the host repository and refuses foreign run refs',async()=>{
   const w=await makeWorld();await prepare(w);arrange(w.gh,'ok');
