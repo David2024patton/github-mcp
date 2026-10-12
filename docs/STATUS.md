@@ -6,6 +6,9 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — setup feedback visibility (#83):** The owner completed mobile forms without seeing confirmation because the reusable form resets on each response and the feedback appears at the top of a long page; database audit found two failed administrator logins, zero successful logins and zero apps/accounts. All internal setup forms now navigate to the accessible `#setup-feedback` heading on their server-rendered POST response (no JavaScript); success and failure display a clearly labeled `Setup response:`. The GitHub manifest POST retains its GitHub URL and all credential, CSRF, same-origin and setup-state protections remain unchanged. The owner must use the `ADMIN_PASSPHRASE` from Vercel (or privately replace it and redeploy).
+
+
 - **2026-10-12 — mobile setup URL diagnostic (#82):** Owner reported `Origin check failed` during GitHub App setup. Vercel production `PUBLIC_BASE_URL` is correct; the form page also set `Referrer-Policy: no-referrer`, which causes HTML navigation POSTs to emit `Origin: null` under browser standards. Change the form page policy to `same-origin` (external sites still receive no Referer), canonicalize alternate production setup GET requests to the configured HTTPS origin before minting the Strict CSRF cookie, leave POST's exact-Origin requirement intact and provide a helpful 403 browser-link explanation. The secret/CSRF/passphrase guards are unchanged. Test alias redirects and malicious/absent Origin. Owner can also open the canonical link in external Chrome.
 
 

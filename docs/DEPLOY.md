@@ -129,6 +129,9 @@ tried against real GitHub yet. If creating the App fails on one of them, the fix
 
 ## If something goes wrong
 
+**If submitting a form just clears your entries:** The top of the page now contains a labeled **Setup response** and internal forms direct the browser there automatically. A rejected passphrase is not saved and does not create an App. The `ADMIN_PASSPHRASE` is the exact, project-specific encrypted value configured in Vercel `github-mcp` → Settings → Environment Variables, *not* your Vercel/GitHub account password or the encryption key. Privately reveal it there, or replace it with a strong password manager-generated value in Vercel and redeploy. Never paste either value into a chat or GitHub.
+
+
 **Mobile setup form error (`Secure browser required`):** Open `https://github-mcp-chris-projects-de6cd1bf.vercel.app/api/github/setup` directly in Chrome or another full browser, not the ChatGPT in-app browser. Alternate `vercel.app` setup aliases now redirect to the configured URL before creating a session cookie. The setup form uses `Referrer-Policy: same-origin` instead of `no-referrer`: browser specifications make ordinary HTML form POSTs send `Origin: null` under `no-referrer`, which the server correctly refuses. Only the forms use this policy; callback/error result pages keep `no-referrer`. The administrator setup still requires an exact HTTPS `Origin`, a SameSite=Strict CSRF cookie, its matching form token, and the private administrator passphrase. The server does not weaken these checks for embedded browsers that omit the `Origin` header.
 
 

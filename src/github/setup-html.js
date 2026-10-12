@@ -35,16 +35,16 @@ function accountCard(a) {
  * @param {object} view `{ csrf, result?, revealed?, show?, accounts?, manifestForm?, installLink?, blocked?, keyHelp? }`
  */
 export function renderSetup({ csrf, result = '', revealed = null, show = '', accounts = null, manifestForm = null, installLink = null, blocked = '', keyHelp = '', productionNames = null, protectedList = null, spendLimits = null, ownPeopleExtra = null, secretEntry = null }) {
-  const form = (action, inner, button, extra = '') => `<form method="post" autocomplete="off">${hidden('csrf', csrf)}${hidden('action', action)}${extra}${inner}${passphrase}<button type="submit">${h(button)}</button></form>`;
+  const form = (action, inner, button, extra = '') => `<form method="post" action="#setup-feedback" autocomplete="off">${hidden('csrf', csrf)}${hidden('action', action)}${extra}${inner}${passphrase}<button type="submit">${h(button)}</button></form>`;
   const login = '<label>GitHub account name (for example your organization or user name)<input name="login" required maxlength="39" autocomplete="off"></label>';
   const type = '<label>Account type<select name="accountType"><option value="Organization">Organization</option><option value="User">Personal user</option></select></label>';
   return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     `<title>Robinson GitHub MCP — private setup</title><style>${STYLE}</style></head><body>` +
-    '<h1>Robinson GitHub MCP — private setup</h1>' +
+    '<h1 id="setup-feedback">Robinson GitHub MCP — private setup</h1>' +
     '<p>Everything secret about GitHub is entered or created here, never in a chat. Each step asks for your administrator passphrase.</p>' +
     (blocked ? `<p role="alert"><strong>${h(blocked)}</strong></p>` : '') +
     (keyHelp ? `<p role="alert"><strong>${h(keyHelp)}</strong></p>` : '') +
-    (result ? `<p role="status">${h(result)}</p>` : '') +
+    (result ? `<p role="status"><strong>Setup response:</strong> ${h(result)}</p>` : '') +
     (installLink ? `<p><a href="${h(installLink)}">Install the App on GitHub →</a></p>` : '') +
     (secretEntry ? `<h2>Type a secret for GitHub</h2><p>${h(secretEntry.summary)}</p><p><small>The value is sealed with GitHub's public key on this server and sent straight to GitHub. It is not saved, not logged and never shown to Claude. Link is good until ${h(secretEntry.expires)}.</small></p>` +
       form('enter-secret', '<label>Secret value<input type="password" name="value" required maxlength="48000" autocomplete="off"></label>', 'Seal and send to GitHub', hidden('id', secretEntry.id)) : '') +
