@@ -699,6 +699,18 @@ export function createDb(sql = productionSql()) {
       return Number(rows[0].total);
     },
 
+    /** IN-06: owner-controlled scratch flag. Enabling is constrained by current stored installation and production safety. */
+    async setScratchAccount(login, enabled) {
+      if (typeof enabled !== 'boolean') throw new TypeError('Scratch state must be a boolean.');
+      const rows = await sql`UPDATE gh_accounts SET is_scratch = ${enabled}
+        WHERE lower(login) = lower(${login}) AND (
+          ${enabled} = FALSE OR
+          (account_type = 'Organization' AND credential_kind = 'app' AND app_id IS NOT NULL
+           AND installation_id IS NOT NULL AND installation_status = 'active'
+           AND repository_selection = 'all' AND production_enabled = FALSE))
+        RETURNING login`;
+      return rows.length === 1;
+    },
     /** Turns production on or off for one account. Returns false when the account is unknown. Used only by the setup page (on) and the disable tool (off). */
     async setProductionEnabled(login, enabled) {
       const rows = await sql`UPDATE gh_accounts SET production_enabled = ${enabled === true} WHERE lower(login) = lower(${login}) RETURNING login`;

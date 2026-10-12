@@ -27,6 +27,7 @@ function accountCard(a) {
   }
   lines.push(`<li>${a.classic.present ? `Notifications token saved (ends in ${h(a.classic.last4)}, scopes: ${h((a.classic.scopes || []).join(', '))}).` : 'No notifications token (optional).'}</li>`);
   lines.push(`<li>Production changes: <strong>${a.production_enabled ? 'on' : 'off'}</strong>${a.is_default ? ' · default account' : ''}</li>`);
+  lines.push(`<li>Disposable scratch organization: <strong>${a.is_scratch ? 'yes' : 'no'}</strong></li>`);
   return `<div class="card"><strong>${h(a.label)}</strong> <small>${h(a.login)} · ${h(a.account_type)} · ${h(a.credential_kind === 'app' ? 'GitHub App' : 'fine-grained token')}</small><ul>${lines.join('')}</ul></div>`;
 }
 
@@ -55,6 +56,8 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
     '<h2>1. Create the GitHub App for an account</h2><p>Private to that account. You will do this once for each account (your organization, and your personal account).</p>' +
     form('start-app', login + type, 'Prepare the GitHub App') +
     '<h2>2. Install the App</h2><p>After the App is created this page shows an install link. When GitHub sends you back here, the account turns green above.</p>' +
+    '<h2>IN-06: Disposable scratch organization</h2><p>Only designate a separate organization containing nothing important. Preview developer tools can create and delete run-owned test repositories there. An active GitHub App installed on <strong>All repositories</strong> with the required permissions is mandatory. Production must stay OFF. Never mark your normal organization as disposable.</p>' +
+    form('set-scratch', login + '<label>Scratch setting<select name="enabled"><option value="true">Enable for this disposable organization</option><option value="false">Disable scratch mode</option></select></label><label>Re-type the exact organization name<input name="confirmLogin" required maxlength="39" autocomplete="off"></label>', 'Save scratch organization setting') +
     '<h2>3. Authorize as me (optional, for personal settings)</h2>' +
     form('start-user-auth', login.replace('GitHub account name (for example your organization or user name)', 'Account whose App you are authorizing'), 'Authorize on GitHub') +
     '<h2>4. Turn on production for an account</h2><p>Production lets a connection change real branches, releases and settings, always asking first. It is off until you do two steps: ask Claude to turn it on for the account, then confirm here within 10 minutes.</p>' +

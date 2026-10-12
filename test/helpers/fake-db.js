@@ -173,6 +173,15 @@ export function createFakeDb({ clock = Date.now } = {}) {
         spend_limit_cents: 0, is_default: ![...accountRows.values()].some((r) => r.is_default), is_scratch: isScratch, added_at: new Date(clock()), checked_at: null
       });
     },
+    async setScratchAccount(login, enabled) {
+      if (typeof enabled !== 'boolean') throw new TypeError('Scratch state must be a boolean.');
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r || (enabled && (r.account_type !== 'Organization' || r.credential_kind !== 'app' ||
+          r.app_id == null || r.installation_id == null || r.installation_status !== 'active' ||
+          r.repository_selection !== 'all' || r.production_enabled))) return false;
+      r.is_scratch = enabled;
+      return true;
+    },
     async getAccount(login) { const r = accountRows.get(String(login).toLowerCase()); return r ? structuredClone(r) : null; },
     async listAccounts() {
       return [...accountRows.values()].map((r) => ({
