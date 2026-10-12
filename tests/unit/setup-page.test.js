@@ -577,7 +577,7 @@ describe('IN-06 owner-only scratch Organization designation', () => {
     account: { login: 'example-org', type: 'Organization' }, repository_selection: 'all',
     permissions: MANIFEST_PERMISSIONS, suspended_at: null, ...overrides });
 
-  it('requires an exact GitHub-verified App installation and logs the owner's explicit grant', async () => {
+  it('requires an exact GitHub-verified App installation and logs explicit owner approval', async () => {
     const t = await build(); await withApp(t);
     t.gh.when('GET /app/installations/{installation_id}').reply(200, installation());
     const yes = await post(t);
