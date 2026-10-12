@@ -4,7 +4,10 @@ const run={id:'run-clean-004',account:'example-org',connection:'client-a',status
 const item=(type,id,rest={})=>({run_id:run.id,object_type:type,owner:run.account,repo:'fixture',object_id:id,cleaned:false,...rest});
 describe('V-2 exact run cleanup planning',()=>{
   it('sorts only recorded IDs, without deleting or inventing matches',()=>{
-    const output=planDevCleanup({run,objects:[item('repo','example-org/fixture'),item('branch','rtc/run-clean-004/one'),item('pr','12'),item('label','rtc-run-run-clean-004')],intents:[{run_id:run.id,step_id:'seed',status:'recorded',object_type:'repo',owner:run.account,repo:'fixture',object_id:'example-org/fixture',created_sha:null}]});
+    const objects=[item('repo','example-org/fixture'),item('branch','rtc/run-clean-004/one'),item('pr','12'),item('label','rtc-run-run-clean-004')];
+    const intents=objects.map((o,i)=>({run_id:run.id,step_id:`step-${i}`,status:'recorded',
+      object_type:o.object_type,owner:o.owner,repo:o.repo,object_id:o.object_id,created_sha:null}));
+    const output=planDevCleanup({run,objects,intents});
     expect(output.entries.map(e=>e.type)).toEqual(['pr','branch','label','repo']);
     expect(output.requires_confirmation).toBe(true);expect(output.remote_verified).toBe(false);
   });
