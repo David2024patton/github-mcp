@@ -25,6 +25,9 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-12 — V-1 review-comment foundation (PR #76):** Added strictly run-owned inline PR comment creation with exact recorded PR/head SHA, persisted numeric IDs and independent original-line/commit readback. Refuses foreign/stale PR targets and uncertain automatic replay. Does not misidentify a review comment as a GraphQL thread; GraphQL thread mapping follows. IN-06/live acceptance pending.
+
+
 **2026-10-12 — V-1 real three-level draft PR stack (PR #75):** `github_dev_seed('stack-of-three')` now executes only in verified private scratch Organizations and journals 14 objects: repository, run label, three branches, three committed run files, three linked draft PRs and three label associations. No merges or CI dispatch. Independent readback verifies every PR/base/head, exact SHA, marker, file, branch ref, label and durable object. All three write doors are covered with fake GitHub request validation; live connected acceptance still requires IN-06. `pr-with-threads` and `webhook-target` remain plan-only.
 
 

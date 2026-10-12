@@ -313,7 +313,7 @@ Card(s): V-1 … V-5. Preview-only (contract §10): every `github_dev_*` tool re
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_dev_list_scenarios` | Named scenarios github_dev_seed can build (e.g. repo-with-failing-ci, open-pr-with-review-threads, release-train) | — | N | — | B | R | V-1 built #68 |
-| `github_dev_seed` | Build a scenario in the scratch account or on test branches: repos, branches, commits, PRs, issues, labels, workflow files; preview lists every object | P | N | I | B | E | V-1 built #70–#75 (five scratch scenarios incl. three stacked draft PRs; run-owned helpers) |
+| `github_dev_seed` | Build a scenario in the scratch account or on test branches: repos, branches, commits, PRs, issues, labels, workflow files; preview lists every object | P | N | I | B | E | V-1 built #70–#76 (five scratch scenarios; exact review-comment infrastructure) |
 | `github_dev_list_runs` | Runs with their recorded objects and cleanup state | — | N | — | B | R | V-1 built #68 |
 | `github_dev_create_scratch_repo` | Throwaway repository in the scratch account, tagged with the run | P | N | I | B | E | V-1 built #69 |
 | `github_dev_cleanup` | Remove exactly the objects a run created (preview, then confirm); reports per object | C | N | I | B | E | V-2 |
