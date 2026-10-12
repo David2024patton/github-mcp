@@ -13,7 +13,6 @@ const marker=id=>`rtc_run=${id}`;
 const filePath=id=>`.github/workflows/rtc-${id}.yml`;
 const branchName=id=>`rtc/${id}/failure-ref`;
 const topic=id=>`rtc-run-${id}`;
-const route={owner:'',repo:''};
 const repoGet=(ctx,owner,repo)=>missing(async()=>(await (await octo(ctx,owner)).request('GET /repos/{owner}/{repo}',{owner,repo})).data);
 const workflowSource=(id,failing)=>`name: RTC ${id}
 on:
@@ -39,6 +38,9 @@ export const seed=defineGithubWrite({
   read:async(args,ctx,target)=>{
     await requireScratchOrg(ctx,target.owner); // before any outbound GitHub read
     const plan=planScenario(args.scenario,{runId:args.runId,owner:target.owner,repo:args.repo,scratch:true});
+    const run=await ctx.db.getDevRun({id:args.runId,account:target.owner,connection:ctx.connection.client_id});
+    if(run&&(run.scenarios?.length!==1||run.scenarios[0]!==args.scenario))
+      throw new TypeError('A run is bound to its original scenario and cannot be retargeted.');
     const existing=await repoGet(ctx,target.owner,args.repo);
     if(existing){
       const prior=await ctx.db.getDevIntent({runId:args.runId,account:target.owner,
