@@ -18,7 +18,6 @@ const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9][A-Za-z
 const MAX={type:'integer',minimum:1,maximum:50};
 const ALL_PREVIEW={type:'boolean'};
 const LABEL_DETAIL={type:'boolean'};
-const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9][A-Za-z0-9._-]*$'};
 const CURSOR={type:'string',minLength:12,maxLength:256,pattern:'^[A-Za-z0-9_-]{12,256}'};
 
 function scope(args,ctx) {
