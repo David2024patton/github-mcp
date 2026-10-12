@@ -25,6 +25,9 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-12 — V-1 inspection tools (PR #68):** `github_dev_list_scenarios` returns truthful seven named **plan-only** blueprints, with an optional deterministic per-run plan and real scratch-account verification. `github_dev_list_runs` shows only the caller's account/connection runs, exact created-object ledger and claimed/uncertain/recorded step status with strict bounds; read dispatch never calls GitHub. Fake and PostgreSQL share a new bounded intent-list contract. No seed or scratch creation is enabled; IN-06 remains pending. Next: guarded scratch create/seed.
+
+
 **2026-10-12 — V-1 durable execution-intent journal (PR #67):** A scoped, atomic `dev_run_intents` ledger claims each scenario step before outbound GitHub writes; concurrent workers cannot claim the same step. Uncertain outcomes never automatically replay; recording the exact created ID and completing an intent happen in one PostgreSQL statement. Fake and disposable PostgreSQL run the same behavior and concurrency assertions. No GitHub seed/scratch write tool is exposed; IN-06 remains pending. Next: expose safe run/scenario inspection and develop guarded scratch operations.
 
 

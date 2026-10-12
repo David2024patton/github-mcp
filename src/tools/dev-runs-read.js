@@ -1,0 +1,56 @@
+// V-1 read-only development-run inspection. Planning never implies that a scenario can execute.
+import { defineRead } from './define-read.js';
+import { listScenarioBlueprints, planScenario } from '../dev/scenarios.js';
+import { boundedRunLimit } from '../dev/ledger.js';
+
+const OWNER={type:'string',maxLength:39,description:'Connected account (default: your default account)'};
+const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
+const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9][A-Za-z0-9._-]*$'};
+const MAX={type:'integer',minimum:1,maximum:50,description:'Maximum records (default 20)'};
+
+function scope(args,ctx) {
+  const owner=String(args.owner??ctx.connection?.default_account??'');
+  const matched=ctx.connection?.accounts?.find(a=>a.toLowerCase()===owner.toLowerCase());
+  if(!matched)throw new TypeError('The account is not in this connection.');
+  const connection=ctx.connection?.client_id;
+  if(typeof connection!=='string'||!connection)throw new TypeError('The connection ID is unavailable.');
+  return {account:matched,connection};
+}
+const readScenarios=defineRead({
+  name:'github_dev_list_scenarios',area:'dev',audience:['B'],
+  description:'Show the seven scenario plans and prerequisites; no scenario can run until a real seed tool is built.',
+  properties:{owner:OWNER,repo:REPO,runId:RUN,name:{type:'string',enum:listScenarioBlueprints().map(x=>x.name)}},
+  handler:async(args,ctx)=>{
+    const items=listScenarioBlueprints().map(x=>({...x,execution_available:false,status:'plan_only'}));
+    if(!args.name&&!args.repo&&!args.runId&&!args.owner)return {count:items.length,items,note:'Plans only. No GitHub objects are created.'};
+    if(!args.name||!args.repo||!args.runId)throw new TypeError('To view a detailed plan, provide name, repo and runId together.');
+    const {account}=scope(args,ctx);
+    const row=await ctx.db.getAccount(account);
+    const scratch=!!(row?.is_scratch&&row.account_type==='Organization'&&row.installation_status==='active'&&row.repository_selection==='all');
+    const plan=planScenario(args.name,{runId:args.runId,owner:account,repo:args.repo,scratch});
+    return {...plan,execution_available:false,verified_scratch_account:scratch,note:'Preview only: external execution is not built; IN-06 gates scratch use.'};
+  }
+});
+const readRuns=defineRead({
+  name:'github_dev_list_runs',area:'dev',audience:['B'],
+  description:'Read this connection’s stored development runs, created object IDs and pending or uncertain step claims.',
+  properties:{owner:OWNER,runId:RUN,max:MAX},
+  handler:async(args,ctx)=>{
+    const {account,connection}=scope(args,ctx);
+    const limit=boundedRunLimit(args.max??20);
+    if(!args.runId){
+      const items=await ctx.db.listDevRuns({account,connection,limit});
+      return {account,count:items.length,items};
+    }
+    const run=await ctx.db.getDevRun({id:args.runId,account,connection});
+    if(!run)throw new TypeError('No development run with that ID belongs to this connection.');
+    const [objects,intents]=await Promise.all([
+      ctx.db.listDevObjects({runId:args.runId,account,connection,limit}),
+      ctx.db.listDevIntents({runId:args.runId,account,connection,limit})
+    ]);
+    return {run,objects,intents,limit,more_may_exist:objects.length===limit||intents.length===limit,
+      note:'Only exact recorded object IDs may be cleaned up. Uncertain intents cannot be replayed blindly.'};
+  }
+});
+export const tools=[readScenarios.tool,readRuns.tool];
+export const handlers={github_dev_list_scenarios:readScenarios.handler,github_dev_list_runs:readRuns.handler};

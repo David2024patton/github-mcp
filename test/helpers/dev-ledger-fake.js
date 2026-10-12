@@ -70,6 +70,13 @@ export function createFakeDevLedger({ clock = Date.now } = {}) {
       row.status='recorded';row.object_id=objectId;row.created_sha=createdSha;row.updated_at=new Date(clock());
       return true;
     },
+    async listDevIntents({runId,account,connection,limit=50}) {
+      validateRun({id:runId,account,connection});boundedRunLimit(limit);
+      if(!scoped({id:runId,account,connection}))return [];
+      return [...intents].filter(([key])=>JSON.parse(key)[0]===runId)
+        .map(([,row])=>structuredClone(row))
+        .sort((a,b)=>a.created_at-b.created_at||a.step_id.localeCompare(b.step_id)).slice(0,limit);
+    },
     async listDevObjects({ runId, account, connection, limit=50 }) {
       boundedRunLimit(limit);
       if (!scoped({ id:runId,account,connection })) return [];

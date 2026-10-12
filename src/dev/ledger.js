@@ -102,6 +102,14 @@ export function createDevLedger(sql) {
         SELECT object_id FROM claimed`;
       return rows.length === 1;
     },
+    async listDevIntents({ runId, account, connection, limit = 50 }) {
+      validateRun({ id: runId, account, connection }); boundedRunLimit(limit);
+      return await sql`SELECT i.step_id, i.object_type, i.owner, i.repo, i.object_name,
+          i.status, i.object_id, i.created_sha, i.created_at, i.updated_at
+        FROM dev_run_intents i JOIN dev_runs r ON r.id = i.run_id
+        WHERE r.id = ${runId} AND r.account = ${account} AND r.connection = ${connection}
+        ORDER BY i.created_at, i.step_id LIMIT ${limit}`;
+    },
     async listDevObjects({ runId, account, connection, limit = 50 }) {
       validateRun({ id: runId, account, connection }); boundedRunLimit(limit);
       return await sql`SELECT o.run_id, o.object_type, o.owner, o.repo, o.object_id, o.created_sha,
