@@ -7,7 +7,7 @@ repositories.
 
 ## Next
 
-- **Batch G implementation COMPLETE:** G-1 through G-6 are built (#39–#64); acceptance evidence and limitations are in `docs/audits/G-BATCH-CLOSEOUT.md` (#66). **Next V-1:** real scenario execution with per-object recording, safe replay, and IN-06-gated scratch-only repositories. PR #65 shipped the run ledger and plans only; no live seed or scratch operations exist. Batch V remains IN_PROGRESS.
+- **Batch G implementation COMPLETE:** G-1 through G-6 are built (#39–#64); acceptance evidence and limitations are in `docs/audits/G-BATCH-CLOSEOUT.md` (#66). **Next V-1:** the #67 durable step-intent journal, then real scenario execution with per-object recording, safe replay, and IN-06-gated scratch-only repositories. PR #65 shipped the run ledger and plans only; no live seed or scratch operations exist. Batch V remains IN_PROGRESS.
 - Batches A, B, C, D finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
@@ -24,6 +24,9 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-12 — V-1 durable execution-intent journal (PR #67):** A scoped, atomic `dev_run_intents` ledger claims each scenario step before outbound GitHub writes; concurrent workers cannot claim the same step. Uncertain outcomes never automatically replay; recording the exact created ID and completing an intent happen in one PostgreSQL statement. Fake and disposable PostgreSQL run the same behavior and concurrency assertions. No GitHub seed/scratch write tool is exposed; IN-06 remains pending. Next: expose safe run/scenario inspection and develop guarded scratch operations.
+
 
 **2026-10-12 — Batch G phase-gate closeout (PR #66):** Cross-checked every G-1…G-6 tool catalog row, merged implementation PRs and PLAN acceptance. Implementation complete; no live account, deployment, App or production acceptance has been claimed. `docs/audits/G-BATCH-CLOSEOUT.md` records evidence and pending owner-dependent smoke tests. Current priority V-1, IN-06 still pending.
 
