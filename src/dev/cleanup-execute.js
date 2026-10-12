@@ -25,14 +25,16 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     !Array.isArray(objects)||!run?.id)
     throw refusal('Scratch repository default branch and exact run journal are required.');
   const common={owner,repo,per_page:100};
-  const [branches,pulls,issues,tags,releases]=await Promise.all([
+  const [branches,pulls,issues,tags,releases,rulesets,hooks]=await Promise.all([
     listAll(github,'GET /repos/{owner}/{repo}/branches',common,{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/pulls',{...common,state:'all'},{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/issues',{...common,state:'all'},{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/tags',common,{max:100}),
-    listAll(github,'GET /repos/{owner}/{repo}/releases',common,{max:100})
+    listAll(github,'GET /repos/{owner}/{repo}/releases',common,{max:100}),
+    listAll(github,'GET /repos/{owner}/{repo}/rulesets',{...common,includes_parents:false},{max:100}),
+    listAll(github,'GET /repos/{owner}/{repo}/hooks',common,{max:100})
   ]);
-  const inventories=[branches,pulls,issues,tags,releases];
+  const inventories=[branches,pulls,issues,tags,releases,rulesets,hooks];
   if(inventories.some(x=>x.capped||!Array.isArray(x.items)))
     throw refusal('Scratch inventory is incomplete; repository deletion refused.');
   const owns=(type,id)=>objects.some(x=>x.object_type===type&&
@@ -107,7 +109,34 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
       throw refusal('An unrecorded, published or changed release exists in the scratch repository. Deletion refused.');
     ids.add(id);
   }
-  return {branch_count:branches.items.length,pr_count:pulls.items.length,issue_count:issues.items.length,tag_count:tags.items.length,release_count:releases.items.length};
+  // V-4 webhook-target has not been implemented, so not even a run-marked
+  // webhook is safe to silently destroy with its parent scratch repository.
+  if(hooks.items.length>0)
+    throw refusal('A repository webhook exists. V-4 webhook cleanup is not verified; scratch deletion refused.');
+  const idsOfRules=new Set();
+  for(const s of rulesets.items) {
+    if(!Number.isSafeInteger(s?.id)||s.id<=0||idsOfRules.has(s.id)||
+      !objects.some(x=>x.object_type==='ruleset'&&x.object_id===String(s.id)&&
+        x.owner.toLowerCase()===owner.toLowerCase()&&x.repo===repo)||
+      s.name!==`rtc-run-${run.id}`||s.source_type!=='Repository')
+      throw refusal('A foreign or changed scratch ruleset exists; deletion refused.');
+    idsOfRules.add(s.id);
+    const live=(await github.request('GET /repos/{owner}/{repo}/rulesets/{ruleset_id}',{
+      owner,repo,ruleset_id:s.id,includes_parents:false})).data;
+    const rule=live?.rules?.[0],params=rule?.parameters;
+    if(live?.id!==s.id||live.name!==s.name||live.target!=='branch'||live.enforcement!=='active'||
+      live.source_type!=='Repository'||live.rules?.length!==1||
+      live.conditions?.ref_name?.include?.length!==1||
+      live.conditions.ref_name.include[0]!=='~DEFAULT_BRANCH'||
+      !Array.isArray(live.conditions.ref_name.exclude)||live.conditions.ref_name.exclude.length!==0||
+      rule.type!=='required_status_checks'||params?.strict_required_status_checks_policy!==true||
+      params.required_status_checks?.length!==1||
+      params.required_status_checks[0]?.context!=='ci'||
+      !Array.isArray(live.bypass_actors)||live.bypass_actors.length!==0)
+      throw refusal('A run-owned scratch ruleset was modified after creation; deletion refused.');
+  }
+  return {branch_count:branches.items.length,pr_count:pulls.items.length,issue_count:issues.items.length,tag_count:tags.items.length,release_count:releases.items.length,
+    ruleset_count:rulesets.items.length,webhook_count:0};
 }
 
 export async function readCleanupRun(ctx,owner,repo,runId) {

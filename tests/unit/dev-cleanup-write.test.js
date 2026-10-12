@@ -20,6 +20,8 @@ function arrange(gh,outcome){
   gh.when('GET /repos/{owner}/{repo}/issues').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/tags').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/releases').reply(200,[]);
+  gh.when('GET /repos/{owner}/{repo}/hooks').reply(200,[]);
+  gh.when('GET /repos/{owner}/{repo}/rulesets').reply(200,[]);
   gh.when('DELETE /repos/{owner}/{repo}').reply(204);
 }
 runWriteContract({label:'github_dev_cleanup exact scratch',definition:def,
@@ -180,6 +182,42 @@ describe('V-2 protected run deletion',()=>{
     const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
     expect(out.done).toBe(false);
     expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(false);
+  });
+  it('refuses unrecorded webhook or foreign repository ruleset before deleting scratch',async()=>{
+    for(const [route,items] of [
+      ['GET /repos/{owner}/{repo}/hooks',[{id:72,name:'web',active:true}]],
+      ['GET /repos/{owner}/{repo}/rulesets',[{id:73,name:'foreign',source_type:'Repository'}]]
+    ]){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      w.gh.when(route).reply(200,items);
+      const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(out.done).toBe(false);
+      expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(false);
+      expect(w.gh.invalid).toEqual([]);
+    }
+  });
+  it('requires unchanged recorded required-ci scratch ruleset and refuses drift',async()=>{
+    for(const altered of [false,true]){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+        type:'ruleset',owner:OWNER,repo:REPO,objectId:'321'});
+      w.gh.when('GET /repos/{owner}/{repo}/rulesets').reply(200,[
+        {id:321,name:`rtc-run-${RUN}`,source_type:'Repository'}
+      ]);
+      w.gh.when('GET /repos/{owner}/{repo}/rulesets/{ruleset_id}').reply(200,{
+        id:321,name:`rtc-run-${RUN}`,source_type:'Repository',
+        target:'branch',enforcement:'active',bypass_actors:[],
+        conditions:{ref_name:{include:['~DEFAULT_BRANCH'],exclude:[]}},
+        rules:[{type:'required_status_checks',parameters:{
+          strict_required_status_checks_policy:true,
+          required_status_checks:[{context:altered?'other':'ci'}]
+        }}]
+      });
+      const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(out.done).toBe(!altered);
+      expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(!altered);
+      expect(w.gh.invalid).toEqual([]);
+    }
   });
   it('never allows a production connection to perform developer cleanup',async()=>{
     const w=await makeWorld({scratchAccount:true,mode:'production'});await prepare(w);arrange(w.gh,'ok');
