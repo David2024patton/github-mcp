@@ -68,6 +68,43 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
       result:{items:[1]},mode:'preview'});
     expect(json(response).result).not.toHaveProperty('kept_result');
   });
+  it('forwards result pagination and selected fields through the existing guarded handler',async()=>{
+    const handle='res_'+'b'.repeat(22);
+    const seen=[];
+    const db={getRtcPass:async()=>token,getAccount:async()=>account,consumeRtcPassRate:async()=>true};
+    const handler=createRtcHttpHandler({db,registry,dispatch:async({name,args,connection})=>{
+      seen.push({name,args,client:connection.client_id});
+      return {structuredContent:{page_info:{page:args.page},items:[{summary:'owned'}]}};
+    }});
+    const req=request('GET',{}, {authorization:'Bearer '+pass});
+    req.query={handle,page:'3',pageSize:'5',fields:'summary,created_at',offset:'120'};
+    const response=await call((a,b)=>handler(a,b,'results'),req);
+    expect(response.statusCode).toBe(200);
+    expect(json(response)).toMatchObject({ok:true,result:{page_info:{page:3}}});
+    expect(seen).toEqual([{name:'github_get_result',args:{handle,page:3,pageSize:5,
+      fields:['summary','created_at'],offset:120},client:token.client_id}]);
+  });
+  it('rejects malformed saved-result query before dispatch',async()=>{
+    const handle='res_'+'c'.repeat(22);
+    let calls=0;
+    const db={getRtcPass:async()=>token,getAccount:async()=>account,consumeRtcPassRate:async()=>true};
+    const handler=createRtcHttpHandler({db,registry,dispatch:async()=>{
+      calls++;return {structuredContent:{safe:true}};
+    }});
+    for(const query of [
+      {page:'0'},{page:'1.5'},{page:'100001'},{page:['1','2']},
+      {pageSize:'101'},{offset:'-1'},{offset:'100000001'},
+      {fields:''},{fields:'one,,two'},{fields:Array.from({length:21},()=> 'x')},
+      {fields:'a'.repeat(65)},{unexpected:'ignored'}
+    ]){
+      const req=request('GET',{}, {authorization:'Bearer '+pass});
+      req.query={handle,...query};
+      const response=await call((a,b)=>handler(a,b,'results'),req);
+      expect(response.statusCode,JSON.stringify(query)).toBe(400);
+      expect(json(response).error.code).toBe('invalid_args');
+    }
+    expect(calls).toBe(0);
+  });
   it('refuses the complete malformed batch before any dispatch',async()=>{
     let dispatched=0;
     const db={getRtcPass:async()=>token,getAccount:async()=>account,consumeRtcPassRate:async()=>true};
