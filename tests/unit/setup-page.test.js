@@ -636,3 +636,42 @@ describe('IN-06 owner-only scratch Organization designation', () => {
     expect((await t.db.getAccount('example-org')).is_scratch).toBe(false);
   });
 });
+
+
+describe('canonical setup URL and strict mobile-browser error guidance', () => {
+  it('redirects alternate public aliases before setting any CSRF cookie', async () => {
+    const t=await build();
+    const other=await call(t.handlers.setup,request('GET',{}, {host:'github-mcp-xi.vercel.app'}));
+    expect(other.statusCode).toBe(302);
+    expect(other.headers.Location).toBe(`${ORIGIN}/api/github/setup`);
+    expect(other.headers['Set-Cookie']).toBeUndefined();
+    expect(other.headers['Cache-Control']).toBe('no-store');
+    const canonical=await call(t.handlers.setup,request('GET',{}, {host:new URL(ORIGIN).host}));
+    expect(canonical.statusCode).toBe(200);
+    expect(canonical.headers['Set-Cookie']).toMatch(/SameSite=Strict/);
+  });
+  it('never trusts host/alias as permission to POST without exact Origin', async()=>{
+    const t=await build();await t.open();
+    for(const origin of ['', 'null','https://evil.example','https://github-mcp-xi.vercel.app']) {
+      const req=request('POST',{action:'status',passphrase:PASS,csrf:t.page.csrf},
+        {host:new URL(ORIGIN).host,origin,cookie:`github_setup_csrf=${t.page.cookie}`});
+      const res=await call(t.handlers.setup,req);
+      expect(res.statusCode).toBe(403);
+      expect(res.body).toContain('Secure browser required');
+      expect(res.body).toContain(ORIGIN);
+    }
+    expect((await t.post({action:'status'})).statusCode).toBe(200);
+  });
+  it('forwards only validated setup query fields when redirecting an alias',async()=>{
+    const t=await build();
+    const q={secret:'a'.repeat(44),show:'b'.repeat(44),installation_id:'321',malicious:'evil'};
+    const response=await call(t.handlers.setup,request('GET',q,{host:'another.vercel.app'}));
+    expect(response.statusCode).toBe(302);
+    const url=new URL(response.headers.Location);
+    expect(url.origin).toBe(ORIGIN);
+    expect(url.pathname).toBe('/api/github/setup');
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      installation_id:'321',show:'b'.repeat(44),secret:'a'.repeat(44)
+    });
+  });
+});

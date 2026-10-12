@@ -6,6 +6,9 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — mobile setup URL diagnostic (#82):** Owner reported `Origin check failed` during GitHub App setup. Vercel production `PUBLIC_BASE_URL` is correct; a browser may be on a different deployment alias or omit Origin. Canonicalize alternate production setup GET requests to the configured HTTPS origin before minting the Strict CSRF cookie; leave POST's explicit exact-Origin requirement intact and provide a helpful 403 browser-link explanation. The secret/CSRF/passphrase guards are unchanged. Test alias redirects and malicious/absent Origin. Owner can also open the canonical link in external Chrome.
+
+
 - **IN-06 account onboarding next:** Vercel project `github-mcp` on existing Pro team is READY on reviewed main `f08c2c9`; isolated Neon project `green-surf-51243848` uses a 0.25-CU fixed compute with five-minute idle suspension. The owner created `robinson-ai-scratch`; secure scratch designation through the private setup page is introduced in #81. Next owner step: copy the generated Vercel administrator passphrase and encryption key into a password manager privately; create/install the **custom GitHub MCP's own** scratch GitHub App with All repositories and confirm scratch mode on its setup page. No actual GitHub App or live scratch acceptance claimed. GitHub account production remains OFF.
 - **Batch G implementation COMPLETE:** G-1 through G-6 are built (#39–#64); acceptance evidence and limitations are in `docs/audits/G-BATCH-CLOSEOUT.md` (#66). **Next V-1:** the #67 durable step-intent journal, then remaining V-1 scenario work, preserving per-object recording, safe replay, and IN-06-gated scratch isolation. PRs #69–#70 already built guarded scratch creation and two real scenarios; #71 adds a third. Batch V remains IN_PROGRESS.
 - Batches A, B, C, D finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
