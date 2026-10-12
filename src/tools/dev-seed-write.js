@@ -67,11 +67,15 @@ export const seed=defineGithubWrite({
         return {objectId:result.full_name};
       }});
     if(args.scenario==='release-train'){
+      const scratchRepo=await repoGet(ctx,target.owner,args.repo);
+      const defaultBranch=scratchRepo?.default_branch;
+      if(typeof defaultBranch!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$/.test(defaultBranch))
+        throw refusal('GitHub did not report a usable scratch default branch.');
       const head=(await github.request('GET /repos/{owner}/{repo}/git/ref/{ref}',{
-        owner:target.owner,repo:args.repo,ref:'heads/main'
+        owner:target.owner,repo:args.repo,ref:`heads/${defaultBranch}`
       })).data;
       const sha=head?.object?.sha;
-      if(head?.ref!=='refs/heads/main'||!/^[a-f0-9]{40}$/.test(sha??''))
+      if(head?.ref!==`refs/heads/${defaultBranch}`||!/^[a-f0-9]{40}$/.test(sha??''))
         throw refusal('GitHub did not confirm the scratch main commit for test release tags.');
       const tags=[];
       for(const tag of RELEASE_TAGS){
@@ -92,7 +96,7 @@ export const seed=defineGithubWrite({
           const result=(await github.request('POST /repos/{owner}/{repo}/releases',{
             owner:target.owner,repo:args.repo,tag_name:'v0.3.0',name:'RTC draft v0.3.0',
             body:`Draft-only release fixture ${marker(args.runId)}`,draft:true,
-            target_commitish:'main'
+            target_commitish:defaultBranch
           })).data;
           if(!Number.isSafeInteger(result?.id)||result.id<=0||result.draft!==true||
             result.tag_name!=='v0.3.0')throw refusal('GitHub did not confirm the draft release.');
@@ -175,7 +179,7 @@ export const seed=defineGithubWrite({
       }
     }else{
       if(after.workflow?.path!==filePath(args.runId)||typeof after.workflow.content!=='string')return false;
-      const content=Buffer.from(after.workflow.content.replace(/\\s/g,''),'base64').toString('utf8');
+      const content=Buffer.from(after.workflow.content.replace(/\s/g,''),'base64').toString('utf8');
       if(content!==workflowSource(args.runId,args.scenario==='failing-ci'))return false;
     }
     if(args.scenario==='repo-basic'&&after.extra?.name!==topic(args.runId))return false;
@@ -187,7 +191,10 @@ export const seed=defineGithubWrite({
   },
   inverse:()=>null,
   present:({args,response})=>({run_id:args.runId,scenario:args.scenario,created:response.data.objects,
-    manual_dispatch_only:true,note:'Workflow files are real, but no Actions run was dispatched; IN-06 is required to use a real scratch organization.'})
+    manual_dispatch_only:args.scenario!=='release-train',
+    note:args.scenario==='release-train'
+      ? 'Draft release and tags only; nothing was published, dispatched, or live-tested without IN-06.'
+      : 'Workflow files are real, but no Actions run was dispatched; IN-06 is required for live scratch usage.'})
 });
 export const tools=[seed.tool];
 export const handlers={[seed.tool.name]:seed.handler};
