@@ -14,6 +14,7 @@ const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}
 const OWNER={type:'string',maxLength:39};
 const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9][A-Za-z0-9._-]*$'};
 const marker=id=>`rtc_run=${id}`;
+import { matchesRunDescription } from '../dev/run-marker.js';
 const filePath=id=>`.github/workflows/rtc-${id}.yml`;
 const branchName=id=>`rtc/${id}/failure-ref`;
 const topic=id=>`rtc-run-${id}`;
@@ -50,7 +51,7 @@ export const seed=defineGithubWrite({
       const prior=await ctx.db.getDevIntent({runId:args.runId,account:target.owner,
         connection:ctx.connection.client_id,stepId:'seed-repo'});
       if(!prior||prior.status!=='recorded'||!same(prior.object_id,`${target.owner}/${args.repo}`)||
-        existing.private!==true||!String(existing.description??'').includes(marker(args.runId)))
+        existing.private!==true||!matchesRunDescription(existing.description,args.runId))
         throw new TypeError('The named repository already exists and was not recorded as this run\'s exact scratch seed. Refusing to change it.');
     }
     return {existing,plan};
@@ -196,7 +197,7 @@ export const seed=defineGithubWrite({
   verify:async({args,ctx,target,after,response})=>{
     if(!after?.repository||after.repository.private!==true||
       !same(after.repository.full_name,`${target.owner}/${args.repo}`)||
-      !String(after.repository.description??'').includes(marker(args.runId)))return false;
+      !matchesRunDescription(after.repository.description,args.runId))return false;
     if(args.scenario==='pr-with-threads'){
       if(!verifyReviewScenario({id:args.runId,after,response}))return false;
     }else if(args.scenario==='stack-of-three'){
@@ -214,7 +215,7 @@ export const seed=defineGithubWrite({
       if(response.data.objects.length!==5||after.tags?.length!==3||
         after.release?.draft!==true||after.release?.tag_name!=='v0.3.0'||
         String(after.release.id)!==response.data.objects[4].objectId||
-        !String(after.release.body??'').includes(marker(args.runId)))return false;
+        !matchesRunDescription(after.release.body,args.runId))return false;
       for(let i=0;i<3;i++){
         if(after.tags[i]?.ref!==`refs/tags/${RELEASE_TAGS[i]}`||
           after.tags[i]?.object?.sha!==response.data.objects[i+1].createdSha)return false;

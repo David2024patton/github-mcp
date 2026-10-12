@@ -3,6 +3,7 @@
 import {runDevMutationOnce} from './execute.js';
 import {RUN_ID} from './ledger.js';
 import {refusal} from '../tools/github-write.js';
+import {matchesRunFooter} from './run-marker.js';
 
 const SHA=/^[a-f0-9]{40}$/;
 const pathFor=id=>`rtc/${id}/review.md`;
@@ -24,7 +25,7 @@ export async function createOwnedReviewComment(ctx,{github,run,stepId,prNumber,c
   const p={owner:run.owner,repo:run.repo,pull_number:prNumber};
   const pr=(await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}',p)).data;
   if(pr?.number!==prNumber||pr.draft!==true||pr.state!=='open'||
-    pr.head?.sha!==commitSha||!String(pr.body??'').includes(`rtc_run=${run.runId}`))
+    pr.head?.sha!==commitSha||!matchesRunFooter(pr.body,run.runId))
     throw refusal('Draft PR head no longer matches the run-owned fixture commit.');
   return runDevMutationOnce(ctx,{...run,stepId,type:'review_comment',
     objectName:`${prNumber}:${line}`,create:async()=>{

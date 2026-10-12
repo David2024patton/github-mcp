@@ -60,6 +60,18 @@ describe('non-scratch safety hardening',()=>{
   expect(w.gh.calls.filter(c=>['PATCH','DELETE'].includes(c.method)).map(c=>c.route))
     .toEqual(['PATCH /repos/{owner}/{repo}/pulls/{pull_number}','DELETE /repos/{owner}/{repo}/git/refs/{ref}']);
  });
+ it('refuses foreign PR footer prefix even when the branch SHA is recorded',async()=>{
+  const w=await makeWorld();await prepare(w);arrange(w.gh,'ok');
+  await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+    type:'pr',owner:OWNER,repo:REPO,objectId:'12',createdSha:SHA});
+  w.gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}').reply(200,{
+    number:12,merged:false,state:'open',draft:true,body:'<!-- rtc_run='+RUN+'-other -->',
+    head:{ref:BR,sha:SHA,repo:{full_name:OWNER+'/'+REPO}}
+  });
+  const result=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+  expect(result.done).toBe(false);
+  expect(w.gh.calls.filter(c=>['PATCH','DELETE'].includes(c.method))).toHaveLength(0);
+ });
  it('refuses a converted ready-for-review PR instead of closing someone else\'s active work',async()=>{
   const w=await makeWorld();await prepare(w);arrange(w.gh,'ok');
   await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',

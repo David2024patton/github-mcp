@@ -2,16 +2,16 @@
 import { missing, octo, refusal } from '../tools/github-write.js';
 import { requireScratchOrg } from './scratch.js';
 import { planDevCleanup } from './cleanup.js';
+import { matchesRunDescription, matchesRunFooter } from './run-marker.js';
 import { inspectTestResources, cleanupTestResources } from './cleanup-non-scratch.js';
 
-const marker = id => `rtc_run=${id}`;
 const equal = (a,b) => String(a??'').toLowerCase() === String(b??'').toLowerCase();
 const getRepo = (github,owner,repo) => missing(async()=>(await github.request('GET /repos/{owner}/{repo}',{owner,repo})).data);
 const getPull = (github,owner,repo,n) => missing(async()=>(await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}',{owner,repo,pull_number:n})).data);
 
 export function requireExactScratchRepo(repo,run,owner,name) {
   if(repo && (!equal(repo.full_name,`${owner}/${name}`) || repo.private!==true ||
-    !String(repo.description??'').includes(marker(run.id))))
+    !matchesRunDescription(repo.description,run.id)))
     throw refusal('The live repository is not the exact private, run-marked scratch repository. Deletion refused.');
 }
 export async function readCleanupRun(ctx,owner,repo,runId) {
@@ -60,7 +60,7 @@ export async function executeCleanup(ctx,{owner,repo,runId,before}) {
       const number=Number(item.object_id);
       if(!Number.isSafeInteger(number)||number<=0)throw refusal('Invalid recorded pull-request number.');
       const pull=await getPull(github,owner,repo,number);
-      if(!pull||pull.merged===true||!String(pull.body??'').includes(marker(runId))||
+      if(!pull||pull.merged===true||!matchesRunFooter(pull.body,runId)||
         !equal(pull.head?.repo?.full_name,`${owner}/${repo}`))
         throw refusal(`PR #${number} was not verified as a run-owned unmerged pull request; cleanup stopped.`);
       if(pull.state==='open') {
