@@ -24,6 +24,26 @@ const name=(req,key)=>{
   return typeof value==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(value)?value:null;
 };
 const deny=(res,status,body)=>{send(res,status,body);return null;};
+function parseResultQuery(query={}) {
+  const paging={};
+  for(const [key,min,max] of [['page',1,100000],['pageSize',1,100],['offset',0,100000000]]){
+    if(query[key]===undefined)continue;
+    const value=query[key];
+    if(typeof value!=='string'||!/^[0-9]+$/.test(value))return null;
+    const num=Number(value);
+    if(!Number.isSafeInteger(num)||num<min||num>max)return null;
+    paging[key]=num;
+  }
+  if(query.fields!==undefined){
+    const values=Array.isArray(query.fields)?query.fields:[query.fields];
+    if(values.some(v=>typeof v!=='string'))return null;
+    const fields=values.flatMap(v=>v.split(','));
+    if(fields.length<1||fields.length>20||fields.some(v=>!v||v.length>64))return null;
+    paging.fields=fields;
+  }
+  if(Object.keys(query).some(k=>!['handle','page','pageSize','offset','fields'].includes(k)))return null;
+  return paging;
+}
 async function authenticate(req,res,db){
   const bearer=/^Bearer (rtc_pass_[A-Za-z0-9_-]{43})$/.exec(String(req.headers?.authorization??''));
   if(!bearer)return deny(res,401,rtcError('permission'));
@@ -144,7 +164,9 @@ export function createRtcHttpHandler({db,registry,dispatch}){
         const handle=name(req,'handle');
         if(req.method!=='GET'||!handle||!/^res_[A-Za-z0-9_-]{20,64}$/.test(handle))
           return send(res,404,rtcError('not_found'));
-        const result=await run('github_get_result',{handle},connection);
+        const paging=parseResultQuery(req.query);
+        if(!paging)return send(res,400,rtcError('invalid_args'));
+        const result=await run('github_get_result',{handle,...paging},connection);
         return send(res,result.status===200?200:404,
           result.status===200?result.body:rtcError('not_found'));
       }
