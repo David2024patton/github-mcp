@@ -200,3 +200,6 @@ permissions actually granted per account here once Chris installs the Apps.
 ## V-1 execution-intent journal (#67)
 
 `src/dev/ledger.js` (mounted in `createDb(sql)`) now reserves each scenario step in additive `dev_run_intents` before any external call. Its `(run_id, step_id)` key gives exactly one worker a claim. A request that might have reached GitHub is marked `uncertain`, never automatically replayed. `completeDevIntent` is one PostgreSQL statement using data-modifying CTEs: mark the exact step `recorded` and insert the real returned GitHub ID in `dev_run_objects` atomically. Every operation checks account and connection; fake and isolated PostgreSQL share `runDevLedgerContract`. No real GitHub seed tool is enabled by the journal alone; IN-06 still gates live scratch work.
+
+
+**#68 read exposure:** `src/tools/dev-runs-read.js` registers `github_dev_list_scenarios` and `github_dev_list_runs`. Scenario plans say `plan_only` and `execution_available: false` until a real safe seed exists. Run reads are scoped to the connected account and client ID, with bounded saved-object and claimed/uncertain/recorded-step details via `listDevIntents`; no GitHub API call or mutation. Scratch eligibility is derived solely from the server's `gh_accounts.is_scratch` and `account_type`, never asserted by caller arguments.
