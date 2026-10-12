@@ -17,6 +17,7 @@ function arrange(gh,outcome){
   ]);
   gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[{name:'main',commit:{sha:'a'.repeat(40)}}]);
   gh.when('GET /repos/{owner}/{repo}/pulls').reply(200,[]);
+  gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/issues').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/tags').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/releases').reply(200,[]);
@@ -264,6 +265,30 @@ describe('V-2 protected run deletion',()=>{
     const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
     expect(out.done).toBe(false);
     expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(false);
+  });
+  it('refuses foreign formal PR reviews even with a matching run PR journal',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    const branch=`rtc/${RUN}/review`;
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'branch',owner:OWNER,repo:REPO,objectId:branch,createdSha:'a'.repeat(40)});
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'pr',owner:OWNER,repo:REPO,objectId:'101',createdSha:'a'.repeat(40)});
+    w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
+      {name:'main',commit:{sha:'a'.repeat(40)}},{name:branch,commit:{sha:'a'.repeat(40)}}
+    ]);
+    w.gh.when('GET /repos/{owner}/{repo}/pulls').reply(200,[{
+      number:101,merged_at:null,draft:true,state:'open',
+      body:`<!-- rtc_run=${RUN} -->`,
+      head:{ref:branch,sha:'a'.repeat(40),repo:{full_name:`${OWNER}/${REPO}`}},
+      base:{ref:'main',repo:{full_name:`${OWNER}/${REPO}`}}
+    }]);
+    w.gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews').reply(200,[
+      {id:601,state:'APPROVED',user:{login:'outsider'}}
+    ]);
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.some(c=>c.method==='DELETE')).toBe(false);
+    expect(w.gh.invalid).toEqual([]);
   });
   it('accepts a run-recorded draft PR only while its head and base remain exact',async()=>{
     const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');

@@ -27,7 +27,8 @@ export const SCHEMA_TABLES = Object.freeze([
   'secret_entry_requests',
   'dev_runs',
   'dev_run_objects',
-  'dev_run_intents'
+  'dev_run_intents',
+  'rtc_pass_rate'
 ]);
 export const RESULT_HANDLE = /^res_[A-Za-z0-9_-]{20,64}$/;
 
@@ -213,6 +214,11 @@ export function createDb(sql = productionSql()) {
         last_used_at TIMESTAMPTZ,
         revoked_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS rtc_pass_rate (
+        token_hash TEXT PRIMARY KEY,
+        window_start TIMESTAMPTZ NOT NULL DEFAULT now(),
+        hit_count INTEGER NOT NULL DEFAULT 0
       )`;
       await sql`CREATE TABLE IF NOT EXISTS login_attempts (
         id BIGSERIAL PRIMARY KEY,
@@ -414,6 +420,52 @@ export function createDb(sql = productionSql()) {
           ${connection.accounts}::text[], ${connection.mode}, ${connection.profile}, ${connection.listing}, ${expiresAt})`;
     },
 
+    /** Owner-only RTC pass issuance: existing OAuth table, distinct kind and preview/read_only only. */
+    async createRtcPass({pass,account,passId,expiresAt}) {
+      if(!/^rtc_pass_[A-Za-z0-9_-]{43}$/.test(pass)||!/^[a-f0-9]{24}$/.test(passId)||
+        typeof account!=='string'||!account||!(expiresAt instanceof Date)||
+        !Number.isFinite(expiresAt.getTime())||expiresAt<=new Date()||
+        expiresAt>new Date(Date.now()+30*86400000))
+        throw new TypeError('Invalid RTC pass scope or expiry.');
+      const rows=await sql`INSERT INTO oauth_tokens
+        (token_hash,client_id,default_account,accounts,mode,profile,listing,kind,expires_at)
+        SELECT ${hashToken(pass)}, ${'rtc-'+passId}, a.login, ARRAY[a.login], 'preview',
+          'read_only','compact','pass',${expiresAt}
+        FROM gh_accounts a WHERE a.login=${account} AND a.is_scratch=TRUE
+          AND a.production_enabled=FALSE AND a.account_type='Organization'
+          AND a.installation_status='active' AND a.repository_selection='all'
+        RETURNING client_id`;
+      return rows[0]?.client_id??null;
+    },
+    /** Unknown, expired and revoked are distinct but no token bytes are returned. */
+    async getRtcPass(pass) {
+      if(!/^rtc_pass_[A-Za-z0-9_-]{43}$/.test(pass))return null;
+      const rows=await sql`SELECT client_id,default_account,accounts,mode,profile,listing,
+        expires_at,revoked_at FROM oauth_tokens
+        WHERE token_hash=${hashToken(pass)} AND kind='pass'`;
+      return rows[0]??null;
+    },
+    async revokeRtcPass(passId) {
+      if(!/^[a-f0-9]{24}$/.test(passId))throw new TypeError('Invalid pass identifier.');
+      const rows=await sql`UPDATE oauth_tokens SET revoked_at=now()
+        WHERE client_id=${'rtc-'+passId} AND kind='pass' AND revoked_at IS NULL
+        RETURNING client_id`;
+      return rows.length===1;
+    },
+    /** Atomic per-pass budget across serverless instances, never a process counter. */
+    async consumeRtcPassRate(pass,{max=60}={}) {
+      if(!/^rtc_pass_[A-Za-z0-9_-]{43}$/.test(pass)||max!==60)
+        throw new TypeError('Invalid RTC pass rate check.');
+      const rows=await sql`INSERT INTO rtc_pass_rate (token_hash,window_start,hit_count)
+        VALUES (${hashToken(pass)},now(),1)
+        ON CONFLICT (token_hash) DO UPDATE SET
+          window_start=CASE WHEN rtc_pass_rate.window_start<=now()-interval '1 minute'
+            THEN now() ELSE rtc_pass_rate.window_start END,
+          hit_count=CASE WHEN rtc_pass_rate.window_start<=now()-interval '1 minute'
+            THEN 1 ELSE rtc_pass_rate.hit_count+1 END
+        RETURNING hit_count`;
+      return rows[0].hit_count<=max;
+    },
     async getAccessToken(accessToken) {
       if (typeof accessToken !== 'string' || !accessToken) return null;
       const rows = await sql`SELECT client_id, default_account, accounts, mode, profile, listing, kind, expires_at

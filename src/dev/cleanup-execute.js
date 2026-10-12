@@ -99,6 +99,14 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
       (base!==defaultBranch&&!branchTip.has(base))||
       !equal(p.base?.repo?.full_name,`${owner}/${repo}`))
       throw refusal('A pull request changed draft state, repository, base or exact run-owned head; deletion refused.');
+    // A third-party formal review is a distinct GitHub resource: the inline
+    // comment journal never authorizes silently destroying review decisions.
+    // V-1 creates inline comments, not submitted pull-request reviews.
+    const {items:formalReviews,capped:reviewsCapped}=await listAll(github,
+      'GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews',
+      {owner,repo,pull_number:p.number,per_page:100},{max:100});
+    if(reviewsCapped||formalReviews.length!==0)
+      throw refusal('Scratch PR has submitted reviews or incomplete review inventory; deletion refused.');
     numbers.add(p.number);
   }
   for(const i of issues.items) {
