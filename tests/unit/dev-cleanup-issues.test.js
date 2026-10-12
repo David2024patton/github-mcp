@@ -20,7 +20,7 @@ async function world(){
  w.gh.when('GET /repos/{owner}/{repo}/labels/{name}').reply(200,{name:'rtc-cleaned'});
  w.gh.when('GET /repos/{owner}/{repo}/issues/{issue_number}').replySequence([
   {status:200,body:issue},{status:200,body:issue},{status:200,body:issue},
-  {status:200,body:cleaned},{status:200,body:cleaned},
+  {status:200,body:cleaned},
   {status:200,body:{...cleaned,labels:[{name:'rtc-cleaned'}]}}
  ]);
  w.gh.when('PATCH /repos/{owner}/{repo}/issues/{issue_number}').reply(200,cleaned);
