@@ -2,6 +2,7 @@
 import { defineGithubWrite } from './define-github-write.js';
 import { missing, octo, ownerOf, refusal } from './github-write.js';
 import { requireScratchOrg } from '../dev/scratch.js';
+import { matchesRunDescription } from '../dev/run-marker.js';
 import { runDevMutationOnce } from '../dev/execute.js';
 
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
@@ -46,7 +47,7 @@ const scratchCreate=defineGithubWrite({
   },
   readAfter:({args,ctx,target})=>repoGet(ctx,target.owner,args.name),
   verify:({args,target,after,response})=>!!after&&after.full_name?.toLowerCase()===`${target.owner}/${args.name}`.toLowerCase()&&
-    after.private===true&&String(after.description??'').includes(tag(args.runId))&&
+    after.private===true&&matchesRunDescription(after.description,args.runId)&&
     response.data.objectId.toLowerCase()===after.full_name.toLowerCase(),
   inverse:()=>null,
   present:({args,after,response})=>({run_id:args.runId,full_name:after?.full_name,private:after?.private,

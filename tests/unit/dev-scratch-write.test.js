@@ -42,6 +42,18 @@ describe('V-1 scratch-account preflight and durable execution',()=>{
     await expect(requireScratchOrg(w.ctx,'example-org')).rejects.toThrow(/IN-06/);
     expect(w.gh.calls).toEqual([]);
   });
+  it('refuses an unverified readback marker that belongs to a longer run ID',async()=>{
+    const w=await makeWorld({scratchAccount:true});
+    w.gh.when('GET /repos/{owner}/{repo}').replySequence([
+      {status:404,body:{message:'Not Found'}},
+      {status:200,body:repository({description:`Scratch fixture for rtc_run=${RUN}-other`})}
+    ]);
+    w.gh.when('POST /orgs/{org}/repos').reply(201,repository());
+    const out=parse(await def.handler({runId:RUN,name:NAME,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.filter(x=>x.method==='POST')).toHaveLength(1);
+    expect(w.gh.invalid).toEqual([]);
+  });
   it('records the real repository full_name once and never blindly retries a claimed step',async()=>{
     const w=await makeWorld({scratchAccount:true});arrange(w.gh,'ok');
     const out=parse(await def.handler({runId:RUN,name:NAME,confirm:true},w.ctx));
