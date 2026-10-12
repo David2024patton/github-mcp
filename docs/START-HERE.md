@@ -10,7 +10,7 @@ from a phone; everything he reads must be plain language.
 ## Read only what this work needs
 
 1. Implementing a card: [SESSION-START](SESSION-START.md) (one page). Otherwise AGENTS — workflow and hard limits.
-2. [STATUS](STATUS.md) — current head/state/next item.
+2. [STATUS](STATUS.md) — current head/state/next item. **Current live setup, owner approval, connected-smoke gaps and draft PR #83 carry-forward are in its top `Next` checkpoint (2026-10-12).**
 3. [MASTER-ROADMAP](MASTER-ROADMAP.md) — order of batches and work coverage.
 4. Next card, then its named design headings and code. If JIT, write the short card from the design first;
    [drift protocol](implementation-contracts/DRIFT-PROTOCOL.md) applies every time.

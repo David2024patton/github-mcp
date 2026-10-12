@@ -693,3 +693,29 @@ describe('same-origin Referrer-Policy for actual HTML form navigations', () => {
     expect(reject.headers['Referrer-Policy']).toBe('no-referrer');
   });
 });
+
+describe('setup form feedback visibility on mobile without JavaScript', () => {
+  it('anchors internal forms to the feedback at page start, not a different origin', async () => {
+    const t=await build();
+    const page=await t.open();
+    expect(page.body).toContain('<h1 id="setup-feedback">');
+    expect(page.body).toContain('<form method="post" action="#setup-feedback" autocomplete="off">');
+    expect((page.body.match(/action="#setup-feedback"/g)??[]).length).toBeGreaterThan(5);
+    expect(page.body).not.toMatch(/<script/i);
+    expect(page.headers['Content-Security-Policy']).toContain("form-action 'self' https://github.com");
+  });
+
+  it('displays wrong passphrase and exact next GitHub App step above all forms', async () => {
+    const t=await build(); await t.open();
+    const wrong=await t.post({action:'start-app',login:'example-org',passphrase:'wrong'});
+    expect(wrong.statusCode).toBe(401);
+    expect(wrong.body).toMatch(/<h1 id="setup-feedback">[\s\S]*Setup response:<\/strong> Incorrect administrator passphrase\./);
+    expect((await t.db.listAccounts()).length).toBe(0);
+    const good=await t.post({action:'start-app',login:'example-org',accountType:'Organization'});
+    expect(good.statusCode).toBe(200);
+    expect(good.body).toContain('Setup response:</strong> Ready to create the GitHub App');
+    expect(good.body).toContain('Continue to GitHub');
+    expect(good.body.indexOf('Ready to create the GitHub App')).toBeLessThan(good.body.indexOf('1. Create the GitHub App for an account'));
+    expect(good.body).toContain('<form method="post" action="https://github.com/organizations/example-org/settings/apps/new');
+  });
+});

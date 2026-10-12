@@ -1,20 +1,19 @@
 # DEPLOY — putting the server online and signing in to GitHub
 
-Written for Chris, who is not a developer. Follow it top to bottom; every step says what you will see when it worked. Nothing
-here costs money (free tiers), and nothing here changes a real repository: the first connection is **preview** mode, which
+Written for Chris, who is not a developer. Follow it top to bottom; every step says what you will see when it worked. No new paid GitHub feature is required; existing paid Vercel and Neon plans are in use, and nothing here changes a real repository: the first connection is **preview** mode, which
 can look but not change anything that matters. Where a step says *Claude can do this*, say "go" in chat and it will use your
 Vercel and Neon connections; the three secrets in Part 3 are always yours to type, because Claude must never see them.
 
-Current deployment (2026-10-12): the custom server has a READY Vercel production deployment from reviewed main on `https://github-mcp-chris-projects-de6cd1bf.vercel.app`, with an isolated `github-mcp` Neon project and encrypted project-scoped production settings. The owner has not yet installed any **custom GitHub MCP** App, and live endpoint/DB schema smoke acceptance is not established (`docs/STATUS.md`).
+Current deployment (2026-10-12): the custom server has a READY Vercel production deployment from reviewed main on `https://github-mcp-chris-projects-de6cd1bf.vercel.app`, with an isolated `github-mcp` Neon project and encrypted project-scoped production settings. The owner has now installed the custom scratch App; live OAuth metadata/setup/401 security checks and initialization of 20 application tables were verified. Custom OAuth and scratch write/cleanup acceptance remain pending (`docs/STATUS.md`).
 
 ## Part 1 — Make the two homes (Claude can do this; IN-02)
 
 1. **Vercel project.** A new project named `github-mcp`, connected to the GitHub repository `Robinson-AI-Systems/github-mcp`,
-   production branch `main`, no build command, Node.js **24.x** (the repository already says so). Free ("Hobby") plan.
+   production branch `main`, no build command, Node.js **24.x** (the repository already says so). Existing paid Vercel team (no new plan or upgrade).
    *You will see:* a deployment that finishes with a green "Ready".
 2. **Neon database.** A new, empty Neon project for this server only (never reuse Appliance Desk's or the Stripe server's
-   database). Free plan. Copy its connection string (starts with `postgresql://`); you will paste it in Part 2.
-   *You will see:* a project with no tables yet. The server creates its own 13 tables the first time it runs.
+   database). Independent Neon project with fixed 0.25 CU and five-minute idle suspension. Copy its connection string (starts with `postgresql://`); you will paste it in Part 2.
+   *You will see:* a project with no tables yet. The current server initializes 20 application tables when first called.
 
 ## Part 2 — The project's settings (names only; values are yours)
 
@@ -45,7 +44,7 @@ You get one line of 43 or 44 characters ending in `=` or not. That whole line is
 *How you know it worked:* open `<your address>/api/github/setup` (Part 4). If the key is missing or the wrong shape, the page
 says so in a red line after you try a step ("The server has no encryption key…").
 
-**Already configured for this deployment:** `DATABASE_URL`, `PUBLIC_BASE_URL`, `ADMIN_PASSPHRASE`, and `TOKEN_ENCRYPTION_KEY` are set in the new Vercel project. The latter two were generated using database-backed cryptographic randomness without printing secrets. Before setup, the owner must open Vercel → `github-mcp` → Settings → Environment Variables, privately reveal the two encrypted values and store them in a password manager; do not share them in chat. They can overwrite the administrator passphrase with their own private value, then redeploy. If encrypted values cannot be revealed, replace them privately in Vercel and redeploy. Never paste secrets into GitHub.
+**Already configured for this deployment:** `DATABASE_URL`, `PUBLIC_BASE_URL`, `ADMIN_PASSPHRASE`, and `TOKEN_ENCRYPTION_KEY` are set in the new Vercel project. The latter two were generated using database-backed cryptographic randomness without printing secrets. Before setup, the owner must open Vercel → `github-mcp` → Settings → Environment Variables, privately reveal the two encrypted values and store them in a password manager; do not share them in chat. They can overwrite the administrator passphrase with their own private value, then redeploy. **A real GitHub App credential is now stored encrypted:** do not rotate `TOKEN_ENCRYPTION_KEY` without a deliberate migration/re-enrollment plan, or the encrypted App credentials will be unreadable. The passphrase may be privately replaced and redeployed if necessary. The owner's password-manager backup is not independently confirmed. Never paste secrets into GitHub or chat.
 
 ## Part 4 — Check the server is alive
 
@@ -93,18 +92,15 @@ page refuses it.
 
 ## Part 5a — Approve the disposable scratch Organization (IN-06)
 
-After GitHub App setup above, use the same setup page to create **this custom server's App** for `robinson-ai-scratch` (choose Organization), install it on **All repositories**, and click **Show my accounts** to verify an active installation. Under **IN-06: Disposable scratch organization**, enter `robinson-ai-scratch`, choose **Enable**, re-type the exact name and enter your private administrator passphrase. This owner-only setting checks the live GitHub App installation, all requested permissions, an Organization account and production OFF. Never designate `Robinson-AI-Systems` or a real-work organization as scratch. The page also supports disabling scratch mode. Passing these prerequisites is NOT a completed connected-write acceptance test.
+After GitHub App setup above, use the same setup page to create **this custom server's App** for `robinson-ai-scratch` (choose Organization), install it on **All repositories**, and click **Show my accounts** to verify an active installation. Under **IN-06: Disposable scratch organization**, enter `robinson-ai-scratch`, choose **Enable**, re-type the exact name and enter your private administrator passphrase. This owner-only setting checks the live GitHub App installation, all requested permissions, an Organization account and production OFF. Never designate `Robinson-AI-Systems` or a real-work organization as scratch. The page also supports disabling scratch mode. **Owner prerequisites verified 2026-10-12 UTC:** the custom App is installed on All repositories, 41/41 stored permissions match, owner enabled scratch ON, production OFF and spend $0; an owner-confirmed audit row exists. This is **not** connected-write acceptance. OAuth clients, active tokens and test-run objects are all zero.
 
-## Part 6 — Connect Claude (preview mode first)
+## Part 6 — Connect a compatible client to the CUSTOM server (preview mode first)
 
-1. In Claude: **Settings → Connectors → Add custom connector**. Name: `GitHub`. Address: `<your address>/api/mcp`.
-2. Claude opens this server's sign-in page. Tick the accounts you want available, pick the default account, leave **Mode** as
-   *preview*, leave the **Profile** as *read_only* for now, type your passphrase and press **Authorize this connection**.
-3. Ask Claude: *"Which GitHub accounts am I connected to?"* It should answer using `github_list_accounts` and name both
-   accounts with "installed". `github_whoami` additionally shows the mode (PREVIEW), profile, which kinds of credentials
-   exist and the remaining rate budget.
+1. In a custom OAuth MCP-compatible client (for example Claude: **Settings → Connectors → Add custom connector**), enter `https://github-mcp-chris-projects-de6cd1bf.vercel.app/api/mcp`. This is not the standard GitHub plugin offered by any platform.
+2. Complete the custom OAuth sign-in in your browser. Select **only `robinson-ai-scratch`** as account/default, keep **Mode = preview**, use **Profile = read_only** for first live reads (switch to **everyday** only for guarded scratch writes), and enter the admin passphrase privately. Press **Authorize this connection**.
+3. Ask the custom-MCP-connected agent: *"Which GitHub accounts am I connected to?"* `github_list_accounts` should show `robinson-ai-scratch` with `scratch: true`; `github_whoami` should confirm PREVIEW, read-only profile and current rate limits.
 
-Production mode is deliberately not offered until you turn it on per account (IN-07, after the merge tools exist).
+Production remains OFF for scratch. **Never create a real disposable test repository until run-owned cleanup/recovery is verified.** V-2's `github_dev_cleanup` is not yet implemented; a preview+everyday connection can create scratch writes only after that safety prerequisite and the owner's OAuth sign-in. Normal account production is a separate IN-07 decision.
 
 ## Part 7 — What the Apps ask GitHub for
 
@@ -127,7 +123,17 @@ Seven of these names appear in GitHub's documentation data but not in its machin
 tried against real GitHub yet. If creating the App fails on one of them, the fix is to delete that line from the list in
 `src/github/app-manifest.js` (Claude can do this in a small pull request).
 
+## Connected-testing checkpoint, 2026-10-12 UTC
+
+- Custom GitHub App `robinson-mcp-robinson-ai-scratch` installed/active on `robinson-ai-scratch`, repository selection All; 41/41 stored permissions, scratch ON, production OFF, spend $0.
+- Live HTTP: `/.well-known/oauth-authorization-server` **200**, `/.well-known/oauth-protected-resource` **200**, `/api/github/setup` GET **200**, unauthenticated `/api/mcp` GET and JSON-RPC POST **401** with Bearer challenge. Informational `/` **404** despite the code's advertised landing page (needs routing fix/test).
+- Custom OAuth clients/tokens **zero**, `dev_runs` and `dev_run_objects` **zero**. The network-restricted temporary Vercel sandbox used for HTTP smoke was stopped. No live GitHub write or cleanup has been tested.
+- For the next agent: **do not use the environment's standard GitHub connector as evidence of the custom server's OAuth behavior.** Do not bypass the owner-authorized client grant, and do not rotate the encryption key. User stopped testing for today.
+
 ## If something goes wrong
+
+**If submitting a form just clears your entries:** The top of the page now contains a labeled **Setup response** and internal forms direct the browser there automatically. A rejected passphrase is not saved and does not create an App. The `ADMIN_PASSPHRASE` is the exact, project-specific encrypted value configured in Vercel `github-mcp` → Settings → Environment Variables, *not* your Vercel/GitHub account password or the encryption key. Privately reveal it there, or replace it with a strong password manager-generated value in Vercel and redeploy. Never paste either value into a chat or GitHub.
+
 
 **Mobile setup form error (`Secure browser required`):** Open `https://github-mcp-chris-projects-de6cd1bf.vercel.app/api/github/setup` directly in Chrome or another full browser, not the ChatGPT in-app browser. Alternate `vercel.app` setup aliases now redirect to the configured URL before creating a session cookie. The setup form uses `Referrer-Policy: same-origin` instead of `no-referrer`: browser specifications make ordinary HTML form POSTs send `Origin: null` under `no-referrer`, which the server correctly refuses. Only the forms use this policy; callback/error result pages keep `no-referrer`. The administrator setup still requires an exact HTTPS `Origin`, a SameSite=Strict CSRF cookie, its matching form token, and the private administrator passphrase. The server does not weaken these checks for embedded browsers that omit the `Origin` header.
 

@@ -25,3 +25,7 @@ The current `docs/TOOL-CATALOG.md` has 53 tool rows tagged G-1…G-6, and every 
 ## Next-batch drift check (V-1)
 
 The approved `BATCH-V.md` V1 scratch assumption is **not met** (IN-06). `src/dev/ledger.js`, `src/dev/scenarios.js`, fake and SQL ledger contracts and plan-only previews exist from #65. Real seed application, object-by-object recording, safe retry, scratch repository creation and public scenario/run tools do not exist. Next unit must validate pinned GitHub request shapes, exact run ownership and target/scratch classification **before** exposing a write. Keep preview-only/fake execution until owner gate is satisfied.
+
+## 2026-10-12 UTC later deployment addendum (draft PR #83)
+
+The statements above capture the original Batch G closeout snapshot, **not** the current deployment. Since then, this server was deployed to Vercel with its own Neon database (20 tables); the custom App for `robinson-ai-scratch` was installed on All repositories and the owner enabled scratch designation with 41 matching stored permissions. OAuth metadata/setup HTTP smoke passed and unauthenticated MCP GET/POST correctly refused 401, while the informational home page returned 404. **No custom OAuth client/token or live scratch run/cleanup acceptance exists yet.** This does not reopen the implementation-complete G cards or authorize real production writes. Refer to `docs/STATUS.md` for current evidence, not the historical unconnected snapshot.

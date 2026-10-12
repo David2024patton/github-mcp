@@ -13,17 +13,16 @@ Legend: **Owner** = only Chris · **Agent** = Claude can do it once you say go.
 
 | Done | Item | Where / how | Today | How you know it worked |
 |---|---|---|---|---|
-| [ ] | Vercel project `github-mcp` and its own Neon database created, free tiers (IN-02) | Vercel and Neon connectors (Agent, after you say go) | Not created | The server's home page shows its tool counts |
-| [ ] | Node 24.x runtime | `package.json` `engines` (A-1) — Vercel picks it up | Set in `package.json` (A-1, #1); Vercel project not created | Vercel's deployment page shows Node 24.x |
-| [ ] | `DATABASE_URL` for this server's own database only (IN-02) | Vercel → Environment Variables (Agent after approval) | Not set | The server creates its tables without touching any other project |
-| [ ] | `PUBLIC_BASE_URL` set to the project's HTTPS origin with no path, e.g. `https://<project>.vercel.app` (not a secret) | Vercel → Environment Variables (Agent after approval, with `DATABASE_URL`) | Not set | `/.well-known/oauth-authorization-server` shows that origin as `issuer` |
-| [ ] | `ADMIN_PASSPHRASE` and `TOKEN_ENCRYPTION_KEY` set (IN-03) | Vercel → Environment Variables (Owner; `docs/DEPLOY.md` shows how to make the key) | Not set | The setup page asks for the passphrase and agrees to store a credential |
+| [x] | Vercel project `github-mcp` and own Neon database created on existing paid plans (IN-02) | Vercel / Neon | READY and 20 tables verified | Live production deployment; home-page `/` still 404 |
+| [x] | Node 24.x runtime | Vercel project / package engines | Deployed | Vercel deployment metadata |
+| [x] | `DATABASE_URL` for isolated Neon database only (IN-02) | Vercel production variables | Encrypted and configured | 20 live application tables in dedicated DB |
+| [x] | `PUBLIC_BASE_URL` configured to the canonical HTTPS origin | Vercel production variables | Set | Live OAuth issuer matches domain |
+| [x] | `ADMIN_PASSPHRASE` and `TOKEN_ENCRYPTION_KEY` set (IN-03) | Vercel production variables | Both configured; owner private backup unverified | App credentials are encrypted; no casual encryption-key rotation |
 | [ ] | Repository settings for this repo: ruleset on `main` requiring `ci`, merge commits, secret scanning and push protection on (IN-01) | github.com (Owner) or, once Batch H exists, ask Claude (Agent with your confirm) | Not set | `github_workflow_repo_health` on `Robinson-AI-Systems/github-mcp` shows all ok |
 
 ## 2. Signing in to GitHub, per account
 
-One row set per account: `Robinson-AI-Systems` (organization) and `christcr2012` (personal); later the scratch
-organization (IN-06).
+Per-account onboarding for `Robinson-AI-Systems` and `christcr2012` is still pending. The isolated scratch Organization has completed its custom App owner setup (IN-06).
 
 | Done | Item | Where / how | Today | How you know it worked |
 |---|---|---|---|---|
@@ -47,7 +46,8 @@ organization (IN-06).
 
 | Done | Item | Where / how | Today | How you know it worked |
 |---|---|---|---|---|
-| [ ] | Scratch organization created and its App created and installed from the setup page (IN-06) | github.com → New organization (free), then the setup page (Owner) | Not created | `github_dev_create_scratch_repo` makes and `github_dev_cleanup` removes a throwaway repository |
+| [x] | Owner completed scratch Organization, custom GitHub App and scratch designation (IN-06 setup stage) | Protected setup page | Verified active All repositories, 41/41 permissions, scratch ON, production OFF, $0 spend | Neon account + owner audit |
+| [ ] | Custom OAuth connection and connected scratch read/write/cleanup acceptance | Custom `/api/mcp` preview-only connection | No OAuth client/token; zero runs/objects; V-2 cleanup not built | `github_list_accounts` says scratch true; after cleanup is safe, verify isolated run-owned seed and exact-object cleanup |
 
 ## 5. Projects (one section per profiled project)
 
