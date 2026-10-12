@@ -310,14 +310,80 @@ describe('V-2 protected run deletion',()=>{
       number:101,pull_request:{url:'https://api.github.com/fixture'}
     }]);
     w.gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}').reply(200,{
-      number:101,merged:false,draft:true,state:'closed',
+      number:101,merged:false,merged_at:null,draft:true,state:'closed',
       head:{ref:branch,sha:'a'.repeat(40),repo:{full_name:`${OWNER}/${REPO}`}},
+      base:{ref:'main',repo:{full_name:`${OWNER}/${REPO}`}},
       body:`<!-- rtc_run=${RUN} -->`
     });
     const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
     expect(out.done).toBe(true);
     expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(true);
     expect(w.gh.invalid).toEqual([]);
+  });
+  it('refuses a scratch PR changed between the inventory and its individual pre-close read',async()=>{
+    const branch=`rtc/${RUN}/review`;
+    const basePull={
+      number:101,merged:false,merged_at:null,draft:true,state:'closed',
+      body:`<!-- rtc_run=${RUN} -->`,
+      head:{ref:branch,sha:'a'.repeat(40),repo:{full_name:`${OWNER}/${REPO}`}},
+      base:{ref:'main',repo:{full_name:`${OWNER}/${REPO}`}}
+    };
+    for(const change of [
+      {draft:false},{state:'open'},{merged_at:'2026-10-12T10:00:00Z'},
+      {head:{...basePull.head,sha:'b'.repeat(40)}},
+      {base:{...basePull.base,ref:'other-branch'}},
+      {head:{...basePull.head,repo:{full_name:'outsider/fixture'}}},
+      {number:102},{body:'new foreign content'}
+    ]){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+        type:'branch',owner:OWNER,repo:REPO,objectId:branch,createdSha:'a'.repeat(40)});
+      await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+        type:'pr',owner:OWNER,repo:REPO,objectId:'101',createdSha:'a'.repeat(40)});
+      w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
+        {name:'main',commit:{sha:'a'.repeat(40)}},{name:branch,commit:{sha:'a'.repeat(40)}}
+      ]);
+      w.gh.when('GET /repos/{owner}/{repo}/pulls').reply(200,[basePull]);
+      w.gh.when('GET /repos/{owner}/{repo}/issues').reply(200,[
+        {number:101,pull_request:{url:'https://api.github.com/fixture'}}
+      ]);
+      w.gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}').reply(200,{...basePull,...change});
+      const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(out.done,JSON.stringify(change)).toBe(false);
+      expect(w.gh.calls.some(x=>x.method==='PATCH'||x.method==='DELETE')).toBe(false);
+      expect(w.gh.invalid).toEqual([]);
+    }
+  });
+  it('verifies the same draft PR identity after closing an owned open PR',async()=>{
+    const branch=`rtc/${RUN}/review`;
+    const before={
+      number:101,merged:false,merged_at:null,draft:true,state:'open',
+      body:`<!-- rtc_run=${RUN} -->`,
+      head:{ref:branch,sha:'a'.repeat(40),repo:{full_name:`${OWNER}/${REPO}`}},
+      base:{ref:'main',repo:{full_name:`${OWNER}/${REPO}`}}
+    };
+    for(const changed of [null,{draft:false},{head:{...before.head,sha:'b'.repeat(40)}}]){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      for(const [type,id] of [['branch',branch],['pr','101']])
+        await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+          type,owner:OWNER,repo:REPO,objectId:id,createdSha:'a'.repeat(40)});
+      w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
+        {name:'main',commit:{sha:'a'.repeat(40)}},{name:branch,commit:{sha:'a'.repeat(40)}}
+      ]);
+      w.gh.when('GET /repos/{owner}/{repo}/pulls').reply(200,[before]);
+      w.gh.when('GET /repos/{owner}/{repo}/issues').reply(200,[
+        {number:101,pull_request:{url:'https://api.github.com/fixture'}}
+      ]);
+      w.gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}').replySequence([
+        {status:200,body:before},{status:200,body:{...before,state:'closed',...changed}}
+      ]);
+      w.gh.when('PATCH /repos/{owner}/{repo}/pulls/{pull_number}').reply(200,{...before,state:'closed'});
+      const result=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(w.gh.calls.some(x=>x.method==='PATCH')).toBe(true);
+      expect(result.done).toBe(changed===null);
+      expect(w.gh.calls.some(x=>x.method==='DELETE')).toBe(changed===null);
+      expect(w.gh.invalid).toEqual([]);
+    }
   });
   it('refuses direct mutations to the default branch even when no other objects changed',async()=>{
     const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
