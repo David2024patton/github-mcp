@@ -110,6 +110,35 @@ export function createDevLedger(sql) {
         WHERE r.id = ${runId} AND r.account = ${account} AND r.connection = ${connection}
         ORDER BY i.created_at, i.step_id LIMIT ${limit}`;
     },
+
+    // Run freeze is atomic with the unresolved-intent test; it prevents seeds from racing teardown.
+    async beginDevCleanup({runId,account,connection}) {
+      validateRun({id:runId,account,connection});
+      const rows=await sql`UPDATE dev_runs r SET status='cleaning' WHERE r.id=${runId}
+        AND r.account=${account} AND r.connection=${connection} AND r.status IN ('active','cleaning')
+        AND NOT EXISTS (SELECT 1 FROM dev_run_intents i WHERE i.run_id=r.id AND i.status<>'recorded')
+        RETURNING r.id`;
+      return rows.length===1;
+    },
+    async markDevObjectCleaned({runId,account,connection,type,owner,objectId}) {
+      validateRun({id:runId,account,connection});validateRunObject({type,owner,objectId});
+      const rows=await sql`UPDATE dev_run_objects o SET cleaned=TRUE FROM dev_runs r
+        WHERE r.id=o.run_id AND r.id=${runId} AND r.account=${account}
+        AND r.connection=${connection} AND r.status='cleaning'
+        AND o.object_type=${type} AND o.owner=${owner} AND o.object_id=${objectId}
+        AND o.cleaned=FALSE RETURNING o.object_id`;
+      return rows.length===1;
+    },
+    async completeDevCleanup({runId,account,connection}) {
+      validateRun({id:runId,account,connection});
+      const rows=await sql`UPDATE dev_runs r SET status='cleaned', cleaned_at=now()
+        WHERE r.id=${runId} AND r.account=${account} AND r.connection=${connection}
+        AND r.status='cleaning'
+        AND NOT EXISTS (SELECT 1 FROM dev_run_objects o WHERE o.run_id=r.id AND o.cleaned=FALSE)
+        AND NOT EXISTS (SELECT 1 FROM dev_run_intents i WHERE i.run_id=r.id AND i.status<>'recorded')
+        RETURNING r.id`;
+      return rows.length===1;
+    },
     async listDevObjects({ runId, account, connection, limit = 50 }) {
       validateRun({ id: runId, account, connection }); boundedRunLimit(limit);
       return await sql`SELECT o.run_id, o.object_type, o.owner, o.repo, o.object_id, o.created_sha,

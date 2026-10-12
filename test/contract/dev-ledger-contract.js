@@ -70,6 +70,32 @@ export function runDevLedgerContract(label, makeDb) {
       expect(await db.listDevIntents({...a,runId,limit:1})).toHaveLength(1);
       await expect(db.listDevIntents({...a,runId,limit:100})).rejects.toThrow(/Limit/);
     });
+
+    it('freezes pending writes, records exact cleanup identities and completes only after every object',async()=>{
+      const db=await makeDb(),runId='run-clean-001';
+      await db.createDevRun({...a,id:runId});
+      const repo={...a,runId,type:'repo',owner:a.account,repo:'fixture',objectId:`${a.account}/fixture`};
+      await db.recordDevObject(repo);
+      const intent={...a,runId,stepId:'create-branch',type:'branch',owner:a.account,repo:'fixture',objectName:'rtc/run-clean-001/test'};
+      await db.claimDevIntent(intent);
+      expect(await db.beginDevCleanup({...a,runId})).toBe(false);
+      await db.markDevIntentUncertain({...a,runId,stepId:intent.stepId});
+      expect(await db.beginDevCleanup({...a,runId})).toBe(false);
+      await db.completeDevIntent({...a,runId,stepId:intent.stepId,objectId:intent.objectName});
+      expect(await db.beginDevCleanup({...a,runId,connection:'foreign'})).toBe(false);
+      expect(await db.beginDevCleanup({...a,runId})).toBe(true);
+      expect(await db.claimDevIntent({...intent,stepId:'too-late'})).toBe(false);
+      expect(await db.completeDevCleanup({...a,runId})).toBe(false);
+      expect(await db.markDevObjectCleaned({...repo,connection:'foreign'})).toBe(false);
+      expect(await db.markDevObjectCleaned({...repo,objectId:'similar'})).toBe(false);
+      expect(await db.markDevObjectCleaned(repo)).toBe(true);
+      expect(await db.markDevObjectCleaned(repo)).toBe(false);
+      expect(await db.completeDevCleanup({...a,runId})).toBe(false);
+      expect(await db.markDevObjectCleaned({...a,runId,type:'branch',owner:a.account,objectId:intent.objectName})).toBe(true);
+      expect(await db.completeDevCleanup({...a,runId})).toBe(true);
+      expect(await db.getDevRun({...a,id:runId})).toMatchObject({status:'cleaned',cleaned_at:expect.anything()});
+      expect(await db.beginDevCleanup({...a,runId})).toBe(false);
+    });
     it('lists only this connection and rejects unbounded requests',async()=>{
       const db=await makeDb();
       expect(await db.createDevRun({...a,id:'run-ledger-003'})).toBe(true);

@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — V-2 #84 cleanup foundation:** Connection-scoped atomic cleanup freeze blocks new writes; exact-object completion and run close require verified per-object cleanup. A pure ID-only planner refuses ambiguous, incomplete, foreign or uncertain inventories. No live deletion or external mutation. Next: guarded V-2 execution and independent GitHub readback.
+
 - **2026-10-12 — #83 root routing repair:** The Vercel deployment previously returned 404 for `/` because `api/index.js` is served at `/api`; the `/` rewrite now explicitly targets `/api/index`. A unit regression checks the rewrite and unauthenticated information response. This is informational HTTP routing, not proof of connected OAuth or scratch writes. All production/spending gates remain intact.
 
 ### Verified live checkpoint — 2026-10-12 UTC; carried draft PR #83 (NOT MERGED)
