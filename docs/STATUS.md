@@ -25,6 +25,9 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-12 — V-1 run evidence and anti-replay diagnostics (PR #80):** `github_dev_list_runs` now reports evidence-only progress and concrete next actions from scoped durable IDs/intents. It never mistakes a truncated page, foreign/mismatched ID, uncertain/pending step, cleanup or unrecognized scenario for completion; even complete journals explicitly disclaim live acceptance. No GitHub writes or production changes. Six real V-1 seeds exist; webhook-target remains plan-only awaiting V-4 secure forwarder dependencies and IN-06. V-1 remains IN_PROGRESS.
+
+
 **2026-10-12 — V-1 real review-thread seed (PR #79):** Sixth runnable scratch-only scenario creates a private fixture repo, labelled draft PR, three exact original-commit inline comments and mapped GraphQL review threads. A recorded Contents CAS revision changes only the final annotated line; independent readback verifies two current threads and one truly outdated, all 13 exact objects and source content. No live scratch use or CI dispatch. `webhook-target` remains plan-only pending V-4 forwarder/secret dependencies and IN-06.
 
 
