@@ -23,26 +23,27 @@ const name=(req,key)=>{
   const value=req.query?.[key];
   return typeof value==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(value)?value:null;
 };
+const deny=(res,status,body)=>{send(res,status,body);return null;};
 async function authenticate(req,res,db){
   const bearer=/^Bearer (rtc_pass_[A-Za-z0-9_-]{43})$/.exec(String(req.headers?.authorization??''));
-  if(!bearer)return send(res,401,rtcError('permission'));
+  if(!bearer)return deny(res,401,rtcError('permission'));
   const row=await db.getRtcPass(bearer[1]);
-  if(!row)return send(res,401,rtcError('permission'));
-  if(row.revoked_at)return send(res,401,rtcError('pass_revoked'));
-  if(!(Date.parse(row.expires_at)>Date.now()))return send(res,401,rtcError('pass_expired'));
+  if(!row)return deny(res,401,rtcError('permission'));
+  if(row.revoked_at)return deny(res,401,rtcError('pass_revoked'));
+  if(!(Date.parse(row.expires_at)>Date.now()))return deny(res,401,rtcError('pass_expired'));
   if(row.mode!=='preview'||row.profile!=='read_only'||row.listing!=='compact'||
     !/^rtc-[a-f0-9]{24}$/.test(row.client_id??'')||
     !Array.isArray(row.accounts)||row.accounts.length!==1||
     row.accounts[0]!==row.default_account)
-    return send(res,403,rtcError('refused_by_guard'));
+    return deny(res,403,rtcError('refused_by_guard'));
   const account=await db.getAccount(row.default_account);
   if(!account||account.login!==row.default_account||account.is_scratch!==true||
     account.production_enabled!==false||account.account_type!=='Organization'||
     account.installation_status!=='active'||account.repository_selection!=='all')
-    return send(res,403,rtcError('refused_by_guard'));
+    return deny(res,403,rtcError('refused_by_guard'));
   if(!await db.consumeRtcPassRate(bearer[1])){
     res.setHeader('Retry-After','60');
-    return send(res,429,rtcError('rate_limited'));
+    return deny(res,429,rtcError('rate_limited'));
   }
   return {client_id:row.client_id,default_account:row.default_account,
     accounts:[row.default_account],mode:'preview',profile:'read_only',listing:'compact'};
