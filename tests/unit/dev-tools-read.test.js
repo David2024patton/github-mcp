@@ -81,6 +81,26 @@ describe('V-1 public developer inspection',()=>{
     expect((await call(w,'github_dev_list_runs',{runId:'run-preview-a',cleanupPreview:true})).isError).toBe(true);
     expect((await w.db.listDevRuns(a)).length).toBe(2);
   });
+  it('refuses a scratch cleanup preview whose journal contains a non-scenario resource',async()=>{
+    const w=await world(),a={account:'example-org',connection:'client-1'};
+    await w.db.createDevRun({...a,id:'run-scope-proof',scenarios:['repo-basic']});
+    await w.db.recordDevObject({...a,runId:'run-scope-proof',
+      type:'repo',owner:a.account,repo:'scratch',objectId:'example-org/scratch',
+      createdSha:'a'.repeat(40)});
+    const good=body(await call(w,'github_dev_list_runs',{cleanupPreview:true}));
+    expect(good.cleanup_previews[0]).toMatchObject({
+      journal_ready:true,remote_verified:false,can_request_confirmation:true
+    });
+    await w.db.recordDevObject({...a,runId:'run-scope-proof',
+      type:'tag',owner:a.account,repo:'scratch',objectId:'v0.1.0'});
+    const bad=body(await call(w,'github_dev_list_runs',{cleanupPreview:true}));
+    expect(bad.cleanup_previews[0]).toMatchObject({
+      journal_ready:false,remote_verified:false,can_request_confirmation:false
+    });
+    expect(bad.cleanup_previews[0].block_reason).toMatch(/non-scenario/i);
+    expect(bad.bounded_selection.run_ids).toEqual([]);
+    expect((await w.db.listDevObjects({...a,runId:'run-scope-proof'}))).toHaveLength(2);
+  });
   it('pages stable scoped run IDs through opaque cursors and rejects forged handles',async()=>{
     const w=await world();
     for(const id of ['run-cursor-aa','run-cursor-bb','run-cursor-cc'])
