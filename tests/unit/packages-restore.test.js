@@ -25,7 +25,7 @@ runWriteContract({
 });
 runWriteContract({
   label: 'github_package_restore_version whole package', definition: def,
-  args: { ...args, versionId: undefined }, needsConfirm: true, production: true, profile: 'full',
+  args: { scope: 'org', packageType: 'npm', packageName: pkg.name }, needsConfirm: true, production: true, profile: 'full',
   arrange(gh, outcome) {
     seq(gh, ROOT, [null, null, outcome === 'ok' ? pkg : null]);
     gh.when(POST).reply(204, '');
@@ -33,7 +33,7 @@ runWriteContract({
 });
 describe('G-6 package and version recovery', () => {
   it('does not restore an active package or overwrite an existing version', async () => {
-    for (const a of [{ ...args, versionId: undefined }, args]) {
+    for (const a of [{ scope: 'org', packageType: 'npm', packageName: pkg.name }, args]) {
       const w = await makeWorld({ mode: 'production', profile: 'full' });
       w.gh.when(ROOT).reply(200, pkg);
       if (a.versionId) w.gh.when(GETV).reply(200, ver);
@@ -66,7 +66,7 @@ describe('G-6 package and version recovery', () => {
   it('previews the 30-day window and namespace reuse risk', async () => {
     const w = await makeWorld({ mode: 'production', profile: 'full' });
     w.gh.when(ROOT).reply(404, { message: 'Not Found' });
-    const result = await call(w, { ...args, versionId: undefined, dryRun: true });
+    const result = await call(w, { scope: 'org', packageType: 'npm', packageName: pkg.name, dryRun: true });
     expect(result.preview).toMatch(/30 days/);
     expect(result.preview).toMatch(/namespace/);
   });
