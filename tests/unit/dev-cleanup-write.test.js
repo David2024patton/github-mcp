@@ -29,6 +29,7 @@ function arrange(gh,outcome){
   gh.when('GET /repos/{owner}/{repo}/labels').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/actions/runs').reply(200,{total_count:0,workflow_runs:[]});
   gh.when('GET /repos/{owner}/{repo}/actions/artifacts').reply(200,{total_count:0,artifacts:[]});
+  gh.when('GET /repos/{owner}/{repo}/actions/workflows').reply(200,{total_count:0,workflows:[]});
   gh.when('GET /repos/{owner}/{repo}/issues/comments').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/pulls/comments').reply(200,[]);
   gh.when('DELETE /repos/{owner}/{repo}').reply(204);
@@ -452,6 +453,8 @@ describe('V-2 protected run deletion',()=>{
         objectId:`.github/workflows/rtc-${RUN}.yml`,createdSha:'b'.repeat(40)});
       w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
         {name:'main',commit:{sha:changed?'c'.repeat(40):'b'.repeat(40)}}]);
+      w.gh.when('GET /repos/{owner}/{repo}/actions/workflows').reply(200,{
+        total_count:1,workflows:[{id:14,path:`.github/workflows/rtc-${RUN}.yml`,state:'active'}]});
       const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
       expect(out.done).toBe(!changed);
       expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(!changed);
@@ -542,6 +545,39 @@ describe('V-2 protected run deletion',()=>{
         expect(w.gh.calls.some(x=>x.method==='DELETE'||x.method==='PATCH')).toBe(false);
         expect(w.gh.invalid).toEqual([]);
       }
+    }
+  });
+  it('refuses missing, foreign, changed and inaccessible Actions workflow definitions',async()=>{
+    const route='GET /repos/{owner}/{repo}/actions/workflows';
+    for(const response of [
+      {status:200,body:{total_count:1,workflows:[{id:14,path:'.github/workflows/foreign.yml',state:'active'}]}},
+      {status:200,body:{total_count:0,workflows:[{id:14,path:'foreign.yml',state:'active'}]}},
+      {status:200,body:{total_count:1,workflows:[]}},
+      {status:200,body:{workflows:[]}},
+      {status:403,body:{message:'Forbidden'}}
+    ]){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      w.gh.when(route).reply(response.status,response.body);
+      const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(out.done,JSON.stringify(response)).toBe(false);
+      expect(w.gh.calls.some(x=>x.method==='DELETE'||x.method==='PATCH')).toBe(false);
+      expect(w.gh.invalid).toEqual([]);
+    }
+  });
+  it('refuses a disabled or duplicate run-owned workflow even with a recorded path',async()=>{
+    for(const state of ['disabled_manually','active']){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+        type:'workflow_file',owner:OWNER,repo:REPO,
+        objectId:`.github/workflows/rtc-${RUN}.yml`,createdSha:'b'.repeat(40)});
+      w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
+        {name:'main',commit:{sha:'b'.repeat(40)}}]);
+      const same={id:14,path:`.github/workflows/rtc-${RUN}.yml`,state};
+      w.gh.when('GET /repos/{owner}/{repo}/actions/workflows').reply(200,
+        {total_count:state==='active'?2:1,workflows:state==='active'?[same,same]:[same]});
+      const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(out.done).toBe(false);
+      expect(w.gh.calls.some(x=>x.method==='DELETE'||x.method==='PATCH')).toBe(false);
     }
   });
   it('refuses orphaned PR-label associations without any GitHub mutation',async()=>{

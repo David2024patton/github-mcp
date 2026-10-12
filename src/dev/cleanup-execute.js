@@ -26,7 +26,7 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     !Array.isArray(objects)||!run?.id)
     throw refusal('Scratch repository default branch and exact run journal are required.');
   const common={owner,repo,per_page:100};
-  const [branches,pulls,issues,tags,releases,rulesets,hooks,milestones,deployments,environments,labels,workflowRuns,artifacts]=await Promise.all([
+  const [branches,pulls,issues,tags,releases,rulesets,hooks,milestones,deployments,environments,labels,workflowRuns,artifacts,workflows]=await Promise.all([
     listAll(github,'GET /repos/{owner}/{repo}/branches',common,{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/pulls',{...common,state:'all'},{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/issues',{...common,state:'all'},{max:100}),
@@ -41,7 +41,8 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     github.request('GET /repos/{owner}/{repo}/environments',common),
     listAll(github,'GET /repos/{owner}/{repo}/labels',common,{max:100}),
     github.request('GET /repos/{owner}/{repo}/actions/runs',common),
-    github.request('GET /repos/{owner}/{repo}/actions/artifacts',common)
+    github.request('GET /repos/{owner}/{repo}/actions/artifacts',common),
+    github.request('GET /repos/{owner}/{repo}/actions/workflows',common)
   ]);
   const inventories=[branches,pulls,issues,tags,releases,rulesets,hooks,milestones,deployments,labels];
   if(inventories.some(x=>x.capped||!Array.isArray(x.items)))
@@ -63,6 +64,23 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     actions.workflow_runs.length!==0||stored?.total_count!==0||
     !Array.isArray(stored?.artifacts)||stored.artifacts.length!==0)
     throw refusal('Scratch repository has foreign or unverified Actions runs or artifacts; deletion refused.');
+  const trackedWorkflows=objects.filter(x=>x.object_type==='workflow_file');
+  const definitions=workflows?.data;
+  if(!Array.isArray(definitions?.workflows)||
+    definitions.total_count!==definitions.workflows.length||
+    definitions.workflows.length!==trackedWorkflows.length)
+    throw refusal('The scratch Actions workflow inventory does not match the run journal.');
+  const workflowIds=new Set();
+  for(const w of definitions.workflows) {
+    if(!Number.isSafeInteger(w?.id)||w.id<1||workflowIds.has(w.id)||
+      w.state!=='active'||typeof w.path!=='string'||
+      trackedWorkflows.filter(o=>o.owner.toLowerCase()===owner.toLowerCase()&&
+        o.repo===repo&&o.object_id===w.path&&
+        o.object_id===`.github/workflows/rtc-${run.id}.yml`&&
+        /^[a-f0-9]{40}$/.test(o.created_sha??'')).length!==1)
+      throw refusal('A foreign or changed Actions workflow exists in the scratch repository.');
+    workflowIds.add(w.id);
+  }
   const owns=(type,id)=>objects.some(x=>x.object_type===type&&
     x.object_id===String(id)&&x.owner.toLowerCase()===owner.toLowerCase()&&x.repo===repo);
   // A SHA belonging to another fixture or branch is not evidence for this branch.
@@ -238,7 +256,7 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
   }
   return {branch_count:branches.items.length,pr_count:pulls.items.length,issue_count:issues.items.length,tag_count:tags.items.length,release_count:releases.items.length,
     ruleset_count:rulesets.items.length,webhook_count:0,milestone_count:0,
-    deployment_count:0,environment_count:0,action_run_count:0,artifact_count:0,label_count:listedLabels.size,verified_pulls:verifiedPulls};
+    deployment_count:0,environment_count:0,action_run_count:0,artifact_count:0,workflow_count:workflowIds.size,label_count:listedLabels.size,verified_pulls:verifiedPulls};
 }
 
 export async function readCleanupRun(ctx,owner,repo,runId) {
