@@ -92,8 +92,8 @@ const releaseArrange=(gh,outcome)=>{
   const repo=repository({description:`Developer fixture for ${MARK} (release-train)`});
   gh.when('GET /repos/{owner}/{repo}').replySequence([
     {status:404,body:{message:'Not Found'}},
-    {status:200,body:{...repo,...(outcome==='mismatch'?{private:false}:{})}},
-    {status:200,body:repo}
+    {status:200,body:repo},
+    {status:200,body:{...repo,...(outcome==='mismatch'?{private:false}:{})}}
   ]);
   gh.when('POST /orgs/{org}/repos').reply(201,repo);
   gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,
