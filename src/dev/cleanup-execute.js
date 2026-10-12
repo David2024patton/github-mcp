@@ -84,7 +84,7 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
       !owns('branch',b.name)||b.commit?.sha!==branchTip.get(b.name))
       throw refusal('An unrecorded or changed branch exists in the scratch repository. Deletion refused.');
   }
-  const numbers=new Set();
+  const numbers=new Set(),verifiedPulls=[];
   for(const p of pulls.items) {
     const head=p?.head?.ref,base=p?.base?.ref;
     const saved=objects.filter(x=>x.object_type==='pr'&&x.object_id===String(p?.number)&&
@@ -107,6 +107,8 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
       {owner,repo,pull_number:p.number,per_page:100},{max:100});
     if(reviewsCapped||formalReviews.length!==0)
       throw refusal('Scratch PR has submitted reviews or incomplete review inventory; deletion refused.');
+    verifiedPulls.push({number:p.number,state:p.state,body:p.body,
+      head_ref:head,head_sha:p.head.sha,base_ref:base});
     numbers.add(p.number);
   }
   for(const i of issues.items) {
@@ -195,7 +197,7 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
       throw refusal('An exact recorded scratch PR-label association disappeared; deletion refused.');
   }
   return {branch_count:branches.items.length,pr_count:pulls.items.length,issue_count:issues.items.length,tag_count:tags.items.length,release_count:releases.items.length,
-    ruleset_count:rulesets.items.length,webhook_count:0};
+    ruleset_count:rulesets.items.length,webhook_count:0,verified_pulls:verifiedPulls};
 }
 
 export async function readCleanupRun(ctx,owner,repo,runId) {
@@ -240,23 +242,33 @@ export async function executeCleanup(ctx,{owner,repo,runId,before}) {
   requireExactScratchRepo(live,snapshot.run,owner,repo);
   // Missing after a prior partial cleanup is safe to reconcile, never a reason to delete a substitute.
   if(live) {
-    await inspectScratchArtifacts(github,{owner,repo,run:snapshot.run,objects:snapshot.objects,
+    const preflight=await inspectScratchArtifacts(github,{owner,repo,run:snapshot.run,objects:snapshot.objects,
       defaultBranch:live.default_branch});
     for(const item of snapshot.objects.filter(x=>x.object_type==='pr'&&!x.cleaned)){
       const number=Number(item.object_id);
       if(!Number.isSafeInteger(number)||number<=0)throw refusal('Invalid recorded pull-request number.');
       const pull=await getPull(github,owner,repo,number);
-      if(!pull||pull.merged===true||!matchesRunFooter(pull.body,runId)||
-        !equal(pull.head?.repo?.full_name,`${owner}/${repo}`))
-        throw refusal(`PR #${number} was not verified as a run-owned unmerged pull request; cleanup stopped.`);
+      const expected=preflight.verified_pulls.find(p=>p.number===number);
+      // The individual pull GET immediately before a PATCH is a fresh trust
+      // boundary. Refuse a retargeted, published or replaced PR even if the
+      // earlier bounded list showed an exact run-owned draft.
+      const exact=(candidate,state)=>candidate?.number===number&&
+        candidate.merged!==true&&candidate.merged_at==null&&candidate.draft===true&&
+        candidate.state===state&&candidate.body===expected?.body&&
+        candidate.head?.ref===expected?.head_ref&&candidate.head?.sha===expected?.head_sha&&
+        candidate.base?.ref===expected?.base_ref&&
+        equal(candidate.head?.repo?.full_name,`${owner}/${repo}`)&&
+        equal(candidate.base?.repo?.full_name,`${owner}/${repo}`);
+      if(!expected||!exact(pull,expected.state))
+        throw refusal(`PR #${number} changed since the independently verified scratch inventory; cleanup stopped.`);
       if(pull.state==='open') {
         await github.request('PATCH /repos/{owner}/{repo}/pulls/{pull_number}',{
           owner,repo,pull_number:number,state:'closed'
         });
       } else if(pull.state!=='closed') throw refusal('Unknown pull-request state.');
       const after=await getPull(github,owner,repo,number);
-      if(!after || after.state!=='closed'||after.merged===true)
-        throw refusal('The exact PR closure could not be verified; cleanup stopped.');
+      if(!exact(after,'closed'))
+        throw refusal('The exact PR closure or immutable run identity could not be verified; cleanup stopped.');
     }
     // No other repo is eligible: exact verified private full_name and marker are checked again.
     const latest=await getRepo(github,owner,repo);
