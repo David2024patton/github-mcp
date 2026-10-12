@@ -1,6 +1,8 @@
 // V-1 read-only development-run inspection. Planning never implies that a scenario can execute.
 import { defineRead } from './define-read.js';
 import { listScenarioBlueprints, planScenario } from '../dev/scenarios.js';
+import { SEEDABLE } from './dev-seed-write.js';
+import { requireScratchOrg } from '../dev/scratch.js';
 import { boundedRunLimit } from '../dev/ledger.js';
 
 const OWNER={type:'string',maxLength:39,description:'Connected account (default: your default account)'};
@@ -21,14 +23,15 @@ const readScenarios=defineRead({
   description:'Show the seven scenario plans and prerequisites; no scenario can run until a real seed tool is built.',
   properties:{owner:OWNER,repo:REPO,runId:RUN,name:{type:'string',enum:listScenarioBlueprints().map(x=>x.name)}},
   handler:async(args,ctx)=>{
-    const items=listScenarioBlueprints().map(x=>({...x,execution_available:false,status:'plan_only'}));
+    const items=listScenarioBlueprints().map(x=>({...x,implemented:SEEDABLE.includes(x.name),execution_available:false,status:SEEDABLE.includes(x.name)?'scratch_gate_required':'plan_only'}));
     if(!args.name&&!args.repo&&!args.runId&&!args.owner)return {count:items.length,items,note:'Plans only. No GitHub objects are created.'};
     if(!args.name||!args.repo||!args.runId)throw new TypeError('To view a detailed plan, provide name, repo and runId together.');
     const {account}=scope(args,ctx);
-    const row=await ctx.db.getAccount(account);
-    const scratch=!!(row?.is_scratch&&row.account_type==='Organization'&&row.installation_status==='active'&&row.repository_selection==='all');
+    const scratch=await requireScratchOrg(ctx,account).then(()=>true,()=>false);
     const plan=planScenario(args.name,{runId:args.runId,owner:account,repo:args.repo,scratch});
-    return {...plan,execution_available:false,verified_scratch_account:scratch,note:'Preview only: external execution is not built; IN-06 gates scratch use.'};
+    return {...plan,implemented:SEEDABLE.includes(args.name),execution_available:scratch&&SEEDABLE.includes(args.name),verified_scratch_account:scratch,
+      note:scratch&&SEEDABLE.includes(args.name)?'A verified scratch organization can execute this plan through github_dev_seed.':
+        'Plan only: either this scenario is not implemented or IN-06 scratch verification is incomplete.'};
   }
 });
 const readRuns=defineRead({
