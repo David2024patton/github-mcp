@@ -32,6 +32,14 @@ export function createDevLedger(sql) {
         FROM dev_runs WHERE id = ${id} AND account = ${account} AND connection = ${connection}`;
       return rows[0] ?? null;
     },
+    async countDevRuns({account,connection}) {
+      validateRun({id:'run-list',account,connection});
+      const rows=await sql`SELECT COUNT(*) AS n FROM dev_runs
+        WHERE account = ${account} AND connection = ${connection}`;
+      const n=Number(rows[0]?.n??0);
+      if(!Number.isSafeInteger(n)||n<0)throw new TypeError('Run count exceeds the safe reporting range.');
+      return n;
+    },
     async listDevRuns({ account, connection, limit = 20 }) {
       validateRun({ id: 'run-list', account, connection }); boundedRunLimit(limit);
       return await sql`SELECT id, account, connection, description, scenarios, status, created_at, cleaned_at

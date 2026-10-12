@@ -138,6 +138,8 @@ export function runDevLedgerContract(label, makeDb) {
       const db=await makeDb();
       expect(await db.createDevRun({...a,id:'run-ledger-003'})).toBe(true);
       expect(await db.createDevRun({id:'run-ledger-004',account:'other-org',connection:'client-two'})).toBe(true);
+      expect(await db.countDevRuns(a)).toBeGreaterThanOrEqual(1);
+      expect(await db.countDevRuns({...a,connection:'foreign'})).toBe(0);
       const mine=await db.listDevRuns({...a,limit:50});
       expect(mine.some(x=>x.id==='run-ledger-003')).toBe(true);
       expect(mine.every(x=>x.account===a.account&&x.connection===a.connection)).toBe(true);
