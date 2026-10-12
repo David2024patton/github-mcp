@@ -72,7 +72,8 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
     const handle='res_'+'b'.repeat(22);
     const seen=[];
     const db={getRtcPass:async()=>token,getAccount:async()=>account,consumeRtcPassRate:async()=>true};
-    const handler=createRtcHttpHandler({db,registry,dispatch:async({name,args,connection})=>{
+    const withResults={...registry,tools:[...registry.tools,{...read,name:'github_get_result'}]};
+    const handler=createRtcHttpHandler({db,registry:withResults,dispatch:async({name,args,connection})=>{
       seen.push({name,args,client:connection.client_id});
       return {structuredContent:{page_info:{page:args.page},items:[{summary:'owned'}]}};
     }});
