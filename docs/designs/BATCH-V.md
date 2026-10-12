@@ -110,3 +110,6 @@ Tools: `github_dev_check_integration`. Tests: each spec item ok / missing with t
 ## Amendments
 
 (Dated entries only.)
+
+
+**2026-10-12 — Execution step claims (#67).** Additive `dev_run_intents` stores `(run_id, step_id)` claims and the eventual created ID. Two concurrent seed workers must not both create an object; a transport-uncertain claim stays blocked for automatic replay until independently reconciled. The successful object record and claim completion must share one PostgreSQL statement. This is a durability strengthening of V1's exact-object ledger, not authorization for real scratch use or a relaxation of production refusal.
