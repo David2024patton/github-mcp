@@ -82,7 +82,7 @@ const sameTopics = (a = [], b = []) => a.length === b.length && [...a].sort().ev
 
 const repoUpdateSettings = defineGithubWrite({
   name: 'github_repo_update_settings', area: 'repo', audience: ['B', 'O'],
-  description: 'Change description, homepage, topics, feature switches and merge options. Merge options are production.',
+  description: 'Update repository details, features and production merge options.',
   properties: { owner: OWNER, repo: REPO, description: { type: 'string', maxLength: 350 }, homepage: { type: 'string', maxLength: 300 },
     topics: { type: 'array', items: { type: 'string', pattern: '^[a-z0-9][a-z0-9-]{0,49}$' }, maxItems: 20 },
     has_issues: BOOL, has_projects: BOOL, has_wiki: BOOL, has_pull_requests: BOOL, is_template: BOOL, allow_forking: BOOL, web_commit_signoff_required: BOOL,
@@ -140,7 +140,7 @@ const repoSetVisibility = defineGithubWrite({
 
 const repoSetDefaultBranch = defineGithubWrite({
   name: 'github_repo_set_default_branch', area: 'repo', audience: ['O'],
-  description: 'Change which branch is the default (new pull requests, clones and the production rules follow it).',
+  description: 'Change default branch; clones, PRs and protection may be affected.',
   properties: { owner: OWNER, repo: REPO, branch: { type: 'string', minLength: 1, maxLength: 250 } },
   required: ['repo', 'branch'],
   declarations: { production: 'always', confirm: 'always', profiles: ['full'] },

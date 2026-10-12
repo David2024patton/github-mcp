@@ -35,7 +35,7 @@ const THREADS = `query($owner: String!, $name: String!, $number: Int!) { reposit
 
 export const prGet = defineRead({
   name: 'github_pr_get', area: 'pr', audience: ['B', 'Op'],
-  description: 'One pull request: state, draft, head SHA, mergeability, review decision, required checks at that head, unresolved threads.',
+  description: 'Inspect PR draft/merge state, head SHA, required checks, review decision and threads.',
   properties: { owner: OWNER, repo: REPO, number: PR },
   required: ['repo', 'number'],
   handler: (args, ctx) => plain(async () => {

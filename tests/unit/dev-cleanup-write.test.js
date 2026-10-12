@@ -11,7 +11,7 @@ async function prepare(world){
 }
 function arrange(gh,outcome){
   gh.when('GET /repos/{owner}/{repo}').replySequence([
-    {status:200,body:repo},{status:200,body:repo},{status:200,body:repo},
+    {status:200,body:repo},{status:200,body:repo},{status:200,body:repo},{status:200,body:repo},
     outcome==='mismatch'?{status:200,body:repo}:{status:404,body:{message:'Not Found'}},
     outcome==='mismatch'?{status:200,body:repo}:{status:404,body:{message:'Not Found'}}
   ]);

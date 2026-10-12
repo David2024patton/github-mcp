@@ -28,7 +28,7 @@ const checkName = (name, what) => {
 // ---- reads ----
 export const branchList = defineRead({
   name: 'github_branch_list', area: 'branch', audience: ['B', 'Op'],
-  description: 'Branches of a repository with their head commit and protected flag; optionally only protected or only unprotected ones.',
+  description: 'List branch heads and protection; optionally filter by protected status.',
   properties: { owner: OWNER, repo: REPO, protected: { type: 'boolean', description: 'true: only protected branches; false: only unprotected; leave out for all' }, max: { type: 'integer', minimum: 1, maximum: 500, description: 'Default 100' } },
   required: ['repo'],
   summaryType: 'branch',
@@ -121,7 +121,7 @@ const branchRename = defineGithubWrite({
 
 const branchDelete = defineGithubWrite({
   name: 'github_branch_delete', area: 'branch', audience: ['B'],
-  description: 'Delete a branch. The default branch is always refused; a protected branch needs a production connection.',
+  description: 'Delete a nondefault branch; protected branches require production approval.',
   properties: { owner: OWNER, repo: REPO, branch: NAME, ...OUTSIDE_PROJECT },
   required: ['repo', 'branch'],
   declarations: { production: 'when-target', confirm: 'always' },
@@ -165,7 +165,7 @@ const branchMerge = defineGithubWrite({
 // ---- tags (always production) ----
 const tagCreate = defineGithubWrite({
   name: 'github_tag_create', area: 'tag', audience: ['B'],
-  description: 'Create a lightweight tag, or an annotated one when you give a message, on a branch, tag or commit.',
+  description: 'Create lightweight or annotated Git tag at a ref or commit.',
   properties: { owner: OWNER, repo: REPO, tag: NAME, from: { ...NAME, description: 'Branch, tag or commit to tag (default: the default branch)' }, message: { type: 'string', maxLength: 2000, description: 'Makes it an annotated tag' }, ...OUTSIDE_PROJECT },
   required: ['repo', 'tag'],
   declarations: { production: 'always', confirm: 'always', profiles: ['full'] },

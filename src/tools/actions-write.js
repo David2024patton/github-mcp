@@ -35,7 +35,7 @@ export async function workflowProduction(ctx, target, { path, ref }) {
 
 const setEnabled = defineGithubWrite({
   name: 'github_actions_set_workflow_enabled', area: 'actions', audience: ['B'],
-  description: 'Enable or disable a workflow. Switching off a workflow that deploys to production is a production change.',
+  description: 'Enable or disable a workflow; deployment changes may affect production.',
   properties: { owner: OWNER, repo: REPO, workflow: WORKFLOW, enabled: { type: 'boolean' }, ...OUTSIDE_PROJECT },
   required: ['repo', 'workflow', 'enabled'],
   declarations: { production: 'when-target', profiles: ['full'] },
@@ -56,7 +56,7 @@ const setEnabled = defineGithubWrite({
 
 const dispatch = defineGithubWrite({
   name: 'github_actions_dispatch', area: 'actions', audience: ['B', 'Op'],
-  description: 'Start a workflow on a branch or tag, with inputs. Returns the new run. Production when the workflow deploys to production.',
+  description: 'Dispatch a workflow on a ref; deployment may require production approval.',
   properties: { owner: OWNER, repo: REPO, workflow: WORKFLOW, ref: { type: 'string', minLength: 1, maxLength: 250, description: 'Branch or tag to run on (always named)' },
     inputs: { type: 'array', maxItems: 25, items: { type: 'object', properties: { name: { type: 'string', maxLength: 100 }, value: { type: 'string', maxLength: 2000 } }, required: ['name', 'value'] }, description: 'Workflow inputs' }, ...OUTSIDE_PROJECT },
   required: ['repo', 'workflow', 'ref'],
@@ -79,7 +79,7 @@ const dispatch = defineGithubWrite({
 
 const rerun = defineGithubWrite({
   name: 'github_actions_rerun', area: 'actions', audience: ['B', 'Op'],
-  description: 'Run a finished run again: all of it, only its failed jobs, or one job. Rerunning a production deployment is a production change.',
+  description: 'Rerun a workflow or failed jobs; production deployment reruns need approval.',
   properties: { owner: OWNER, repo: REPO, runId: RUN, mode: { type: 'string', enum: ['all', 'failed', 'job'], description: 'Default failed' }, jobId: { type: 'integer', minimum: 1, description: 'For mode job' },
     debugLogging: { type: 'boolean', description: 'Turn on step debug logs for this attempt' }, ...OUTSIDE_PROJECT },
   required: ['repo', 'runId'],
