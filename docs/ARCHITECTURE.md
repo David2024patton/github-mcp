@@ -203,3 +203,6 @@ permissions actually granted per account here once Chris installs the Apps.
 
 
 **#68 read exposure:** `src/tools/dev-runs-read.js` registers `github_dev_list_scenarios` and `github_dev_list_runs`. Scenario plans say `plan_only` and `execution_available: false` until a real safe seed exists. Run reads are scoped to the connected account and client ID, with bounded saved-object and claimed/uncertain/recorded-step details via `listDevIntents`; no GitHub API call or mutation. Scratch eligibility is derived solely from the server's `gh_accounts.is_scratch` and `account_type`, never asserted by caller arguments.
+
+
+**V-1 scratch gate (#69).** `src/dev/scratch.js` trusts only `gh_accounts` metadata: `is_scratch`, Organization, a configured GitHub App and active installation across all repositories; production connections or enabled production switch refuse before a GitHub read. `src/dev/execute.js` is the shared one-winner step claim and object journal for GitHub mutations, with an uncertain state on unknown outcomes. `src/tools/dev-scratch-write.js` exposes guarded `github_dev_create_scratch_repo`; it creates a private, `rtc_run=<runId>`-described repository and records the returned exact `full_name`. Fixture App credentials are mocks for tests only; no IN-06 real account has been enabled.
