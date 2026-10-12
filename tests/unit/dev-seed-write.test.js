@@ -22,8 +22,8 @@ const arrange=(scenario)=>(gh,outcome)=>{
   const after=repository(failing?{description:`Developer fixture for ${MARK} (failing-ci)`}:{});
   gh.when('GET /repos/{owner}/{repo}').replySequence([
     {status:404,body:{message:'Not Found'}},
-    {status:200,body:after},
-    {status:200,body:repository({...after,...(outcome==='mismatch'?{private:false}:{})})}
+    {status:200,body:repository({...after,...(outcome==='mismatch'?{private:false}:{})})},
+    {status:200,body:after}
   ]);
   gh.when('POST /orgs/{org}/repos').reply(201,after);
   gh.when('PUT /repos/{owner}/{repo}/contents/{path}').reply(201,{
