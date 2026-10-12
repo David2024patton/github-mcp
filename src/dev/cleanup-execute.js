@@ -1,5 +1,6 @@
 // V-2: never delete on a tag search. A recorded run owns one exact private scratch repository.
 import { missing, octo, refusal } from '../tools/github-write.js';
+import { listAll } from '../github/client.js';
 import { requireScratchOrg } from './scratch.js';
 import { planDevCleanup } from './cleanup.js';
 import { matchesRunDescription, matchesRunFooter } from './run-marker.js';
@@ -14,6 +15,53 @@ export function requireExactScratchRepo(repo,run,owner,name) {
     !matchesRunDescription(repo.description,run.id)))
     throw refusal('The live repository is not the exact private, run-marked scratch repository. Deletion refused.');
 }
+
+// A run-marked repository can be repurposed by someone else after creation.
+// Refuse whole-repository deletion when independently listed PRs, issues or
+// non-default branches are absent from the durable run journal. The bounded
+// lists are complete or deletion is denied; no search-by-marker authorizes it.
+export async function inspectScratchArtifacts(github,{owner,repo,run,objects,defaultBranch}) {
+  if(typeof defaultBranch!=='string'||!defaultBranch||
+    !Array.isArray(objects)||!run?.id)
+    throw refusal('Scratch repository default branch and exact run journal are required.');
+  const common={owner,repo,per_page:100};
+  const [branches,pulls,issues]=await Promise.all([
+    listAll(github,'GET /repos/{owner}/{repo}/branches',common,{max:100}),
+    listAll(github,'GET /repos/{owner}/{repo}/pulls',{...common,state:'all'},{max:100}),
+    listAll(github,'GET /repos/{owner}/{repo}/issues',{...common,state:'all'},{max:100})
+  ]);
+  if(branches.capped||pulls.capped||issues.capped||
+    !Array.isArray(branches.items)||!Array.isArray(pulls.items)||!Array.isArray(issues.items))
+    throw refusal('Scratch inventory is incomplete; repository deletion refused.');
+  const owns=(type,id)=>objects.some(x=>x.object_type===type&&
+    x.object_id===String(id)&&x.owner.toLowerCase()===owner.toLowerCase()&&x.repo===repo);
+  const commits=new Set(objects.filter(x=>['branch','fixture_file','fixture_revision','workflow_file'].includes(x.object_type))
+    .map(x=>x.created_sha).filter(Boolean));
+  if(!branches.items.some(x=>x.name===defaultBranch))
+    throw refusal('The scratch default branch could not be independently listed.');
+  for(const b of branches.items) {
+    if(b?.name===defaultBranch)continue;
+    if(typeof b?.name!=='string'||!b.name.startsWith(`rtc/${run.id}/`)||
+      !owns('branch',b.name)||!commits.has(b.commit?.sha))
+      throw refusal('An unrecorded or changed branch exists in the scratch repository. Deletion refused.');
+  }
+  const numbers=new Set();
+  for(const p of pulls.items) {
+    if(!Number.isSafeInteger(p?.number)||p.number<1||numbers.has(p.number)||
+      !owns('pr',p.number)||p.merged===true||
+      !matchesRunFooter(p.body,run.id))
+      throw refusal('An unrecorded or changed pull request exists in the scratch repository. Deletion refused.');
+    numbers.add(p.number);
+  }
+  for(const i of issues.items) {
+    if(!Number.isSafeInteger(i?.number)||i.number<1||
+      (i.pull_request? !numbers.has(i.number):
+        !owns('issue',i.number)||!matchesRunFooter(i.body,run.id)))
+      throw refusal('An unrecorded or changed issue exists in the scratch repository. Deletion refused.');
+  }
+  return {branch_count:branches.items.length,pr_count:pulls.items.length,issue_count:issues.items.length};
+}
+
 export async function readCleanupRun(ctx,owner,repo,runId) {
   const connection=ctx.connection.client_id, db=ctx.db;
   const run=await db.getDevRun({id:runId,account:owner,connection});
@@ -56,6 +104,8 @@ export async function executeCleanup(ctx,{owner,repo,runId,before}) {
   requireExactScratchRepo(live,snapshot.run,owner,repo);
   // Missing after a prior partial cleanup is safe to reconcile, never a reason to delete a substitute.
   if(live) {
+    await inspectScratchArtifacts(github,{owner,repo,run:snapshot.run,objects:snapshot.objects,
+      defaultBranch:live.default_branch});
     for(const item of snapshot.objects.filter(x=>x.object_type==='pr'&&!x.cleaned)){
       const number=Number(item.object_id);
       if(!Number.isSafeInteger(number)||number<=0)throw refusal('Invalid recorded pull-request number.');
@@ -76,6 +126,8 @@ export async function executeCleanup(ctx,{owner,repo,runId,before}) {
     const latest=await getRepo(github,owner,repo);
     requireExactScratchRepo(latest,snapshot.run,owner,repo);
     if(!latest)throw refusal('The scratch repository disappeared before deletion; inspect the run.');
+    await inspectScratchArtifacts(github,{owner,repo,run:snapshot.run,objects:snapshot.objects,
+      defaultBranch:latest.default_branch});
     await github.request('DELETE /repos/{owner}/{repo}',{owner,repo});
   }
   const remaining=await getRepo(github,owner,repo);

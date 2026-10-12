@@ -316,7 +316,7 @@ Card(s): V-1 … V-5. The owner alone can enable an exact Organization as `is_sc
 | `github_dev_seed` | Build a scenario in the scratch account or on test branches: repos, branches, commits, PRs, issues, labels, workflow files; preview lists every object | P | N | I | B | E | V-1 built #70–#80; exact run-marker seed verification #90 (six scratch scenarios; webhook-target pending V-4) |
 | `github_dev_list_runs` | Connection-scoped runs, exact objects/intents, fail-closed progress and cursor-paged all-runs journal preview (never remote acceptance or deletion) | — | N | — | B | R | V-1 #68; V-2 #93 |
 | `github_dev_create_scratch_repo` | Throwaway repository in the scratch account, tagged with the run | P | N | I | B | E | V-1 built #69 |
-| `github_dev_cleanup` | Clean confirmed run-owned scratch repositories, or exact unprotected standalone test PRs/branches; never delete host repositories | C | N | I | B | E | V-2 built #85–#90 (exact run-marker ownership #90; per-object reports; other types pending) |
+| `github_dev_cleanup` | Clean confirmed run-owned scratch repositories, or exact unprotected standalone test PRs/branches; reject foreign scratch branches, PRs and issues before repository deletion; never delete host repositories | C | N | I | B | E | V-2 built #85–#90 (exact run-marker ownership #90; per-object reports; other types pending) |
 | `github_dev_create_test_branch` | Branch `rtc/<run>/<name>` from any ref in an allowed repo (never production) | P | N | I | B | E | V-3 |
 | `github_dev_open_test_pr` | Draft PR from a test branch, labelled with the run | P | N | I | B | E | V-3 |
 | `github_dev_dispatch_and_wait` | Start a workflow on a test ref and wait up to 45 s; returns the run, or a handle to check later | P | N | I | B | E | V-3 |
