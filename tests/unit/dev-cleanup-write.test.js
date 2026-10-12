@@ -25,6 +25,7 @@ function arrange(gh,outcome){
   gh.when('GET /repos/{owner}/{repo}/rulesets').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/milestones').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/deployments').reply(200,[]);
+  gh.when('GET /repos/{owner}/{repo}/environments').reply(200,{total_count:0,environments:[]});
   gh.when('GET /repos/{owner}/{repo}/issues/comments').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/pulls/comments').reply(200,[]);
   gh.when('DELETE /repos/{owner}/{repo}').reply(204);
@@ -90,6 +91,22 @@ describe('V-2 protected run deletion',()=>{
       expect(out.done).toBe(false);
       expect(w.gh.calls.some(x=>x.method==='DELETE'||x.method==='PATCH')).toBe(false);
       expect(w.gh.invalid).toEqual([]);
+    }
+  });
+  it('refuses foreign, inconsistent or inaccessible deployment environment state',async()=>{
+    const route='GET /repos/{owner}/{repo}/environments';
+    for(const variant of [
+      {status:200,body:{total_count:1,environments:[{name:'production'}]}},
+      {status:200,body:{total_count:0,environments:[{name:'hidden'}]}},
+      {status:200,body:{total_count:1,environments:[]}},
+      {status:200,body:{total_count:0}},
+      {status:403,body:{message:'Insufficient Actions read permission'}}
+    ]){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      w.gh.when(route).reply(variant.status,variant.body);
+      const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(out.done,JSON.stringify(variant)).toBe(false);
+      expect(w.gh.calls.some(x=>x.method==='DELETE'||x.method==='PATCH')).toBe(false);
     }
   });
   it('refuses incomplete or permission-denied milestone and deployment inventories',async()=>{
