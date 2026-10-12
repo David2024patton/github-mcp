@@ -29,10 +29,11 @@ const prIsSafe=async(gh,run,owner,repo,objects,o,initial)=>{
     if(initial)throw refusal('Recorded PR is missing; reconcile its exact identity.');
     return null;
   }
-  if(p.merged===true||!['open','closed'].includes(p.state)||
+  const head=objects.find(b=>b.object_type==='branch'&&b.object_id===p?.head?.ref);
+  if(p.merged===true||!['open','closed'].includes(p.state)||(p.state==='open'&&p.draft!==true)||
     !String(p.body??'').includes(marker(run.id))||
     !ownRef(run.id,p.head?.ref)||!eq(p.head?.repo?.full_name,`${owner}/${repo}`)||
-    !objects.some(b=>b.object_type==='branch'&&b.object_id===p.head.ref))
+    !head||(head.created_sha&&p.head?.sha!==head.created_sha))
     throw refusal('PR does not match its recorded run-owned draft branch; cleanup refused.');
   return p;
 };

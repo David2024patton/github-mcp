@@ -44,4 +44,33 @@ describe('non-scratch safety hardening',()=>{
   expect(out.done).toBe(false);
   expect(w.gh.calls.filter(c=>c.method==='DELETE')).toHaveLength(0);
  });
+ it('closes only a recorded draft PR on the exact branch before deleting the branch',async()=>{
+  const w=await makeWorld();await prepare(w);arrange(w.gh,'ok');
+  await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+    type:'pr',owner:OWNER,repo:REPO,objectId:'12',createdSha:SHA});
+  const pr={number:12,merged:false,state:'open',draft:true,body:`<!-- rtc_run=${RUN} -->`,
+    head:{ref:BR,sha:SHA,repo:{full_name:`${OWNER}/${REPO}`}}};
+  w.gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}').replySequence([
+    {status:200,body:pr},{status:200,body:pr},{status:200,body:pr},
+    {status:200,body:{...pr,state:'closed'}},
+  ]);
+  w.gh.when('PATCH /repos/{owner}/{repo}/pulls/{pull_number}').reply(200,{...pr,state:'closed'});
+  const result=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+  expect(result.status).toBe('applied');
+  expect(w.gh.calls.filter(c=>['PATCH','DELETE'].includes(c.method)).map(c=>c.route))
+    .toEqual(['PATCH /repos/{owner}/{repo}/pulls/{pull_number}','DELETE /repos/{owner}/{repo}/git/refs/{ref}']);
+ });
+ it('refuses a converted ready-for-review PR instead of closing someone else\'s active work',async()=>{
+  const w=await makeWorld();await prepare(w);arrange(w.gh,'ok');
+  await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+    type:'pr',owner:OWNER,repo:REPO,objectId:'12',createdSha:SHA});
+  w.gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}').reply(200,{
+    number:12,state:'open',draft:false,merged:false,body:`<!-- rtc_run=${RUN} -->`,
+    head:{ref:BR,sha:SHA,repo:{full_name:`${OWNER}/${REPO}`}}
+  });
+  const output=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+  expect(output.done).toBe(false);
+  expect(w.gh.calls.filter(c=>['PATCH','DELETE'].includes(c.method)).toHaveLength(0);
+ });
+
 });
