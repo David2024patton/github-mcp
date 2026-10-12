@@ -4,6 +4,7 @@ import { listAll } from '../github/client.js';
 import { productionReason } from '../tools/production-guard.js';
 import { matchesRunFooter } from './run-marker.js';
 const eq=(a,b)=>String(a??'').toLowerCase()===String(b??'').toLowerCase();
+const marker=id=>`rtc_run=${id}`;
 const ownRef=(runId,ref)=>typeof ref==='string'&&ref.startsWith(`rtc/${runId}/`)&&
   ref.length<250&&!ref.includes('..')&&!ref.endsWith('/')&&!ref.includes('//');
 const getBranch=(gh,owner,repo,branch)=>missing(async()=>(await gh.request('GET /repos/{owner}/{repo}/branches/{branch}',{owner,repo,branch})).data);
