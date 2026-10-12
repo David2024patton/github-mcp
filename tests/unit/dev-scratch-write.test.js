@@ -1,0 +1,58 @@
+import {describe,expect,it} from 'vitest';
+import {runWriteContract,makeWorld,parse} from '../../test/helpers/write-contract.js';
+import * as scratch from '../../src/tools/dev-scratch-write.js';
+import {requireScratchOrg} from '../../src/dev/scratch.js';
+import {runDevMutationOnce} from '../../src/dev/execute.js';
+
+const NAME='fixture-repo', RUN='run-scratch-101', MARKER=`rtc_run=${RUN}`;
+const def={tool:scratch.tools[0],handler:scratch.handlers.github_dev_create_scratch_repo};
+const repository=(changes={})=>({name:NAME,full_name:`example-org/${NAME}`,private:true,
+  visibility:'private',description:`Scratch fixture for ${MARKER}`,default_branch:'main',...changes});
+const arrange=(gh,outcome)=>{
+  gh.when('GET /repos/{owner}/{repo}').replySequence([
+    {status:404,body:{message:'Not Found'}},
+    {status:200,body:repository(outcome==='mismatch'?{private:false}:{})}
+  ]);
+  gh.when('POST /orgs/{org}/repos').reply(201,repository());
+};
+
+runWriteContract({
+  label:'github_dev_create_scratch_repo',definition:def,
+  args:{runId:RUN,name:NAME},scratchAccount:true,previewOnly:true,needsConfirm:false,arrange
+});
+describe('V-1 scratch-account preflight and durable execution',()=>{
+  it('refuses non-scratch accounts before the first GitHub read or write',async()=>{
+    const w=await makeWorld();
+    const out=parse(await def.handler({runId:RUN,name:NAME,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls).toEqual([]);
+    expect(await w.db.getDevRun({id:RUN,account:'example-org',connection:'client-1'})).toBeNull();
+  });
+  it('refuses production mode even for the verified scratch fixture, before any read',async()=>{
+    const w=await makeWorld({scratchAccount:true,mode:'production'});
+    const out=parse(await def.handler({runId:RUN,name:NAME,confirm:true},w.ctx));
+    expect(out.status).toBe('refused');
+    expect(w.gh.calls).toEqual([]);
+  });
+  it('validates trusted App installation, org type and all-repo selection',async()=>{
+    const w=await makeWorld({scratchAccount:true});
+    await expect(requireScratchOrg(w.ctx,'example-org')).resolves.toMatchObject({is_scratch:true});
+    await w.db.setInstallation('example-org',{installationId:902,repositorySelection:'selected',
+      permissions:{contents:'write'},status:'active'});
+    await expect(requireScratchOrg(w.ctx,'example-org')).rejects.toThrow(/IN-06/);
+    expect(w.gh.calls).toEqual([]);
+  });
+  it('records the real repository full_name once and never blindly retries a claimed step',async()=>{
+    const w=await makeWorld({scratchAccount:true});arrange(w.gh,'ok');
+    const out=parse(await def.handler({runId:RUN,name:NAME,confirm:true},w.ctx));
+    expect(out).toMatchObject({status:'applied',confirmed:true});
+    const objects=await w.db.listDevObjects({runId:RUN,account:'example-org',connection:'client-1'});
+    expect(objects).toEqual([expect.objectContaining({object_type:'repo',object_id:`example-org/${NAME}`})]);
+    const intent=await w.db.getDevIntent({runId:RUN,account:'example-org',connection:'client-1',stepId:'create-scratch-repo'});
+    expect(intent).toMatchObject({status:'recorded',object_id:`example-org/${NAME}`});
+    const same=await runDevMutationOnce(w.ctx,{runId:RUN,account:'example-org',connection:'client-1',
+      stepId:'create-scratch-repo',type:'repo',owner:'example-org',repo:NAME,objectName:NAME,
+      create:async()=>{throw new Error('duplicate GitHub operation');}});
+    expect(same).toMatchObject({replayed:true,objectId:`example-org/${NAME}`});
+  });
+});

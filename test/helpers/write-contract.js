@@ -20,7 +20,7 @@ export const NOW = Date.UTC(2026, 9, 10, 18, 0, 0);
 const ENV = { TOKEN_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64url') };
 
 /** A fresh world: fake database and GitHub, a fine-grained credential for example-org, and a connection of the given kind. */
-export async function makeWorld({ mode = 'preview', profile = 'everyday', accounts = ['example-org'], gates = [] } = {}) {
+export async function makeWorld({ mode = 'preview', profile = 'everyday', accounts = ['example-org'], gates = [], scratchAccount = false } = {}) {
   const db = createFakeDb({ clock: () => NOW });
   await db.initSchema();
   const gh = makeFakeGitHub();
@@ -33,13 +33,16 @@ export async function makeWorld({ mode = 'preview', profile = 'everyday', accoun
     [{ login: 'example-owner', id: 1, type: 'User' }]);
   const credentials = createCredentials({ db, env: ENV, fetch: gh.fetch, now: () => NOW });
   for (const login of accounts) {
-    await db.upsertAccount({ login, accountId: 1000 + login.length, accountType: 'Organization', label: login, credentialKind: 'fine_grained' });
+    await db.upsertAccount({ login, accountId: 1000 + login.length, accountType: 'Organization', label: login, credentialKind: scratchAccount ? 'app' : 'fine_grained', appId: scratchAccount ? 901 : null, isScratch: scratchAccount });
+    if (scratchAccount) await db.setInstallation(login, { installationId: 902, repositorySelection: 'all', permissions: { contents: 'write', metadata: 'read' }, status: 'active' });
     await credentials.storeFineGrained(login, 'github_pat_FAKE0123456789abcdefghij', { expiresAt: null });
     await credentials.storeUserAuthorization(login, { userLogin: 'example-owner', accessToken: 'ghu_FAKE0123456789abcdefghij', expiresIn: 28800, refreshToken: 'ghr_FAKE0123456789abcdefghij', refreshExpiresIn: 15811200 });
   }
+  // Mock-only App transport: obtain an existing fixture user token instead of minting a real App installation token.
+  const fixtureCredentials = scratchAccount ? { ...credentials, token: ({ account }) => credentials.token({ account, cred: 'U' }) } : credentials;
   const connection = Object.freeze({ client_id: 'client-1', default_account: accounts[0], accounts: Object.freeze([...accounts]), mode, profile, listing: 'catalog' });
-  const ctx = { connection, db, credentials, fetch: gh.fetch, now: () => NOW, sleep: async () => {}, retryAfterBaseValue: 1, gates };
-  return { db, gh, credentials, connection, ctx };
+  const ctx = { connection, db, credentials: fixtureCredentials, fetch: gh.fetch, now: () => NOW, sleep: async () => {}, retryAfterBaseValue: 1, gates };
+  return { db, gh, credentials: fixtureCredentials, connection, ctx };
 }
 
 // A GraphQL query is a POST but changes nothing; only a mutation counts as a write.
@@ -77,11 +80,11 @@ export function doorsFor(definition) {
  * @param {(opts) => Function[]} [o.gatesFor] `({ protectedLevel, spendLimitCents })` -> gates; defaults to the fixture gates
  */
 export function runWriteContract({ label, definition, args, arrange, needsConfirm, production = false, notifies = [], accessWidening = false, spendCents = 0, quietArgs = null,
-  conveyor = false, profile = 'everyday', gatesFor = ({ protectedLevel, spendLimitCents }) => [...(protectedLevel ? [protectionGate(protectedLevel)] : []), spendGate({ limitCents: spendLimitCents ?? 0 })] }) {
+  conveyor = false, profile = 'everyday', scratchAccount = false, previewOnly = false, gatesFor = ({ protectedLevel, spendLimitCents }) => [...(protectedLevel ? [protectionGate(protectedLevel)] : []), spendGate({ limitCents: spendLimitCents ?? 0 })] }) {
   for (const door of doorsFor(definition)) {
     describe(`write contract: ${label} through ${door.name}`, () => {
       const world = async (options = {}, replies = 'ok') => {
-        const w = await makeWorld({ profile, ...options, ...(options.gates === undefined ? { gates: gatesFor({ spendLimitCents: options.spendLimitCents ?? 100000 }) } : {}) });
+        const w = await makeWorld({ profile, scratchAccount, ...options, ...(options.gates === undefined ? { gates: gatesFor({ spendLimitCents: options.spendLimitCents ?? 100000 }) } : {}) });
         arrange(w.gh, replies);
         return w;
       };
@@ -152,12 +155,12 @@ export function runWriteContract({ label, definition, args, arrange, needsConfir
       }
 
       it('7. a locked resource refuses everything; pr-only refuses what is not pull-request work', async () => {
-        const locked = await world({ mode: 'production', gates: gatesFor({ protectedLevel: 'locked' }) });
+        const locked = await world({ mode: previewOnly ? 'preview' : 'production', gates: gatesFor({ protectedLevel: 'locked' }) });
         const out = parse(await door.call(locked, { ...args, confirm: true }));
         expect(out).toMatchObject({ status: 'refused_by_guard' });
         expect(out.refusedBy).toContain('locked');
         expect(writes(locked.gh)).toEqual([]);
-        const prOnly = await world({ mode: 'production', gates: gatesFor({ protectedLevel: 'pr-only' }) });
+        const prOnly = await world({ mode: previewOnly ? 'preview' : 'production', gates: gatesFor({ protectedLevel: 'pr-only' }) });
         const res = parse(await door.call(prOnly, { ...args, confirm: true }));
         if (conveyor) expect(res.status).not.toBe('refused_by_guard');
         else expect(res).toMatchObject({ status: 'refused_by_guard' });
