@@ -1,6 +1,9 @@
 // V-2 read-only remote cleanup rehearsal. No freeze, closing PRs or DELETE.
 import {ownerOf,octo,refusal} from './github-write.js';
 import {readCleanupRun,inspectScratchArtifacts} from '../dev/cleanup-execute.js';
+import {listAll} from '../github/client.js';
+import {compareObservedScratchLabels} from '../dev/label-drift.js';
+import {summarizeScratchBirth} from '../dev/birth-report.js';
 
 
 function reasonCode(error) {
@@ -37,6 +40,30 @@ export function cleanupPreflightResult({runId,owner,repo,phase,blocker=null,snap
   };
 }
 
+async function auditBirthDrift(args,ctx,{owner,state,github}){
+  const connection=ctx.connection.client_id,runId=args.runId,repo=args.repo;
+  const [birth,intents]=await Promise.all([
+    ctx.db.getDevBirthLabels({runId,account:owner,connection}),
+    ctx.db.listDevIntents({runId,account:owner,connection,limit:50})
+  ]);
+  const report=summarizeScratchBirth({run:state.run,objects:state.objects,
+    intents,birth,listingComplete:state.objects.length<50&&intents.length<50});
+  if(!report.journal_binding_verified)
+    return {state:report.state,journal_binding_verified:false,
+      creator_provenance_verified:false,deletion_authorized:false};
+  const {items,capped}=await listAll(github,'GET /repos/{owner}/{repo}/labels',
+    {owner,repo,per_page:100},{max:100});
+  if(capped)throw refusal('Live label inventory is incomplete; no ownership inference.');
+  const delta=compareObservedScratchLabels(birth.labels,items);
+  const head=(await github.request('GET /repos/{owner}/{repo}/git/ref/{ref}',{
+    owner,repo,ref:`heads/${state.existing.default_branch}`
+  })).data;
+  const workflow=state.objects.find(x=>x.object_type==='workflow_file');
+  const expectedSha=workflow?.created_sha??birth.source_sha;
+  const unchanged=/^[a-f0-9]{40}$/.test(expectedSha??'')&&head?.object?.sha===expectedSha;
+  return {state:'compared',journal_binding_verified:true,
+    default_branch_commit_unchanged:unchanged,...delta};
+}
 export async function inspectCleanupPreview(args,ctx){
     if(ctx.connection?.mode!=='preview')
       throw new TypeError('Developer cleanup inspection is preview-only.');
@@ -63,15 +90,18 @@ export async function inspectCleanupPreview(args,ctx){
       return cleanupPreflightResult({...base,phase:'repository_absent',blocker:
         refusal('Exact scratch repository is missing; reconcile the journal and remote state.')});
     const github=await octo(ctx,owner);
+    let labelAudit=null;
     try{
+      if(args.includeBirthLabels)
+        labelAudit=await auditBirthDrift(args,ctx,{owner,state,github});
       const snapshot=await inspectScratchArtifacts(github,{
         owner,repo:args.repo,run:state.run,objects:state.objects,
         defaultBranch:state.existing.default_branch
       });
-      return cleanupPreflightResult({...base,phase:'scratch_remote_inventory',snapshot});
+      return {...cleanupPreflightResult({...base,phase:'scratch_remote_inventory',snapshot}),...(labelAudit?{birth_label_drift:labelAudit}:{})};
     }catch(error){
       if([401,403,422].includes(error?.status)||error instanceof TypeError)
-        return cleanupPreflightResult({...base,phase:'scratch_remote_inventory',blocker:error});
+        return {...cleanupPreflightResult({...base,phase:'scratch_remote_inventory',blocker:error}),...(labelAudit?{birth_label_drift:labelAudit}:{})};
       throw error;
     }
 }
