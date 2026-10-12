@@ -19,8 +19,7 @@ const repository=(v={})=>({full_name:`${OWNER}/${REPO}`,private:true,
   description:`Developer fixture for ${MARK} (repo-basic)`,default_branch:'main',...v});
 const arrange=(scenario)=>(gh,outcome)=>{
   const failing=scenario==='failing-ci';
-  const after=repository({...failing?{description:`Developer fixture for ${MARK} (failing-ci)`}:{}},
-    ...{}); // Always an explicitly run-marked repository.
+  const after=repository(failing?{description:`Developer fixture for ${MARK} (failing-ci)`}:{});
   gh.when('GET /repos/{owner}/{repo}').replySequence([
     {status:404,body:{message:'Not Found'}},
     {status:200,body:after},
