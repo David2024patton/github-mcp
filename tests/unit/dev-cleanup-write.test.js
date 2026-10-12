@@ -219,6 +219,79 @@ describe('V-2 protected run deletion',()=>{
       expect(w.gh.invalid).toEqual([]);
     }
   });
+  it('rejects a recorded scratch PR retargeted to another repository or unrelated head',async()=>{
+    for(const variant of ['foreign-head-repo','foreign-base','wrong-sha','ready-for-review']){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      const branch=`rtc/${RUN}/review`;
+      await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+        type:'branch',owner:OWNER,repo:REPO,objectId:branch,createdSha:'a'.repeat(40)});
+      await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+        type:'pr',owner:OWNER,repo:REPO,objectId:'101',createdSha:'a'.repeat(40)});
+      w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
+        {name:'main',commit:{sha:'a'.repeat(40)}},{name:branch,commit:{sha:'a'.repeat(40)}}
+      ]);
+      w.gh.when('GET /repos/{owner}/{repo}/pulls').reply(200,[{
+        number:101,merged:false,draft:variant!=='ready-for-review',state:'open',
+        body:`<!-- rtc_run=${RUN} -->`,
+        head:{ref:branch,sha:variant==='wrong-sha'?'b'.repeat(40):'a'.repeat(40),
+          repo:{full_name:variant==='foreign-head-repo'?'outsider/fixture':`${OWNER}/${REPO}`}},
+        base:{ref:variant==='foreign-base'?'foreign-main':'main',repo:{full_name:`${OWNER}/${REPO}`}}
+      }]);
+      const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(out.done).toBe(false);
+      expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(false);
+      expect(w.gh.invalid).toEqual([]);
+    }
+  });
+  it('refuses a merged scratch PR even if it keeps the original run marker',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    const branch=`rtc/${RUN}/review`;
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'branch',owner:OWNER,repo:REPO,objectId:branch,createdSha:'a'.repeat(40)});
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'pr',owner:OWNER,repo:REPO,objectId:'101',createdSha:'a'.repeat(40)});
+    w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
+      {name:'main',commit:{sha:'a'.repeat(40)}},{name:branch,commit:{sha:'a'.repeat(40)}}
+    ]);
+    w.gh.when('GET /repos/{owner}/{repo}/pulls').reply(200,[{
+      number:101,draft:true,state:'closed',merged_at:'2026-10-12T00:00:00Z',
+      body:`<!-- rtc_run=${RUN} -->`,
+      head:{ref:branch,sha:'a'.repeat(40),repo:{full_name:`${OWNER}/${REPO}`}},
+      base:{ref:'main',repo:{full_name:`${OWNER}/${REPO}`}}
+    }]);
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(false);
+  });
+  it('accepts a run-recorded draft PR only while its head and base remain exact',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    const branch=`rtc/${RUN}/review`;
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'branch',owner:OWNER,repo:REPO,objectId:branch,createdSha:'a'.repeat(40)});
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'pr',owner:OWNER,repo:REPO,objectId:'101',createdSha:'a'.repeat(40)});
+    w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
+      {name:'main',commit:{sha:'a'.repeat(40)}},{name:branch,commit:{sha:'a'.repeat(40)}}
+    ]);
+    w.gh.when('GET /repos/{owner}/{repo}/pulls').reply(200,[{
+      number:101,merged_at:null,draft:true,state:'closed',
+      body:`<!-- rtc_run=${RUN} -->`,
+      head:{ref:branch,sha:'a'.repeat(40),repo:{full_name:`${OWNER}/${REPO}`}},
+      base:{ref:'main',repo:{full_name:`${OWNER}/${REPO}`}}
+    }]);
+    w.gh.when('GET /repos/{owner}/{repo}/issues').reply(200,[{
+      number:101,pull_request:{url:'https://api.github.com/fixture'}
+    }]);
+    w.gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}').reply(200,{
+      number:101,merged:false,draft:true,state:'closed',
+      head:{ref:branch,sha:'a'.repeat(40),repo:{full_name:`${OWNER}/${REPO}`}},
+      body:`<!-- rtc_run=${RUN} -->`
+    });
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(true);
+    expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(true);
+    expect(w.gh.invalid).toEqual([]);
+  });
   it('never allows a production connection to perform developer cleanup',async()=>{
     const w=await makeWorld({scratchAccount:true,mode:'production'});await prepare(w);arrange(w.gh,'ok');
     const result=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));

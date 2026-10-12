@@ -72,10 +72,19 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
   }
   const numbers=new Set();
   for(const p of pulls.items) {
+    const head=p?.head?.ref,base=p?.base?.ref;
+    const saved=objects.filter(x=>x.object_type==='pr'&&x.object_id===String(p?.number)&&
+      x.owner.toLowerCase()===owner.toLowerCase()&&x.repo===repo);
     if(!Number.isSafeInteger(p?.number)||p.number<1||numbers.has(p.number)||
-      !owns('pr',p.number)||p.merged===true||
-      !matchesRunFooter(p.body,run.id))
-      throw refusal('An unrecorded or changed pull request exists in the scratch repository. Deletion refused.');
+      saved.length!==1||p.merged===true||p.merged_at!=null||p.draft!==true||
+      !['open','closed'].includes(p.state)||
+      !matchesRunFooter(p.body,run.id)||
+      typeof head!=='string'||!head.startsWith(`rtc/${run.id}/`)||
+      !branchTip.has(head)||p.head?.sha!==branchTip.get(head)||
+      !equal(p.head?.repo?.full_name,`${owner}/${repo}`)||
+      (base!==defaultBranch&&!branchTip.has(base))||
+      !equal(p.base?.repo?.full_name,`${owner}/${repo}`))
+      throw refusal('A pull request changed draft state, repository, base or exact run-owned head; deletion refused.');
     numbers.add(p.number);
   }
   for(const i of issues.items) {
