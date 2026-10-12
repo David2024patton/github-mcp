@@ -73,7 +73,7 @@ describe('V-1 real multi-step GitHub scenario safeguards',()=>{
     const prod=await makeWorld({scratchAccount:true,mode:'production'});
     expect(parse(await def.handler({repo:REPO,runId:ID,scenario:'repo-basic',confirm:true},prod.ctx)).done).toBe(false);
     expect(prod.gh.calls).toEqual([]);
-    expect(seeded.SEEDABLE).toEqual(['repo-basic','failing-ci','release-train']);
+    expect(seeded.SEEDABLE).toEqual(['repo-basic','failing-ci','release-train','protected-main']);
   });
   it('never blindly repeats a failed downstream GitHub write after repo creation',async()=>{
     const w=await makeWorld({scratchAccount:true});arrange('repo-basic')(w.gh,'ok');
@@ -119,5 +119,40 @@ describe('release-train durable draft fixture',()=>{
       .toEqual(['v0.1.0','v0.2.0','v0.3.0']);
     expect(rows.find(x=>x.object_type==='release').object_id).toBe('128');
     expect(w.gh.calls.filter(x=>x.route==='POST /repos/{owner}/{repo}/releases')[0].body.draft).toBe(true);
+  });
+});
+
+const rulesetFixture=(overrides={})=>({
+  id:841,name:LABEL,target:'branch',enforcement:'active',
+  conditions:{ref_name:{include:['~DEFAULT_BRANCH'],exclude:[]}},
+  bypass_actors:[],rules:[{type:'required_status_checks',parameters:{
+    required_status_checks:[{context:'ci'}],strict_required_status_checks_policy:true
+  }}],...overrides
+});
+const protectedArrange=(gh,outcome)=>{
+  const repo=repository({description:`Developer fixture for ${MARK} (protected-main)`});
+  gh.when('GET /repos/{owner}/{repo}').replySequence([
+    {status:404,body:{message:'Not Found'}},
+    {status:200,body:repo},{status:200,body:repo}
+  ]);
+  gh.when('POST /orgs/{org}/repos').reply(201,repo);
+  gh.when('POST /repos/{owner}/{repo}/rulesets').reply(201,rulesetFixture());
+  gh.when('GET /repos/{owner}/{repo}/rulesets/{ruleset_id}').reply(200,
+    rulesetFixture(outcome==='mismatch'?{enforcement:'disabled'}:{}));
+};
+runWriteContract({label:'github_dev_seed(protected-main)',definition:def,
+  args:{repo:REPO,runId:ID,scenario:'protected-main'},arrange:protectedArrange,
+  scratchAccount:true,previewOnly:true,needsConfirm:false,expectedWrites:2});
+describe('protected-main scratch fixture',()=>{
+  it('records exact GitHub ruleset ID and mandates ci on only the default branch',async()=>{
+    const w=await makeWorld({scratchAccount:true});protectedArrange(w.gh,'ok');
+    const out=parse(await def.handler({repo:REPO,runId:ID,scenario:'protected-main',confirm:true},w.ctx));
+    expect(out).toMatchObject({status:'applied',done:true,confirmed:true});
+    const rows=await w.db.listDevObjects({runId:ID,account:OWNER,connection:'client-1'});
+    expect(rows.map(x=>x.object_type).sort()).toEqual(['repo','ruleset']);
+    expect(rows.find(x=>x.object_type==='ruleset').object_id).toBe('841');
+    const call=w.gh.calls.find(x=>x.route==='POST /repos/{owner}/{repo}/rulesets');
+    expect(call.body.conditions.ref_name.include).toEqual(['~DEFAULT_BRANCH']);
+    expect(call.body.rules[0].parameters.required_status_checks).toEqual([{context:'ci'}]);
   });
 });

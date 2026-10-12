@@ -21,7 +21,7 @@ describe('V-1 public developer inspection',()=>{
     const result=body(await call(w,'github_dev_list_scenarios'));
     expect(result.items).toHaveLength(7);
     expect(result.items.every(x=>x.execution_available===false&&['plan_only','scratch_gate_required'].includes(x.status))).toBe(true);
-    expect(result.items.filter(x=>x.implemented).map(x=>x.name)).toEqual(['repo-basic','failing-ci','release-train']);
+    expect(result.items.filter(x=>x.implemented).map(x=>x.name)).toEqual(['repo-basic','failing-ci','release-train','protected-main']);
     expect(result.note).toMatch(/No GitHub objects/);
     const mine=body(await call(w,'github_dev_list_scenarios',{name:'stack-of-three',repo:'hello',runId:'run-test-1'}));
     expect(mine.plan_only).toBe(true);

@@ -5,7 +5,7 @@ import { requireScratchOrg } from '../dev/scratch.js';
 import { runDevMutationOnce } from '../dev/execute.js';
 import { planScenario } from '../dev/scenarios.js';
 
-export const SEEDABLE=Object.freeze(['repo-basic','failing-ci','release-train']);
+export const SEEDABLE=Object.freeze(['repo-basic','failing-ci','release-train','protected-main']);
 const RELEASE_TAGS=Object.freeze(['v0.1.0','v0.2.0','v0.3.0']);
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
 const OWNER={type:'string',maxLength:39};
@@ -29,7 +29,7 @@ const same=(a,b)=>String(a??'').toLowerCase()===String(b??'').toLowerCase();
 
 export const seed=defineGithubWrite({
   name:'github_dev_seed',area:'dev',audience:['B'],
-  description:'Create journaled repo-basic, failing-ci or draft release-train fixtures in a verified scratch organization.',
+  description:'Create journaled scratch fixtures: passing/failing CI, a draft release train, or required-check branch rules.',
   properties:{owner:OWNER,repo:REPO,runId:RUN,scenario:{type:'string',enum:[...SEEDABLE]}},
   required:['repo','runId','scenario'],declarations:{production:'never'},
   target:(args,ctx)=>{
@@ -66,6 +66,25 @@ export const seed=defineGithubWrite({
           throw refusal('GitHub did not create the expected private scratch repository.');
         return {objectId:result.full_name};
       }});
+    if(args.scenario==='protected-main'){
+      const name=topic(args.runId);
+      const ruleset=await runDevMutationOnce(ctx,{...run,stepId:'seed-required-ci-ruleset',
+        type:'ruleset',objectName:name,create:async()=>{
+          const result=(await github.request('POST /repos/{owner}/{repo}/rulesets',{
+            owner:target.owner,repo:args.repo,name,target:'branch',enforcement:'active',
+            conditions:{ref_name:{include:['~DEFAULT_BRANCH'],exclude:[]}},
+            bypass_actors:[],rules:[{type:'required_status_checks',parameters:{
+              required_status_checks:[{context:'ci'}],
+              strict_required_status_checks_policy:true
+            }}]
+          })).data;
+          if(!Number.isSafeInteger(result?.id)||result.id<=0||result.name!==name||
+            result.enforcement!=='active'||result.target!=='branch')
+            throw refusal('GitHub did not confirm the exact active branch ruleset.');
+          return {objectId:String(result.id)};
+        }});
+      return {data:{run_id:args.runId,scenario:args.scenario,objects:[repo,ruleset]}};
+    }
     if(args.scenario==='release-train'){
       const scratchRepo=await repoGet(ctx,target.owner,args.repo);
       const defaultBranch=scratchRepo?.default_branch;
@@ -143,6 +162,15 @@ export const seed=defineGithubWrite({
   readAfter:async({args,ctx,target,response})=>{
     const github=await octo(ctx,target.owner);
     const base={owner:target.owner,repo:args.repo};
+    if(args.scenario==='protected-main'){
+      const [repository,ruleset]=await Promise.all([
+        repoGet(ctx,target.owner,args.repo),
+        github.request('GET /repos/{owner}/{repo}/rulesets/{ruleset_id}',{
+          ...base,ruleset_id:Number(response.data.objects[1].objectId)
+        }).then(x=>x.data)
+      ]);
+      return {repository,ruleset};
+    }
     if(args.scenario==='release-train'){
       const [repository,tags,release]=await Promise.all([
         repoGet(ctx,target.owner,args.repo),
@@ -168,7 +196,16 @@ export const seed=defineGithubWrite({
     if(!after?.repository||after.repository.private!==true||
       !same(after.repository.full_name,`${target.owner}/${args.repo}`)||
       !String(after.repository.description??'').includes(marker(args.runId)))return false;
-    if(args.scenario==='release-train'){
+    if(args.scenario==='protected-main'){
+      const rule=after.ruleset;
+      const required=rule?.rules?.find(x=>x.type==='required_status_checks');
+      if(response.data.objects.length!==2||!rule||
+        String(rule.id)!==response.data.objects[1].objectId||rule.name!==topic(args.runId)||
+        rule.target!=='branch'||rule.enforcement!=='active'||
+        !rule.conditions?.ref_name?.include?.includes('~DEFAULT_BRANCH')||
+        !required?.parameters?.required_status_checks?.some(x=>x.context==='ci')||
+        required.parameters.strict_required_status_checks_policy!==true)return false;
+    }else if(args.scenario==='release-train'){
       if(response.data.objects.length!==5||after.tags?.length!==3||
         after.release?.draft!==true||after.release?.tag_name!=='v0.3.0'||
         String(after.release.id)!==response.data.objects[4].objectId||
@@ -184,17 +221,19 @@ export const seed=defineGithubWrite({
     }
     if(args.scenario==='repo-basic'&&after.extra?.name!==topic(args.runId))return false;
     if(args.scenario==='failing-ci'&&after.extra?.ref!==`refs/heads/${branchName(args.runId)}`)return false;
-    if(response.data.objects.length!==(args.scenario==='release-train'?5:3))return false;
+    if(response.data.objects.length!==(args.scenario==='protected-main'?2:args.scenario==='release-train'?5:3))return false;
     const stored=await ctx.db.listDevObjects({runId:args.runId,account:target.owner,
       connection:ctx.connection.client_id,limit:10});
     return response.data.objects.every(o=>stored.some(r=>r.object_id===o.objectId&&r.owner===target.owner&&r.repo===args.repo));
   },
   inverse:()=>null,
   present:({args,response})=>({run_id:args.runId,scenario:args.scenario,created:response.data.objects,
-    manual_dispatch_only:args.scenario!=='release-train',
+    manual_dispatch_only:['repo-basic','failing-ci'].includes(args.scenario),
     note:args.scenario==='release-train'
       ? 'Draft release and tags only; nothing was published, dispatched, or live-tested without IN-06.'
-      : 'Workflow files are real, but no Actions run was dispatched; IN-06 is required for live scratch usage.'})
+      : args.scenario==='protected-main'
+        ? 'Scratch-only active required-ci ruleset; no production branch or non-scratch repository was changed.'
+        : 'Workflow files are real, but no Actions run was dispatched; IN-06 is required for live scratch usage.'})
 });
 export const tools=[seed.tool];
 export const handlers={[seed.tool.name]:seed.handler};
