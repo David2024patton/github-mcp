@@ -204,6 +204,8 @@ describe('three exact-head stacked draft PRs',()=>{
   it('journals all fourteen objects and links exact bases, without merging',async()=>{
     const w=await makeWorld({scratchAccount:true});stackFixture(w.gh,'ok');
     const out=parse(await def.handler({repo:REPO,runId:ID,scenario:'stack-of-three',confirm:true},w.ctx));
+    if(!out.done)throw new Error(JSON.stringify({out,steps:w.gh.calls.map(x=>x.route).slice(-22),
+      invalid:w.gh.invalid.map(x=>({route:x.route,path:x.path}))}));
     expect(out).toMatchObject({status:'applied',done:true,confirmed:true});
     const saved=await w.db.listDevObjects({runId:ID,account:OWNER,connection:'client-1',limit:50});
     expect(saved).toHaveLength(14);
