@@ -196,6 +196,31 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
       result:{items:['bounded']},handle:'res_'+'d'.repeat(22),summary:'Saved items'});
     expect(items[1].result).not.toHaveProperty('kept_result');
   });
+  it('caps RTC POST wire size before dispatcher execution, measured in UTF-8 bytes',async()=>{
+    let calls=0;
+    const db={getRtcPass:async()=>token,getAccount:async()=>account,
+      consumeRtcPassRate:async()=>true};
+    const handler=createRtcHttpHandler({db,registry,dispatch:async()=>{
+      calls++;return {structuredContent:{ok:true}};
+    }});
+    const invoke=async(route,body)=>{
+      const req=request('POST',body,{authorization:'Bearer '+pass});
+      req.query=route==='tool'?{name:'github_whoami'}:{};
+      return call((a,b)=>handler(a,b,route),req);
+    };
+    for(const body of [
+      {text:'a'.repeat(32769)},{text:'é'.repeat(18000)}
+    ]){
+      expect((await invoke('tool',body)).statusCode).toBe(400);
+      expect((await invoke('batch',{calls:[{name:'github_whoami',args:body}]})).statusCode).toBe(400);
+    }
+    expect((await invoke('batch',{calls:[{name:'github_whoami',args:{}}],
+      extra:{unexpected:true}})).statusCode).toBe(400);
+    expect(calls).toBe(0);
+    expect((await invoke('tool',{small:'data'})).statusCode).toBe(200);
+    expect((await invoke('batch',{calls:[{name:'github_whoami',args:{}}]})).statusCode).toBe(200);
+    expect(calls).toBe(2);
+  });
   it('never calls write tools and refuses write batches',async()=>{
     expect((await run('tool','POST',{}, {tool:'github_delete_repo'})).statusCode).toBe(404);
     expect((await run('batch','POST',{calls:[{name:'github_delete_repo',args:{confirm:true}}]})).statusCode).toBe(403);
