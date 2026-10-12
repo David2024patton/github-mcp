@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — #101 standalone cleanup identity (MERGED after CI):** Host cleanup refuses a missing recorded branch SHA and any recorded PR with mismatched numeric ID, merged_at, non-draft state (even closed), foreign base repository or altered head SHA. Fake three-door negative regressions protect host repos. No live credentials or scratch actions.
+
 - **2026-10-12 — #100 finite pagination boundary (MERGED after gated CI):** Shared GitHub pagination now has a maximum of 10000 items, an independent bounded-page cap, and refuses malformed list data and reports non-exhaustive inventory on a repeated empty or tiny linked page. This prevents infinite preflight pagination from stalling or incorrectly completing scratch deletion. No connected OAuth acceptance or real scratch deletion claimed.
 
 - **2026-10-12 — #99 scratch draft-PR identity preflight (MERGED after exact-head CI):** Scratch deletion now requires each listed PR to remain an unmerged draft with exact run footer, recorded numeric identity, unchanged own branch SHA, same private repository head/base, and default or run-owned base. Adversarial fake cases refuse retargeted and ready-for-review PRs. Custom OAuth and real deletions remain unverified.

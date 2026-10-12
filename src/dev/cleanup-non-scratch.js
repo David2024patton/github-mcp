@@ -17,7 +17,7 @@ const branchIsSafe=async(ctx,gh,run,owner,repo,o,initial)=>{
   }
   const foundSha=b.commit?.sha;
   if(b.name!==o.object_id||b.protected!==false||!ownRef(run.id,b.name)||
-    (o.created_sha&&foundSha!==o.created_sha))
+    (!/^[a-f0-9]{40}$/.test(o.created_sha??'')||foundSha!==o.created_sha))
     throw refusal('Recorded branch is protected, renamed or changed; cleanup refused.');
   const reason=await productionReason(ctx,{owner,repo,ref:b.name,scope:'repo'});
   if(reason)throw refusal(`The test branch is production-controlled (${reason}); cleanup refused.`);
@@ -32,10 +32,14 @@ const prIsSafe=async(gh,run,owner,repo,objects,o,initial)=>{
     return null;
   }
   const head=objects.find(b=>b.object_type==='branch'&&b.object_id===p?.head?.ref);
-  if(p.merged===true||!['open','closed'].includes(p.state)||(p.state==='open'&&p.draft!==true)||
+  if(p.number!==num||p.merged===true||p.merged_at!=null||
+    !['open','closed'].includes(p.state)||p.draft!==true||
     !matchesRunFooter(p.body,run.id)||
     !ownRef(run.id,p.head?.ref)||!eq(p.head?.repo?.full_name,`${owner}/${repo}`)||
-    !head||(head.created_sha&&p.head?.sha!==head.created_sha))
+    !eq(p.base?.repo?.full_name,`${owner}/${repo}`)||
+    typeof p.base?.ref!=='string'||!p.base.ref||p.base.ref===p.head.ref||
+    !head||!/^[a-f0-9]{40}$/.test(head.created_sha??'')||
+    p.head?.sha!==head.created_sha)
     throw refusal('PR does not match its recorded run-owned draft branch; cleanup refused.');
   return p;
 };
