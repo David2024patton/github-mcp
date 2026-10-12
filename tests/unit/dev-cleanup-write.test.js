@@ -354,6 +354,37 @@ describe('V-2 protected run deletion',()=>{
       expect(w.gh.invalid).toEqual([]);
     }
   });
+  it('verifies the same draft PR identity after closing an owned open PR',async()=>{
+    const branch=`rtc/${RUN}/review`;
+    const before={
+      number:101,merged:false,merged_at:null,draft:true,state:'open',
+      body:`<!-- rtc_run=${RUN} -->`,
+      head:{ref:branch,sha:'a'.repeat(40),repo:{full_name:`${OWNER}/${REPO}`}},
+      base:{ref:'main',repo:{full_name:`${OWNER}/${REPO}`}}
+    };
+    for(const changed of [null,{draft:false},{head:{...before.head,sha:'b'.repeat(40)}}]){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      for(const [type,id] of [['branch',branch],['pr','101']])
+        await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+          type,owner:OWNER,repo:REPO,objectId:id,createdSha:'a'.repeat(40)});
+      w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
+        {name:'main',commit:{sha:'a'.repeat(40)}},{name:branch,commit:{sha:'a'.repeat(40)}}
+      ]);
+      w.gh.when('GET /repos/{owner}/{repo}/pulls').reply(200,[before]);
+      w.gh.when('GET /repos/{owner}/{repo}/issues').reply(200,[
+        {number:101,pull_request:{url:'https://api.github.com/fixture'}}
+      ]);
+      w.gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}').replySequence([
+        {status:200,body:before},{status:200,body:{...before,state:'closed',...changed}}
+      ]);
+      w.gh.when('PATCH /repos/{owner}/{repo}/pulls/{pull_number}').reply(200,{...before,state:'closed'});
+      const result=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(w.gh.calls.some(x=>x.method==='PATCH')).toBe(true);
+      expect(result.done).toBe(changed===null);
+      expect(w.gh.calls.some(x=>x.method==='DELETE')).toBe(changed===null);
+      expect(w.gh.invalid).toEqual([]);
+    }
+  });
   it('refuses direct mutations to the default branch even when no other objects changed',async()=>{
     const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
     w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
