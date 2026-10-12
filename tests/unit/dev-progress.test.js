@@ -37,3 +37,29 @@ describe('V-1 read-only durable progress evidence',()=>{
     .toMatchObject({state:'unknown_scenario',expected_object_count:null});
  });
 });
+
+describe('V-1 correct per-scenario resource classification',()=>{
+ it('refuses exactly three objects with a foreign tag instead of a run label',()=>{
+  const changed=[objects[0],objects[1],obj('tag','v0.1.0')];
+  expect(call(false,changed,changed.map(o=>intent(o)))).toMatchObject({
+    state:'identity_review_required',listed_object_count:3,
+    ledger_identities_match:true,live_acceptance_verified:false});
+ });
+ it('refuses duplicate workflow entries even with correct total count',()=>{
+  const changed=[objects[0],objects[1],obj('workflow_file','other.yml')];
+  expect(call(false,changed,changed.map(o=>intent(o)))).toMatchObject({
+    state:'identity_review_required',listed_object_count:3});
+ });
+ it('refuses an unexpected type even when partially seeded',()=>{
+  const wrong=[objects[0],obj('ruleset','unexpected')];
+  expect(call(false,wrong,wrong.map(o=>intent(o)))).toMatchObject({
+    state:'identity_review_required',missing_object_count:1});
+ });
+ it('does not claim executable completion for a plan-only webhook scenario',()=>{
+  const full=[obj('repo','example-org/scratch'),obj('forwarder','target'),obj('webhook','hook')];
+  expect(call(false,full,full.map(o=>intent(o)),{
+    run:{...run,scenarios:['webhook-target']}
+  })).toMatchObject({state:'unknown_scenario',expected_object_count:null,
+    live_acceptance_verified:false});
+ });
+});

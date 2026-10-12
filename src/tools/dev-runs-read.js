@@ -7,6 +7,7 @@ import { boundedRunLimit, encodeDevRunCursor, decodeDevRunCursor } from '../dev/
 import { summarizeDevProgress } from '../dev/progress.js';
 import { summarizeDevCleanup } from '../dev/cleanup-report.js';
 import { planDevCleanup } from '../dev/cleanup.js';
+import { assertScenarioResourceBounds } from '../dev/scenario-ownership.js';
 import { planBoundedRunSelection } from '../dev/cleanup-batch.js';
 
 const OWNER={type:'string',maxLength:39};
@@ -71,6 +72,8 @@ const readRuns=defineRead({
         try {
           const plan=planDevCleanup({run,objects,intents,
             moreMayExist:objects.length>=50||intents.length>=50});
+          const root=objects.find(x=>x.object_type==='repo');
+          if(root)assertScenarioResourceBounds({run,objects,owner:account,repo:root.repo});
           journal_ready=true;count=plan.count;
         }catch(error){reason=error instanceof Error?error.message:'Unable to inspect exact ledger';}
         cleanup_previews.push({run_id:run.id,run_status:run.status,journal_ready,

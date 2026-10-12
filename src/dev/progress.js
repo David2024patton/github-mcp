@@ -1,7 +1,5 @@
 // V-1 evidence-only progress classification. Never infer remote GitHub success from a ledger.
-import {listScenarioBlueprints} from './scenarios.js';
-
-const sizes=new Map(listScenarioBlueprints().map(x=>[x.name,x.planned_object_count]));
+import {EXECUTABLE_SCENARIOS,scenarioObjectLimits} from './scenarios.js';
 const paired=(objects,intents)=>objects.every(o=>intents.some(i=>
   i.status==='recorded'&&i.object_type===o.object_type&&i.object_id===o.object_id&&
   i.owner===o.owner&&(i.repo??null)===(o.repo??null)));
@@ -10,7 +8,18 @@ export function summarizeDevProgress({run,objects,intents,limit,moreMayExist}){
     !Number.isInteger(limit)||limit<1||limit>50)
     throw new TypeError('Bounded scoped run, objects and intents are required.');
   const scenarios=run.scenarios??[];
-  const expected=scenarios.length===1?sizes.get(scenarios[0]):undefined;
+  const limits=scenarios.length===1&&EXECUTABLE_SCENARIOS.includes(scenarios[0])
+    ?scenarioObjectLimits(scenarios[0]):null;
+  const expected=limits?Object.values(limits).reduce((sum,n)=>sum+n,0):undefined;
+  const counts=Object.create(null);
+  let validTypes=!!limits;
+  for(const o of objects){
+    if(!limits||!Object.hasOwn(limits,o.object_type))validTypes=false;
+    else {
+      counts[o.object_type]=(counts[o.object_type]??0)+1;
+      if(counts[o.object_type]>limits[o.object_type])validTypes=false;
+    }
+  }
   const uncertain=intents.filter(i=>i.status==='uncertain').map(i=>i.step_id);
   const claimed=intents.filter(i=>i.status==='claimed').map(i=>i.step_id);
   const recorded=intents.filter(i=>i.status==='recorded');
@@ -31,7 +40,7 @@ export function summarizeDevProgress({run,objects,intents,limit,moreMayExist}){
   }else if(expected===undefined){
     state='unknown_scenario';
     next='Review the original scenario contract before interpreting object rows.';
-  }else if(cleaned||!hasExactPairs||objects.length>expected){
+  }else if(cleaned||!hasExactPairs||!validTypes||objects.length>expected){
     state='identity_review_required';
     next='Inspect recorded step/object identities and cleanup flags before resuming.';
   }else if(objects.length===expected){
