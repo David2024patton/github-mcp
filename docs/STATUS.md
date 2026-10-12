@@ -6,7 +6,7 @@ required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creat
 
 ## Next
 
-- **Current #124 — verify scratch seed resume origin (as-if-merged; CI pending):** When an existing private scratch repository is encountered, require the exact journalled seed-repo initial SHA and optional recorded workflow SHA to match a fresh GitHub default-branch read before allowing another seed mutation. Incomplete/uncertain steps and changed remote history refuse; no write or new authority. #123 safely merged at 70a7dd0372e765cec2c72814aaab426acf90d910; all final main CI checks passed.
+- **Current #124 — verify scratch seed resume origin (as-if-merged; CI pending):** When an existing private scratch repository is encountered, require the exact journalled seed-repo initial SHA and optional recorded workflow SHA to match a fresh GitHub default-branch read before allowing another seed mutation. Incomplete/uncertain steps and changed remote history refuse; no write or new authority. #123 safely merged at 70a7dd0372e765cec2c72814aaab426acf90d910; all final main CI checks passed. #124's initial Postgres service failed to pull from public ECR (HTTP rate limit) on multiple attempts; its next exact-head run uses the Docker Official PostgreSQL 17.11 bookworm image, with the original DB tests and ci gates intact.
 
 - **#123 — truthful finite scenario progress/preview (MERGED; final-main CI verified):** Read-only progress rejects correctly counted but wrong type distributions; cleanup preview refuses run scenarios whose records violate finite bounds. No writes, external verification still false. #122 merged at ccaeac5cdf48d5889b2031b6ba0cf8a04adf140e; main CI database-job infrastructure rerun pending.
 
