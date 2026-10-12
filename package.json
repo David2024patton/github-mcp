@@ -13,7 +13,8 @@
     "task:brief": "node scripts/task-brief.mjs",
     "test": "vitest run --config vitest.config.js",
     "test:db": "bash scripts/local-postgres-test.sh",
-    "test:shapes": "vitest run --config vitest.shapes.config.js"
+    "test:shapes": "vitest run --config vitest.shapes.config.js",
+    "test:rtc": "vitest run tests/unit/rtc-conformance.test.js tests/unit/rtc-http.test.js tests/unit/rtc-pass-foundation.test.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",

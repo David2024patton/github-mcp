@@ -83,6 +83,9 @@ jobs:
           node-version: 24
       - run: npm ci
       - run: npm run test:shapes
+      # Upstream Hub RTC 1 runner pinned and executed against reference + our restricted HTTP adapter.
+      # A deliberately non-certified manifest remains an explicit failed probe, never a pass.
+      - run: npm run test:rtc
 
   ci:
     if: always()
