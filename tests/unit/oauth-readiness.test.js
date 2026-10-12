@@ -8,7 +8,7 @@ describe('owner-only custom-MCP OAuth readiness interpretation',()=>{
     expect(summarizeConnectorReadiness(counts,{mcpUrl:url})).toMatchObject({
       state:'client_registration_required',registered_clients:0,
       custom_mcp_connected_acceptance_verified:false,
-      production_access_granted:false});
+      production_access_not_assessed:true});
   });
   it('separates unfinished authorization, refresh, and recorded access',()=>{
     expect(summarizeConnectorReadiness({...counts,registered_clients:1},{mcpUrl:url}).state)
@@ -19,7 +19,7 @@ describe('owner-only custom-MCP OAuth readiness interpretation',()=>{
     expect(summarizeConnectorReadiness({...counts,registered_clients:1,
       unrevoked_sessions:1,usable_access_tokens:1,refresh_credentials:1},
       {mcpUrl:url})).toMatchObject({state:'connection_records_present',
-      custom_mcp_connected_acceptance_verified:false,production_access_granted:false});
+      custom_mcp_connected_acceptance_verified:false,production_access_not_assessed:true});
   });
   it('rejects malformed counts and non-HTTPS service addresses',()=>{
     for(const row of [{...counts,registered_clients:-1},

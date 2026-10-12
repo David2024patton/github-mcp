@@ -53,7 +53,7 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
       <form method="post" action="${h(manifestForm.action)}">${hidden('manifest', manifestForm.manifest)}<button type="submit">Continue to GitHub</button></form>` : '') +
     (accounts ? `<h2>Your accounts</h2>${accounts.length ? accounts.map(accountCard).join('') : '<p>No accounts are set up yet. Create a GitHub App below.</p>'}` : '') +
     (oauthReadiness ? `<div class="card"><h2>Custom MCP OAuth connection status</h2>
-      <p><strong>${h(oauthReadiness.state)}</strong></p>
+      <p><strong>${h(oauthReadiness.summary)}</strong></p>
       <p>Registered clients: ${h(oauthReadiness.registered_clients)} · Non-revoked connector sessions: ${h(oauthReadiness.unrevoked_sessions)} · Current access tokens: ${h(oauthReadiness.usable_access_tokens)} · Stored refresh credentials: ${h(oauthReadiness.refresh_credentials)}</p>
       <p>Custom server address: <code>${h(oauthReadiness.mcp_url)}</code></p>
       <p>${h(oauthReadiness.next_action)}</p>

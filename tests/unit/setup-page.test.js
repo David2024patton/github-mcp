@@ -142,7 +142,7 @@ describe('protected connector OAuth readiness on owner setup',()=>{
     expect(status.statusCode).toBe(200);
     expect(status.body).toContain('Custom MCP OAuth connection status');
     expect(status.body).toContain('Registered clients: 0');
-    expect(status.body).toContain('client_registration_required');
+    expect(status.body).toContain('No custom MCP client registered yet');
     expect(status.body).toContain('https://github-mcp.example.test/api/mcp');
     noSecrets(status);
   });
@@ -151,20 +151,20 @@ describe('protected connector OAuth readiness on owner setup',()=>{
     await t.db.createOAuthClient({clientId:'private-client-id',
       clientSecret:'private-client-secret',redirectUris:['https://client.example.test/cb']});
     const waiting=await t.post({action:'status'});
-    expect(waiting.body).toContain('owner_authorization_required');
+    expect(waiting.body).toContain('Client registered; authorization not completed');
     expect(waiting.body).not.toContain('private-client-id');
     expect(waiting.body).not.toContain('private-client-secret');
     await t.db.createAccessToken({accessToken:'private-connector-access',refreshToken:'private-refresh',
       clientId:'private-client-id',defaultAccount:'example-org',accounts:['example-org']});
     const active=await t.post({action:'status'});
-    expect(active.body).toContain('connection_records_present');
+    expect(active.body).toContain('A connector token record is present');
     expect(active.body).not.toContain('private-connector-access');
     expect(active.body).not.toContain('private-refresh');
     expect(active.body).not.toContain('private-client-id');
     noSecrets(active);
     await t.db.revokeAccessToken('private-connector-access');
     const revoked=await t.post({action:'status'});
-    expect(revoked.body).toContain('owner_authorization_required');
+    expect(revoked.body).toContain('Client registered; authorization not completed');
   });
 });
 describe('creating the GitHub App', () => {

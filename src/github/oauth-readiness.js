@@ -11,6 +11,13 @@ export function summarizeConnectorReadiness(row,{mcpUrl}){
     !sessions?'owner_authorization_required':
       !active&&refresh?'client_refresh_or_reconnect_required':
         !active?'reconnect_required':'connection_records_present';
+  const summary={
+    client_registration_required:'No custom MCP client registered yet',
+    owner_authorization_required:'Client registered; authorization not completed',
+    client_refresh_or_reconnect_required:'Connection needs refresh or reconnection',
+    reconnect_required:'No active access token recorded',
+    connection_records_present:'A connector token record is present'
+  }[state];
   const nextAction={
     client_registration_required:'In your approved MCP client, add this HTTPS server URL. Its OAuth discovery and dynamic client registration will begin when you connect; authorize only through the protected sign-in page.',
     owner_authorization_required:'Return to your MCP client, finish its OAuth authorization in the browser with the administrator passphrase, and select only the scratch account in preview mode.',
@@ -20,6 +27,6 @@ export function summarizeConnectorReadiness(row,{mcpUrl}){
   }[state];
   return {state,registered_clients:registered,unrevoked_sessions:sessions,
     usable_access_tokens:active,refresh_credentials:refresh,mcp_url:mcpUrl,
-    custom_mcp_connected_acceptance_verified:false,production_access_granted:false,
-    next_action:nextAction};
+    custom_mcp_connected_acceptance_verified:false,production_access_not_assessed:true,
+    summary,next_action:nextAction};
 }
