@@ -50,7 +50,7 @@ export async function inspectCleanupPreview(args,ctx){
       // cleanup. Never hold an open-world GitHub read error to mean "empty".
       state=await readCleanupRun(ctx,owner,args.repo,args.runId);
     }catch(error){
-      if(error?.status===422||error instanceof TypeError)
+      if([401,403,422].includes(error?.status)||error instanceof TypeError)
         return cleanupPreflightResult({...base,phase:'journal_or_scope',blocker:error});
       throw error;
     }
@@ -70,7 +70,7 @@ export async function inspectCleanupPreview(args,ctx){
       });
       return cleanupPreflightResult({...base,phase:'scratch_remote_inventory',snapshot});
     }catch(error){
-      if(error?.status===422||error instanceof TypeError)
+      if([401,403,422].includes(error?.status)||error instanceof TypeError)
         return cleanupPreflightResult({...base,phase:'scratch_remote_inventory',blocker:error});
       throw error;
     }

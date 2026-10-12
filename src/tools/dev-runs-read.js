@@ -30,7 +30,7 @@ function scope(args,ctx) {
 }
 const readScenarios=defineRead({
   name:'github_dev_list_scenarios',area:'dev',audience:['B'],
-  description:'Describe seven dev scenarios and six runnable scratch-only seeds; no writes.',
+  description:'List planned and runnable developer scenarios.',
   properties:{owner:OWNER,repo:REPO,runId:RUN,name:{type:'string',enum:listScenarioBlueprints().map(x=>x.name)}},
   handler:async(args,ctx)=>{
     const items=listScenarioBlueprints().map(x=>({...x,implemented:SEEDABLE.includes(x.name),execution_available:false,status:SEEDABLE.includes(x.name)?'scratch_gate_required':'plan_only'}));
@@ -46,7 +46,7 @@ const readScenarios=defineRead({
 });
 const readRuns=defineRead({
   name:'github_dev_list_runs',area:'dev',audience:['B'],
-  description:'Inspect scoped developer run evidence and optional cleanup readiness.',
+  description:'Inspect scoped runs and cleanup evidence.',
   properties:{owner:OWNER,runId:RUN,repo:REPO,max:MAX,cleanupPreview:ALL_PREVIEW,cursor:CURSOR,includeBirthLabels:LABEL_DETAIL,remoteCleanupPreview:ALL_PREVIEW},
   handler:async(args,ctx)=>{
     const {account,connection}=scope(args,ctx);

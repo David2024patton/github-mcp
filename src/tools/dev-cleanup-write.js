@@ -10,7 +10,7 @@ const OWNER={type:'string',maxLength:39};
 
 const cleanup=defineGithubWrite({
   name:'github_dev_cleanup',area:'dev',audience:['B'],
-  description:'Confirm exact owned scratch cleanup; deny uncertain or foreign records.',
+  description:'Clean explicitly confirmed run-owned fixtures.',
   properties:{owner:OWNER,repo:REPO,runId:RUN},required:['repo','runId'],
   declarations:{production:'never',confirm:'always'},
   target:(args,ctx)=>{
