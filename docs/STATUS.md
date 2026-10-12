@@ -6,6 +6,8 @@ required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creat
 
 ## Next
 
+- **#114 — scratch PR point-of-close integrity (implementation; exact-head CI pending):** Retain each exact preflight PR identity, and check fresh per-PR GET before optional close plus immediate after-close readback for unchanged run-owned draft, head SHA, base, repository and body. Refuse drift before destructive deletion, with fake-GitHub adversarial tests. No connected real scratch or RTC 1 certification claim.
+
 - **#113 — RTC result retrieval query semantics (implementation; CI review required):** HTTPS `GET /api/results/{handle}` now validates and forwards `page`, `pageSize`, comma/repeated `fields` and `offset` to the existing connection-owned guarded result handler. Bad request shapes fail before dispatch; no cross-connection handle disclosure or broader authorization. Unit regressions added. RTC 1 and genuine D-4 routes remain unverified; no spending/production changes.
 
 - **#112 — RTC batch authorization continuity (implementation, CI/review required):** Each read in an HTTPS batch after the first independently rechecks the current pass, exact scratch organization, nonproduction limits and shared rate budget before dispatch. A revoked/expired or narrowed pass terminates the remaining reads rather than reusing a stale connection. Whole-batch malformed arguments fail before any read. Fake-HTTP adversarial tests cover mid-batch revocation, expiry, scratch removal and exhaustion. This is offline verification only: manifest remains rtc:0, no full RTC 1, D-4 live route, OAuth-connected or real scratch acceptance claim. Exact-head `ci` + `release-policy` and post-merge main CI remain mandatory.
