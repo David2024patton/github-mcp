@@ -613,3 +613,5 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Workflows | 17 |
 | Everything else on GitHub: the universal tools | 6 |
 | **Total** | **308** |
+
+<!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->

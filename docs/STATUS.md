@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **#108 — RTC HTTPS read-only gateway (pending CI):** Public adoption manifest and OpenAPI path; pass-only whoami, tool search/describe/call/batch and result routes. Each read checks live scratch designation, revocation, expiry, profile and shared DB rate. Only server/meta read-only tools are permitted. Manifest deliberately returns rtc:0 until RTC 1 conformance and D-4 acceptance are actually proven; no production, spending or provider mutation.
+
 - **#107 — RTC pass foundation + submitted-review safety (pending CI):** Owner passphrase/CSRF-protected setup issues only short-lived preview/read_only passes for independently designated scratch organizations, displayed once via the existing encrypted one-time secret page and revocable by ID. Database stores hashed passes, enforces atomic per-pass rate limits, and the MCP OAuth door still rejects pass kind. HTTPS RTC read-only tools are not yet exposed; hub D-4 real routes remain unverified. Scratch cleanup also refuses non-run submitted PR reviews.
 
 - **#107 — foreign submitted-review safeguard (pending CI):** Scratch deletion now enumerates formal PR reviews per recorded draft and refuses any submitted review or incomplete pagination. Inline run comments are separate and do not authorize destroying approval decisions. Added no-DELETE regression and fixture coverage; no real scratch/OAuth acceptance.
