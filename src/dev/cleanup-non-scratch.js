@@ -9,6 +9,11 @@ const ownRef=(runId,ref)=>typeof ref==='string'&&ref.startsWith(`rtc/${runId}/`)
   ref.length<250&&!ref.includes('..')&&!ref.endsWith('/')&&!ref.includes('//');
 const getBranch=(gh,owner,repo,branch)=>missing(async()=>(await gh.request('GET /repos/{owner}/{repo}/branches/{branch}',{owner,repo,branch})).data);
 const getPr=(gh,owner,repo,n)=>missing(async()=>(await gh.request('GET /repos/{owner}/{repo}/pulls/{pull_number}',{owner,repo,pull_number:n})).data);
+// Keep the identity observed immediately before a write. A successful PATCH is
+// not proof that the same draft/issue survived unchanged through readback.
+const prIdentity=p=>JSON.stringify([p.id,p.number,p.body,p.draft,p.head?.ref,p.head?.sha,
+  p.head?.repo?.full_name,p.base?.ref,p.base?.repo?.full_name]);
+const issueIdentity=i=>JSON.stringify([i.id,i.number,i.body,i.title,i.pull_request??null]);
 const branchIsSafe=async(ctx,gh,run,owner,repo,o,initial)=>{
   const b=await getBranch(gh,owner,repo,o.object_id);
   if(!b) {
@@ -69,7 +74,7 @@ async function inspectOwnedIssue(gh,run,owner,repo,o,initial) {
     if(initial)throw refusal('Recorded issue was deleted or moved; reconcile before cleanup.');
     throw refusal('The issue cannot be read back. No result will be assumed.');
   }
-  if(issue.pull_request||!matchesRunFooter(issue.body,run.id)||
+  if(issue.number!==number||issue.pull_request||!matchesRunFooter(issue.body,run.id)||
     !['open','closed'].includes(issue.state)||
     (issue.state==='closed'&&issue.state_reason!=='not_planned'))
     throw refusal('This issue is not the unmerged run-created issue recorded in the journal.');
@@ -136,8 +141,9 @@ export async function cleanupTestResources(ctx,{owner,repo,runId,before}) {
     const n=Number(o.object_id);
     const p=await prIsSafe(gh,run,owner,repo,objects,o,before.run.status==='active');
     if(p?.state==='open')await gh.request('PATCH /repos/{owner}/{repo}/pulls/{pull_number}',{owner,repo,pull_number:n,state:'closed'});
-    const after=await getPr(gh,owner,repo,n);
-    if(!after||after.state!=='closed'||after.merged===true)throw refusal('Closed PR could not be read back.');
+    const after=await prIsSafe(gh,run,owner,repo,objects,o,false);
+    if(!after||!p||after.state!=='closed'||prIdentity(after)!==prIdentity(p))
+      throw refusal('Closed PR identity changed or could not be read back; cleanup stopped.');
     if(!(await db.markDevObjectCleaned({runId,account,connection,type:o.object_type,owner:o.owner,objectId:o.object_id})))
       throw refusal('PR cleanup identity was not recorded.');
     processed++;
@@ -150,14 +156,16 @@ export async function cleanupTestResources(ctx,{owner,repo,runId,before}) {
       owner,repo,issue_number:number,state:'closed',state_reason:'not_planned'
     });
     const closed=await getIssue(gh,owner,repo,number);
-    if(closed?.state!=='closed'||closed?.state_reason!=='not_planned')
-      throw refusal('Issue closure could not be independently verified.');
+    if(closed?.state!=='closed'||closed?.state_reason!=='not_planned'||
+      issueIdentity(closed)!==issueIdentity(issue))
+      throw refusal('Issue closure identity could not be independently verified.');
     if(!closed.labels?.some(x=>x.name==='rtc-cleaned'))
       await gh.request('POST /repos/{owner}/{repo}/issues/{issue_number}/labels',{
         owner,repo,issue_number:number,labels:['rtc-cleaned']
       });
     const after=await getIssue(gh,owner,repo,number);
     if(after?.state!=='closed'||after?.state_reason!=='not_planned'||
+      issueIdentity(after)!==issueIdentity(issue)||
       !after.labels?.some(x=>x.name==='rtc-cleaned'))
       throw refusal('The cleanup label and issue state were not verified.');
     if(!(await db.markDevObjectCleaned({runId,account,connection,type:o.object_type,owner:o.owner,objectId:o.object_id})))

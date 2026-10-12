@@ -24,6 +24,32 @@ function arrange(gh,kind) {
 runWriteContract({label:'github_dev_cleanup standalone exact branch',definition:def,
   args:{runId:RUN,repo:REPO},needsConfirm:true,previewOnly:true,expectedWrites:1,prepare,arrange});
 describe('non-scratch safety hardening',()=>{
+ it('stops after PR closure if any exact draft identity changes on readback',async()=>{
+  for(const change of [
+   {number:13},{id:99},{draft:false},{body:`Changed <!-- rtc_run=${RUN} -->`},
+   {merged_at:'2026-10-12T00:00:00Z'},
+   {head:{ref:BR,sha:'b'.repeat(40),repo:{full_name:`${OWNER}/${REPO}`}}},
+   {base:{ref:'other',repo:{full_name:`${OWNER}/${REPO}`}}}
+  ]){
+   const w=await makeWorld();await prepare(w);arrange(w.gh,'ok');
+   await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+    type:'pr',owner:OWNER,repo:REPO,objectId:'12',createdSha:SHA});
+   const pr={id:98,number:12,merged:false,merged_at:null,state:'open',draft:true,
+    body:`<!-- rtc_run=${RUN} -->`,head:{ref:BR,sha:SHA,repo:{full_name:`${OWNER}/${REPO}`}},
+    base:{ref:'main',repo:{full_name:`${OWNER}/${REPO}`}}};
+   w.gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}').replySequence([
+    ...Array.from({length:3},()=>({status:200,body:pr})),
+    {status:200,body:{...pr,state:'closed',...change}}
+   ]);
+   w.gh.when('PATCH /repos/{owner}/{repo}/pulls/{pull_number}').reply(200,{...pr,state:'closed'});
+   const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+   expect(out.done).toBe(false);
+   expect(w.gh.calls.filter(c=>c.method==='DELETE')).toHaveLength(0);
+   const objects=await w.db.listDevObjects({runId:RUN,account:OWNER,connection:'client-1'});
+   expect(objects.every(o=>o.cleaned===false)).toBe(true);
+   expect(w.gh.invalid).toEqual([]);
+  }
+ });
  it('does not delete the host repository and refuses foreign run refs',async()=>{
   const w=await makeWorld();await prepare(w);arrange(w.gh,'ok');
   const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));

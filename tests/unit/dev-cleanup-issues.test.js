@@ -28,6 +28,31 @@ async function world(){
  return w;
 }
 describe('V-2 recorded issue close-only cleanup',()=>{
+ it('stops before labeling or branch deletion when issue identity changes during closure',async()=>{
+  for(const change of [{number:43},{id:99},{title:'Repurposed'},
+   {body:`Changed <!-- rtc_run=${RUN} -->`},{pull_request:{url:'https://api.github.com/other'}}]){
+   const w=await world();
+   w.gh.when('GET /repos/{owner}/{repo}/issues/{issue_number}').replySequence([
+    ...Array.from({length:3},()=>({status:200,body:issue})),
+    {status:200,body:{...cleaned,...change}}
+   ]);
+   const out=parse(await mod.handlers.github_dev_cleanup({runId:RUN,repo:REPO,confirm:true},w.ctx));
+   expect(out.done).toBe(false);
+   expect(w.gh.calls.filter(c=>['POST','DELETE'].includes(c.method))).toHaveLength(0);
+   expect((await w.db.listDevObjects({runId:RUN,account:OWNER,connection:'client-1'}))
+    .every(o=>o.cleaned===false)).toBe(true);
+  }
+ });
+ it('does not mark an issue cleaned when identity changes during labeling',async()=>{
+  const w=await world();
+  w.gh.when('GET /repos/{owner}/{repo}/issues/{issue_number}').replySequence([
+   ...Array.from({length:3},()=>({status:200,body:issue})),
+   {status:200,body:cleaned},
+   {status:200,body:{...cleaned,number:43,labels:[{name:'rtc-cleaned'}]}}
+  ]);
+  expect(parse(await mod.handlers.github_dev_cleanup({runId:RUN,repo:REPO,confirm:true},w.ctx)).done).toBe(false);
+  expect(w.gh.calls.filter(c=>c.method==='DELETE')).toHaveLength(0);
+ });
  it('closes exactly the run issue as not planned, labels it and only then deletes an owned branch',async()=>{
   const w=await world();
   const out=parse(await mod.handlers.github_dev_cleanup({runId:RUN,repo:REPO,confirm:true},w.ctx));
