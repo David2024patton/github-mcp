@@ -23,6 +23,8 @@ function arrange(gh,outcome){
   gh.when('GET /repos/{owner}/{repo}/releases').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/hooks').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/rulesets').reply(200,[]);
+  gh.when('GET /repos/{owner}/{repo}/milestones').reply(200,[]);
+  gh.when('GET /repos/{owner}/{repo}/deployments').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/issues/comments').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/pulls/comments').reply(200,[]);
   gh.when('DELETE /repos/{owner}/{repo}').reply(204);
@@ -75,6 +77,34 @@ describe('V-2 protected run deletion',()=>{
       expect(out.done).toBe(false);
       expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(false);
       expect(w.gh.invalid).toEqual([]);
+    }
+  });
+  it('refuses foreign milestones and deployments before any destructive repo operation',async()=>{
+    for(const [route,items] of [
+      ['GET /repos/{owner}/{repo}/milestones',[{number:12,title:'customer launch',state:'closed'}]],
+      ['GET /repos/{owner}/{repo}/deployments',[{id:44,sha:'a'.repeat(40),environment:'production'}]]
+    ]){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      w.gh.when(route).reply(200,items);
+      const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(out.done).toBe(false);
+      expect(w.gh.calls.some(x=>x.method==='DELETE'||x.method==='PATCH')).toBe(false);
+      expect(w.gh.invalid).toEqual([]);
+    }
+  });
+  it('refuses incomplete or permission-denied milestone and deployment inventories',async()=>{
+    for(const route of ['GET /repos/{owner}/{repo}/milestones',
+      'GET /repos/{owner}/{repo}/deployments']){
+      for(const mode of ['capped','denied']){
+        const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+        if(mode==='capped')
+          w.gh.when(route).reply(200,Array.from({length:100},(_,i)=>({id:i+1})),
+            {link:'<https://api.github.com/repos/example-org/fixture?page=2>; rel="next"'});
+        else w.gh.when(route).reply(403,{message:'Insufficient GitHub App permission'});
+        const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+        expect(out.done).toBe(false);
+        expect(w.gh.calls.some(x=>x.method==='DELETE'||x.method==='PATCH')).toBe(false);
+      }
     }
   });
   it('refuses an incomplete remote listing instead of assuming there are no foreign artifacts',async()=>{
