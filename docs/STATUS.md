@@ -25,6 +25,9 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-12 — V-1 real review-thread seed (PR #79):** Sixth runnable scratch-only scenario creates a private fixture repo, labelled draft PR, three exact original-commit inline comments and mapped GraphQL review threads. A recorded Contents CAS revision changes only the final annotated line; independent readback verifies two current threads and one truly outdated, all 13 exact objects and source content. No live scratch use or CI dispatch. `webhook-target` remains plan-only pending V-4 forwarder/secret dependencies and IN-06.
+
+
 **2026-10-12 — V-1 exact review fixture revision (PR #78):** Added recorded-scratch-branch Contents compare-and-swap updates for one run-owned review fixture. Original branch HEAD and file blob must match before mutation; new commit is independently journaled and read back, with stale/mismatch/replay tests. Enables a genuinely outdated third review thread in the next scenario. No live GitHub writes; IN-06 pending.
 
 
