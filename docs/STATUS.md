@@ -25,6 +25,9 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-12 — V-1 real three-level draft PR stack (PR #75):** `github_dev_seed('stack-of-three')` now executes only in verified private scratch Organizations and journals 14 objects: repository, run label, three branches, three committed run files, three linked draft PRs and three label associations. No merges or CI dispatch. Independent readback verifies every PR/base/head, exact SHA, marker, file, branch ref, label and durable object. All three write doors are covered with fake GitHub request validation; live connected acceptance still requires IN-06. `pr-with-threads` and `webhook-target` remain plan-only.
+
+
 **2026-10-12 — V-1 run-owned draft PR and label primitives (PR #74):** Draft PR creation now requires a recorded run-owned branch and file commit, verifies the remote head's exact SHA and persists the GitHub PR number; reusable helpers also journal one run label and its per-PR association. Fail-closed negative tests protect replay/foreign refs/mismatched responses. No connected account used. Next: compose the three-PR scenario in V-1.
 
 
