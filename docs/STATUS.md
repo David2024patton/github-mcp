@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — V-2 #87 recorded label cleanup:** Existing confirmed cleanup now handles a run-owned label and exact PR-label association in a pre-existing repository. Labels require run marker and collision-free usage scan; any unrecorded issue/PR usage refuses deletion. Associations are removed only by their recorded PR number/label and independently read back. Non-run labels and host repository stay intact. Real connected cleanup remains untested.
+
 - **2026-10-12 — V-2 #86 standalone cleanup:** Extend the existing guarded `github_dev_cleanup` to a recorded test-branch/PR-only run in an existing host repository. Reads GitHub production/protection rules for exact `rtc/<run>/` branches, refuses changed SHA/foreign refs or PRs, closes exact run PRs then removes only owned refs, with readback and per-object scoped ledger updates. Host repository is never deleted in this mode. Unsupported standalone resource types still refuse; no connected scratch or real-host acceptance.
 
 - **2026-10-12 — V-2 #85 guarded scratch cleanup:** Added `github_dev_cleanup` through the normal confirm-always write pipeline, exact private run-marker verification, atomic run freeze, recorded PR closure/readback, repository delete/readback and per-object durable completion. Owner-verified scratch and preview-only connection remain mandatory. CI fake transport and readback tests; **no live OAuth or scratch deletion acceptance**. V-2 non-repository cleanup and all-runs remain for later.

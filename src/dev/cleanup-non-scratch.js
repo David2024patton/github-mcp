@@ -1,5 +1,6 @@
 // V-2 standalone branch/PR run cleanup: never delete the host repository.
 import { missing, refusal, octo } from '../tools/github-write.js';
+import { listAll } from '../github/client.js';
 import { productionReason } from '../tools/production-guard.js';
 const eq=(a,b)=>String(a??'').toLowerCase()===String(b??'').toLowerCase();
 const marker=id=>`rtc_run=${id}`;
@@ -37,10 +38,49 @@ const prIsSafe=async(gh,run,owner,repo,objects,o,initial)=>{
     throw refusal('PR does not match its recorded run-owned draft branch; cleanup refused.');
   return p;
 };
+
+const ownedLabel=(id,name)=>typeof name==='string'&&
+  (name==='rtc-run'||name===`rtc-run-${id}`);
+const getLabel=(gh,owner,repo,name)=>missing(async()=>(await gh.request('GET /repos/{owner}/{repo}/labels/{name}',{owner,repo,name})).data);
+const getPrLabel=(gh,owner,repo,n,name)=>missing(async()=>(await gh.request('GET /repos/{owner}/{repo}/issues/{issue_number}/labels/{name}',{
+  owner,repo,issue_number:n,name
+})).data);
+function association(objects,run,o) {
+  const m=/^([1-9][0-9]*):(rtc-run(?:-[a-z0-9-]+)?)$/.exec(o.object_id??'');
+  if(!m||!Number.isSafeInteger(Number(m[1]))||!ownedLabel(run.id,m[2])||
+    !objects.some(p=>p.object_type==='pr'&&p.object_id===m[1])||
+    !objects.some(l=>l.object_type==='label'&&l.object_id===m[2]))
+    throw refusal('PR-label association has no exact run-owned PR and label.');
+  return {number:Number(m[1]),name:m[2]};
+}
+async function inspectLabel(gh,run,owner,repo,objects,o,initial) {
+  if(!ownedLabel(run.id,o.object_id))throw refusal('Only reserved run-created labels may be deleted.');
+  const label=await getLabel(gh,owner,repo,o.object_id);
+  if(!label) {
+    if(initial)throw refusal('The recorded label disappeared; reconcile before cleanup.');
+    return null;
+  }
+  if(label.name!==o.object_id||label.description!==marker(run.id))
+    throw refusal('Label name/description does not match the original run; do not modify it.');
+  // Label deletion impacts every issue/PR using it, not just objects in this run.
+  const {items,capped}=await listAll(gh,'GET /repos/{owner}/{repo}/issues',{
+    owner,repo,state:'all',labels:o.object_id,per_page:100
+  },{max:100});
+  if(capped||items.some(i=>!objects.some(x=>['pr','issue'].includes(x.object_type)&&x.object_id===String(i.number))))
+    throw refusal('A run label is used outside its recorded run; deletion refused.');
+  return label;
+}
+async function inspectPrLabel(gh,run,owner,repo,objects,o,initial) {
+  const {number,name}=association(objects,run,o);
+  const label=await getPrLabel(gh,owner,repo,number,name);
+  if(!label&&initial)throw refusal('The recorded PR label is missing; reconcile before cleanup.');
+  if(label&&label.name!==name)throw refusal('PR label association does not match the journal.');
+  return {number,name,label};
+}
 // Preflight checks every action before beginning any mutation. A rerun still checks its uncleaned objects.
 export async function inspectTestResources(ctx,{run,owner,repo,objects}) {
-  if(objects.length===0||objects.some(o=>o.repo!==repo||!['pr','branch'].includes(o.object_type)))
-    throw refusal('Standalone cleanup currently accepts only recorded PRs and test branches in one existing repository.');
+  if(objects.length===0||objects.some(o=>o.repo!==repo||!['pr','branch','label','pr_label'].includes(o.object_type)))
+    throw refusal('Standalone cleanup accepts only recorded PRs, test branches and run-owned labels in one existing repository.');
   if(!objects.some(o=>o.object_type==='branch'))
     throw refusal('Standalone cleanup requires an exact recorded run-owned branch.');
   const gh=await octo(ctx,owner),initial=run.status==='active';
@@ -48,7 +88,9 @@ export async function inspectTestResources(ctx,{run,owner,repo,objects}) {
     if(o.object_type==='branch') {
       if(!ownRef(run.id,o.object_id))throw refusal('Foreign ref cannot be cleaned as a developer-run branch.');
       await branchIsSafe(ctx,gh,run,owner,repo,o,initial);
-    } else await prIsSafe(gh,run,owner,repo,objects,o,initial);
+    } else if(o.object_type==='pr') await prIsSafe(gh,run,owner,repo,objects,o,initial);
+    else if(o.object_type==='label') await inspectLabel(gh,run,owner,repo,objects,o,initial);
+    else await inspectPrLabel(gh,run,owner,repo,objects,o,initial);
   }
   return true;
 }
@@ -74,6 +116,19 @@ export async function cleanupTestResources(ctx,{owner,repo,runId,before}) {
       throw refusal('PR cleanup identity was not recorded.');
     processed++;
   }
+  // Drop only recorded associations after their run PR has been safely closed.
+  for(const o of objects.filter(x=>!x.cleaned&&x.object_type==='pr_label')) {
+    const {number,name}=association(objects,run,o);
+    const beforeLabel=await inspectPrLabel(gh,run,owner,repo,objects,o,before.run.status==='active');
+    if(beforeLabel.label)await gh.request('DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels/{name}',{
+      owner,repo,issue_number:number,name
+    });
+    if(await getPrLabel(gh,owner,repo,number,name))
+      return {verified:false,remaining:true,run_id:runId};
+    if(!(await db.markDevObjectCleaned({runId,account,connection,type:o.object_type,owner:o.owner,objectId:o.object_id})))
+      throw refusal('PR label association cleanup was not journaled.');
+    processed++;
+  }
   for(const o of objects.filter(x=>!x.cleaned&&x.object_type==='branch')) {
     const live=await branchIsSafe(ctx,gh,run,owner,repo,o,before.run.status==='active');
     if(live)await gh.request('DELETE /repos/{owner}/{repo}/git/refs/{ref}',{owner,repo,ref:`heads/${o.object_id}`});
@@ -81,6 +136,18 @@ export async function cleanupTestResources(ctx,{owner,repo,runId,before}) {
       return {verified:false,remaining:true,run_id:runId};
     if(!(await db.markDevObjectCleaned({runId,account,connection,type:o.object_type,owner:o.owner,objectId:o.object_id})))
       throw refusal('Branch cleanup identity was not recorded.');
+    processed++;
+  }
+  // A label can be shared across non-run PRs/issues; scan current use again before deletion.
+  for(const o of objects.filter(x=>!x.cleaned&&x.object_type==='label')) {
+    const label=await inspectLabel(gh,run,owner,repo,objects,o,before.run.status==='active');
+    if(label)await gh.request('DELETE /repos/{owner}/{repo}/labels/{name}',{
+      owner,repo,name:o.object_id
+    });
+    if(await getLabel(gh,owner,repo,o.object_id))
+      return {verified:false,remaining:true,run_id:runId};
+    if(!(await db.markDevObjectCleaned({runId,account,connection,type:o.object_type,owner:o.owner,objectId:o.object_id})))
+      throw refusal('Label cleanup was not journaled.');
     processed++;
   }
   if(!(await db.completeDevCleanup({runId,account,connection})))
