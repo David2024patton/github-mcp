@@ -57,6 +57,19 @@ export function runDevLedgerContract(label, makeDb) {
       expect(await db.completeDevIntent({...a,runId,stepId:'step-a',objectId:'mystery'})).toBe(true);
       expect(await db.listDevObjects({...a,runId})).toHaveLength(1);
     });
+    it('lists only this run\'s claimed steps with a strict limit',async()=>{
+      const db=await makeDb(),runId='run-intent-list';
+      await db.createDevRun({...a,id:runId});
+      const step={...a,runId,type:'branch',owner:'example-org',repo:'hello',objectName:'rtc/run-intent-list/one'};
+      await db.claimDevIntent({...step,stepId:'step-1'});
+      await db.claimDevIntent({...step,stepId:'step-2'});
+      const rows=await db.listDevIntents({...a,runId});
+      expect(rows.map(x=>x.step_id)).toEqual(['step-1','step-2']);
+      expect(rows.every(x=>x.status==='claimed')).toBe(true);
+      expect(await db.listDevIntents({...a,runId,connection:'other'})).toEqual([]);
+      expect(await db.listDevIntents({...a,runId,limit:1})).toHaveLength(1);
+      await expect(db.listDevIntents({...a,runId,limit:100})).rejects.toThrow(/Limit/);
+    });
     it('lists only this connection and rejects unbounded requests',async()=>{
       const db=await makeDb();
       expect(await db.createDevRun({...a,id:'run-ledger-003'})).toBe(true);
