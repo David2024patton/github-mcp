@@ -6,6 +6,9 @@ required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creat
 
 ## Next
 
+- **#131 — standalone cleanup identity readback:** PR closure revalidates exact draft/head/base/body and numeric identity; issue closure and labeling retain exact number/body/title/type. Changed readback stops later mutations and leaves the journal unfinished. Fake-provider regressions; connected acceptance remains open.
+- **Rechecked 2026-10-12:** main #130 has all seven checks successful, no open PRs/issues or submitted #130 reviews. No scheduled promotion run yet; live build remains #109. Read-only database probe still shows zero custom OAuth clients, active connector tokens and development runs; birth-label table absent. No exposed custom-MCP connection here. No manual release, production activation or IN-06 re-request.
+
 - **Active capability: V-1/V-2 usable scratch scenarios with reliable cleanup.**
   Six scratch-only scenarios have code and fake-provider/CI tests. Required real
   acceptance remains: run one explicitly authorized fixture *through the custom
