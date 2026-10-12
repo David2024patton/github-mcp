@@ -167,20 +167,31 @@ async function asRateLimited(ctx, account, resource, error) {
 }
 
 /**
- * Every item of a paginated list, following `Link` headers, up to `max` items.
- * @returns {Promise<{ items: any[], capped: boolean }>} `capped` is true when more items exist than were returned.
+ * Enumerate real GitHub pages up to an item AND request budget. An upstream
+ * proxy can return an empty or duplicate page with rel="next" forever; never
+ * let that keep destructive-cleanup preflights alive indefinitely.
+ * `capped` means completeness is not established (more rows or pages may exist).
  */
 export async function listAll(octokit, route, params = {}, { max = 1000 } = {}) {
-  const items = [];
-  let capped = false;
+  if(!Number.isSafeInteger(max)||max<1||max>10_000)
+    throw new TypeError('Pagination cap must be an integer from 1 through 10000.');
+  const requested=Number(params.per_page??100);
+  const pageSize=Number.isInteger(requested)&&requested>0&&requested<=100?requested:100;
+  const maxPages=Math.ceil(max/pageSize)+1;
+  const items=[];
+  let capped=false,pages=0;
   for await (const page of octokit.paginate.iterator(route, { per_page: 100, ...params })) {
+    if(!Array.isArray(page?.data))
+      throw new TypeError('GitHub list response must contain an array.');
+    pages++;
     items.push(...page.data);
-    if (items.length >= max) {
-      capped = items.length > max || /rel="next"/.test(String(page.headers?.link ?? ''));
+    const more=/rel="next"/.test(String(page.headers?.link??''));
+    if(items.length>=max||pages>=maxPages) {
+      capped=items.length>max||more;
       break;
     }
   }
-  return { items: items.slice(0, max), capped };
+  return {items:items.slice(0,max),capped};
 }
 
 /** Runs a GraphQL document. Tests validate every document against the vendored schema (fake GitHub). */
