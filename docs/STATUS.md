@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — #98 repository ruleset/webhook cleanup isolation (MERGED after gated CI):** Before private scratch deletion, enumerate local rulesets and repository webhooks in bounded reads. Refuse any webhook until V-4's verified cleanup exists; only the exact journaled required-ci ruleset with unchanged active branch-policy rules may be destroyed with its parent. Fake positive/negative tests; no live acceptance.
+
 - **2026-10-12 — #97 scratch tag/release isolation (MERGED after gated CI):** Scratch deletion preflight now enumerates bounded Git tags and releases before both destructive checks. It refuses foreign or retargeted tags, published releases, unknown release IDs and release assets, with fake negative regression coverage. No connected OAuth acceptance or real deletion.
 
 - **2026-10-12 — #96 exact per-branch tip evidence (MERGED after exact-head CI):** Scratch repository deletion now binds each run-owned branch to its own recorded creation commit, matching fixture-file commit, or exact recorded review revision. A SHA from another run-owned branch/file cannot authorize deletion. Adversarial fake-GitHub tests block cross-branch and cross-file substitutions before DELETE. Offline only; OAuth acceptance and all-runs deletion remain unverified.
