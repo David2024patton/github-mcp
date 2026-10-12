@@ -52,7 +52,7 @@ describe('V-2 exact remote read-only cleanup preflight',()=>{
   it('does not convert failed/incomplete GitHub inventories to safe deletion',async()=>{
     for(const {status,body,headers} of [
       {status:403,body:{message:'Forbidden'}},
-      {status:200,body:[{name:'main'}],headers:{link:'<https://api.github.com/next>; rel="next"'}}
+      {status:200,body:[{name:'main'}],headers:{link:'<https://api.github.com/repos/example-org/fixture/branches?page=2>; rel="next"'}}
     ]){
       const w=await world();
       w.gh.when('GET /repos/{owner}/{repo}/branches').reply(status,body,headers);
