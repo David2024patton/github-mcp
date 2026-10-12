@@ -25,6 +25,9 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-12 — V-1 shared run-owned fixture helpers (PR #73):** Reusable strict `rtc/<runId>` branch and run-specific Contents API mutation helpers claim before a GitHub write, journal exact returned commit IDs, and block uncertain replay. Existing failing-ci seed now uses them and verifies branch SHA. Added durable fixture-file object type, fake request-shape and negative tests for unsafe refs/paths. No real GitHub scratch account touched. Next: executable stacked draft PR scenario.
+
+
 **2026-10-12 — V-1 protected-main scratch fixture (PR #72):** Fourth real scenario creates a private scratch repository and active default-branch ruleset requiring `ci`; the precise GitHub ruleset ID is journaled and its enforcement/conditions checked on independent readback. Three scenarios remain plan-only. No connected account used; IN-06 remains pending.
 
 
