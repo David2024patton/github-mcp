@@ -94,7 +94,7 @@ export function createFakeDevLedger({ clock = Date.now } = {}) {
       const key=JSON.stringify([runId,'repo',row?.owner,objectId]);
       if(!run||run.status!=='active'||row?.status!=='claimed'||
         row.object_type!=='repo'||row.owner.toLowerCase()!==owner.toLowerCase()||
-        row.repo!==repo||objects.has(key)||births.has(runId))return false;
+        row.repo!==repo||row.object_name!==repo||objects.has(key)||births.has(runId))return false;
       objects.set(key,{run_id:runId,object_type:'repo',owner:row.owner,repo,
         object_id:objectId,created_sha:createdSha,created_at:new Date(clock()),cleaned:false});
       births.set(runId,{owner,repo,source_sha:createdSha,labels:structuredClone(inventory),captured_at:new Date(clock())});

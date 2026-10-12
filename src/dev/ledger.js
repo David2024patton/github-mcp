@@ -178,7 +178,7 @@ export function createDevLedger(sql) {
           FROM dev_run_intents i JOIN dev_runs r ON r.id=i.run_id
           WHERE r.id=${runId} AND r.account=${account} AND r.connection=${connection}
             AND r.status='active' AND i.step_id=${stepId} AND i.status='claimed'
-            AND i.object_type='repo' AND lower(i.owner)=lower(${owner}) AND i.repo=${repo}
+            AND i.object_type='repo' AND lower(i.owner)=lower(${owner}) AND i.repo=${repo} AND i.object_name=${repo}
           FOR UPDATE OF i
         ), inserted AS (
           INSERT INTO dev_run_objects (run_id,object_type,owner,repo,object_id,created_sha)
