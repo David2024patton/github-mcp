@@ -25,6 +25,9 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-12 — V-1 protected-main scratch fixture (PR #72):** Fourth real scenario creates a private scratch repository and active default-branch ruleset requiring `ci`; the precise GitHub ruleset ID is journaled and its enforcement/conditions checked on independent readback. Three scenarios remain plan-only. No connected account used; IN-06 remains pending.
+
+
 **2026-10-12 — V-1 draft release train (PR #71):** Third real scenario builds a run-owned private scratch repo, three Git tags pinned to its initial commit, and a real draft v0.3.0 release. Five exact object IDs, tag SHAs and readback are journaled; nothing is dispatched or published. Four scenarios remain plan-only. IN-06 still blocks live connected acceptance.
 
 
