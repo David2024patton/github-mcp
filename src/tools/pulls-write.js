@@ -30,7 +30,7 @@ function needOpen(pr, number) {
 
 const prCreate = defineGithubWrite({
   name: 'github_pr_create', area: 'pr', audience: ['B'],
-  description: 'Open a pull request from a branch. If one is already open for the same head and base it is returned instead. The body gets a one-line footer recording the tool.',
+  description: 'Create a PR; reuse an existing open PR with the same head/base. Appends an audit footer.',
   properties: { owner: OWNER, repo: REPO, head: { ...BRANCH, description: 'Branch with the changes (or owner:branch for a fork)' }, base: { ...BRANCH, description: 'Branch to merge into (default: the repository\'s default branch)' },
     title: TITLE, body: BODY, draft: { type: 'boolean', description: 'Open as a draft' } },
   required: ['repo', 'head', 'title'],

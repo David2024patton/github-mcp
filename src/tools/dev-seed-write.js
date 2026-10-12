@@ -32,7 +32,7 @@ const same=(a,b)=>String(a??'').toLowerCase()===String(b??'').toLowerCase();
 
 export const seed=defineGithubWrite({
   name:'github_dev_seed',area:'dev',audience:['B'],
-  description:'Seed journaled private scratch CI, releases, protections, stacked PRs and actual review threads.',
+  description:'Seed private scratch CI, releases, rules, PR stacks and reviews.',
   properties:{owner:OWNER,repo:REPO,runId:RUN,scenario:{type:'string',enum:[...SEEDABLE]}},
   required:['repo','runId','scenario'],declarations:{production:'never'},
   target:(args,ctx)=>{

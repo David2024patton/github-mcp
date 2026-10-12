@@ -90,7 +90,7 @@ const create = defineGithubWrite({
 
 const update = defineGithubWrite({
   name: 'github_release_update', area: 'release', audience: ['B'],
-  description: 'Edit a release or publish a draft with production confirmation; immutable published releases are refused.',
+  description: 'Update releases or publish drafts with confirmation; immutable releases refused.',
   properties: { owner: OWNER, repo: REPO, releaseId: ID,
     name: { type: 'string', maxLength: 250 }, body: TEXT,
     draft: { type: 'boolean' }, prerelease: { type: 'boolean' } },

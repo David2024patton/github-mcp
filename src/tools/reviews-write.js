@@ -38,7 +38,7 @@ const needThread = (before, target) => {
 
 const reviewCreate = defineGithubWrite({
   name: 'github_review_create', area: 'review', audience: ['B'],
-  description: 'Review a pull request: comment, approve or request changes, with inline comments. Without an event the review stays pending.',
+  description: 'Review a PR: comment, approve or request changes; absent an event, remain pending.',
   properties: { owner: OWNER, repo: REPO, number: NUMBER, body: BODY, event: { ...EVENT, description: 'Leave out to start a pending review you submit later' },
     commitId: { type: 'string', minLength: 40, maxLength: 40, description: 'Review this commit (default: the latest)' },
     comments: { type: 'array', maxItems: 50, items: { type: 'object', properties: { path: { type: 'string', maxLength: 1000 }, line: { type: 'integer', minimum: 1 }, side: { type: 'string', enum: ['LEFT', 'RIGHT'] }, body: { type: 'string', maxLength: 20000 } }, required: ['path', 'line', 'body'] } } },
@@ -128,7 +128,7 @@ const reviewReply = defineGithubWrite({
 
 const reviewResolve = defineGithubWrite({
   name: 'github_review_resolve_thread', area: 'review', audience: ['B'],
-  description: 'Resolve a review thread, or reopen it with resolved: false. Nothing happens if it is already in that state.',
+  description: 'Resolve or reopen a review thread without changing an already matching state.',
   properties: { owner: OWNER, repo: REPO, number: NUMBER, threadId: THREAD_ID, resolved: { type: 'boolean', description: 'Default true; false reopens the thread' } },
   required: ['repo', 'number', 'threadId'],
   declarations: { production: 'never' },

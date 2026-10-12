@@ -41,7 +41,7 @@ export const repoList = defineRead({
 
 export const repoGet = defineRead({
   name: 'github_repo_get', area: 'repo', audience: ['B', 'O', 'Op'], compact: false,
-  description: 'One repository: visibility, default branch, merge settings, rules on the default branch, security features, custom properties.',
+  description: 'Inspect repository visibility, default branch, merge rules, security and custom properties.',
   properties: { owner: OWNER, repo: REPO },
   required: ['repo'],
   handler: (args, ctx) => plain(async () => {

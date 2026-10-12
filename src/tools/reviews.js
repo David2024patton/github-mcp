@@ -30,7 +30,7 @@ export const reviewList = defineRead({
 
 export const reviewListThreads = defineRead({
   name: 'github_review_list_threads', area: 'review', audience: ['B'],
-  description: 'Review threads on a pull request: resolved or not, outdated or not, file and lines, and the latest comment of each.',
+  description: 'List PR threads with resolved/outdated state, file location and latest comment.',
   properties: { owner: OWNER, repo: REPO, number: NUMBER, unresolvedOnly: { type: 'boolean', description: 'Only threads still open' } },
   required: ['repo', 'number'],
   handler: (args, ctx) => plain(async () => {
