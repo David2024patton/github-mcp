@@ -584,7 +584,8 @@ describe('IN-06 owner-only scratch Organization designation', () => {
     expect(yes.statusCode).toBe(200);
     expect(yes.body).toContain('Scratch testing is ON');
     expect((await t.db.getAccount('example-org')).is_scratch).toBe(true);
-    expect((await t.post({action:'status'})).body).toContain('Scratch testing');
+    t.gh.when('GET /app').reply(200, { id: 5150, slug: 'robinson-mcp-example-org', name: 'Scratch App' });
+    expect((await t.post({action:'status'})).body).toContain('Disposable scratch organization: <strong>yes</strong>');
     const off = await post(t, {enabled:'false'});
     expect(off.statusCode).toBe(200);
     expect((await t.db.getAccount('example-org')).is_scratch).toBe(false);
