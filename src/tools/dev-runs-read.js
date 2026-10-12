@@ -10,6 +10,7 @@ import { planDevCleanup } from '../dev/cleanup.js';
 import { assertScenarioResourceBounds } from '../dev/scenario-ownership.js';
 import { planBoundedRunSelection } from '../dev/cleanup-batch.js';
 import { summarizeScratchBirth } from '../dev/birth-report.js';
+import { inspectCleanupPreview } from './dev-cleanup-inspect.js';
 
 const OWNER={type:'string',maxLength:39};
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
@@ -17,6 +18,7 @@ const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9][A-Za-z
 const MAX={type:'integer',minimum:1,maximum:50};
 const ALL_PREVIEW={type:'boolean'};
 const LABEL_DETAIL={type:'boolean'};
+const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9][A-Za-z0-9._-]*$'};
 const CURSOR={type:'string',minLength:12,maxLength:256,pattern:'^[A-Za-z0-9_-]{12,256}'};
 
 function scope(args,ctx) {
@@ -45,12 +47,13 @@ const readScenarios=defineRead({
 });
 const readRuns=defineRead({
   name:'github_dev_list_runs',area:'dev',audience:['B'],
-  description:'Inspect scoped runs, object claims, first-create label evidence and cleanup previews.',
-  properties:{owner:OWNER,runId:RUN,max:MAX,cleanupPreview:ALL_PREVIEW,cursor:CURSOR,includeBirthLabels:LABEL_DETAIL},
+  description:'Inspect scoped developer run evidence and optional cleanup readiness.',
+  properties:{owner:OWNER,runId:RUN,repo:REPO,max:MAX,cleanupPreview:ALL_PREVIEW,cursor:CURSOR,includeBirthLabels:LABEL_DETAIL,remoteCleanupPreview:ALL_PREVIEW},
   handler:async(args,ctx)=>{
     const {account,connection}=scope(args,ctx);
     const limit=boundedRunLimit(args.max??20);
     if(!args.runId){
+      if(args.repo||args.remoteCleanupPreview)throw new TypeError('Remote cleanup inspection needs one exact runId and repo.');
       if(args.includeBirthLabels)throw new TypeError('includeBirthLabels requires one exact runId.');
       if(args.cleanupPreview&&limit>20)
         throw new TypeError('All-runs preview is limited to 20 runs per request.');
@@ -93,6 +96,11 @@ const readRuns=defineRead({
     }
     if(args.cleanupPreview||args.cursor)
       throw new TypeError('cleanupPreview and cursor are for all-runs listing only.');
+    if(args.remoteCleanupPreview){
+      if(!args.repo||args.includeBirthLabels)throw new TypeError('Remote cleanup inspection requires repo and cannot be combined with birth-label details.');
+      return inspectCleanupPreview({...args,owner:account},ctx);
+    }
+    if(args.repo)throw new TypeError('repo is only valid for remoteCleanupPreview.');
     const run=await ctx.db.getDevRun({id:args.runId,account,connection});
     if(!run)throw new TypeError('No development run with that ID belongs to this connection.');
     const [objects,intents,birth]=await Promise.all([

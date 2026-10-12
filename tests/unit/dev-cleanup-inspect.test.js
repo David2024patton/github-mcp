@@ -3,6 +3,7 @@ import {makeWorld,parse} from '../../test/helpers/write-contract.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
 import {mergeNamespaces} from '../../src/core/registry.js';
 import * as mod from '../../src/tools/dev-cleanup-inspect.js';
+import * as runs from '../../src/tools/dev-runs-read.js';
 
 const OWNER='example-org',REPO='fixture',RUN='run-inspect-204';
 const data={full_name:`${OWNER}/${REPO}`,private:true,
@@ -24,7 +25,7 @@ async function world(){
   w.gh.when('GET /repos/{owner}/{repo}/actions/workflows').reply(200,{...EMPTY,workflows:[]});
   return w;
 }
-const handler=mod.handlers.github_dev_inspect_cleanup;
+const handler=mod.inspectCleanupPreview;
 const args={repo:REPO,runId:RUN};
 describe('V-2 exact remote read-only cleanup preflight',()=>{
   it('inspects all supported remote inventories without any GitHub writes or run freeze',async()=>{
@@ -69,9 +70,9 @@ describe('V-2 exact remote read-only cleanup preflight',()=>{
   });
   it('remains read-only through the MCP dispatcher',async()=>{
     const w=await world();
-    const registry=mergeNamespaces([mod]);
+    const registry=mergeNamespaces([runs]);
     const d=createDispatch({credentials:w.credentials,fetch:w.gh.fetch,now:w.ctx.now});
-    const out=parse(await d({registry,name:mod.tools[0].name,args,
+    const out=parse(await d({registry,name:'github_dev_list_runs',args:{...args,remoteCleanupPreview:true},
       connection:w.connection,db:w.db}));
     expect(out).toMatchObject({status:'remote_snapshot_accepted',deletion_authorized:false});
     expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);

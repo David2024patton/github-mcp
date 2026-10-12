@@ -1,11 +1,7 @@
 // V-2 read-only remote cleanup rehearsal. No freeze, closing PRs or DELETE.
-import {defineRead} from './define-read.js';
 import {ownerOf,octo,refusal} from './github-write.js';
 import {readCleanupRun,inspectScratchArtifacts} from '../dev/cleanup-execute.js';
 
-const OWNER={type:'string',maxLength:39};
-const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9][A-Za-z0-9._-]*$'};
-const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
 
 function reasonCode(error) {
   const s=String(error?.message??'').toLowerCase();
@@ -41,11 +37,7 @@ export function cleanupPreflightResult({runId,owner,repo,phase,blocker=null,snap
   };
 }
 
-const inspect=defineRead({
-  name:'github_dev_inspect_cleanup',area:'dev',audience:['B'],
-  description:'Read current remote scratch cleanup blockers without freezing runs or deleting anything.',
-  properties:{owner:OWNER,repo:REPO,runId:RUN},required:['repo','runId'],
-  handler:async(args,ctx)=>{
+export async function inspectCleanupPreview(args,ctx){
     if(ctx.connection?.mode!=='preview')
       throw new TypeError('Developer cleanup inspection is preview-only.');
     const requested=ownerOf(args,ctx);
@@ -82,7 +74,4 @@ const inspect=defineRead({
         return cleanupPreflightResult({...base,phase:'scratch_remote_inventory',blocker:error});
       throw error;
     }
-  }
-});
-export const tools=[inspect.tool];
-export const handlers={[inspect.tool.name]:inspect.handler};
+}

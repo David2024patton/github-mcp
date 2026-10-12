@@ -306,7 +306,7 @@ Card(s): G-6.
 | `github_package_delete` | Delete a whole package with all its versions (restorable for 30 days; GitHub refuses public packages with over 5,000 downloads) | C·D·Prod | C | I | B | F | G-6 built #63 |
 | `github_package_restore_version` | Restore a deleted package or package version (within 30 days) | C·Prod | C | I | B | F | G-6 built #64 |
 
-## Developer tools (`github_dev_*`) — 16
+## Developer tools (`github_dev_*`) — 15
 
 Card(s): V-1 … V-5. The owner alone can enable an exact Organization as `is_scratch` through the authenticated setup page after live All-repositories App verification; no connection/tool argument can elevate this flag. Preview-only (contract §10): every `github_dev_*` tool refuses production targets before reading anything, records every object it creates in a run, and tags it `rtc_run=<runId>` (`docs/designs/BATCH-V.md`).
 
@@ -314,10 +314,9 @@ Card(s): V-1 … V-5. The owner alone can enable an exact Organization as `is_sc
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_dev_list_scenarios` | Named scenarios github_dev_seed can build (e.g. repo-with-failing-ci, open-pr-with-review-threads, release-train) | — | N | — | B | R | V-1 built #68 |
 | `github_dev_seed` | Build a scenario in the scratch account or on test branches: repos, branches, commits, PRs, issues, labels, workflow files; preview lists every object | P | N | I | B | E | V-1 built #70–#80; initial scratch SHA #102; exact marker #90; resume commit provenance #124; first-create label evidence #126 (no deletion authority; six scratch scenarios; webhook-target pending V-4) |
-| `github_dev_list_runs` | Connection-scoped runs, exact objects/intents, per-scenario progress, opt-in scoped first-create label observations (NOT creator/delete authority), and fail-closed cursor-paged cleanup previews | — | N | — | B | R | V-1 #68; V-2 #93; truthful scenario and preview #123 |
+| `github_dev_list_runs` | Connection-scoped runs and birth labels, plus opt-in remote cleanup refusal diagnostics (no deletion authority), and paged previews | — | N | — | B | R | V-1 #68; V-2 #93; truthful scenario and preview #123 |
 <!-- #106: all-runs cleanup preview includes at-most-five run proposals; each still needs fresh verification and explicit per-run confirmation. -->
 | `github_dev_create_scratch_repo` | Throwaway repository in the scratch account, tagged with the run | P | N | I | B | E | V-1 built #69; initial scratch SHA #102; exact verified same-run replay #125; origin label evidence #126 (not deletion authority) |
-| `github_dev_inspect_cleanup` | Current connection-scoped remote inventory preflight, reports exact blocker class but never freezes or deletes | — | N | I | B | R | V-2 #128 read-only diagnostic |
 | `github_dev_cleanup` | Clean confirmed run-owned scratch repositories, or exact unprotected standalone test PRs/branches; reject foreign scratch resources, enforce a single executable scenario's finite resource types/counts, then independently verify ownership before deletion; never delete host repositories | C | N | I | B | E | V-2 built #85–#90; two-way resource inventory #121; finite scenario limits #122; connected scratch acceptance pending |
 | `github_dev_create_test_branch` | Branch `rtc/<run>/<name>` from any ref in an allowed repo (never production) | P | N | I | B | E | V-3 |
 | `github_dev_open_test_pr` | Draft PR from a test branch, labelled with the run | P | N | I | B | E | V-3 |
@@ -575,7 +574,7 @@ an organization; scheduled reminders; interaction limits beyond 6 months. The fu
 
 ## Totals
 
-**Totals:** 309 tools: 303 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 308 tools: 302 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 133, everyday adds 81
 (everyday lists 214), full adds 94 (full lists 308). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
@@ -598,7 +597,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Environments and deployments | 10 |
 | Releases | 7 |
 | Pages and packages | 7 |
-| Developer tools | 16 |
+| Developer tools | 15 |
 | Branch protection and rulesets | 9 |
 | Webhooks | 8 |
 | Collaborators and deploy keys | 7 |
@@ -613,7 +612,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Project profiles | 3 |
 | Workflows | 17 |
 | Everything else on GitHub: the universal tools | 6 |
-| **Total** | **309** |
+| **Total** | **308** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 
