@@ -191,3 +191,7 @@ Read replies go through `readReply` in `src/tools/dispatch.js`: summary form (to
 
 None granted yet. The requested list lives in `src/github/app-manifest.js` (A-5b; repository and organization permissions only, no account permissions until Batch O) and `docs/DEPLOY.md` (A-6); record the
 permissions actually granted per account here once Chris installs the Apps.
+
+## Developer scenario ledger (V-1 part 1, PR #65)
+
+`dev_runs` and `dev_run_objects` are additive tables created by `createDb.initSchema()`; `createDevLedger(sql)` offers atomic account+connection-scoped run creation, exact object recording, and bounded lists. The same behavior is asserted for PostgreSQL and the fake. `src/dev/scenarios.js` is plan-only: no V-1 external writes exist until the next approved slice passes its write contracts and the owner scratch gate IN-06. Unit CI uses two file-level shards under the unchanged aggregate `ci` gate.

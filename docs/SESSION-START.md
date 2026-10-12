@@ -31,9 +31,10 @@ GitHub only as git commits pushed to an `ai/*` branch. Never copy source files t
 
 1. `git fetch origin && git status -sb && git log --oneline -5`; `npm ci` once per checkout.
 2. `sed -n '1,40p' docs/STATUS.md` → the **Next** section names the card.
-3. Resume note? `ls docs/pr-cards/*.progress.md 2>/dev/null` — if your card has one, continue from its "Next step".
+3. Once the next card ID is known, `npm run task:brief -- V-1` (replace V-1 with that ID) gives a bounded orientation packet from the authoritative index. Use the GitHub contents API equivalent without a shell. Group related same-risk operations per `docs/implementation-contracts/THROUGHPUT.md`; never pad or bypass the ~800-line hard cap.
+4. Resume note? `ls docs/pr-cards/*.progress.md 2>/dev/null` — if your card has one, continue from its "Next step".
    Do not restart work it lists as done.
-4. Read your card (`docs/pr-cards/<ID>.md`). If the roadmap says JIT (no card yet), write it first from the design
+5. Read your card (`docs/pr-cards/<ID>.md`). If the roadmap says JIT (no card yet), write it first from the design
    (`docs/pr-cards/README.md`, 40–100 lines). Read only what the card's "Read only these" list says.
    When preparing that card, use `docs/implementation-contracts/IMPLEMENTATION-DETAIL.md` and its unit's
    `REMAINING-WORK.md` heading to record the exact edit/request/test map. While coding, reuse that packet;

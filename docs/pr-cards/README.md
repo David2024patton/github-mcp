@@ -10,7 +10,7 @@ reason to stop. Designs govern behavior; cards cannot silently override them.
 - ID, title, design section, prerequisites, "Baseline inspected" SHA.
 - One risk area, migration ownership (if any), realistic budget (≤500 production lines).
 - **Read only these:** a bounded list of design headings and files (with line ranges when long).
-- Drift check A table (or "first card: no prior code").
+- Literal `## Drift check A` heading with an actual comparison table (or "first card: no prior code"). The index validator requires the words `Drift check`; do not paraphrase that heading.
 - Build contract: files, exported signatures, which tools (by TOOL-CATALOG name) with their safety marks (production,
   access, message, spend), credential (`I`/`U`/`K`), summaries used, GitHub operations (method + path from
   `node scripts/openapi-find.mjs`, or the GraphQL mutation/query from `node scripts/graphql-find.mjs`).

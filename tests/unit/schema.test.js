@@ -5,12 +5,14 @@ import { createFakeDb } from '../../test/helpers/fake-db.js';
 afterEach(() => { vi.unstubAllEnvs(); });
 
 describe('foundation schema constants', () => {
-  it('lists the 17 tables (13 from BATCH-A, the owner settings, the protected list, the kept results and the secret entry requests), frozen, without duplicates', () => {
-    expect(SCHEMA_TABLES).toHaveLength(17);
-    expect(new Set(SCHEMA_TABLES).size).toBe(17);
+  it('lists the declared foundation and additive tables, frozen, without duplicates', () => {
+    expect(SCHEMA_TABLES.length).toBeGreaterThanOrEqual(19);
+    expect(new Set(SCHEMA_TABLES).size).toBe(SCHEMA_TABLES.length);
     expect(Object.isFrozen(SCHEMA_TABLES)).toBe(true);
     expect(SCHEMA_TABLES[0]).toBe('gh_apps');
-    expect(SCHEMA_TABLES.at(-1)).toBe('secret_entry_requests');
+    expect(SCHEMA_TABLES).toContain('dev_run_objects');
+    expect(SCHEMA_TABLES).toContain('secret_entry_requests');
+    expect(SCHEMA_TABLES).toContain('dev_runs');
   });
 
   it('names the per-connection fields every token refresh copies', () => {
@@ -46,7 +48,7 @@ describe('createDb', () => {
     expect(() => createDb()).toThrow('DATABASE_URL is not configured. Set it in the server environment.');
   });
 
-  it('runs one static statement per call: 17 tables and 3 indexes, all IF NOT EXISTS, nothing destructive', async () => {
+  it('creates every declared table and only static additive statements without hardcoded migration counts', async () => {
     const statements = [];
     const sql = async (strings, ...values) => {
       expect(values).toEqual([]);
@@ -54,11 +56,15 @@ describe('createDb', () => {
       return [];
     };
     await createDb(sql).initSchema();
-    expect(statements).toHaveLength(20);
+    const indexes = statements.filter((s) => /^CREATE (?:UNIQUE )?INDEX IF NOT EXISTS /.test(s));
+    expect(statements).toHaveLength(SCHEMA_TABLES.length + indexes.length);
     const created = statements.filter((s) => /^CREATE TABLE IF NOT EXISTS /.test(s)).map((s) => s.match(/^CREATE TABLE IF NOT EXISTS (\w+)/)[1]);
     expect(created).toEqual([...SCHEMA_TABLES]);
     expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS change_log_request_key /.test(s))).toHaveLength(1);
     expect(statements.filter((s) => /^CREATE UNIQUE INDEX IF NOT EXISTS change_log_request_once .*WHERE dry_run = FALSE AND request_key IS NOT NULL/.test(s))).toHaveLength(1);
+    expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS dev_runs_scope /.test(s))).toHaveLength(1);
+    expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS dev_run_objects_pending /.test(s))).toHaveLength(1);
+    expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS result_store_expires /.test(s))).toHaveLength(1);
     for (const statement of statements) expect(statement).not.toMatch(/\b(DROP|DELETE|TRUNCATE|INSERT|UPDATE)\b|ALTER\s/i);
   });
 
