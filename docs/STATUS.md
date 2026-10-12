@@ -6,7 +6,7 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
-- **2026-10-12 — #95 scratch deletion isolation (candidate):** Before a whole scratch repository is deleted, inspect bounded live branch, PR and issue inventories and refuse unjournaled or changed resources, including on repeated pre-delete check. Require an exact rather than prefix run marker on scratch creation readback. All checks use fake GitHub, never actual custom connected credentials. No production/spend authority changes.
+- **2026-10-12 — #95 scratch deletion isolation (final exact-head CI pending):** Before a whole scratch repository is deleted, inspect bounded live branch, PR and issue inventories and refuse unjournaled or changed resources, including on repeated pre-delete check. Require an exact rather than prefix run marker on scratch creation readback. All checks use fake GitHub, never actual custom connected credentials. No production/spend authority changes.
 
 - **2026-10-12 — #94 stable paginated run inventory (refreshed: exact-head CI pending):** Adds a strict opaque, account-scoped keyset cursor to the existing read-only run inventory. The all-runs cleanup preview remains journal-only, explicitly non-atomic and never enables deletion; malformed/foreign cursors are refused. Disposable Postgres and fake pagination contracts cover equal timestamp run ordering.
 
