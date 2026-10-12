@@ -172,7 +172,7 @@ export function createDevLedger(sql) {
         match[1].toLowerCase()!==account.toLowerCase()||
         !/^[a-f0-9]{40}$/.test(createdSha??''))
         throw new TypeError('Exact scratch repository birth identity and SHA are required.');
-      const [owner,repo]=match;
+      const [,owner,repo]=match;
       const rows=await sql`WITH candidate AS (
           SELECT i.run_id,i.object_type,i.owner,i.repo
           FROM dev_run_intents i JOIN dev_runs r ON r.id=i.run_id

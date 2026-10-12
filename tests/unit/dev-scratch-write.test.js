@@ -14,6 +14,9 @@ const arrange=(gh,outcome)=>{
     {status:200,body:repository(outcome==='mismatch'?{private:false}:{})}
   ]);
   gh.when('POST /orgs/{org}/repos').reply(201,repository());
+  gh.when('GET /repos/{owner}/{repo}/labels').reply(200,[
+    {id:11,name:'bug',color:'D73A4A',description:'First observed GitHub label'}
+  ]);
   gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,{
     ref:'refs/heads/main',object:{sha:'a'.repeat(40)}
   });
@@ -52,6 +55,7 @@ describe('V-1 scratch-account preflight and durable execution',()=>{
       {status:200,body:repository({description:`Scratch fixture for rtc_run=${RUN}-other`})}
     ]);
     w.gh.when('POST /orgs/{org}/repos').reply(201,repository());
+    w.gh.when('GET /repos/{owner}/{repo}/labels').reply(200,[]);
     w.gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,{
       ref:'refs/heads/main',object:{sha:'a'.repeat(40)}
     });
@@ -80,6 +84,9 @@ describe('V-1 scratch-account preflight and durable execution',()=>{
     expect(objects).toEqual([expect.objectContaining({object_type:'repo',object_id:`example-org/${NAME}`,created_sha:'a'.repeat(40)})]);
     const intent=await w.db.getDevIntent({runId:RUN,account:'example-org',connection:'client-1',stepId:'create-scratch-repo'});
     expect(intent).toMatchObject({status:'recorded',object_id:`example-org/${NAME}`});
+    expect(await w.db.getDevBirthLabels({runId:RUN,account:'example-org',connection:'client-1'}))
+      .toMatchObject({repo:NAME,source_sha:'a'.repeat(40),labels:[
+        {id:11,name:'bug',color:'d73a4a',description:'First observed GitHub label'}]});
     const same=await runDevMutationOnce(w.ctx,{runId:RUN,account:'example-org',connection:'client-1',
       stepId:'create-scratch-repo',type:'repo',owner:'example-org',repo:NAME,objectName:NAME,
       create:async()=>{throw new Error('duplicate GitHub operation');}});
