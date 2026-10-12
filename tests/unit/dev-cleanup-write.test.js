@@ -325,6 +325,44 @@ describe('V-2 protected run deletion',()=>{
     expect(out.done).toBe(false);
     expect(w.gh.calls.some(c=>c.method==='DELETE')).toBe(false);
   });
+  it('refuses a changed run-owned label and does not delete the private repository',async()=>{
+    for(const variant of ['missing','renamed','recolored','foreign-marker']){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      const name=`rtc-run-${RUN}`;
+      await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+        type:'label',owner:OWNER,repo:REPO,objectId:name});
+      w.gh.when('GET /repos/{owner}/{repo}/labels/{name}').reply(
+        variant==='missing'?404:200,variant==='missing'?{message:'Not Found'}:{
+          name:variant==='renamed'?'different':name,
+          description:variant==='foreign-marker'? `rtc_run=${RUN}-different`:`rtc_run=${RUN}`,
+          color:variant==='recolored'?'ffffff':'0969da'
+        });
+      const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(out.done).toBe(false);
+      expect(w.gh.calls.some(c=>c.method==='DELETE')).toBe(false);
+      expect(w.gh.invalid).toEqual([]);
+    }
+  });
+  it('allows one exact recorded run label to accompany private scratch deletion',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    const name=`rtc-run-${RUN}`;
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'label',owner:OWNER,repo:REPO,objectId:name});
+    w.gh.when('GET /repos/{owner}/{repo}/labels/{name}').reply(200,
+      {name,description:`rtc_run=${RUN}`,color:'0969da'});
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(true);
+    expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(true);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('refuses orphaned PR-label associations without any GitHub mutation',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'pr_label',owner:OWNER,repo:REPO,objectId:'91:rtc-run'});
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.some(c=>c.method==='DELETE')).toBe(false);
+  });
   it('never allows a production connection to perform developer cleanup',async()=>{
     const w=await makeWorld({scratchAccount:true,mode:'production'});await prepare(w);arrange(w.gh,'ok');
     const result=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));

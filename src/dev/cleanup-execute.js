@@ -157,6 +157,33 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
       !Array.isArray(live.bypass_actors)||live.bypass_actors.length!==0)
       throw refusal('A run-owned scratch ruleset was modified after creation; deletion refused.');
   }
+  // A recorded run label or PR-label association can be reused or stripped
+  // independently of the PR's immutable head. Verify their exact live forms
+  // before a whole-repository delete, rather than trusting journal IDs alone.
+  const savedLabels=objects.filter(x=>x.object_type==='label');
+  for(const label of savedLabels) {
+    const name=label.object_id;
+    if(label.repo!==repo||label.owner.toLowerCase()!==owner.toLowerCase()||
+      (name!=='rtc-run'&&name!==`rtc-run-${run.id}`))
+      throw refusal('A recorded scratch label is not exact run-owned metadata.');
+    const live=(await github.request('GET /repos/{owner}/{repo}/labels/{name}',{owner,repo,name})).data;
+    if(live?.name!==name||live.description!==`rtc_run=${run.id}`||
+      String(live.color??'').toLowerCase()!=='0969da')
+      throw refusal('A recorded scratch label was repurposed; deletion refused.');
+  }
+  for(const relation of objects.filter(x=>x.object_type==='pr_label')) {
+    const match=/^([1-9][0-9]*):(rtc-run(?:-[a-z0-9-]+)?)$/.exec(relation.object_id??'');
+    const n=Number(match?.[1]),name=match?.[2];
+    if(relation.repo!==repo||relation.owner.toLowerCase()!==owner.toLowerCase()||
+      !Number.isSafeInteger(n)||!numbers.has(n)||
+      !savedLabels.some(x=>x.object_id===name))
+      throw refusal('A recorded scratch PR label has no exact run-owned PR and label.');
+    const linked=(await github.request('GET /repos/{owner}/{repo}/issues/{issue_number}/labels/{name}',{
+      owner,repo,issue_number:n,name
+    })).data;
+    if(linked?.name!==name)
+      throw refusal('An exact recorded scratch PR-label association disappeared; deletion refused.');
+  }
   return {branch_count:branches.items.length,pr_count:pulls.items.length,issue_count:issues.items.length,tag_count:tags.items.length,release_count:releases.items.length,
     ruleset_count:rulesets.items.length,webhook_count:0};
 }
