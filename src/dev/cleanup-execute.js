@@ -92,10 +92,11 @@ export async function executeCleanup(ctx,{owner,repo,runId,before}) {
 }
 export async function readCleanupAfter(ctx,{owner,repo,runId}) {
   const connection=ctx.connection.client_id;
-  const [run,objects,github]=await Promise.all([
+  const [run,objects,intents,github]=await Promise.all([
     ctx.db.getDevRun({id:runId,account:owner,connection}),
     ctx.db.listDevObjects({runId,account:owner,connection,limit:50}),
+    ctx.db.listDevIntents({runId,account:owner,connection,limit:50}),
     octo(ctx,owner)
   ]);
-  return {run,objects,repo:await getRepo(github,owner,repo)};
+  return {run,objects,intents,repo:await getRepo(github,owner,repo)};
 }

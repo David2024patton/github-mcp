@@ -1,6 +1,7 @@
 // V-2 guarded scratch teardown. Live calls require independently authorized connected OAuth.
 import { defineGithubWrite } from './define-github-write.js';
 import { ownerOf } from './github-write.js';
+import { summarizeDevCleanup } from '../dev/cleanup-report.js';
 import { readCleanupRun, executeCleanup, readCleanupAfter } from '../dev/cleanup-execute.js';
 
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
@@ -25,8 +26,13 @@ const cleanup=defineGithubWrite({
     (before.deleteRepository?after.repo===null:after.repo!==null)&&
     after.run?.status==='cleaned'&&after.objects.length<50&&after.objects.every(o=>o.cleaned===true),
   inverse:()=>null,
-  present:({args,response,after})=>({run_id:args.runId,cleanup:response.data,
-    status:after.run?.status,remaining:after.objects.filter(o=>!o.cleaned).length})
+  present:({args,response,after})=>({
+    run_id:args.runId,
+    cleanup:response.data,
+    evidence:summarizeDevCleanup({run:after.run,objects:after.objects,intents:after.intents,limit:50}),
+    verified_now:response.data.verified===true,
+    note:'Remote readback and journal evidence apply only to the exact resources touched by this call.'
+  })
 });
 export const tools=[cleanup.tool];
 export const handlers={[cleanup.tool.name]:cleanup.handler};
