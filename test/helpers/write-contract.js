@@ -24,6 +24,13 @@ export async function makeWorld({ mode = 'preview', profile = 'everyday', accoun
   const db = createFakeDb({ clock: () => NOW });
   await db.initSchema();
   const gh = makeFakeGitHub();
+  // Most write-contract fixtures classify notification recipients and read org
+  // members. An unconfigured fake route answers 501, which Octokit *retries*
+  // with real backoff; hundreds of contract checks then take minutes for no
+  // behavioral coverage. Default to explicit known own people. A test that
+  // needs inaccessible membership overrides this route with 403.
+  gh.when('GET /orgs/{org}/members').reply(200,
+    [{ login: 'example-owner', id: 1, type: 'User' }]);
   const credentials = createCredentials({ db, env: ENV, fetch: gh.fetch, now: () => NOW });
   for (const login of accounts) {
     await db.upsertAccount({ login, accountId: 1000 + login.length, accountType: 'Organization', label: login, credentialKind: 'fine_grained' });

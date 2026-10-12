@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { runWriteContract, doorsFor, makeWorld, parse } from '../../test/helpers/write-contract.js';
 import { sampleLabel, sampleSetting, sampleComment, sampleCollaborator, sampleSeat, SEAT_PRICE_CENTS } from '../../test/helpers/sample-writes.js';
+import { ownPeople } from '../../src/tools/people-guard.js';
 
 const R = { owner: 'example-org', repo: 'hello' };
 const seq = (gh, route, before, after) => gh.when(route).replySequence([{ status: 200, body: before }, { status: 200, body: after }]);
@@ -72,5 +73,22 @@ describe('bounded fake write spacing across all execution doors', () => {
       expect(waits).toEqual([1000]);
       expect(w.gh.invalid).toEqual([]);
     }
+  });
+});
+
+describe('complete fake membership fixtures', () => {
+  it('supplies organization members without retryable fake 501 errors', async () => {
+    const w = await makeWorld();
+    const result = await ownPeople(w.ctx);
+    expect(result.complete).toBe(true);
+    expect(result.people.has('example-owner')).toBe(true);
+    expect(w.gh.calls.filter((call) => call.route === 'GET /orgs/{org}/members')).toHaveLength(1);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('still lets permission tests explicitly refuse organization membership reads', async () => {
+    const w = await makeWorld();
+    w.gh.when('GET /orgs/{org}/members').reply(403, { message: 'Forbidden' });
+    const result = await ownPeople(w.ctx);
+    expect(result.complete).toBe(false);
   });
 });

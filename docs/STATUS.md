@@ -25,7 +25,7 @@ repositories.
 
 ## Recent changes (newest first)
 
-**2026-10-12 — PR #65 (V-1 foundation + efficiency):** Durable account/connection-scoped run/object ledger and contract tests, deterministic plan-only blueprints, bounded task brief, two unit test shards with the same aggregate `ci`, shared fake-sleep injection across write-contract dispatcher doors (without changing production pacing), and permanent coherent-PR/anti-stall guidance. No V-1 GitHub seed or scratch writes exposed; IN-06 remains gated. Schema tests derive migration counts from declared tables; shared-contract dispatcher sleep has a regression test. Post-merge CI wall-time measurement pending.
+**2026-10-12 — PR #65 (V-1 foundation + efficiency):** Durable account/connection-scoped run/object ledger and contract tests, deterministic plan-only blueprints, bounded task brief, two unit test shards with the same aggregate `ci`, shared fake-sleep injection across write-contract dispatcher doors (without changing production pacing), and permanent coherent-PR/anti-stall guidance. No V-1 GitHub seed or scratch writes exposed; IN-06 remains gated. Schema tests derive migration counts from declared tables; shared-contract dispatcher sleep has a regression test; complete fake organization membership avoids retryable 501 responses while 403-denial tests remain. Post-merge CI wall-time measurement pending.
 
 
 **2026-10-11 — G-6 package recovery (PR #64):** Owner-scoped restore for an exact deleted version or an entire package, 30-day and reused-namespace warnings, production confirmation and independent 204/readback. G-6 tools completed; Batch G verification/closeout and V-1 follow. No live restoration.
