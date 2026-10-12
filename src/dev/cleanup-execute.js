@@ -5,6 +5,7 @@ import { requireScratchOrg } from './scratch.js';
 import { planDevCleanup } from './cleanup.js';
 import { matchesRunDescription, matchesRunFooter } from './run-marker.js';
 import { inspectTestResources, cleanupTestResources } from './cleanup-non-scratch.js';
+import { inspectScratchComments } from './cleanup-comments.js';
 
 const equal = (a,b) => String(a??'').toLowerCase() === String(b??'').toLowerCase();
 const getRepo = (github,owner,repo) => missing(async()=>(await github.request('GET /repos/{owner}/{repo}',{owner,repo})).data);
@@ -131,6 +132,7 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
       throw refusal('An unrecorded, published or changed release exists in the scratch repository. Deletion refused.');
     ids.add(id);
   }
+  await inspectScratchComments(github,{owner,repo,run,objects});
   // V-4 webhook-target has not been implemented, so not even a run-marked
   // webhook is safe to silently destroy with its parent scratch repository.
   if(hooks.items.length>0)

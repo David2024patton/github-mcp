@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — #105 foreign scratch comment isolation (MERGED after exact-head CI):** Before private scratch deletion, boundedly list issue comments and PR review comments. V-1 never creates issue comments, so any presence refuses deletion; review comments require recorded exact IDs, unchanged commit/path/body and a journaled run PR. Reject missing, foreign, changed or truncated results. This is mock-only and not custom OAuth acceptance.
+
 - **2026-10-12 — #104 scratch label & association validation (MERGED after exact-head CI):** Before deleting a private scratch repo, independently verify every journaled run label's exact name, marker and color, plus run PR-label associations against recorded PR/label IDs. Missing or changed identities refuse deletion. Fake regression and all three write doors; no custom OAuth acceptance.
 
 - **2026-10-12 — #103 scratch default-branch integrity (MERGED after CI):** Deletion now requires the original recorded run repository tip SHA (#102), permitting only the exact run-owned committed workflow on default thereafter. Unjournaled default-branch work and old missing-origin ledgers fail closed before DELETE, with fake positive/negative tests. No real scratch operations.
