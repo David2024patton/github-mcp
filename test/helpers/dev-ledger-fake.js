@@ -77,6 +77,26 @@ export function createFakeDevLedger({ clock = Date.now } = {}) {
         .map(([,row])=>structuredClone(row))
         .sort((a,b)=>a.created_at-b.created_at||a.step_id.localeCompare(b.step_id)).slice(0,limit);
     },
+
+    async beginDevCleanup({runId,account,connection}) {
+      const run=scoped({id:runId,account,connection});
+      if(!run||!['active','cleaning'].includes(run.status)||
+        [...intents].some(([k,i])=>JSON.parse(k)[0]===runId&&i.status!=='recorded'))return false;
+      run.status='cleaning';return true;
+    },
+    async markDevObjectCleaned({runId,account,connection,type,owner,objectId}) {
+      validateRun({id:runId,account,connection});validateRunObject({type,owner,objectId});
+      const run=scoped({id:runId,account,connection});
+      const object=objects.get(JSON.stringify([runId,type,owner,objectId]));
+      if(run?.status!=='cleaning'||!object||object.cleaned)return false;
+      object.cleaned=true;return true;
+    },
+    async completeDevCleanup({runId,account,connection}) {
+      const run=scoped({id:runId,account,connection});
+      if(run?.status!=='cleaning'||[...objects.values()].some(o=>o.run_id===runId&&!o.cleaned)||
+        [...intents].some(([k,i])=>JSON.parse(k)[0]===runId&&i.status!=='recorded'))return false;
+      run.status='cleaned';run.cleaned_at=new Date(clock());return true;
+    },
     async listDevObjects({ runId, account, connection, limit=50 }) {
       boundedRunLimit(limit);
       if (!scoped({ id:runId,account,connection })) return [];
