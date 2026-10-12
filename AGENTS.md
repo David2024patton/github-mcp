@@ -151,7 +151,7 @@ plain words in the tool description or setup page. Money is shown in dollars and
   check, token budgets, core-imports) and the card's targeted tests. Never `--no-verify`.
 - **One push per CI cycle.** After a red run, read all failures, reproduce locally, fix them all, push once. "Flake" is
   not a cause; never skip, weaken or quarantine a test.
-- **The `ci` check is the single merge gate**, green at the exact head.
+- **Both GitHub Actions `ci` and `release-policy` checks are mandatory merge gates**, green at the exact head; preserve all existing unit, database, shapes, lint and security checks.
 - **Review:** read `docs/AI-PR-READ-FIRST.md` for anything touching credentials, secrets, guards, production, access,
   spend, auth or passes, and record how each applicable constraint is honored. **This repo has no automated review**
   (IN-01, Chris, 2026-10-10): never wait for or request one. Before merging, inspect the
@@ -160,7 +160,7 @@ plain words in the tool description or setup page. Money is shown in dollars and
   organization-wide automated reviewer posts anyway, fix or answer each of its threads and resolve them — never wait for
   one. Never claim a review that didn't run. Phase-gate reviews (end of a batch, DRIFT-PROTOCOL C) may use a second model
   on request.
-- **Merging (authorized by Chris):** `ci` green at the exact head, acceptance met with evidence, reviews handled → merge
+- **Merging (authorized by Chris):** `ci` and `release-policy` green at the exact head, acceptance met with evidence, reviews handled → merge
   with the expected-head SHA (merge commits). Stacks merge bottom-up, retargeting each PR to `main` first. Merging never
   covers a hard limit.
 - **Security hole already on `main`:** fix it immediately in its own PR.
@@ -239,3 +239,14 @@ python3 scripts/count-catalog.py
 2. `docs/DECISIONS.md` entry for any design decision; `docs/ROADMAP.md` for out-of-scope finds;
    `docs/GO-LIVE-CHECKLIST.md` for any new switch, credential or owner step.
 3. Report to Chris in plain English: what changed, how it was verified, what he needs to decide (`IN-xx`), what is next.
+
+## Daily release and build-cost policy (owner, 2026-10-12)
+
+PRs target `main`. Follow [the daily release policy](.github/RELEASE-POLICY.md): only the daily scheduled job updates `live`; Vercel builds only `live`. Do not request or wait for a Vercel preview deployment, manually deploy production, or promote at a development batch boundary. Keep all existing local/Actions tests mandatory; this policy introduces no new application build/browser requirement where none existed. This newer owner instruction supersedes older batch/weekly release guidance.
+
+The dependency-free infrastructure release script is exempt from the application-only GitHub client rule: it uses the built-in Actions token, the same pinned API version, explicit timeout and read-only check lookup. It never loads the application or its database/provider credentials on a release runner.
+
+
+## Verified hosting and main protections — October 12, 2026
+
+Follow [the verified hosting-cost operating policy](docs/HOSTING-COST-POLICY.md). Saved exact-main protection requires GitHub Actions `ci` **and** `release-policy`; preserve existing review/agent merge flow, daily checked `main` → `live`, disabled automatic previews, low compute caps and all owner gates. Do not wait for Vercel preview checks or manually deploy at a batch boundary. Record this infrastructure checkpoint in the next substantive PR's status ledger; no documentation-only PR.
