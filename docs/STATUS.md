@@ -6,6 +6,8 @@ required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creat
 
 ## Next
 
+- **Current #125 — safely idempotent scratch create replay (as-if-merged; CI pending):** The existing create API can replay a fully recorded same-run scratch repository only after independent original SHA and live default-branch verification, with post-readback evidence; uncertain, foreign, public, changed and cleaning runs refuse without a second POST. Tests cover duplicate and concurrent requests. #124 remains pending exact-head CI recovery and safe merge; #125 depends on its origin helper.
+
 - **Current #124 — verify scratch seed resume origin (as-if-merged; CI pending):** When an existing private scratch repository is encountered, require the exact journalled seed-repo initial SHA and optional recorded workflow SHA to match a fresh GitHub default-branch read before allowing another seed mutation. Incomplete/uncertain steps and changed remote history refuse; no write or new authority. #123 safely merged at 70a7dd0372e765cec2c72814aaab426acf90d910; all final main CI checks passed.
 
 - **#123 — truthful finite scenario progress/preview (MERGED; final-main CI verified):** Read-only progress rejects correctly counted but wrong type distributions; cleanup preview refuses run scenarios whose records violate finite bounds. No writes, external verification still false. #122 merged at ccaeac5cdf48d5889b2031b6ba0cf8a04adf140e; main CI database-job infrastructure rerun pending.
