@@ -6,7 +6,9 @@ required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creat
 
 ## Next
 
-- **#131 — standalone cleanup identity readback:** PR closure revalidates exact draft/head/base/body and numeric identity; issue closure and labeling retain exact number/body/title/type. Changed readback stops later mutations and leaves the journal unfinished. Fake-provider regressions; connected acceptance remains open.
+- **#132 — exclusive V-2 cleanup execution:** One account/connection-scoped persistent executor claim serializes different request keys for the same run. Verified completion/definite rejection releases only that executor; uncertain provider/DB outcomes or a crashed worker retain the claim. No TTL takeover. Existing read tools disclose only acquisition time and required owner-authorized recovery, never the executor identity. Shared fake/Postgres and separate-connection database tests; connected acceptance remains unverified.
+
+- **#131 — standalone cleanup identity readback (MERGED; all seven exact-head checks successful):** PR closure revalidates exact draft/head/base/body and numeric identity; issue closure and labeling retain exact number/body/title/type. Changed readback stops later mutations and leaves the journal unfinished. Fake-provider regressions; connected acceptance remains open.
 - **Rechecked 2026-10-12:** main #130 has all seven checks successful, no open PRs/issues or submitted #130 reviews. No scheduled promotion run yet; live build remains #109. Read-only database probe still shows zero custom OAuth clients, active connector tokens and development runs; birth-label table absent. No exposed custom-MCP connection here. No manual release, production activation or IN-06 re-request.
 
 - **Active capability: V-1/V-2 usable scratch scenarios with reliable cleanup.**

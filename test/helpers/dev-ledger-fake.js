@@ -1,7 +1,7 @@
 // Fake V-1 ledger behind the same contract as PostgreSQL. No global run visibility.
-import { validateRun, validateRunObject, boundedRunLimit, validateScratchBirthLabels } from '../../src/dev/ledger.js';
+import { validateRun, validateRunObject, boundedRunLimit, validateScratchBirthLabels, validateCleanupExecutor } from '../../src/dev/ledger.js';
 export function createFakeDevLedger({ clock = Date.now } = {}) {
-  const runs = new Map(), objects = new Map(), intents = new Map(), births = new Map();
+  const runs = new Map(), objects = new Map(), intents = new Map(), births = new Map(), executions = new Map();
   const scoped = ({ id, account, connection }) => {
     validateRun({ id, account, connection });
     const row = runs.get(id);
@@ -113,6 +113,21 @@ export function createFakeDevLedger({ clock = Date.now } = {}) {
         .sort((a,b)=>a.created_at-b.created_at||a.step_id.localeCompare(b.step_id)).slice(0,limit);
     },
 
+    async claimDevCleanupExecution({runId,account,connection,executorId}) {
+      validateCleanupExecutor(executorId);
+      const run=scoped({id:runId,account,connection});
+      if(!run||!['active','cleaning'].includes(run.status)||executions.has(runId))return false;
+      executions.set(runId,{executor_id:executorId,acquired_at:new Date(clock())});return true;
+    },
+    async releaseDevCleanupExecution({runId,account,connection,executorId}) {
+      validateCleanupExecutor(executorId);
+      if(!scoped({id:runId,account,connection})||executions.get(runId)?.executor_id!==executorId)return false;
+      executions.delete(runId);return true;
+    },
+    async getDevCleanupExecution({runId,account,connection}) {
+      if(!scoped({id:runId,account,connection})||!executions.has(runId))return null;
+      return {acquired_at:new Date(executions.get(runId).acquired_at)};
+    },
     async beginDevCleanup({runId,account,connection}) {
       const run=scoped({id:runId,account,connection});
       if(!run||!['active','cleaning'].includes(run.status)||

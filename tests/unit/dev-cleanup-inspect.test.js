@@ -35,6 +35,16 @@ async function world({birth=false}={}){
 const handler=mod.inspectCleanupPreview;
 const args={repo:REPO,runId:RUN};
 describe('V-2 exact remote read-only cleanup preflight',()=>{
+  it('reports an unresolved executor without remote writes, takeover or hidden executor identity',async()=>{
+    const w=await world();
+    await w.db.claimDevCleanupExecution({runId:RUN,account:OWNER,connection:'client-1',
+      executorId:'11111111-1111-4111-8111-111111111111'});
+    const out=await handler(args,w.ctx);
+    expect(out).toMatchObject({status:'blocked',blocker_code:'CLEANUP_EXECUTION_UNRESOLVED',
+      deletion_authorized:false,destructive_operations_performed:false});
+    expect(w.gh.calls).toHaveLength(0);
+    expect(JSON.stringify(out)).not.toContain('11111111-1111');
+  });
   it('inspects all supported remote inventories without any GitHub writes or run freeze',async()=>{
     const w=await world();
     const out=await handler(args,w.ctx);

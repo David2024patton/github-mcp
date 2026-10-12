@@ -30,7 +30,8 @@ export const SCHEMA_TABLES = Object.freeze([
   'dev_runs',
   'dev_run_objects',
   'dev_run_intents',
-  'dev_repo_birth_labels'
+  'dev_repo_birth_labels',
+  'dev_cleanup_executions'
 ]);
 export const RESULT_HANDLE = /^res_[A-Za-z0-9_-]{20,64}$/;
 
@@ -374,6 +375,11 @@ export function createDb(sql = productionSql()) {
         labels JSONB NOT NULL,
         captured_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         CHECK (jsonb_typeof(labels) = 'array')
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS dev_cleanup_executions (
+        run_id TEXT PRIMARY KEY REFERENCES dev_runs(id),
+        executor_id UUID NOT NULL,
+        acquired_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
     },
 

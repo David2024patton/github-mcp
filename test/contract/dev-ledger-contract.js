@@ -3,6 +3,28 @@ import { describe, expect, it } from 'vitest';
 export function runDevLedgerContract(label, makeDb) {
   const a={account:'example-org',connection:'client-one'};
   describe(`V-1 run ledger: ${label}`,()=>{
+    it('permits one cleanup executor, isolates scopes and never expires or lets another executor release it',async()=>{
+      const db=await makeDb(),runId='run-exclusive-cleanup';
+      await db.createDevRun({...a,id:runId});
+      const one='11111111-1111-4111-8111-111111111111';
+      const two='22222222-2222-4222-8222-222222222222';
+      const scope={...a,runId};
+      const claimed=await Promise.all([one,two].map(executorId=>db.claimDevCleanupExecution({...scope,executorId})));
+      expect(claimed.filter(Boolean)).toHaveLength(1);
+      const winner=claimed[0]?one:two,loser=claimed[0]?two:one;
+      expect(await db.getDevCleanupExecution(scope)).toMatchObject({acquired_at:expect.anything()});
+      expect(await db.getDevCleanupExecution({...scope,connection:'foreign'})).toBeNull();
+      expect(await db.releaseDevCleanupExecution({...scope,executorId:loser})).toBe(false);
+      expect(await db.releaseDevCleanupExecution({...scope,connection:'foreign',executorId:winner})).toBe(false);
+      expect(await db.claimDevCleanupExecution({...scope,executorId:winner})).toBe(false);
+      expect(await db.releaseDevCleanupExecution({...scope,executorId:winner})).toBe(true);
+      expect(await db.releaseDevCleanupExecution({...scope,executorId:winner})).toBe(false);
+      expect(await db.getDevCleanupExecution(scope)).toBeNull();
+      expect(await db.claimDevCleanupExecution({...scope,executorId:loser})).toBe(true);
+      expect(await db.releaseDevCleanupExecution({...scope,executorId:loser})).toBe(true);
+      await expect(db.claimDevCleanupExecution({...scope,executorId:'invalid'})).rejects.toThrow(/UUID/);
+      expect(await db.claimDevCleanupExecution({...scope,runId:'run-missing',executorId:one})).toBe(false);
+    });
     it('creates an account-scoped run once; duplicate ID cannot be claimed by someone else',async()=>{
       const db=await makeDb(),id='run-ledger-001';
       expect(await db.createDevRun({...a,id,scenarios:['repo-basic']})).toBe(true);
