@@ -68,6 +68,61 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
       result:{items:[1]},mode:'preview'});
     expect(json(response).result).not.toHaveProperty('kept_result');
   });
+  it('refuses the complete malformed batch before any dispatch',async()=>{
+    let dispatched=0;
+    const db={getRtcPass:async()=>token,getAccount:async()=>account,consumeRtcPassRate:async()=>true};
+    const handler=createRtcHttpHandler({db,registry,dispatch:async()=>{
+      dispatched++;return {structuredContent:{ok:true}};
+    }});
+    for(const calls of [
+      [{name:'github_whoami',args:{}},{name:'github_whoami',args:[]}],
+      [{name:'github_whoami',args:{}},{name:'github_whoami',args:null}],
+      [{name:'github_whoami',args:{}},{name:'github_whoami',args:{},extra:true}],
+      [{name:'github_whoami',args:{}},null]
+    ]){
+      const req=request('POST',{calls},{authorization:'Bearer '+pass});
+      expect((await call((a,b)=>handler(a,b,'batch'),req)).statusCode).toBe(400);
+    }
+    expect(dispatched).toBe(0);
+  });
+  it('rechecks revocation, expiry, scratch designation and rate between reads',async()=>{
+    for(const failure of ['revoked','expired','scratch','rate']){
+      let reads=0,checks=0,lookups=0;
+      const db={
+        getRtcPass:async()=>{lookups++;return {...token,
+          ...(reads&&failure==='revoked'?{revoked_at:new Date()}:{}),
+          ...(reads&&failure==='expired'?{expires_at:new Date(0)}:{})};},
+        getAccount:async()=>({...account,...(reads&&failure==='scratch'?{is_scratch:false}:{})}),
+        consumeRtcPassRate:async()=>{checks++;return !(reads&&failure==='rate');}
+      };
+      const handler=createRtcHttpHandler({db,registry,dispatch:async()=>{
+        reads++;return {structuredContent:{read:reads}};
+      }});
+      const req=request('POST',{calls:[{name:'github_whoami',args:{}},
+        {name:'github_whoami',args:{}}]},{authorization:'Bearer '+pass});
+      const response=await call((a,b)=>handler(a,b,'batch'),req);
+      expect(reads,failure).toBe(1);
+      expect(lookups,failure).toBe(2);
+      expect(checks,failure).toBe(failure==='rate'?2:1);
+      expect(response.statusCode,failure).toBe(failure==='rate'?429:failure==='scratch'?403:401);
+      expect(json(response).error.code,failure).toBe({revoked:'pass_revoked',expired:'pass_expired',
+        scratch:'refused_by_guard',rate:'rate_limited'}[failure]);
+    }
+  });
+  it('charges one shared rate unit per tool in a successful batch',async()=>{
+    let calls=0,rate=0;
+    const db={getRtcPass:async()=>token,getAccount:async()=>account,
+      consumeRtcPassRate:async()=>{rate++;return true;}};
+    const handler=createRtcHttpHandler({db,registry,dispatch:async()=>{
+      calls++;return {structuredContent:{calls}};
+    }});
+    const req=request('POST',{calls:Array.from({length:3},()=>({name:'github_whoami',args:{}}))},
+      {authorization:'Bearer '+pass});
+    const response=await call((a,b)=>handler(a,b,'batch'),req);
+    expect(response.statusCode).toBe(200);
+    expect(json(response).result.results).toHaveLength(3);
+    expect(rate).toBe(3);
+  });
   it('never calls write tools and refuses write batches',async()=>{
     expect((await run('tool','POST',{}, {tool:'github_delete_repo'})).statusCode).toBe(404);
     expect((await run('batch','POST',{calls:[{name:'github_delete_repo',args:{confirm:true}}]})).statusCode).toBe(403);
