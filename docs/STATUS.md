@@ -7,7 +7,7 @@ repositories.
 
 ## Next
 
-- **Batch G implementation COMPLETE:** G-1 through G-6 are built (#39–#64); acceptance evidence and limitations are in `docs/audits/G-BATCH-CLOSEOUT.md` (#66). **Next V-1:** the #67 durable step-intent journal, then real scenario execution with per-object recording, safe replay, and IN-06-gated scratch-only repositories. PR #65 shipped the run ledger and plans only; no live seed or scratch operations exist. Batch V remains IN_PROGRESS.
+- **Batch G implementation COMPLETE:** G-1 through G-6 are built (#39–#64); acceptance evidence and limitations are in `docs/audits/G-BATCH-CLOSEOUT.md` (#66). **Next V-1:** the #67 durable step-intent journal, then remaining V-1 scenario work, preserving per-object recording, safe replay, and IN-06-gated scratch isolation. PRs #69–#70 already built guarded scratch creation and two real scenarios; #71 adds a third. Batch V remains IN_PROGRESS.
 - Batches A, B, C, D finished. Real GitHub steps need IN-02…IN-05 (`docs/DEPLOY.md`).
 - **Known follow-ups:** port the empty-passphrase fix in `secretsMatch` to stripe-mcp and the hub core (other repos: tell Chris, do not edit); the manifest's permission names are unverified until the first real App creation.
 - **Answered 2026-10-10 (Chris):** IN-00 — plan approved ("I approve the plans"); IN-01 — **no automated review** ("I don't want the automated review at this time"); the repository stays public as Chris created it; the implementer self-reviews every diff.
@@ -24,6 +24,9 @@ repositories.
 - Vercel project, Neon database, GitHub Apps: not created yet (IN-02, IN-03, IN-04, IN-05).
 
 ## Recent changes (newest first)
+
+**2026-10-12 — V-1 draft release train (PR #71):** Third real scenario builds a run-owned private scratch repo, three Git tags pinned to its initial commit, and a real draft v0.3.0 release. Five exact object IDs, tag SHAs and readback are journaled; nothing is dispatched or published. Four scenarios remain plan-only. IN-06 still blocks live connected acceptance.
+
 
 **2026-10-12 — V-1 first real scenario seeds (PR #70):** `github_dev_seed` now builds `repo-basic` and `failing-ci` on the real GitHub API, each as three explicitly tracked objects: private run-marked scratch repo; run-specific workflow file committed via Contents API; run label or `rtc/<runId>/failure-ref` branch. Every step uses one-winner claims and exact object recording. Workflows have `workflow_dispatch` only: no Actions run or cost is triggered automatically, so live green/fail acceptance awaits separately approved dispatch (V-3). Reads verify private repo and workflow contents; fake transport exercises real request shapes, nine contract checks across all three doors, retries, scope and partial failure. Five other V-1 blueprints remain plan-only and IN-06 still gates real-account usage. Continue V-1 next session; do not claim end-to-end live CI validation.
 

@@ -5,7 +5,8 @@ import { requireScratchOrg } from '../dev/scratch.js';
 import { runDevMutationOnce } from '../dev/execute.js';
 import { planScenario } from '../dev/scenarios.js';
 
-export const SEEDABLE=Object.freeze(['repo-basic','failing-ci']);
+export const SEEDABLE=Object.freeze(['repo-basic','failing-ci','release-train']);
+const RELEASE_TAGS=Object.freeze(['v0.1.0','v0.2.0','v0.3.0']);
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
 const OWNER={type:'string',maxLength:39};
 const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9][A-Za-z0-9._-]*$'};
@@ -28,7 +29,7 @@ const same=(a,b)=>String(a??'').toLowerCase()===String(b??'').toLowerCase();
 
 export const seed=defineGithubWrite({
   name:'github_dev_seed',area:'dev',audience:['B'],
-  description:'Create repo-basic or failing-ci fixtures in a verified scratch org; all three exact objects are journaled.',
+  description:'Create journaled repo-basic, failing-ci or draft release-train fixtures in a verified scratch organization.',
   properties:{owner:OWNER,repo:REPO,runId:RUN,scenario:{type:'string',enum:[...SEEDABLE]}},
   required:['repo','runId','scenario'],declarations:{production:'never'},
   target:(args,ctx)=>{
@@ -65,6 +66,44 @@ export const seed=defineGithubWrite({
           throw refusal('GitHub did not create the expected private scratch repository.');
         return {objectId:result.full_name};
       }});
+    if(args.scenario==='release-train'){
+      const scratchRepo=await repoGet(ctx,target.owner,args.repo);
+      const defaultBranch=scratchRepo?.default_branch;
+      if(typeof defaultBranch!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,99}$/.test(defaultBranch))
+        throw refusal('GitHub did not report a usable scratch default branch.');
+      const head=(await github.request('GET /repos/{owner}/{repo}/git/ref/{ref}',{
+        owner:target.owner,repo:args.repo,ref:`heads/${defaultBranch}`
+      })).data;
+      const sha=head?.object?.sha;
+      if(head?.ref!==`refs/heads/${defaultBranch}`||!/^[a-f0-9]{40}$/.test(sha??''))
+        throw refusal('GitHub did not confirm the scratch main commit for test release tags.');
+      const tags=[];
+      for(const tag of RELEASE_TAGS){
+        const created=await runDevMutationOnce(ctx,{...run,stepId:`seed-tag-${tag.replaceAll('.','-')}`,
+          type:'tag',objectName:tag,create:async()=>{
+            const result=(await github.request('POST /repos/{owner}/{repo}/git/refs',{
+              owner:target.owner,repo:args.repo,ref:`refs/tags/${tag}`,sha
+            })).data;
+            if(result?.ref!==`refs/tags/${tag}`||result.object?.sha!==sha)
+              throw refusal('GitHub did not confirm the exact test tag and commit.');
+            return {objectId:tag,createdSha:sha};
+          }});
+        if(created.createdSha!==sha)throw refusal('An existing recorded tag has a different SHA.');
+        tags.push(created);
+      }
+      const published=await runDevMutationOnce(ctx,{...run,stepId:'seed-draft-release',
+        type:'release',objectName:'draft-v0.3.0',create:async()=>{
+          const result=(await github.request('POST /repos/{owner}/{repo}/releases',{
+            owner:target.owner,repo:args.repo,tag_name:'v0.3.0',name:'RTC draft v0.3.0',
+            body:`Draft-only release fixture ${marker(args.runId)}`,draft:true,
+            target_commitish:defaultBranch
+          })).data;
+          if(!Number.isSafeInteger(result?.id)||result.id<=0||result.draft!==true||
+            result.tag_name!=='v0.3.0')throw refusal('GitHub did not confirm the draft release.');
+          return {objectId:String(result.id)};
+        }});
+      return {data:{run_id:args.runId,scenario:args.scenario,objects:[repo,...tags,published]}};
+    }
     const path=filePath(args.runId);
     const workflow=await runDevMutationOnce(ctx,{...run,stepId:'seed-workflow',type:'workflow_file',objectName:path,
       create:async()=>{
@@ -101,9 +140,21 @@ export const seed=defineGithubWrite({
     }
     return {data:{run_id:args.runId,scenario:args.scenario,objects:[repo,workflow,third]}};
   },
-  readAfter:async({args,ctx,target})=>{
+  readAfter:async({args,ctx,target,response})=>{
     const github=await octo(ctx,target.owner);
     const base={owner:target.owner,repo:args.repo};
+    if(args.scenario==='release-train'){
+      const [repository,tags,release]=await Promise.all([
+        repoGet(ctx,target.owner,args.repo),
+        Promise.all(RELEASE_TAGS.map(tag=>github.request('GET /repos/{owner}/{repo}/git/ref/{ref}',{
+          ...base,ref:`tags/${tag}`
+        }).then(x=>x.data))),
+        github.request('GET /repos/{owner}/{repo}/releases/{release_id}',{
+          ...base,release_id:Number(response.data.objects[4].objectId)
+        }).then(x=>x.data)
+      ]);
+      return {repository,tags,release};
+    }
     const [repository,workflow,extra]=await Promise.all([
       repoGet(ctx,target.owner,args.repo),
       github.request('GET /repos/{owner}/{repo}/contents/{path}',{...base,path:filePath(args.runId)}).then(x=>x.data),
@@ -116,20 +167,34 @@ export const seed=defineGithubWrite({
   verify:async({args,ctx,target,after,response})=>{
     if(!after?.repository||after.repository.private!==true||
       !same(after.repository.full_name,`${target.owner}/${args.repo}`)||
-      !String(after.repository.description??'').includes(marker(args.runId))||
-      after.workflow?.path!==filePath(args.runId)||typeof after.workflow.content!=='string')return false;
-    const content=Buffer.from(after.workflow.content.replace(/\s/g,''),'base64').toString('utf8');
-    if(content!==workflowSource(args.runId,args.scenario==='failing-ci'))return false;
+      !String(after.repository.description??'').includes(marker(args.runId)))return false;
+    if(args.scenario==='release-train'){
+      if(response.data.objects.length!==5||after.tags?.length!==3||
+        after.release?.draft!==true||after.release?.tag_name!=='v0.3.0'||
+        String(after.release.id)!==response.data.objects[4].objectId||
+        !String(after.release.body??'').includes(marker(args.runId)))return false;
+      for(let i=0;i<3;i++){
+        if(after.tags[i]?.ref!==`refs/tags/${RELEASE_TAGS[i]}`||
+          after.tags[i]?.object?.sha!==response.data.objects[i+1].createdSha)return false;
+      }
+    }else{
+      if(after.workflow?.path!==filePath(args.runId)||typeof after.workflow.content!=='string')return false;
+      const content=Buffer.from(after.workflow.content.replace(/\s/g,''),'base64').toString('utf8');
+      if(content!==workflowSource(args.runId,args.scenario==='failing-ci'))return false;
+    }
     if(args.scenario==='repo-basic'&&after.extra?.name!==topic(args.runId))return false;
     if(args.scenario==='failing-ci'&&after.extra?.ref!==`refs/heads/${branchName(args.runId)}`)return false;
-    if(response.data.objects.length!==3)return false;
+    if(response.data.objects.length!==(args.scenario==='release-train'?5:3))return false;
     const stored=await ctx.db.listDevObjects({runId:args.runId,account:target.owner,
       connection:ctx.connection.client_id,limit:10});
     return response.data.objects.every(o=>stored.some(r=>r.object_id===o.objectId&&r.owner===target.owner&&r.repo===args.repo));
   },
   inverse:()=>null,
   present:({args,response})=>({run_id:args.runId,scenario:args.scenario,created:response.data.objects,
-    manual_dispatch_only:true,note:'Workflow files are real, but no Actions run was dispatched; IN-06 is required to use a real scratch organization.'})
+    manual_dispatch_only:args.scenario!=='release-train',
+    note:args.scenario==='release-train'
+      ? 'Draft release and tags only; nothing was published, dispatched, or live-tested without IN-06.'
+      : 'Workflow files are real, but no Actions run was dispatched; IN-06 is required for live scratch usage.'})
 });
 export const tools=[seed.tool];
 export const handlers={[seed.tool.name]:seed.handler};
