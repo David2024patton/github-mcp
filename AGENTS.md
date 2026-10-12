@@ -239,3 +239,7 @@ python3 scripts/count-catalog.py
 2. `docs/DECISIONS.md` entry for any design decision; `docs/ROADMAP.md` for out-of-scope finds;
    `docs/GO-LIVE-CHECKLIST.md` for any new switch, credential or owner step.
 3. Report to Chris in plain English: what changed, how it was verified, what he needs to decide (`IN-xx`), what is next.
+
+## Daily release and build-cost policy (owner, 2026-10-12)
+
+PRs target `main`. Follow [the daily release policy](.github/RELEASE-POLICY.md): only the daily scheduled job updates `live`; Vercel builds only `live`. Do not request or wait for a Vercel preview deployment, manually deploy production, or promote at a development batch boundary. Keep local/Actions build, browser and safety tests mandatory. This newer owner instruction supersedes older batch/weekly release guidance.

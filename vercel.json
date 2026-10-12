@@ -16,5 +16,11 @@
       "source": "/api/openapi.json",
       "destination": "/api/openapi"
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "**": false,
+      "live": true
+    }
+  }
 }
