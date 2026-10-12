@@ -8,12 +8,12 @@ import { summarizeDevProgress } from '../dev/progress.js';
 import { summarizeDevCleanup } from '../dev/cleanup-report.js';
 import { planDevCleanup } from '../dev/cleanup.js';
 
-const OWNER={type:'string',maxLength:39,description:'Connected account (default: your default account)'};
+const OWNER={type:'string',maxLength:39};
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
 const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9][A-Za-z0-9._-]*$'};
-const MAX={type:'integer',minimum:1,maximum:50,description:'Maximum records (default 20)'};
-const ALL_PREVIEW={type:'boolean',description:'Include bounded per-run journal cleanup readiness (never a remote or deletion claim).'};
-const CURSOR={type:'string',minLength:12,maxLength:256,pattern:'^[A-Za-z0-9_-]{12,256}',description:'Opaque next_cursor returned by run listing.'};
+const MAX={type:'integer',minimum:1,maximum:50};
+const ALL_PREVIEW={type:'boolean'};
+const CURSOR={type:'string',minLength:12,maxLength:256,pattern:'^[A-Za-z0-9_-]{12,256}'};
 
 function scope(args,ctx) {
   const owner=String(args.owner??ctx.connection?.default_account??'');
@@ -41,7 +41,7 @@ const readScenarios=defineRead({
 });
 const readRuns=defineRead({
   name:'github_dev_list_runs',area:'dev',audience:['B'],
-  description:'Inspect scoped run IDs, object records, claims and incomplete state.',
+  description:'Inspect scoped runs, object claims and cleanup previews.',
   properties:{owner:OWNER,runId:RUN,max:MAX,cleanupPreview:ALL_PREVIEW,cursor:CURSOR},
   handler:async(args,ctx)=>{
     const {account,connection}=scope(args,ctx);
