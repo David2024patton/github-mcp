@@ -6,6 +6,7 @@ import { planDevCleanup } from './cleanup.js';
 import { matchesRunDescription, matchesRunFooter } from './run-marker.js';
 import { inspectTestResources, cleanupTestResources } from './cleanup-non-scratch.js';
 import { inspectScratchComments } from './cleanup-comments.js';
+import { assertScratchJournalCoverage } from './cleanup-inventory.js';
 
 const equal = (a,b) => String(a??'').toLowerCase() === String(b??'').toLowerCase();
 const getRepo = (github,owner,repo) => missing(async()=>(await github.request('GET /repos/{owner}/{repo}',{owner,repo})).data);
@@ -254,6 +255,18 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     if(linked?.name!==name)
       throw refusal('An exact recorded scratch PR-label association disappeared; deletion refused.');
   }
+  // Independently prove that every *recorded* resource remains in the full
+  // inventory. The earlier checks prove listed -> journal; this verifies the
+  // reverse direction. Missing run resources can indicate foreign deletion,
+  // stale journal data or incomplete remote pagination; none authorizes DELETE.
+  assertScratchJournalCoverage({owner,repo,objects,live:{
+    branch:branches.items.filter(x=>x.name!==defaultBranch).map(x=>x.name),
+    pr:pulls.items.map(x=>String(x.number)),
+    issue:issues.items.filter(x=>!x.pull_request).map(x=>String(x.number)),
+    tag:tags.items.map(x=>x.name),
+    release:releases.items.map(x=>String(x.id)),
+    ruleset:rulesets.items.map(x=>String(x.id))
+  }});
   return {branch_count:branches.items.length,pr_count:pulls.items.length,issue_count:issues.items.length,tag_count:tags.items.length,release_count:releases.items.length,
     ruleset_count:rulesets.items.length,webhook_count:0,milestone_count:0,
     deployment_count:0,environment_count:0,action_run_count:0,artifact_count:0,workflow_count:workflowIds.size,label_count:listedLabels.size,verified_pulls:verifiedPulls};
