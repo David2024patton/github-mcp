@@ -49,7 +49,8 @@ describe('non-scratch safety hardening',()=>{
   await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
     type:'pr',owner:OWNER,repo:REPO,objectId:'12',createdSha:SHA});
   const pr={number:12,merged:false,state:'open',draft:true,body:`<!-- rtc_run=${RUN} -->`,
-    head:{ref:BR,sha:SHA,repo:{full_name:`${OWNER}/${REPO}`}}};
+    head:{ref:BR,sha:SHA,repo:{full_name:`${OWNER}/${REPO}`}},
+    base:{ref:'main',repo:{full_name:`${OWNER}/${REPO}`}}};
   w.gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}').replySequence([
     {status:200,body:pr},{status:200,body:pr},{status:200,body:pr},
     {status:200,body:{...pr,state:'closed'}},
@@ -59,6 +60,30 @@ describe('non-scratch safety hardening',()=>{
   expect(result.status).toBe('applied');
   expect(w.gh.calls.filter(c=>['PATCH','DELETE'].includes(c.method)).map(c=>c.route))
     .toEqual(['PATCH /repos/{owner}/{repo}/pulls/{pull_number}','DELETE /repos/{owner}/{repo}/git/refs/{ref}']);
+ });
+ it('refuses merged, retargeted and changed closed draft PRs before modifying a host',async()=>{
+  for(const kind of ['merged_at','foreign_base','wrong_number','closed_not_draft','wrong_sha']){
+   const w=await makeWorld();await prepare(w);arrange(w.gh,'ok');
+   await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+     type:'pr',owner:OWNER,repo:REPO,objectId:'12',createdSha:SHA});
+   const pr={number:kind==='wrong_number'?13:12,merged_at:kind==='merged_at'?'2026-10-12T00:00:00Z':null,
+     state:'closed',draft:kind!=='closed_not_draft',body:`<!-- rtc_run=${RUN} -->`,
+     head:{ref:BR,sha:kind==='wrong_sha'?'b'.repeat(40):SHA,repo:{full_name:`${OWNER}/${REPO}`}},
+     base:{ref:'main',repo:{full_name:kind==='foreign_base'?'another/repository':`${OWNER}/${REPO}`}}};
+   w.gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}').reply(200,pr);
+   const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+   expect(out.done).toBe(false);
+   expect(w.gh.calls.filter(c=>['PATCH','DELETE'].includes(c.method))).toHaveLength(0);
+  }
+ });
+ it('refuses deleting a test branch without a recorded immutable tip',async()=>{
+  const w=await makeWorld();await w.db.createDevRun({id:RUN,account:OWNER,connection:'client-1'});
+  await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+    type:'branch',owner:OWNER,repo:REPO,objectId:BR});
+  arrange(w.gh,'ok');
+  const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+  expect(out.done).toBe(false);
+  expect(w.gh.calls.some(c=>c.method==='DELETE')).toBe(false);
  });
  it('refuses foreign PR footer prefix even when the branch SHA is recorded',async()=>{
   const w=await makeWorld();await prepare(w);arrange(w.gh,'ok');
