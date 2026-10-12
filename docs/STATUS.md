@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — #100 finite pagination boundary (MERGED after gated CI):** Shared GitHub pagination now has an item cap and independent bounded-page cap, refuses malformed list data and reports non-exhaustive inventory on a repeated empty or tiny linked page. This prevents infinite preflight pagination from stalling or incorrectly completing scratch deletion. No connected OAuth acceptance or real scratch deletion claimed.
+
 - **2026-10-12 — #99 scratch draft-PR identity preflight (MERGED after exact-head CI):** Scratch deletion now requires each listed PR to remain an unmerged draft with exact run footer, recorded numeric identity, unchanged own branch SHA, same private repository head/base, and default or run-owned base. Adversarial fake cases refuse retargeted and ready-for-review PRs. Custom OAuth and real deletions remain unverified.
 
 - **2026-10-12 — #98 repository ruleset/webhook cleanup isolation (MERGED after gated CI):** Before private scratch deletion, enumerate local rulesets and repository webhooks in bounded reads. Refuse any webhook until V-4's verified cleanup exists; only the exact journaled required-ci ruleset with unchanged active branch-policy rules may be destroyed with its parent. Fake positive/negative tests; no live acceptance.

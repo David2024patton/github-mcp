@@ -153,6 +153,35 @@ describe('listAll', () => {
     expect(gh.calls).toHaveLength(2);
   });
 
+  it('bounds a misbehaving server that repeatedly links empty pages',async()=>{
+    const {gh,ctx}=await setup();
+    gh.when('GET /repos/{owner}/{repo}/issues').reply(200,[],
+      {link:'<https://api.github.com/repos/example-org/hello/issues?per_page=100&page=2>; rel="next"'});
+    const octokit=await githubFor(ctx,{});
+    const out=await listAll(octokit,'GET /repos/{owner}/{repo}/issues',
+      {owner:'example-org',repo:'hello'},{max:100});
+    expect(out).toEqual({items:[],capped:true});
+    expect(gh.calls).toHaveLength(2);
+    expect(gh.invalid).toEqual([]);
+  });
+  it('does not mistake slowly advancing linked pages for a complete inventory',async()=>{
+    const {gh,ctx}=await setup();
+    gh.when('GET /repos/{owner}/{repo}/issues').reply(200,[{id:1}],
+      {link:'<https://api.github.com/repos/example-org/hello/issues?per_page=100&page=2>; rel="next"'});
+    const out=await listAll(await githubFor(ctx,{}),'GET /repos/{owner}/{repo}/issues',
+      {owner:'example-org',repo:'hello'},{max:100});
+    expect(out.capped).toBe(true);
+    expect(out.items).toHaveLength(2);
+    expect(gh.calls).toHaveLength(2);
+  });
+  it('rejects an invalid pagination cap without contacting GitHub',async()=>{
+    const {gh,ctx}=await setup();
+    const o=await githubFor(ctx,{});
+    await expect(listAll(o,'GET /repos/{owner}/{repo}/issues',
+      {owner:'example-org',repo:'hello'},{max:0})).rejects.toThrow(/finite positive/);
+    expect(gh.calls).toHaveLength(0);
+  });
+
   it('is not capped when the list ends exactly at the cap', async () => {
     const { gh, ctx } = await setup();
     gh.when('GET /repos/{owner}/{repo}/issues').replySequence([{ status: 200, body: Array.from({ length: 100 }, (_x, i) => ({ id: i })) }]);
