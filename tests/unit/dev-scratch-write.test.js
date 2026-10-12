@@ -14,6 +14,9 @@ const arrange=(gh,outcome)=>{
     {status:200,body:repository(outcome==='mismatch'?{private:false}:{})}
   ]);
   gh.when('POST /orgs/{org}/repos').reply(201,repository());
+  gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,{
+    ref:'refs/heads/main',object:{sha:'a'.repeat(40)}
+  });
 };
 
 runWriteContract({
@@ -49,8 +52,23 @@ describe('V-1 scratch-account preflight and durable execution',()=>{
       {status:200,body:repository({description:`Scratch fixture for rtc_run=${RUN}-other`})}
     ]);
     w.gh.when('POST /orgs/{org}/repos').reply(201,repository());
+    w.gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,{
+      ref:'refs/heads/main',object:{sha:'a'.repeat(40)}
+    });
     const out=parse(await def.handler({runId:RUN,name:NAME,confirm:true},w.ctx));
     expect(out.done).toBe(false);
+    expect(w.gh.calls.filter(x=>x.method==='POST')).toHaveLength(1);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('leaves an uncertain claim when initial repository SHA cannot be read',async()=>{
+    const w=await makeWorld({scratchAccount:true});arrange(w.gh,'ok');
+    w.gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,{
+      ref:'refs/heads/main',object:{sha:'not-a-commit'}});
+    const out=parse(await def.handler({runId:RUN,name:NAME,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    const intent=await w.db.getDevIntent({runId:RUN,account:'example-org',
+      connection:'client-1',stepId:'create-scratch-repo'});
+    expect(intent.status).toBe('uncertain');
     expect(w.gh.calls.filter(x=>x.method==='POST')).toHaveLength(1);
     expect(w.gh.invalid).toEqual([]);
   });
@@ -59,7 +77,7 @@ describe('V-1 scratch-account preflight and durable execution',()=>{
     const out=parse(await def.handler({runId:RUN,name:NAME,confirm:true},w.ctx));
     expect(out).toMatchObject({status:'applied',confirmed:true});
     const objects=await w.db.listDevObjects({runId:RUN,account:'example-org',connection:'client-1'});
-    expect(objects).toEqual([expect.objectContaining({object_type:'repo',object_id:`example-org/${NAME}`})]);
+    expect(objects).toEqual([expect.objectContaining({object_type:'repo',object_id:`example-org/${NAME}`,created_sha:'a'.repeat(40)})]);
     const intent=await w.db.getDevIntent({runId:RUN,account:'example-org',connection:'client-1',stepId:'create-scratch-repo'});
     expect(intent).toMatchObject({status:'recorded',object_id:`example-org/${NAME}`});
     const same=await runDevMutationOnce(w.ctx,{runId:RUN,account:'example-org',connection:'client-1',
