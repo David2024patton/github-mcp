@@ -25,6 +25,9 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-12 — V-1 run-owned draft PR and label primitives (PR #74):** Draft PR creation now requires a recorded run-owned branch and file commit, verifies the remote head's exact SHA and persists the GitHub PR number; reusable helpers also journal one run label and its per-PR association. Fail-closed negative tests protect replay/foreign refs/mismatched responses. No connected account used. Next: compose the three-PR scenario in V-1.
+
+
 **2026-10-12 — V-1 shared run-owned fixture helpers (PR #73):** Reusable strict `rtc/<runId>` branch and run-specific Contents API mutation helpers claim before a GitHub write, journal exact returned commit IDs, and block uncertain replay. Existing failing-ci seed now uses them and verifies branch SHA. Added durable fixture-file object type, fake request-shape and negative tests for unsafe refs/paths. No real GitHub scratch account touched. Next: executable stacked draft PR scenario.
 
 
