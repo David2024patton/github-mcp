@@ -11,6 +11,7 @@ describe('foundation schema constants', () => {
     expect(Object.isFrozen(SCHEMA_TABLES)).toBe(true);
     expect(SCHEMA_TABLES[0]).toBe('gh_apps');
     expect(SCHEMA_TABLES).toContain('dev_run_objects');
+    expect(SCHEMA_TABLES).toContain('dev_run_intents');
     expect(SCHEMA_TABLES).toContain('secret_entry_requests');
     expect(SCHEMA_TABLES).toContain('dev_runs');
   });
