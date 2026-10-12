@@ -7,6 +7,7 @@ import { boundedRunLimit, encodeDevRunCursor, decodeDevRunCursor } from '../dev/
 import { summarizeDevProgress } from '../dev/progress.js';
 import { summarizeDevCleanup } from '../dev/cleanup-report.js';
 import { planDevCleanup } from '../dev/cleanup.js';
+import { planBoundedRunSelection } from '../dev/cleanup-batch.js';
 
 const OWNER={type:'string',maxLength:39};
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
@@ -80,6 +81,8 @@ const readRuns=defineRead({
       return {account,count:items.length,total_count:total,
         more_may_exist:hasNext,next_cursor,all_runs_scanned:!args.cursor&&!hasNext&&total===items.length,
         snapshot_not_atomic:true,cleanup_previews,
+        bounded_selection:planBoundedRunSelection({runs:items,previews:cleanup_previews,
+          account,connection,totalCount:total,hasNext,cursor:args.cursor??null}),
         note:'This page is read-only and not an atomic snapshot of all runs. Follow next_cursor to inspect later pages; no GitHub verification or deletion performed.'};
     }
     if(args.cleanupPreview||args.cursor)
