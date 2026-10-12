@@ -15,6 +15,7 @@ export const SCHEMA_TABLES = Object.freeze([
   'oauth_clients',
   'oauth_codes',
   'oauth_tokens',
+  'rtc_pass_rate',
   'login_attempts',
   'change_log',
   'one_time_secrets',
@@ -27,8 +28,7 @@ export const SCHEMA_TABLES = Object.freeze([
   'secret_entry_requests',
   'dev_runs',
   'dev_run_objects',
-  'dev_run_intents',
-  'rtc_pass_rate'
+  'dev_run_intents'
 ]);
 export const RESULT_HANDLE = /^res_[A-Za-z0-9_-]{20,64}$/;
 

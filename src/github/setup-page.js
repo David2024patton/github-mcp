@@ -140,6 +140,9 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       if(!created)return page(403,{result:'Pass creation refused: account must be an active, all-repositories, production-disabled scratch Organization.'});
       try {
         const one=await oneTimeStore.issue({account,kind:'rtc-read-only-pass',secret:pass});
+        await db.recordChange({account,mode:'setup',tool:'setup_create_rtc_pass',
+          target:passId,summary:'Issued one-day to 30-day preview/read-only RTC test pass',
+          confirmed:true,production:false}).catch(()=>{});
         return page(200,{result:`Read-only preview RTC pass ${passId} created (expires in ${days} day(s)). Open ${one.setupPath} in this browser, then reveal it once. Revoke it here after testing.`});
       }catch {
         await db.revokeRtcPass(passId);
@@ -151,6 +154,8 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       const passId=String(p.passId||'');
       if(!/^[a-f0-9]{24}$/.test(passId))return page(400,{result:'Enter the 24-character pass identifier.'});
       const revoked=await db.revokeRtcPass(passId);
+      if(revoked)await db.recordChange({mode:'setup',tool:'setup_revoke_rtc_pass',
+        target:passId,summary:'Revoked an RTC test pass',confirmed:true,production:false}).catch(()=>{});
       return page(revoked?200:404,{result:revoked?'RTC pass revoked immediately.':'No active RTC pass with that identifier.'});
     }
     if (action === 'set-own-people') return await setOwnPeople(p, page);
