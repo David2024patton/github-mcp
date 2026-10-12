@@ -13,7 +13,7 @@ const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}
 const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9][A-Za-z0-9._-]*$'};
 const MAX={type:'integer',minimum:1,maximum:50,description:'Maximum records (default 20)'};
 const ALL_PREVIEW={type:'boolean',description:'Include bounded per-run journal cleanup readiness (never a remote or deletion claim).'};
-const CURSOR={type:'string',minLength:12,maxLength:256,pattern:'^[A-Za-z0-9_-]+
+const CURSOR={type:'string',minLength:12,maxLength:256,pattern:'^[A-Za-z0-9_-]{12,256}',description:'Opaque next_cursor returned by run listing.'};
 
 function scope(args,ctx) {
   const owner=String(args.owner??ctx.connection?.default_account??'');
