@@ -173,8 +173,8 @@ async function asRateLimited(ctx, account, resource, error) {
  * `capped` means completeness is not established (more rows or pages may exist).
  */
 export async function listAll(octokit, route, params = {}, { max = 1000 } = {}) {
-  if(!Number.isSafeInteger(max)||max<1)
-    throw new TypeError('A finite positive pagination cap is required.');
+  if(!Number.isSafeInteger(max)||max<1||max>10_000)
+    throw new TypeError('Pagination cap must be an integer from 1 through 10000.');
   const requested=Number(params.per_page??100);
   const pageSize=Number.isInteger(requested)&&requested>0&&requested<=100?requested:100;
   const maxPages=Math.ceil(max/pageSize)+1;

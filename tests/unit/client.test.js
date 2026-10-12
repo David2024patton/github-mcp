@@ -178,7 +178,9 @@ describe('listAll', () => {
     const {gh,ctx}=await setup();
     const o=await githubFor(ctx,{});
     await expect(listAll(o,'GET /repos/{owner}/{repo}/issues',
-      {owner:'example-org',repo:'hello'},{max:0})).rejects.toThrow(/finite positive/);
+      {owner:'example-org',repo:'hello'},{max:0})).rejects.toThrow(/Pagination cap/);
+    await expect(listAll(o,'GET /repos/{owner}/{repo}/issues',
+      {owner:'example-org',repo:'hello'},{max:10_001})).rejects.toThrow(/Pagination cap/);
     expect(gh.calls).toHaveLength(0);
   });
 
