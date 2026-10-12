@@ -11,6 +11,42 @@ export function runDevLedgerContract(label, makeDb) {
       expect(await db.getDevRun({...a,id})).toMatchObject({id,scenarios:['repo-basic'],status:'active'});
       expect(await db.getDevRun({id,account:'other-org',connection:'other'})).toBeNull();
     });
+    it('atomically records the first-create label snapshot with its repo; never grants deletion authority',async()=>{
+      const db=await makeDb(),runId='run-birth-001',sha='b'.repeat(40);
+      await db.createDevRun({...a,id:runId,scenarios:['repo-basic']});
+      const step={...a,runId,stepId:'seed-repo',type:'repo',owner:a.account,repo:'birth',objectName:'birth'};
+      expect(await db.claimDevIntent(step)).toBe(true);
+      const labels=[{id:11,name:'bug',color:'D73A4A',description:'Something broken'},
+        {id:12,name:'question',color:'d876e3',description:null}];
+      expect(await db.completeDevBirthIntent({...a,runId,stepId:'seed-repo',
+        objectId:`${a.account}/birth`,createdSha:sha,labels})).toBe(true);
+      expect(await db.getDevBirthLabels({...a,runId})).toMatchObject({
+        owner:a.account,repo:'birth',source_sha:sha,labels:[
+          {id:11,name:'bug',color:'d73a4a',description:'Something broken'},
+          {id:12,name:'question',color:'d876e3',description:null}]});
+      expect(await db.getDevBirthLabels({...a,runId,connection:'intruder'})).toBeNull();
+      expect(await db.completeDevBirthIntent({...a,runId,stepId:'seed-repo',
+        objectId:`${a.account}/birth`,createdSha:sha,labels:[]})).toBe(false);
+      expect(await db.listDevObjects({...a,runId})).toHaveLength(1);
+      expect(await db.getDevBirthLabels({...a,runId})).toMatchObject({labels:expect.arrayContaining([
+        expect.objectContaining({id:11})])});
+    });
+    it('refuses duplicate, malformed, foreign or incomplete birth evidence',async()=>{
+      const db=await makeDb(),runId='run-birth-002',sha='c'.repeat(40);
+      await db.createDevRun({...a,id:runId});
+      await db.claimDevIntent({...a,runId,stepId:'seed-repo',type:'repo',
+        owner:a.account,repo:'birth',objectName:'birth'});
+      const args={...a,runId,stepId:'seed-repo',objectId:`${a.account}/birth`,createdSha:sha};
+      for(const labels of [[{id:1,name:'bug',color:'123456'},{id:1,name:'other',color:'123456'}],
+        [{id:1,name:'bug',color:'garbage'}],[null]])
+        await expect(db.completeDevBirthIntent({...args,labels})).rejects.toThrow();
+      await expect(db.completeDevBirthIntent({...args,objectId:'other-org/birth',labels:[]})).rejects.toThrow();
+      await expect(db.completeDevBirthIntent({...args,createdSha:'bad',labels:[]})).rejects.toThrow();
+      expect(await db.completeDevBirthIntent({...args,connection:'another',labels:[]})).toBe(false);
+      expect(await db.getDevBirthLabels({...a,runId})).toBeNull();
+      expect(await db.completeDevBirthIntent({...args,labels:[]})).toBe(true);
+      expect((await db.getDevBirthLabels({...a,runId})).labels).toEqual([]);
+    });
     it('records exact objects atomically, scoped to the owning connection, without duplicate replays',async()=>{
       const db=await makeDb(),runId='run-ledger-002';
       expect(await db.createDevRun({...a,id:runId})).toBe(true);

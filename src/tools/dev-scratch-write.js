@@ -4,7 +4,7 @@ import { missing, octo, ownerOf, refusal } from './github-write.js';
 import { requireScratchOrg } from '../dev/scratch.js';
 import { matchesRunDescription } from '../dev/run-marker.js';
 import { runDevMutationOnce } from '../dev/execute.js';
-import { captureScratchOrigin, verifySeedResumeOrigin } from '../dev/scratch-origin.js';
+import { captureScratchOrigin, captureScratchBirthLabels, verifySeedResumeOrigin } from '../dev/scratch-origin.js';
 
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
 const NAME={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9][A-Za-z0-9._-]*$'};
@@ -65,8 +65,10 @@ const scratchCreate=defineGithubWrite({
         if(data?.full_name?.toLowerCase()!==`${target.owner}/${args.name}`.toLowerCase()||data.private!==true)
           throw refusal('GitHub did not return the private repository at the requested exact location.');
         const github=await octo(ctx,target.owner);
-        return {objectId:data.full_name,createdSha:await captureScratchOrigin(github,{
-          owner:target.owner,repo:args.name,runId:args.runId,created:data})};
+        const createdSha=await captureScratchOrigin(github,{
+          owner:target.owner,repo:args.name,runId:args.runId,created:data});
+        const birthLabels=await captureScratchBirthLabels(github,{owner:target.owner,repo:args.name});
+        return {objectId:data.full_name,createdSha,birthLabels};
       }});
     return {data:created};
   },

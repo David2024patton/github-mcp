@@ -2,6 +2,8 @@
 // Reads happen after the exact private repo POST and before a recorded intent completes.
 // A failed/ambiguous read freezes this step for reconciliation, never a blind replay.
 import { refusal } from '../tools/github-write.js';
+import { listAll } from '../github/client.js';
+import { validateScratchBirthLabels } from './ledger.js';
 import { matchesRunDescription } from './run-marker.js';
 
 const SHA=/^[a-f0-9]{40}$/;
@@ -55,4 +57,15 @@ export async function verifySeedResumeOrigin(github,{owner,repo,runId,existing,r
   if(current?.ref!==`refs/${ref}`||current.object?.sha!==expected)
     throw refusal('The scratch default branch moved from its recorded seed commit; no further writes allowed.');
   return {initial_sha:repoIntent.created_sha,expected_default_sha:expected,verified:true};
+}
+
+// Evidence captured immediately after the successful private repository POST,
+// before any V-1 fixture mutation. This is NOT deletion authority: labels have
+// no creator/time provenance, and an actor could race the first inventory.
+export async function captureScratchBirthLabels(github,{owner,repo}) {
+  const page=await listAll(github,'GET /repos/{owner}/{repo}/labels',
+    {owner,repo,per_page:100},{max:100});
+  if(page.capped||!Array.isArray(page.items))
+    throw refusal('The initial scratch label inventory was incomplete. The repository intent remains uncertain.');
+  return validateScratchBirthLabels(page.items);
 }

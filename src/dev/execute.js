@@ -20,9 +20,16 @@ export async function runDevMutationOnce(ctx,{runId,account,connection,stepId,ty
   try{
     const created=await create();
     if(!created?.objectId||typeof created.objectId!=='string')throw new TypeError('GitHub did not return the exact created object ID.');
-    const saved=await db.completeDevIntent({runId,account,connection,stepId,objectId:created.objectId,createdSha:created.createdSha??null});
+    // Repository birth evidence is inserted atomically with the first recorded
+    // repo intent. It is immutable observational evidence, not delete permission.
+    const birth=Object.hasOwn(created,'birthLabels');
+    const saved=birth
+      ? await db.completeDevBirthIntent({runId,account,connection,stepId,
+          objectId:created.objectId,createdSha:created.createdSha,labels:created.birthLabels})
+      : await db.completeDevIntent({runId,account,connection,stepId,objectId:created.objectId,createdSha:created.createdSha??null});
     if(!saved)throw new TypeError('The created object could not be durably recorded; inspect the run before further changes.');
-    return {...created,replayed:false};
+    const {birthLabels: _birthLabels,...result}=created;
+    return {...result,replayed:false};
   }catch(error){
     await db.markDevIntentUncertain({runId,account,connection,stepId}).catch(()=>{});
     throw error;

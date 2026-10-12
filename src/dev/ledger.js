@@ -12,6 +12,23 @@ export function validateRunObject({ type, owner, repo, objectId, createdSha }) {
       (repo != null && (typeof repo !== 'string' || !repo.trim() || repo.length > 100)) ||
       (createdSha != null && !/^[a-f0-9]{40}$/.test(createdSha))) throw new TypeError('Invalid dev run object.');
 }
+// A complete first-create label inventory must preserve exact immutable GitHub
+// IDs and metadata. It is evidence for later review, NEVER a deletion grant.
+export function validateScratchBirthLabels(labels) {
+  if(!Array.isArray(labels)||labels.length>100)
+    throw new TypeError('Scratch birth label inventory must be a bounded complete array.');
+  const ids=new Set(),names=new Set();
+  return labels.map(label=>{
+    const {id,name,color,description=null}=label??{};
+    if(!Number.isSafeInteger(id)||id<=0||typeof name!=='string'||
+      !name.trim()||name.length>255||!/^[a-fA-F0-9]{6}$/.test(color??'')||
+      (description!==null&&(typeof description!=='string'||description.length>1024))||
+      ids.has(id)||names.has(name))
+      throw new TypeError('Scratch birth labels have missing, duplicate or invalid exact identities.');
+    ids.add(id);names.add(name);
+    return {id,name,color:color.toLowerCase(),description};
+  });
+}
 export function boundedRunLimit(limit) {
   if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new TypeError('Limit must be 1–50.');
   return limit;
@@ -143,6 +160,49 @@ export function createDevLedger(sql) {
         )
         SELECT object_id FROM recorded`;
       return rows.length === 1;
+    },
+    // The repo object, its claimed create step and the first observed label
+    // inventory all become durable in ONE statement, or none do. Refuse
+    // uncertain/legacy requests instead of manufacturing origin evidence later.
+    async completeDevBirthIntent({runId,account,connection,stepId,objectId,createdSha,labels}) {
+      validateRun({id:runId,account,connection});
+      const inventory=validateScratchBirthLabels(labels);
+      const match=/^([^/]+)\/([^/]+)$/.exec(objectId??'');
+      if(!['seed-repo','create-scratch-repo'].includes(stepId)||!match||
+        match[1].toLowerCase()!==account.toLowerCase()||
+        !/^[a-f0-9]{40}$/.test(createdSha??''))
+        throw new TypeError('Exact scratch repository birth identity and SHA are required.');
+      const [owner,repo]=match;
+      const rows=await sql`WITH candidate AS (
+          SELECT i.run_id,i.object_type,i.owner,i.repo
+          FROM dev_run_intents i JOIN dev_runs r ON r.id=i.run_id
+          WHERE r.id=${runId} AND r.account=${account} AND r.connection=${connection}
+            AND r.status='active' AND i.step_id=${stepId} AND i.status='claimed'
+            AND i.object_type='repo' AND lower(i.owner)=lower(${owner}) AND i.repo=${repo}
+          FOR UPDATE OF i
+        ), inserted AS (
+          INSERT INTO dev_run_objects (run_id,object_type,owner,repo,object_id,created_sha)
+          SELECT run_id,object_type,owner,repo,${objectId},${createdSha} FROM candidate
+          ON CONFLICT (run_id,object_type,owner,object_id) DO NOTHING
+          RETURNING run_id
+        ), birth AS (
+          INSERT INTO dev_repo_birth_labels (run_id,owner,repo,source_sha,labels)
+          SELECT run_id,${owner},${repo},${createdSha},${JSON.stringify(inventory)}::jsonb FROM inserted
+          ON CONFLICT (run_id) DO NOTHING RETURNING run_id
+        ), recorded AS (
+          UPDATE dev_run_intents i SET status='recorded',object_id=${objectId},
+            created_sha=${createdSha},updated_at=now()
+          FROM birth b WHERE i.run_id=b.run_id AND i.step_id=${stepId}
+          RETURNING i.object_id
+        ) SELECT object_id FROM recorded`;
+      return rows.length===1;
+    },
+    async getDevBirthLabels({runId,account,connection}) {
+      validateRun({id:runId,account,connection});
+      const rows=await sql`SELECT b.owner,b.repo,b.source_sha,b.labels,b.captured_at
+        FROM dev_repo_birth_labels b JOIN dev_runs r ON r.id=b.run_id
+        WHERE r.id=${runId} AND r.account=${account} AND r.connection=${connection}`;
+      return rows[0]??null;
     },
     async listDevIntents({ runId, account, connection, limit = 50 }) {
       validateRun({ id: runId, account, connection }); boundedRunLimit(limit);
