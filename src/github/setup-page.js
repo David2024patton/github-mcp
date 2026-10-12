@@ -12,6 +12,7 @@ import { putSecret, secretRoutes } from './secret-seal.js';
 import { readBack, missingPermissions } from './setup-readback.js';
 import { canonicalSetupUrl } from './setup-canonical.js';
 import { renderSetup, resultPage } from './setup-html.js';
+import { summarizeConnectorReadiness } from './oauth-readiness.js';
 import { PRODUCTION_NAMES_KEY, cleanNames, productionNames, productionReason } from '../tools/production-guard.js';
 import { matchingEntries, protectedList } from '../tools/protect-guard.js';
 import { OWN_PEOPLE_KEY, cleanLogins, extraOwnPeople } from '../tools/people-guard.js';
@@ -113,7 +114,9 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'status') {
       const accounts = [];
       for (const a of (await db.listAccounts()).slice(0, 10)) accounts.push(await readBack({ db, credentials, fetch }, a.login));
-      return page(200, { accounts, productionNames: await productionNames(db), protectedList: await protectedList(db), spendLimits: await spendView(), ownPeopleExtra: await extraOwnPeople(db) });
+      const oauthReadiness=summarizeConnectorReadiness(
+        await db.getConnectorOAuthReadiness(),{mcpUrl:`${expectedOrigin}/api/mcp`});
+      return page(200, { accounts, oauthReadiness, productionNames: await productionNames(db), protectedList: await protectedList(db), spendLimits: await spendView(), ownPeopleExtra: await extraOwnPeople(db) });
     }
     if (action === 'reveal') {
       if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });

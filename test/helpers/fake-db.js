@@ -64,6 +64,12 @@ export function createFakeDb({ clock = Date.now } = {}) {
       clients.set(clientId, { client_secret_hash: hashToken(clientSecret), redirect_uris: [...redirectUris], client_name: clientName || null });
     },
     async getOAuthClient(clientId) { return clients.has(clientId) ? { client_id: clientId, ...structuredClone(clients.get(clientId)) } : null; },
+    async getConnectorOAuthReadiness() {
+      const liveRows=[...tokens.values()].filter(live);
+      return {registered_clients:clients.size,unrevoked_sessions:liveRows.length,
+        usable_access_tokens:liveRows.filter(x=>x.expires_at>clock()).length,
+        refresh_credentials:liveRows.filter(x=>x.refresh_hash!==null).length};
+    },
 
     async createAuthCode({ code, clientId, redirectUri, codeChallenge, codeChallengeMethod = 'S256', defaultAccount, accounts: allowed,
       mode = 'preview', profile = 'everyday', listing = 'catalog', ttlSeconds = 600 }) {

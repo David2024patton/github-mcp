@@ -413,6 +413,19 @@ export function createDb(sql = productionSql()) {
       const rows = await sql`SELECT client_id, data FROM oauth_clients WHERE client_id = ${clientId}`;
       return rows[0] ? { client_id: rows[0].client_id, ...rows[0].data } : null;
     },
+    // Aggregate status for the owner-authenticated setup screen only.
+    // Connector tokens are counted separately from preview RTC passes.
+    async getConnectorOAuthReadiness() {
+      const rows=await sql`SELECT
+        (SELECT count(*)::integer FROM oauth_clients) AS registered_clients,
+        (SELECT count(*)::integer FROM oauth_tokens
+          WHERE kind='connector' AND revoked_at IS NULL) AS unrevoked_sessions,
+        (SELECT count(*)::integer FROM oauth_tokens
+          WHERE kind='connector' AND revoked_at IS NULL AND expires_at>now()) AS usable_access_tokens,
+        (SELECT count(*)::integer FROM oauth_tokens
+          WHERE kind='connector' AND revoked_at IS NULL AND refresh_hash IS NOT NULL) AS refresh_credentials`;
+      return rows[0];
+    },
 
     async createAuthCode({ code, clientId, redirectUri, codeChallenge, codeChallengeMethod = 'S256', defaultAccount, accounts,
       mode = 'preview', profile = 'everyday', listing = 'catalog', ttlSeconds = 600 }) {
