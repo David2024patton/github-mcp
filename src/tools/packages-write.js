@@ -114,3 +114,6 @@ export const packageDelete = defineGithubWrite({
 
 export const tools = [packageDeleteVersion.tool, packageDelete.tool];
 export const handlers = { [packageDeleteVersion.tool.name]: packageDeleteVersion.handler, [packageDelete.tool.name]: packageDelete.handler };
+
+// Shared G-6 scope mapping for restore: a single source of truth for org/user routes.
+export { get as getPackageRecord, template as packageRoute, params as packageParams, target as packageTarget };
