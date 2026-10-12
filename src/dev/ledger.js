@@ -48,6 +48,60 @@ export function createDevLedger(sql) {
         ON CONFLICT (run_id, object_type, owner, object_id) DO NOTHING RETURNING object_id`;
       return rows.length === 1;
     },
+    async claimDevIntent({ runId, account, connection, stepId, type, owner, repo = null, objectName }) {
+      validateRun({ id: runId, account, connection });
+      validateRunObject({ type, owner, repo, objectId: objectName });
+      if (!/^[a-z0-9][a-z0-9-]{0,70}$/.test(stepId ?? '')) throw new TypeError('Invalid scenario step ID.');
+      const rows = await sql`INSERT INTO dev_run_intents (run_id, step_id, object_type, owner, repo, object_name)
+        SELECT id, ${stepId}, ${type}, ${owner}, ${repo}, ${objectName}
+        FROM dev_runs WHERE id = ${runId} AND account = ${account}
+          AND connection = ${connection} AND status = 'active'
+        ON CONFLICT (run_id, step_id) DO NOTHING RETURNING step_id`;
+      return rows.length === 1;
+    },
+    async getDevIntent({ runId, account, connection, stepId }) {
+      validateRun({ id: runId, account, connection });
+      if (!/^[a-z0-9][a-z0-9-]{0,70}$/.test(stepId ?? '')) throw new TypeError('Invalid scenario step ID.');
+      const rows = await sql`SELECT i.step_id, i.object_type, i.owner, i.repo, i.object_name,
+          i.status, i.object_id, i.created_sha, i.created_at, i.updated_at
+        FROM dev_run_intents i JOIN dev_runs r ON r.id = i.run_id
+        WHERE r.id = ${runId} AND r.account = ${account} AND r.connection = ${connection}
+          AND i.step_id = ${stepId}`;
+      return rows[0] ?? null;
+    },
+    async markDevIntentUncertain({ runId, account, connection, stepId }) {
+      validateRun({ id: runId, account, connection });
+      if (!/^[a-z0-9][a-z0-9-]{0,70}$/.test(stepId ?? '')) throw new TypeError('Invalid scenario step ID.');
+      const rows = await sql`UPDATE dev_run_intents i SET status = 'uncertain', updated_at = now()
+        FROM dev_runs r WHERE r.id = i.run_id AND r.id = ${runId}
+          AND r.account = ${account} AND r.connection = ${connection}
+          AND r.status = 'active' AND i.step_id = ${stepId} AND i.status = 'claimed'
+        RETURNING i.step_id`;
+      return rows.length === 1;
+    },
+    async completeDevIntent({ runId, account, connection, stepId, objectId, createdSha = null }) {
+      validateRun({ id: runId, account, connection });
+      if (!/^[a-z0-9][a-z0-9-]{0,70}$/.test(stepId ?? '')) throw new TypeError('Invalid scenario step ID.');
+      if (typeof objectId !== 'string' || !objectId.trim() || objectId.length > 255 ||
+          (createdSha != null && !/^[a-f0-9]{40}$/.test(createdSha))) throw new TypeError('Invalid created-object identity.');
+      // One statement: the intent becomes recorded IFF the corresponding durable object
+      // can be inserted. A failed write never leaves an untracked successful intent.
+      const rows = await sql`WITH claimed AS (
+          UPDATE dev_run_intents i SET status = 'recorded', object_id = ${objectId},
+            created_sha = ${createdSha}, updated_at = now()
+          FROM dev_runs r WHERE r.id = i.run_id AND r.id = ${runId}
+            AND r.account = ${account} AND r.connection = ${connection}
+            AND r.status = 'active' AND i.step_id = ${stepId}
+            AND i.status IN ('claimed', 'uncertain')
+          RETURNING i.run_id, i.object_type, i.owner, i.repo, i.object_id, i.created_sha
+        ), recorded AS (
+          INSERT INTO dev_run_objects (run_id, object_type, owner, repo, object_id, created_sha)
+          SELECT run_id, object_type, owner, repo, object_id, created_sha FROM claimed
+          ON CONFLICT (run_id, object_type, owner, object_id) DO NOTHING RETURNING object_id
+        )
+        SELECT object_id FROM claimed`;
+      return rows.length === 1;
+    },
     async listDevObjects({ runId, account, connection, limit = 50 }) {
       validateRun({ id: runId, account, connection }); boundedRunLimit(limit);
       return await sql`SELECT o.run_id, o.object_type, o.owner, o.repo, o.object_id, o.created_sha,
