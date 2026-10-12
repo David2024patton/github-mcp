@@ -6,6 +6,8 @@ required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creat
 
 ## Next
 
+- **#115 — protect foreign milestones/deployments (implementation; exact-head CI pending):** The private scratch delete preflight now scans all repository milestones (including closed) and deployments twice; any foreign artifact, truncated listing or denied GitHub read blocks deletion. Adversarial fake GitHub tests; no live cleanup acceptance. RTC 1/D-4, OAuth and production remain gated. Four-PR numbering cycle #112–#115 ends with this PR when safely merged and main CI verifies; next session is five PRs #116–#120.
+
 - **#114 — scratch PR point-of-close integrity (implementation; exact-head CI pending):** Retain each exact preflight PR identity, and check fresh per-PR GET before optional close plus immediate after-close readback for unchanged run-owned draft, head SHA, base, repository and body. Refuse drift before destructive deletion, with fake-GitHub adversarial tests. No connected real scratch or RTC 1 certification claim.
 
 - **#113 — RTC result retrieval query semantics (implementation; CI review required):** HTTPS `GET /api/results/{handle}` now validates and forwards `page`, `pageSize`, comma/repeated `fields` and `offset` to the existing connection-owned guarded result handler. Bad request shapes fail before dispatch; no cross-connection handle disclosure or broader authorization. Unit regressions added. RTC 1 and genuine D-4 routes remain unverified; no spending/production changes.
