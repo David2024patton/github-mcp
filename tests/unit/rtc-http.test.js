@@ -103,6 +103,7 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
       const response=await call((a,b)=>handler(a,b,'batch'),req);
       expect(reads,failure).toBe(1);
       expect(lookups,failure).toBe(2);
+      expect(checks,failure).toBe(failure==='rate'?2:1);
       expect(response.statusCode,failure).toBe(failure==='rate'?429:failure==='scratch'?403:401);
       expect(json(response).error.code,failure).toBe({revoked:'pass_revoked',expired:'pass_expired',
         scratch:'refused_by_guard',rate:'rate_limited'}[failure]);
