@@ -199,10 +199,10 @@ const stackFixture=(gh,outcome)=>{
 };
 runWriteContract({label:'github_dev_seed(stack-of-three)',definition:def,
   args:{repo:REPO,runId:ID,scenario:'stack-of-three'},arrange:stackFixture,
-  scratchAccount:true,previewOnly:true,needsConfirm:false,expectedWrites:14});
+  scratchAccount:true,previewOnly:true,needsConfirm:false,expectedWrites:14,advanceClockOnSleep:true});
 describe('three exact-head stacked draft PRs',()=>{
   it('journals all fourteen objects and links exact bases, without merging',async()=>{
-    const w=await makeWorld({scratchAccount:true});stackFixture(w.gh,'ok');
+    const w=await makeWorld({scratchAccount:true,advanceClockOnSleep:true});stackFixture(w.gh,'ok');
     const out=parse(await def.handler({repo:REPO,runId:ID,scenario:'stack-of-three',confirm:true},w.ctx));
     if(!out.done)throw new Error(JSON.stringify({out,steps:w.gh.calls.map(x=>x.route).slice(-22),
       invalid:w.gh.invalid.map(x=>({route:x.route,path:x.path}))}));
