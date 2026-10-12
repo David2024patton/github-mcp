@@ -9,12 +9,14 @@ import { summarizeDevCleanup } from '../dev/cleanup-report.js';
 import { planDevCleanup } from '../dev/cleanup.js';
 import { assertScenarioResourceBounds } from '../dev/scenario-ownership.js';
 import { planBoundedRunSelection } from '../dev/cleanup-batch.js';
+import { summarizeScratchBirth } from '../dev/birth-report.js';
 
 const OWNER={type:'string',maxLength:39};
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
 const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9][A-Za-z0-9._-]*$'};
 const MAX={type:'integer',minimum:1,maximum:50};
 const ALL_PREVIEW={type:'boolean'};
+const LABEL_DETAIL={type:'boolean'};
 const CURSOR={type:'string',minLength:12,maxLength:256,pattern:'^[A-Za-z0-9_-]{12,256}'};
 
 function scope(args,ctx) {
@@ -43,12 +45,13 @@ const readScenarios=defineRead({
 });
 const readRuns=defineRead({
   name:'github_dev_list_runs',area:'dev',audience:['B'],
-  description:'Inspect scoped runs, object claims and cleanup previews.',
-  properties:{owner:OWNER,runId:RUN,max:MAX,cleanupPreview:ALL_PREVIEW,cursor:CURSOR},
+  description:'Inspect scoped runs, object claims, first-create label evidence and cleanup previews.',
+  properties:{owner:OWNER,runId:RUN,max:MAX,cleanupPreview:ALL_PREVIEW,cursor:CURSOR,includeBirthLabels:LABEL_DETAIL},
   handler:async(args,ctx)=>{
     const {account,connection}=scope(args,ctx);
     const limit=boundedRunLimit(args.max??20);
     if(!args.runId){
+      if(args.includeBirthLabels)throw new TypeError('includeBirthLabels requires one exact runId.');
       if(args.cleanupPreview&&limit>20)
         throw new TypeError('All-runs preview is limited to 20 runs per request.');
       const after=args.cursor?decodeDevRunCursor(args.cursor):null;
@@ -92,14 +95,17 @@ const readRuns=defineRead({
       throw new TypeError('cleanupPreview and cursor are for all-runs listing only.');
     const run=await ctx.db.getDevRun({id:args.runId,account,connection});
     if(!run)throw new TypeError('No development run with that ID belongs to this connection.');
-    const [objects,intents]=await Promise.all([
+    const [objects,intents,birth]=await Promise.all([
       ctx.db.listDevObjects({runId:args.runId,account,connection,limit}),
-      ctx.db.listDevIntents({runId:args.runId,account,connection,limit})
+      ctx.db.listDevIntents({runId:args.runId,account,connection,limit}),
+      ctx.db.getDevBirthLabels({runId:args.runId,account,connection})
     ]);
     const moreMayExist=objects.length===limit||intents.length===limit;
     const progress=summarizeDevProgress({run,objects,intents,limit,moreMayExist});
     const cleanup=summarizeDevCleanup({run,objects,intents,limit,moreMayExist});
-    return {run,objects,intents,limit,more_may_exist:moreMayExist,progress,cleanup,
+    const birth_label_observation=summarizeScratchBirth({run,objects,intents,birth,
+      listingComplete:!moreMayExist,includeLabels:args.includeBirthLabels===true});
+    return {run,objects,intents,limit,more_may_exist:moreMayExist,progress,cleanup,birth_label_observation,
       note:'Recorded IDs prove only journal persistence, not connected GitHub acceptance. Uncertain steps must be reconciled.'};
   }
 });

@@ -57,7 +57,29 @@ describe('V-1 public developer inspection',()=>{
     expect(saved.progress).toMatchObject({state:'partial',missing_object_count:13,
       ledger_identities_match:true,live_acceptance_verified:false});
   });
-  it('previews only the current connection\'s bounded cleanup journals without remote claims',async()=>{
+  it('exposes only scoped first-create evidence; never treats observation as cleanup authority',async()=>{
+    const w=await world(),id='run-birth-inspect',account='example-org',connectionId='client-1';
+    const a={runId:id,account,connection:connectionId};
+    const repo='birth-inspect',sha='d'.repeat(40);
+    await w.db.createDevRun({id,account,connection:connectionId,scenarios:['repo-basic']});
+    await w.db.claimDevIntent({...a,stepId:'seed-repo',type:'repo',owner:account,repo,objectName:repo});
+    expect(await w.db.completeDevBirthIntent({...a,stepId:'seed-repo',
+      objectId:`${account}/${repo}`,createdSha:sha,labels:[
+        {id:123,name:'bug',color:'D73A4A',description:'First observed'}]})).toBe(true);
+    const summary=body(await call(w,'github_dev_list_runs',{runId:id,max:50}));
+    expect(summary.birth_label_observation).toMatchObject({
+      state:'recorded_observation',initial_sha:sha,observed_label_count:1,
+      journal_binding_verified:true,origin_provenance_verified:false,
+      delete_authority:false,remote_readback_verified:false});
+    expect(summary.birth_label_observation.observed_labels).toBeUndefined();
+    const full=body(await call(w,'github_dev_list_runs',{runId:id,max:50,includeBirthLabels:true}));
+    expect(full.birth_label_observation.observed_labels).toEqual([
+      {id:123,name:'bug',color:'d73a4a',description:'First observed'}]);
+    const intruder={...w,connection:{...w.connection,client_id:'another-client'}};
+    expect((await call(intruder,'github_dev_list_runs',{runId:id,includeBirthLabels:true})).isError).toBe(true);
+    expect((await call(w,'github_dev_list_runs',{includeBirthLabels:true})).isError).toBe(true);
+  });
+  it('previews only the current connection's bounded cleanup journals without remote claims',async()=>{
     const w=await world(),a={account:'example-org',connection:'client-1'};
     await w.db.createDevRun({...a,id:'run-preview-a'});
     await w.db.recordDevObject({...a,runId:'run-preview-a',type:'branch',owner:a.account,
