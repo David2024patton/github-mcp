@@ -113,11 +113,28 @@ export function createRtcHttpHandler({db,registry,dispatch}){
         const calls=req.body?.calls;
         if(req.method!=='POST'||!Array.isArray(calls)||calls.length===0||calls.length>10)
           return send(res,400,rtcError('invalid_args'));
-        if(calls.some(c=>!c||!allowed().some(t=>t.name===c.name)))
+        // Reject the whole batch before dispatching any read. A malformed later item
+        // must not cause earlier reads to be executed under ambiguous arguments.
+        if(calls.some(c=>!c||typeof c!=='object'||Array.isArray(c)||
+          typeof c.name!=='string'||
+          (c.args!==undefined&&(!c.args||typeof c.args!=='object'||Array.isArray(c.args)))||
+          Object.keys(c).some(key=>key!=='name'&&key!=='args')))
+          return send(res,400,rtcError('invalid_args'));
+        if(calls.some(c=>!allowed().some(t=>t.name===c.name)))
           return send(res,403,rtcError('refused_by_guard'));
         const results=[];
-        for(const item of calls){
-          const result=await run(item.name,item.args??{},connection);
+        let current=connection;
+        for(let i=0;i<calls.length;i++){
+          // A pass can be revoked, expire, or lose its verified scratch owner
+          // between the individual reads. Recheck the current DB authority and
+          // consume another shared rate unit before every subsequent dispatch.
+          // Never continue with the original, potentially stale connection.
+          if(i>0){
+            current=await authenticate(req,res,db);
+            if(!current)return;
+          }
+          const item=calls[i];
+          const result=await run(item.name,item.args??{},current);
           if(result.status!==200)return send(res,result.status,result.body);
           results.push({name:item.name,ok:true,result:result.body.result});
         }
