@@ -4,7 +4,10 @@ const SPEC = Object.freeze({
   'repo-basic': { scratch: true, objects: [['repo','scratch-repo'],['workflow_file','ci-pass'],['label','rtc-run']] },
   'failing-ci': { scratch: true, objects: [['repo','scratch-repo'],['workflow_file','ci-fails'],['branch','failure-ref']] },
   'pr-with-threads': { scratch: false, objects: [['branch','review-ref'],['pr','draft-review'],['review_thread','first'],['review_thread','second'],['review_thread','outdated']] },
-  'stack-of-three': { scratch: false, objects: [['branch','stack-1'],['pr','draft-1'],['branch','stack-2'],['pr','draft-2'],['branch','stack-3'],['pr','draft-3']] },
+  'stack-of-three': { scratch: true, objects: [['repo','scratch-repo'],['label','rtc-run'],
+    ['branch','stack-1'],['fixture_file','stack-1.md'],['pr','draft-1'],['pr_label','draft-1-label'],
+    ['branch','stack-2'],['fixture_file','stack-2.md'],['pr','draft-2'],['pr_label','draft-2-label'],
+    ['branch','stack-3'],['fixture_file','stack-3.md'],['pr','draft-3'],['pr_label','draft-3-label']] },
   'release-train': { scratch: true, objects: [['repo','scratch-repo'],['tag','v0.1.0'],['tag','v0.2.0'],['tag','v0.3.0'],['release','draft-v0.3.0']] },
   'protected-main': { scratch: true, objects: [['repo','scratch-repo'],['ruleset','required-ci']] },
   'webhook-target': { scratch: true, objects: [['repo','scratch-repo'],['forwarder','target'],['webhook','test-hook']] }

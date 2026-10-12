@@ -5,8 +5,9 @@ import { requireScratchOrg } from '../dev/scratch.js';
 import { runDevMutationOnce } from '../dev/execute.js';
 import { createOwnedFixtureBranch, commitOwnedFixtureFile } from '../dev/fixtures.js';
 import { planScenario } from '../dev/scenarios.js';
+import { seedStack, readStack, verifyStack } from '../dev/stack.js';
 
-export const SEEDABLE=Object.freeze(['repo-basic','failing-ci','release-train','protected-main']);
+export const SEEDABLE=Object.freeze(['repo-basic','failing-ci','release-train','protected-main','stack-of-three']);
 const RELEASE_TAGS=Object.freeze(['v0.1.0','v0.2.0','v0.3.0']);
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
 const OWNER={type:'string',maxLength:39};
@@ -30,7 +31,7 @@ const same=(a,b)=>String(a??'').toLowerCase()===String(b??'').toLowerCase();
 
 export const seed=defineGithubWrite({
   name:'github_dev_seed',area:'dev',audience:['B'],
-  description:'Create journaled scratch fixtures: passing/failing CI, a draft release train, or required-check branch rules.',
+  description:'Create journaled scratch CI, draft-release, branch-rules and three-stacked-draft-PR scenarios.',
   properties:{owner:OWNER,repo:REPO,runId:RUN,scenario:{type:'string',enum:[...SEEDABLE]}},
   required:['repo','runId','scenario'],declarations:{production:'never'},
   target:(args,ctx)=>{
@@ -54,7 +55,7 @@ export const seed=defineGithubWrite({
     return {existing,plan};
   },
   classify:()=>({}),
-  summarize:({args,target,before})=>`Seed ${args.scenario} in private scratch ${target.owner}/${args.repo} (${marker(args.runId)}): ${before.plan.objects.map(x=>x.type).join(', ')}. Workflows run only when manually dispatched.`,
+  summarize:({args,target,before})=>`Seed ${args.scenario} in private scratch ${target.owner}/${args.repo} (${marker(args.runId)}): ${before.plan.objects.map(x=>x.type).join(', ')}. No automatic workflow dispatch, PR merge or release publication.`,
   apply:async({args,ctx,target})=>{
     const run={runId:args.runId,account:target.owner,connection:ctx.connection.client_id,
       owner:target.owner,repo:args.repo,scenarios:[args.scenario]};
@@ -67,6 +68,10 @@ export const seed=defineGithubWrite({
           throw refusal('GitHub did not create the expected private scratch repository.');
         return {objectId:result.full_name};
       }});
+    if(args.scenario==='stack-of-three'){
+      const objects=await seedStack(ctx,{github,run});
+      return {data:{run_id:args.runId,scenario:args.scenario,objects:[repo,...objects]}};
+    }
     if(args.scenario==='protected-main'){
       const name=topic(args.runId);
       const ruleset=await runDevMutationOnce(ctx,{...run,stepId:'seed-required-ci-ruleset',
@@ -149,6 +154,8 @@ export const seed=defineGithubWrite({
   readAfter:async({args,ctx,target,response})=>{
     const github=await octo(ctx,target.owner);
     const base={owner:target.owner,repo:args.repo};
+    if(args.scenario==='stack-of-three')return readStack({github,id:args.runId,
+      owner:target.owner,repo:args.repo,response});
     if(args.scenario==='protected-main'){
       const [repository,ruleset]=await Promise.all([
         repoGet(ctx,target.owner,args.repo),
@@ -183,7 +190,9 @@ export const seed=defineGithubWrite({
     if(!after?.repository||after.repository.private!==true||
       !same(after.repository.full_name,`${target.owner}/${args.repo}`)||
       !String(after.repository.description??'').includes(marker(args.runId)))return false;
-    if(args.scenario==='protected-main'){
+    if(args.scenario==='stack-of-three'){
+      if(!verifyStack({id:args.runId,after,response}))return false;
+    }else if(args.scenario==='protected-main'){
       const rule=after.ruleset;
       const required=rule?.rules?.find(x=>x.type==='required_status_checks');
       if(response.data.objects.length!==2||!rule||
@@ -209,9 +218,9 @@ export const seed=defineGithubWrite({
     if(args.scenario==='repo-basic'&&after.extra?.name!==topic(args.runId))return false;
     if(args.scenario==='failing-ci'&&(after.extra?.ref!==`refs/heads/${branchName(args.runId)}`||
       after.extra?.object?.sha!==response.data.objects[2].createdSha))return false;
-    if(response.data.objects.length!==(args.scenario==='protected-main'?2:args.scenario==='release-train'?5:3))return false;
+    if(response.data.objects.length!==(args.scenario==='stack-of-three'?14:args.scenario==='protected-main'?2:args.scenario==='release-train'?5:3))return false;
     const stored=await ctx.db.listDevObjects({runId:args.runId,account:target.owner,
-      connection:ctx.connection.client_id,limit:10});
+      connection:ctx.connection.client_id,limit:50});
     return response.data.objects.every(o=>stored.some(r=>r.object_id===o.objectId&&r.owner===target.owner&&r.repo===args.repo));
   },
   inverse:()=>null,
@@ -219,6 +228,8 @@ export const seed=defineGithubWrite({
     manual_dispatch_only:['repo-basic','failing-ci'].includes(args.scenario),
     note:args.scenario==='release-train'
       ? 'Draft release and tags only; nothing was published, dispatched, or live-tested without IN-06.'
+      : args.scenario==='stack-of-three'
+        ? 'Three linked run-owned draft PRs; no merge or workflow dispatch occurred.'
       : args.scenario==='protected-main'
         ? 'Scratch-only active required-ci ruleset; no production branch or non-scratch repository was changed.'
         : 'Workflow files are real, but no Actions run was dispatched; IN-06 is required for live scratch usage.'})
