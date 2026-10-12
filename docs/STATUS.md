@@ -6,7 +6,9 @@ required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creat
 
 ## Next
 
-- **#115 — protect foreign milestones/deployments (implementation; exact-head CI pending):** The private scratch delete preflight now scans all repository milestones (including closed), deployments and deployment environments twice; any foreign artifact, truncated listing, inconsistent counts or denied GitHub read blocks deletion. Adversarial fake GitHub tests; no live cleanup acceptance. RTC 1/D-4, OAuth and production remain gated. Four-PR numbering cycle #112–#115 ends with this PR when safely merged and main CI verifies; next session is five PRs #116–#120.
+- **#115 — protect foreign milestones/deployments (MERGED; exact-head and final main CI verified):** The private scratch delete preflight now scans all repository milestones (including closed), deployments and deployment environments twice; any foreign artifact, truncated listing, inconsistent counts or denied GitHub read blocks deletion. Adversarial fake GitHub tests; no live cleanup acceptance. RTC 1/D-4, OAuth and production remain gated. Four-PR numbering cycle #112–#115 ends with this PR when safely merged and main CI verifies; next session is five PRs #116–#120.
+
+- **#116 — RTC discovery and batched result integrity (implementation; exact-head CI pending):** Reject malformed or unbounded tool discovery fields instead of coercing ambiguous query values. Preserve the existing connection-owned saved-result handle for each oversized read in a successful RTC batch, with regression tests. No new tool authority, certification, connected Hub acceptance, OAuth acceptance, production activation or spending. #115's verified merge status reconciled below.
 
 - **#114 — scratch PR point-of-close integrity (MERGED; exact-head and final main CI verified):** Retain each exact preflight PR identity, and check fresh per-PR GET before optional close plus immediate after-close readback for unchanged run-owned draft, head SHA, base, repository and body. Refuse drift before destructive deletion, with fake-GitHub adversarial tests. No connected real scratch or RTC 1 certification claim.
 

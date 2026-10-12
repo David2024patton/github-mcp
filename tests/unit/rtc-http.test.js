@@ -161,6 +161,41 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
     expect(json(response).result.results).toHaveLength(3);
     expect(rate).toBe(3);
   });
+  it('rejects ambiguous and oversized discovery queries before scanning tools',async()=>{
+    for(const query of [
+      {limit:['1','100']},{limit:'1.5'},{page:'NaN'},{page:'1001'},
+      {limit:'101'},{q:'x'.repeat(201)},{q:['github']},{area:'a'.repeat(65)},
+      {audience:['builder']},{listing:'verbose'},{listing:['compact']},
+      {unknown:'value'}
+    ]){
+      const response=await run('tools','GET',{}, {query});
+      expect(response.statusCode,JSON.stringify(query)).toBe(400);
+      expect(json(response).error.code).toBe('invalid_args');
+    }
+    const response=await run('tools','GET',{}, {query:{limit:'1',page:'1',q:'who',listing:'catalog'}});
+    expect(json(response).result.tools.map(t=>t.name)).toEqual(['github_whoami']);
+  });
+  it('preserves each connection-owned saved-result handle in RTC batch responses',async()=>{
+    const db={getRtcPass:async()=>token,getAccount:async()=>account,
+      consumeRtcPassRate:async()=>true};
+    let i=0;
+    const handler=createRtcHttpHandler({db,registry,dispatch:async()=>{
+      i++;
+      if(i===2)return {structuredContent:{items:['bounded'],
+        kept_result:{handle:'res_'+'d'.repeat(22),what:'Saved items'}}};
+      return {structuredContent:{items:['inline']}};
+    }});
+    const req=request('POST',{calls:[{name:'github_whoami',args:{}},
+      {name:'github_whoami',args:{}}]},{authorization:'Bearer '+pass});
+    const response=await call((a,b)=>handler(a,b,'batch'),req);
+    expect(response.statusCode).toBe(200);
+    const items=json(response).result.results;
+    expect(items).toHaveLength(2);
+    expect(items[0]).not.toHaveProperty('handle');
+    expect(items[1]).toMatchObject({name:'github_whoami',ok:true,
+      result:{items:['bounded']},handle:'res_'+'d'.repeat(22),summary:'Saved items'});
+    expect(items[1].result).not.toHaveProperty('kept_result');
+  });
   it('never calls write tools and refuses write batches',async()=>{
     expect((await run('tool','POST',{}, {tool:'github_delete_repo'})).statusCode).toBe(404);
     expect((await run('batch','POST',{calls:[{name:'github_delete_repo',args:{confirm:true}}]})).statusCode).toBe(403);
