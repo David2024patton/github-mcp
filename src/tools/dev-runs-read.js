@@ -4,6 +4,7 @@ import { listScenarioBlueprints, planScenario } from '../dev/scenarios.js';
 import { SEEDABLE } from './dev-seed-write.js';
 import { requireScratchOrg } from '../dev/scratch.js';
 import { boundedRunLimit } from '../dev/ledger.js';
+import { summarizeDevProgress } from '../dev/progress.js';
 
 const OWNER={type:'string',maxLength:39,description:'Connected account (default: your default account)'};
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
@@ -36,7 +37,7 @@ const readScenarios=defineRead({
 });
 const readRuns=defineRead({
   name:'github_dev_list_runs',area:'dev',audience:['B'],
-  description:'Read this connection’s stored development runs, created object IDs and pending or uncertain step claims.',
+  description:'Inspect owned development runs, exact object IDs, step claims and fail-closed progress evidence.',
   properties:{owner:OWNER,runId:RUN,max:MAX},
   handler:async(args,ctx)=>{
     const {account,connection}=scope(args,ctx);
@@ -51,8 +52,10 @@ const readRuns=defineRead({
       ctx.db.listDevObjects({runId:args.runId,account,connection,limit}),
       ctx.db.listDevIntents({runId:args.runId,account,connection,limit})
     ]);
-    return {run,objects,intents,limit,more_may_exist:objects.length===limit||intents.length===limit,
-      note:'Only exact recorded object IDs may be cleaned up. Uncertain intents cannot be replayed blindly.'};
+    const moreMayExist=objects.length===limit||intents.length===limit;
+    const progress=summarizeDevProgress({run,objects,intents,limit,moreMayExist});
+    return {run,objects,intents,limit,more_may_exist:moreMayExist,progress,
+      note:'Recorded IDs prove only journal persistence, not connected GitHub acceptance. Uncertain steps must be reconciled.'};
   }
 });
 export const tools=[readScenarios.tool,readRuns.tool];

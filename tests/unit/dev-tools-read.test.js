@@ -48,10 +48,14 @@ describe('V-1 public developer inspection',()=>{
     const result=body(await call(w,'github_dev_list_runs',{runId:id,max:20}));
     expect(result.intents).toEqual([expect.objectContaining({step_id:'step-1',status:'uncertain',object_id:null})]);
     expect(result.objects).toEqual([]);
+    expect(result.progress).toMatchObject({state:'reconciliation_required',live_acceptance_verified:false,
+      uncertain_steps:['step-1'],expected_object_count:14});
     await w.db.completeDevIntent({runId:id,account:'example-org',connection:'client-1',stepId:'step-1',objectId:arg.objectName});
     const saved=body(await call(w,'github_dev_list_runs',{runId:id}));
     expect(saved.objects).toEqual([expect.objectContaining({object_id:arg.objectName})]);
     expect(saved.intents[0].status).toBe('recorded');
+    expect(saved.progress).toMatchObject({state:'partial',missing_object_count:13,
+      ledger_identities_match:true,live_acceptance_verified:false});
   });
   it('refuses foreign accounts and IDs, and never exposes an unbounded run listing',async()=>{
     const w=await world();
