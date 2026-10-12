@@ -685,6 +685,9 @@ describe('same-origin Referrer-Policy for actual HTML form navigations', () => {
     const success=await t.post({action:'status'});
     expect(success.statusCode).toBe(200);
     expect(success.headers['Referrer-Policy']).toBe('same-origin');
+    const wrong=await t.post({action:'status',passphrase:'bad'});
+    expect(wrong.statusCode).toBe(401);
+    expect(wrong.headers['Referrer-Policy']).toBe('same-origin');
     const reject=await t.post({action:'status'},{origin:'null'});
     expect(reject.statusCode).toBe(403);
     expect(reject.headers['Referrer-Policy']).toBe('no-referrer');

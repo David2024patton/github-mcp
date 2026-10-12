@@ -104,9 +104,9 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     const login = await evaluateLogin({ ip: clientIp(req), supplied: p.passphrase, expected: env.ADMIN_PASSPHRASE, store: db });
     if (login.status === 'locked') {
       res.setHeader('Retry-After', String(LOCKOUT_WINDOW_MINUTES * 60));
-      return frame(res, 429, renderSetup({ csrf: cookie, result: 'Too many attempts. Try again later.' }));
+      return frame(res, 429, renderSetup({ csrf: cookie, result: 'Too many attempts. Try again later.' }), true);
     }
-    if (login.status !== 'ok') return frame(res, 401, renderSetup({ csrf: cookie, result: 'Incorrect administrator passphrase.' }));
+    if (login.status !== 'ok') return frame(res, 401, renderSetup({ csrf: cookie, result: 'Incorrect administrator passphrase.' }), true);
 
     const page = (status, view) => frame(res, status, renderSetup({ csrf: cookie, ...view }), true);
     const action = String(p.action || '');
