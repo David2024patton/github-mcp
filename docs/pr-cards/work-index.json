@@ -634,16 +634,20 @@
         "G-5"
       ],
       "card": "docs/pr-cards/G-6.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "none",
       "budget": 290,
       "units": [
         "G-6"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "COMPLETE",
       "ownerInputs": [],
       "pr": [
-        60
+        60,
+        61,
+        62,
+        63,
+        64
       ]
     },
     {

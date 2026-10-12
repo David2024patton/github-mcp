@@ -27,10 +27,11 @@ import * as pagesRead from './pages-read.js';
 import * as packagesRead from './packages-read.js';
 import * as pagesWrite from './pages-write.js';
 import * as packagesWrite from './packages-write.js';
+import * as packagesRestore from './packages-restore.js';
 import * as pullsRead from './pulls-read.js';
 import * as pullsWrite from './pulls-write.js';
 import * as pullsMerge from './pulls-merge.js';
 import * as pullsStacks from './pulls-stacks.js';
 
 // Tool modules are added here as their cards land.
-export const registry = mergeNamespaces([meta, server, diagnostics, repos, reposWrite, codeRead, codeWrite, branches, pullsRead, pullsWrite, pullsMerge, pullsStacks, reviews, reviewsWrite, actionsRead, actionsWrite, checksRead, checksWrite, variables, secrets, environmentsRead, environmentsWrite, environmentsPolicies, deploymentsRead, deploymentsWrite, releasesRead, releasesWrite, releasesAssets, pagesRead, packagesRead, pagesWrite, packagesWrite]);
+export const registry = mergeNamespaces([meta, server, diagnostics, repos, reposWrite, codeRead, codeWrite, branches, pullsRead, pullsWrite, pullsMerge, pullsStacks, reviews, reviewsWrite, actionsRead, actionsWrite, checksRead, checksWrite, variables, secrets, environmentsRead, environmentsWrite, environmentsPolicies, deploymentsRead, deploymentsWrite, releasesRead, releasesWrite, releasesAssets, pagesRead, packagesRead, pagesWrite, packagesWrite, packagesRestore]);
