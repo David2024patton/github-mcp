@@ -1,8 +1,9 @@
-// V-1: two complete, real GitHub scenario builders. The other five plans stay non-executable until implemented.
+// V-1: real scratch-only scenarios, with shared run-owned branch/file mutation helpers.
 import { defineGithubWrite } from './define-github-write.js';
 import { missing, octo, ownerOf, refusal } from './github-write.js';
 import { requireScratchOrg } from '../dev/scratch.js';
 import { runDevMutationOnce } from '../dev/execute.js';
+import { createOwnedFixtureBranch, commitOwnedFixtureFile } from '../dev/fixtures.js';
 import { planScenario } from '../dev/scenarios.js';
 
 export const SEEDABLE=Object.freeze(['repo-basic','failing-ci','release-train','protected-main']);
@@ -124,16 +125,8 @@ export const seed=defineGithubWrite({
       return {data:{run_id:args.runId,scenario:args.scenario,objects:[repo,...tags,published]}};
     }
     const path=filePath(args.runId);
-    const workflow=await runDevMutationOnce(ctx,{...run,stepId:'seed-workflow',type:'workflow_file',objectName:path,
-      create:async()=>{
-        const result=(await github.request('PUT /repos/{owner}/{repo}/contents/{path}',{
-          owner:target.owner,repo:args.repo,path,
-          message:`test: add ${marker(args.runId)} workflow`,content:Buffer.from(workflowSource(args.runId,args.scenario==='failing-ci')).toString('base64')
-        })).data;
-        if(result?.content?.path!==path||!/^[a-f0-9]{40}$/.test(result?.commit?.sha??''))
-          throw refusal('GitHub did not confirm the new run-specific workflow file and commit.');
-        return {objectId:path,createdSha:result.commit.sha};
-      }});
+    const workflow=await commitOwnedFixtureFile(ctx,{github,run,stepId:'seed-workflow',
+      path,content:workflowSource(args.runId,args.scenario==='failing-ci')});
     let third;
     if(args.scenario==='repo-basic'){
       const name=topic(args.runId);
@@ -147,15 +140,9 @@ export const seed=defineGithubWrite({
         }});
     }else{
       const name=branchName(args.runId);
-      third=await runDevMutationOnce(ctx,{...run,stepId:'seed-failure-ref',type:'branch',objectName:name,
-        create:async()=>{
-          if(!workflow.createdSha)throw refusal('Cannot create a test branch without the recorded workflow commit SHA.');
-          const result=(await github.request('POST /repos/{owner}/{repo}/git/refs',{
-            owner:target.owner,repo:args.repo,ref:`refs/heads/${name}`,sha:workflow.createdSha
-          })).data;
-          if(result?.ref!==`refs/heads/${name}`)throw refusal('GitHub did not return the expected test branch.');
-          return {objectId:name,createdSha:workflow.createdSha};
-        }});
+      if(!workflow.createdSha)throw refusal('Cannot create test branch without the recorded workflow commit SHA.');
+      third=await createOwnedFixtureBranch(ctx,{github,run,stepId:'seed-failure-ref',
+        name,sha:workflow.createdSha});
     }
     return {data:{run_id:args.runId,scenario:args.scenario,objects:[repo,workflow,third]}};
   },
@@ -220,7 +207,8 @@ export const seed=defineGithubWrite({
       if(content!==workflowSource(args.runId,args.scenario==='failing-ci'))return false;
     }
     if(args.scenario==='repo-basic'&&after.extra?.name!==topic(args.runId))return false;
-    if(args.scenario==='failing-ci'&&after.extra?.ref!==`refs/heads/${branchName(args.runId)}`)return false;
+    if(args.scenario==='failing-ci'&&(after.extra?.ref!==`refs/heads/${branchName(args.runId)}`||
+      after.extra?.object?.sha!==response.data.objects[2].createdSha))return false;
     if(response.data.objects.length!==(args.scenario==='protected-main'?2:args.scenario==='release-train'?5:3))return false;
     const stored=await ctx.db.listDevObjects({runId:args.runId,account:target.owner,
       connection:ctx.connection.client_id,limit:10});
