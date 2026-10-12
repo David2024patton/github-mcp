@@ -7,7 +7,7 @@ const def={tool:mod.tools[0],handler:mod.handlers.github_dev_cleanup};
 async function prepare(world){
   await world.db.createDevRun({id:RUN,account:OWNER,connection:'client-1',scenarios:['repo-basic']});
   await world.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
-    type:'repo',owner:OWNER,repo:REPO,objectId:`${OWNER}/${REPO}`});
+    type:'repo',owner:OWNER,repo:REPO,objectId:`${OWNER}/${REPO}`,createdSha:'a'.repeat(40)});
 }
 function arrange(gh,outcome){
   gh.when('GET /repos/{owner}/{repo}').replySequence([
@@ -291,6 +291,39 @@ describe('V-2 protected run deletion',()=>{
     expect(out.done).toBe(true);
     expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(true);
     expect(w.gh.invalid).toEqual([]);
+  });
+  it('refuses direct mutations to the default branch even when no other objects changed',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
+      {name:'main',commit:{sha:'b'.repeat(40)}}]);
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.some(c=>c.method==='DELETE')).toBe(false);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('permits only an exactly journaled workflow commit to advance scratch default',async()=>{
+    for(const changed of [false,true]){
+      const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+      await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+        type:'workflow_file',owner:OWNER,repo:REPO,
+        objectId:`.github/workflows/rtc-${RUN}.yml`,createdSha:'b'.repeat(40)});
+      w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
+        {name:'main',commit:{sha:changed?'c'.repeat(40):'b'.repeat(40)}}]);
+      const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+      expect(out.done).toBe(!changed);
+      expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(!changed);
+      expect(w.gh.invalid).toEqual([]);
+    }
+  });
+  it('refuses old scratch journals without a proven initial commit identity',async()=>{
+    const w=await makeWorld({scratchAccount:true});
+    await w.db.createDevRun({id:RUN,account:OWNER,connection:'client-1'});
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'repo',owner:OWNER,repo:REPO,objectId:`${OWNER}/${REPO}`});
+    arrange(w.gh,'ok');
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.some(c=>c.method==='DELETE')).toBe(false);
   });
   it('never allows a production connection to perform developer cleanup',async()=>{
     const w=await makeWorld({scratchAccount:true,mode:'production'});await prepare(w);arrange(w.gh,'ok');
