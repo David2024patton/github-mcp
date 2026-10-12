@@ -38,7 +38,7 @@ export function createFakeDevLedger({ clock = Date.now } = {}) {
       if(!/^[a-z0-9][a-z0-9-]{0,70}$/.test(stepId??''))throw new TypeError('Invalid scenario step ID.');
       const run=scoped({id:runId,account,connection}),key=JSON.stringify([runId,stepId]);
       if(!run||run.status!=='active'||intents.has(key))return false;
-      intents.set(key,{step_id:stepId,object_type:type,owner,repo,object_name:objectName,
+      intents.set(key,{run_id:runId,step_id:stepId,object_type:type,owner,repo,object_name:objectName,
         status:'claimed',object_id:null,created_sha:null,created_at:new Date(clock()),updated_at:new Date(clock())});
       return true;
     },

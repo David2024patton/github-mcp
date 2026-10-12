@@ -23,8 +23,14 @@ export function summarizeDevCleanup({run,objects,intents,limit=50,moreMayExist=f
     String(a.type).localeCompare(String(b.type))||String(a.id).localeCompare(String(b.id)));
   const claimed=intents.filter(i=>i.status==='claimed').map(i=>i.step_id);
   const uncertain=intents.filter(i=>i.status==='uncertain').map(i=>i.step_id);
-  for(const i of intents) if(i.run_id!==run.id||!['recorded','uncertain','claimed'].includes(i.status))
-    issues.push({type:'intent_mismatch',step_id:String(i.step_id??'')});
+  for(const i of intents) {
+    const matching=i.status==='recorded'?objects.find(o=>
+      o.object_type===i.object_type&&o.owner===i.owner&&o.object_id===i.object_id&&
+      (o.repo??null)===(i.repo??null)&&(o.created_sha??null)===(i.created_sha??null)):null;
+    if(i.run_id!==run.id||!['recorded','uncertain','claimed'].includes(i.status)||
+      (i.status==='recorded'&&!matching))
+      issues.push({type:'intent_mismatch',step_id:String(i.step_id??'')});
+  }
   const remaining=items.filter(x=>!x.cleaned_in_ledger).length;
   const completed=items.length-remaining;
   if(run.status==='cleaned'&&remaining!==0)issues.push({type:'cleaned_run_with_pending_objects'});

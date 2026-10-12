@@ -31,6 +31,17 @@ describe('V-2 durable per-object cleanup evidence',()=>{
    expect(summarizeDevCleanup({run:{...run,status:'cleaned'},objects:[obj('a')],intents:[]}).state)
     .toBe('ledger_conflict');
  });
+ it('recognizes correctly scoped recorded intents and rejects orphaned evidence',()=>{
+   const branch=obj('rtc/run-audit-001/a');
+   const step={run_id:run.id,step_id:'branch',object_type:'branch',owner:run.account,repo:'project',
+     object_id:branch.object_id,created_sha:branch.created_sha,status:'recorded'};
+   expect(summarizeDevCleanup({run,objects:[branch],intents:[step]})).toMatchObject({
+     state:'not_started',issues:[],listing_complete:true
+   });
+   expect(summarizeDevCleanup({run,objects:[branch],intents:[{...step,object_id:'other'}]})).toMatchObject({
+     state:'ledger_conflict',issues:[{type:'intent_mismatch',step_id:'branch'}]
+   });
+ });
  it('surfaces uncertain and pending intents without treating them as safe retries',()=>{
    const intents=[{run_id:run.id,step_id:'s1',status:'uncertain'},{run_id:run.id,step_id:'s2',status:'claimed'}];
    const x=summarizeDevCleanup({run:{...run,status:'cleaning'},objects:[obj('a')],intents});

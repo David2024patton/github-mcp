@@ -86,6 +86,15 @@ export function runDevLedgerContract(label, makeDb) {
       expect(await db.completeDevIntent({...a,runId,stepId:'step-a',objectId:'mystery'})).toBe(true);
       expect(await db.listDevObjects({...a,runId})).toHaveLength(1);
     });
+    it('returns the real run ID on scoped intent reads for safe evidence reports',async()=>{
+      const db=await makeDb(),runId='run-list-identity';
+      await db.createDevRun({...a,id:runId});
+      await db.claimDevIntent({...a,runId,stepId:'one',type:'branch',owner:a.account,
+        repo:'hello',objectName:'rtc/run-list-identity/a'});
+      expect(await db.getDevIntent({...a,runId,stepId:'one'})).toMatchObject({run_id:runId});
+      expect(await db.listDevIntents({...a,runId})).toMatchObject([{run_id:runId}]);
+      expect(await db.listDevIntents({...a,runId,connection:'other'})).toEqual([]);
+    });
     it('lists only this run\'s claimed steps with a strict limit',async()=>{
       const db=await makeDb(),runId='run-intent-list';
       await db.createDevRun({...a,id:runId});

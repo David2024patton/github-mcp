@@ -62,7 +62,7 @@ export function createDevLedger(sql) {
     async getDevIntent({ runId, account, connection, stepId }) {
       validateRun({ id: runId, account, connection });
       if (!/^[a-z0-9][a-z0-9-]{0,70}$/.test(stepId ?? '')) throw new TypeError('Invalid scenario step ID.');
-      const rows = await sql`SELECT i.step_id, i.object_type, i.owner, i.repo, i.object_name,
+      const rows = await sql`SELECT i.run_id, i.step_id, i.object_type, i.owner, i.repo, i.object_name,
           i.status, i.object_id, i.created_sha, i.created_at, i.updated_at
         FROM dev_run_intents i JOIN dev_runs r ON r.id = i.run_id
         WHERE r.id = ${runId} AND r.account = ${account} AND r.connection = ${connection}
@@ -111,7 +111,7 @@ export function createDevLedger(sql) {
     },
     async listDevIntents({ runId, account, connection, limit = 50 }) {
       validateRun({ id: runId, account, connection }); boundedRunLimit(limit);
-      return await sql`SELECT i.step_id, i.object_type, i.owner, i.repo, i.object_name,
+      return await sql`SELECT i.run_id, i.step_id, i.object_type, i.owner, i.repo, i.object_name,
           i.status, i.object_id, i.created_sha, i.created_at, i.updated_at
         FROM dev_run_intents i JOIN dev_runs r ON r.id = i.run_id
         WHERE r.id = ${runId} AND r.account = ${account} AND r.connection = ${connection}
