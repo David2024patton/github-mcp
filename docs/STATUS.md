@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — #103 scratch default-branch integrity (MERGED after CI):** Deletion now requires the original recorded run repository tip SHA (#102), permitting only the exact run-owned committed workflow on default thereafter. Unjournaled default-branch work and old missing-origin ledgers fail closed before DELETE, with fake positive/negative tests. No real scratch operations.
+
 - **#102 CI correction:** Account-scoped seed ref fixture now accepts initial default ref and the later test branch, and tool catalog records immutable origin. No new authority.
 
 - **2026-10-12 — #102 scratch initial commit journal (MERGED after exact-head CI):** Both private scratch repository creation doors now independently read and durably record their initial default-branch commit SHA inside the existing atomic run intent. Invalid GitHub ref/readback remains uncertain, not blindly replayed. Fake request-shape and no-duplicate tests; this is offline only, not connected acceptance.

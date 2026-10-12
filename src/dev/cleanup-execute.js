@@ -62,8 +62,21 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
       throw refusal('A scratch branch has no valid recorded tip commit.');
     branchTip.set(b.name,tip);
   }
-  if(!branches.items.some(x=>x.name===defaultBranch))
-    throw refusal('The scratch default branch could not be independently listed.');
+  // A run marker is not authority over future default-branch commits. #102
+  // journals the original exact commit, and only the single run-owned workflow
+  // mutation is permitted to advance the default branch after creation.
+  const roots=objects.filter(o=>o.object_type==='repo'&&o.owner.toLowerCase()===owner.toLowerCase()&&
+    o.repo===repo&&o.object_id.toLowerCase()===`${owner}/${repo}`.toLowerCase());
+  const workflow=objects.filter(o=>o.object_type==='workflow_file');
+  const recorded=(o)=>/^[a-f0-9]{40}$/.test(o?.created_sha??'');
+  if(roots.length!==1||!recorded(roots[0])||workflow.length>1||
+    workflow.some(o=>o.repo!==repo||o.owner.toLowerCase()!==owner.toLowerCase()||
+      o.object_id!==`.github/workflows/rtc-${run.id}.yml`||!recorded(o)))
+    throw refusal('The scratch default-branch commit lacks exact origin/workflow journal evidence.');
+  const expectedDefault=workflow[0]?.created_sha??roots[0].created_sha;
+  const defaults=branches.items.filter(x=>x?.name===defaultBranch);
+  if(defaults.length!==1||defaults[0].commit?.sha!==expectedDefault)
+    throw refusal('The scratch default branch moved outside its recorded run-owned commits. Deletion refused.');
   for(const b of branches.items) {
     if(b?.name===defaultBranch)continue;
     if(typeof b?.name!=='string'||!b.name.startsWith(`rtc/${run.id}/`)||
