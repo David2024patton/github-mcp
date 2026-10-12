@@ -48,7 +48,7 @@ export async function run(policy = JSON.parse(readFileSync(new URL('./policy.jso
     const response = await fetch('https://api.github.com/repos/' + repo + '/commits/' + main +
       '/check-runs?filter=latest&per_page=100&page=' + page, {
       headers: { Authorization: 'Bearer ' + process.env.GH_TOKEN,
-        Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+        Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10' },
       signal: AbortSignal.timeout(30000)
     });
     if (!response.ok) throw Error('Cannot verify main checks');

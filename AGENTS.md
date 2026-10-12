@@ -242,4 +242,6 @@ python3 scripts/count-catalog.py
 
 ## Daily release and build-cost policy (owner, 2026-10-12)
 
-PRs target `main`. Follow [the daily release policy](.github/RELEASE-POLICY.md): only the daily scheduled job updates `live`; Vercel builds only `live`. Do not request or wait for a Vercel preview deployment, manually deploy production, or promote at a development batch boundary. Keep local/Actions build, browser and safety tests mandatory. This newer owner instruction supersedes older batch/weekly release guidance.
+PRs target `main`. Follow [the daily release policy](.github/RELEASE-POLICY.md): only the daily scheduled job updates `live`; Vercel builds only `live`. Do not request or wait for a Vercel preview deployment, manually deploy production, or promote at a development batch boundary. Keep all existing local/Actions tests mandatory; this policy introduces no new application build/browser requirement where none existed. This newer owner instruction supersedes older batch/weekly release guidance.
+
+The dependency-free infrastructure release script is exempt from the application-only GitHub client rule: it uses the built-in Actions token, the same pinned API version, explicit timeout and read-only check lookup. It never loads the application or its database/provider credentials on a release runner.
