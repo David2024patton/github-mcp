@@ -124,7 +124,7 @@ export function runWriteContract({ label, definition, args, arrange, needsConfir
         const first = parse(await door.call(w, { ...args, confirm: true }));
         const second = parse(await door.call(w, { ...args, confirm: true }));
         expect(second).toMatchObject({ status: 'replayed', replayed: true, requestKey: first.requestKey });
-        expect(writes(w.gh)).toHaveLength(1);
+        expect(writes(w.gh)).toHaveLength(expectedWrites);
       });
 
       it('5. a read-back that disagrees is reported as unconfirmed with a warning', async () => {
