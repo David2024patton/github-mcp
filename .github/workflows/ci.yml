@@ -51,8 +51,9 @@ jobs:
     timeout-minutes: 10
     services:
       postgres:
-        # ECR mirror: Docker Hub's anonymous pull limit broke Appliance Desk CI.
-        image: public.ecr.aws/docker/library/postgres:17
+        # Docker Official Postgres 17: ECR public mirror returned repeated 429/data-limit errors before test startup on Oct 12, 2026.
+        # Preserve the same PostgreSQL major and full DB suite; this is not a test skip.
+        image: postgres:17.11-bookworm
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: ci-only-not-a-secret

@@ -313,7 +313,7 @@ Card(s): V-1 … V-5. The owner alone can enable an exact Organization as `is_sc
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_dev_list_scenarios` | Named scenarios github_dev_seed can build (e.g. repo-with-failing-ci, open-pr-with-review-threads, release-train) | — | N | — | B | R | V-1 built #68 |
-| `github_dev_seed` | Build a scenario in the scratch account or on test branches: repos, branches, commits, PRs, issues, labels, workflow files; preview lists every object | P | N | I | B | E | V-1 built #70–#80; initial scratch SHA #102; exact run-marker seed verification #90 (six scratch scenarios; webhook-target pending V-4) |
+| `github_dev_seed` | Build a scenario in the scratch account or on test branches: repos, branches, commits, PRs, issues, labels, workflow files; preview lists every object | P | N | I | B | E | V-1 built #70–#80; initial scratch SHA #102; exact marker #90; resume commit provenance #124 (six scratch scenarios; webhook-target pending V-4) |
 | `github_dev_list_runs` | Connection-scoped runs, exact objects/intents, per-scenario type-checked progress and fail-closed cursor-paged journal cleanup previews (never remote acceptance or deletion) | — | N | — | B | R | V-1 #68; V-2 #93; truthful scenario and preview #123 |
 <!-- #106: all-runs cleanup preview includes at-most-five run proposals; each still needs fresh verification and explicit per-run confirmation. -->
 | `github_dev_create_scratch_repo` | Throwaway repository in the scratch account, tagged with the run | P | N | I | B | E | V-1 built #69; initial scratch SHA #102 |

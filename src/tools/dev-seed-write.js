@@ -8,7 +8,7 @@ import { planScenario, EXECUTABLE_SCENARIOS } from '../dev/scenarios.js';
 import { seedStack, readStack, verifyStack } from '../dev/stack.js';
 import { seedReviewScenario, readReviewScenario, verifyReviewScenario } from '../dev/review-scenario.js';
 import { matchesRunDescription } from '../dev/run-marker.js';
-import { captureScratchOrigin } from '../dev/scratch-origin.js';
+import { captureScratchOrigin, verifySeedResumeOrigin } from '../dev/scratch-origin.js';
 
 export const SEEDABLE=EXECUTABLE_SCENARIOS;
 const RELEASE_TAGS=Object.freeze(['v0.1.0','v0.2.0','v0.3.0']);
@@ -51,9 +51,12 @@ export const seed=defineGithubWrite({
     if(existing){
       const prior=await ctx.db.getDevIntent({runId:args.runId,account:target.owner,
         connection:ctx.connection.client_id,stepId:'seed-repo'});
-      if(!prior||prior.status!=='recorded'||!same(prior.object_id,`${target.owner}/${args.repo}`)||
-        existing.private!==true||!matchesRunDescription(existing.description,args.runId))
-        throw new TypeError('The named repository already exists and was not recorded as this run\'s exact scratch seed. Refusing to change it.');
+      const workflow=await ctx.db.getDevIntent({runId:args.runId,account:target.owner,
+        connection:ctx.connection.client_id,stepId:'seed-workflow'});
+      await verifySeedResumeOrigin(await octo(ctx,target.owner),{
+        owner:target.owner,repo:args.repo,runId:args.runId,existing,
+        repoIntent:prior,workflowIntent:workflow
+      });
     }
     return {existing,plan};
   },
