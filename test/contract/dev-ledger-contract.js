@@ -45,6 +45,35 @@ export function runDevLedgerContract(label, makeDb) {
       expect(await db.getDevIntent({...a,runId,stepId:'step-1'})).toMatchObject({status:'recorded',object_id:intent.objectName,created_sha:sha});
       expect(await db.listDevObjects({...a,runId})).toEqual(expect.arrayContaining([expect.objectContaining({object_type:'branch',object_id:intent.objectName,created_sha:sha})]));
     });
+    it('cannot record two intents under one object identity, including concurrent completion',async()=>{
+      const db=await makeDb(),runId='run-intent-collision';
+      await db.createDevRun({...a,id:runId});
+      const base={...a,runId,type:'branch',owner:a.account,repo:'hello',
+        objectName:'rtc/run-intent-collision/shared'};
+      await db.claimDevIntent({...base,stepId:'step-one'});
+      await db.claimDevIntent({...base,stepId:'step-two'});
+      const completed=await Promise.all(['step-one','step-two'].map(stepId=>
+        db.completeDevIntent({...a,runId,stepId,objectId:base.objectName})));
+      expect(completed.sort()).toEqual([false,true]);
+      const intents=await db.listDevIntents({...a,runId});
+      expect(intents.filter(x=>x.status==='recorded')).toHaveLength(1);
+      expect(intents.filter(x=>x.status==='claimed')).toHaveLength(1);
+      expect(await db.listDevObjects({...a,runId})).toHaveLength(1);
+      expect(await db.beginDevCleanup({...a,runId})).toBe(false);
+    });
+    it('does not reinterpret a pre-recorded object as a successful step',async()=>{
+      const db=await makeDb(),runId='run-intent-preexisting';
+      await db.createDevRun({...a,id:runId});
+      const step={...a,runId,type:'branch',owner:a.account,repo:'hello',stepId:'step-one',
+        objectName:'rtc/run-intent-preexisting/shared'};
+      await db.recordDevObject({...a,runId,type:step.type,owner:step.owner,repo:step.repo,
+        objectId:step.objectName,createdSha:'a'.repeat(40)});
+      await db.claimDevIntent(step);
+      expect(await db.completeDevIntent({...a,runId,stepId:step.stepId,objectId:step.objectName,
+        createdSha:'b'.repeat(40)})).toBe(false);
+      expect(await db.getDevIntent({...a,runId,stepId:step.stepId})).toMatchObject({status:'claimed',object_id:null});
+      expect((await db.listDevObjects({...a,runId}))[0].created_sha).toBe('a'.repeat(40));
+    });
     it('uncertain network outcomes stay claimed and cannot replay until explicitly reconciled',async()=>{
       const db=await makeDb(),runId='run-intent-103';
       await db.createDevRun({...a,id:runId});
