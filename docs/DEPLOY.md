@@ -5,8 +5,7 @@ here costs money (free tiers), and nothing here changes a real repository: the f
 can look but not change anything that matters. Where a step says *Claude can do this*, say "go" in chat and it will use your
 Vercel and Neon connections; the three secrets in Part 3 are always yours to type, because Claude must never see them.
 
-Status of the server today: the code is built and tested against a pretend GitHub. Nothing is deployed yet and no GitHub App
-exists (`docs/STATUS.md`).
+Current deployment (2026-10-12): the custom server has a READY Vercel production deployment from reviewed main on `https://github-mcp-chris-projects-de6cd1bf.vercel.app`, with an isolated `github-mcp` Neon project and encrypted project-scoped production settings. The owner has not yet installed any **custom GitHub MCP** App, and live endpoint/DB schema smoke acceptance is not established (`docs/STATUS.md`).
 
 ## Part 1 — Make the two homes (Claude can do this; IN-02)
 
@@ -45,6 +44,8 @@ could read them.** Never put it in chat, email or the repository.
 You get one line of 43 or 44 characters ending in `=` or not. That whole line is the value of `TOKEN_ENCRYPTION_KEY`.
 *How you know it worked:* open `<your address>/api/github/setup` (Part 4). If the key is missing or the wrong shape, the page
 says so in a red line after you try a step ("The server has no encryption key…").
+
+**Already configured for this deployment:** `DATABASE_URL`, `PUBLIC_BASE_URL`, `ADMIN_PASSPHRASE`, and `TOKEN_ENCRYPTION_KEY` are set in the new Vercel project. The latter two were generated using database-backed cryptographic randomness without printing secrets. Before setup, the owner must open Vercel → `github-mcp` → Settings → Environment Variables, privately reveal the two encrypted values and store them in a password manager; do not share them in chat. They can overwrite the administrator passphrase with their own private value, then redeploy. If encrypted values cannot be revealed, replace them privately in Vercel and redeploy. Never paste secrets into GitHub.
 
 ## Part 4 — Check the server is alive
 
@@ -89,6 +90,10 @@ exception: the optional notifications token (below).
 **Notifications (optional, IN-11).** GitHub lets only a classic token read notifications. On GitHub create a classic token
 with **only** the `notifications` box ticked, paste it under *Optional: notifications token*. Any other box ticked and the
 page refuses it.
+
+## Part 5a — Approve the disposable scratch Organization (IN-06)
+
+After GitHub App setup above, use the same setup page to create **this custom server's App** for `robinson-ai-scratch` (choose Organization), install it on **All repositories**, and click **Show my accounts** to verify an active installation. Under **IN-06: Disposable scratch organization**, enter `robinson-ai-scratch`, choose **Enable**, re-type the exact name and enter your private administrator passphrase. This owner-only setting checks the live GitHub App installation, all requested permissions, an Organization account and production OFF. Never designate `Robinson-AI-Systems` or a real-work organization as scratch. The page also supports disabling scratch mode. Passing these prerequisites is NOT a completed connected-write acceptance test.
 
 ## Part 6 — Connect Claude (preview mode first)
 

@@ -9,7 +9,7 @@ import { only, paramsOf, publicOrigin, send } from '../core/http.js';
 import { buildManifest, isValidLogin, manifestFormUrl } from './app-manifest.js';
 import { bareOctokit, githubFor } from './client.js';
 import { putSecret, secretRoutes } from './secret-seal.js';
-import { readBack } from './setup-readback.js';
+import { readBack, missingPermissions } from './setup-readback.js';
 import { renderSetup, resultPage } from './setup-html.js';
 import { PRODUCTION_NAMES_KEY, cleanNames, productionNames, productionReason } from '../tools/production-guard.js';
 import { matchingEntries, protectedList } from '../tools/protect-guard.js';
@@ -111,6 +111,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'set-production-names') return await setProductionNames(p, page);
     if (action === 'confirm-production') return await confirmProduction(p, page);
     if (action === 'set-spend-limit') return await setSpendLimit(p, page);
+    if (action === 'set-scratch') return await setScratch(p, page);
     if (action === 'set-own-people') return await setOwnPeople(p, page);
     if (action === 'save-protected' || action === 'remove-protected') return await editProtected(action, p, page);
     if (!['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic'].includes(action)) return page(400, { result: 'Unknown action.' });
@@ -195,6 +196,41 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     }
     return rows;
   };
+
+  /** Owner-only, explicitly named disposable Organization; never accept caller-provided scratch status. */
+  async function setScratch(p, page) {
+    if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
+    if (!isValidLogin(p.login)) return page(400, { result: 'Enter a valid GitHub organization name.' });
+    const row = await db.getAccount(p.login);
+    if (!row) return page(404, { result: 'That account is not set up on this server.' });
+    if (p.confirmLogin !== row.login) return page(400, { result: 'Re-type the exact organization name to confirm this disposable target.' });
+    if (p.enabled !== 'true' && p.enabled !== 'false') return page(400, { result: 'Choose whether to enable or disable scratch mode.' });
+    const enable = p.enabled === 'true';
+    if (enable) {
+      if (row.account_type !== 'Organization' || row.credential_kind !== 'app' ||
+          !row.app_id || !row.installation_id || row.production_enabled)
+        return page(409, { result: 'Scratch requires a separate organization, a configured GitHub App, an installation and production OFF.' });
+      let live;
+      try {
+        const app = bareOctokit({ token: await credentials.appJwt(row.app_id), fetch });
+        live = (await app.request('GET /app/installations/{installation_id}', { installation_id: row.installation_id })).data;
+      } catch { return page(409, { result: 'The GitHub App installation could not be verified. No scratch setting changed.' }); }
+      if (live?.id !== row.installation_id ||
+          String(live.account?.login ?? '').toLowerCase() !== row.login.toLowerCase() ||
+          live.account?.type !== 'Organization' || live.repository_selection !== 'all' ||
+          live.suspended_at || missingPermissions(live.permissions).length)
+        return page(409, { result: 'GitHub must confirm an active all-repositories App installation with all required permissions on this exact organization.' });
+      await db.setInstallation(row.login, { installationId: live.id,
+        repositorySelection: live.repository_selection, permissions: live.permissions, status: 'active' });
+    }
+    if (!await db.setScratchAccount(row.login, enable))
+      return page(409, { result: 'The account no longer qualifies for scratch mode. No setting changed.' });
+    await db.recordChange({ account: row.login, mode: 'setup', tool: 'setup_set_scratch',
+      target: row.login, summary: `Scratch testing ${enable ? 'enabled' : 'disabled'} for ${row.login} by owner`,
+      production: false, accessWidening: enable, confirmed: true }).catch(() => {});
+    return page(200, { result: `Scratch testing is ${enable ? 'ON' : 'OFF'} for ${row.login}. ${enable
+      ? 'Only preview-mode developer tools may create run-owned disposable resources. This does not enable production.' : 'Developer scratch writes are blocked for this organization.'}` });
+  }
 
   /** The owner's only way to raise the monthly spend limit (Claude's tool can only lower it). */
   async function setSpendLimit(p, page) {

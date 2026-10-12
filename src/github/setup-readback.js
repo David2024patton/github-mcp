@@ -28,7 +28,7 @@ export async function readBack({ db, credentials, fetch }, login) {
     user: { authorized: !!row.user_token_enc, login: row.user_login },
     fine_grained: { present: !!row.fine_grained_enc, last4: row.fine_grained_last4 },
     classic: { present: !!row.classic_enc, last4: row.classic_last4, scopes: row.classic_scopes },
-    production_enabled: row.production_enabled, is_default: row.is_default
+    production_enabled: row.production_enabled, is_default: row.is_default, is_scratch: row.is_scratch
   };
   if (row.app_id != null) {
     try {

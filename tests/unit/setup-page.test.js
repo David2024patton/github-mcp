@@ -568,3 +568,70 @@ describe('spend limit and own people on the setup page (B-4)', () => {
     expect((await t.post({ action: 'set-own-people', logins: 'bad name!' })).statusCode).toBe(400);
   });
 });
+
+
+describe('IN-06 owner-only scratch Organization designation', () => {
+  const post = (t, extra = {}) => t.post({ action: 'set-scratch', login: 'example-org',
+    confirmLogin: 'example-org', enabled: 'true', ...extra });
+  const installation = (overrides = {}) => ({ id: 777,
+    account: { login: 'example-org', type: 'Organization' }, repository_selection: 'all',
+    permissions: MANIFEST_PERMISSIONS, suspended_at: null, ...overrides });
+
+  it('requires an exact GitHub-verified App installation and logs the owner's explicit grant', async () => {
+    const t = await build(); await withApp(t);
+    t.gh.when('GET /app/installations/{installation_id}').reply(200, installation());
+    const yes = await post(t);
+    expect(yes.statusCode).toBe(200);
+    expect(yes.body).toContain('Scratch testing is ON');
+    expect((await t.db.getAccount('example-org')).is_scratch).toBe(true);
+    expect((await t.post({action:'status'})).body).toContain('Scratch testing');
+    const off = await post(t, {enabled:'false'});
+    expect(off.statusCode).toBe(200);
+    expect((await t.db.getAccount('example-org')).is_scratch).toBe(false);
+    noSecrets(yes);
+  });
+
+  it('refuses selected repositories, suspended Apps, incomplete permissions and foreign installation identities', async () => {
+    const t = await build(); await withApp(t);
+    for(const variation of [
+      { repository_selection: 'selected' },
+      { suspended_at: '2026-10-01T00:00:00Z' },
+      { permissions: { contents:'read' } },
+      { account: { login:'someone-else',type:'Organization' } },
+      { account: { login:'example-org',type:'User' } },
+      { id: 999 }
+    ]) {
+      t.gh.when('GET /app/installations/{installation_id}').reply(200, installation(variation));
+      expect((await post(t)).statusCode).toBe(409);
+      expect((await t.db.getAccount('example-org')).is_scratch).toBe(false);
+    }
+    t.gh.when('GET /app/installations/{installation_id}').reply(403, {message:'Forbidden'});
+    expect((await post(t)).statusCode).toBe(409);
+    expect((await t.db.getAccount('example-org')).is_scratch).toBe(false);
+  });
+
+  it('requires production setup, CSRF, matching organization name and the administrator passphrase', async () => {
+    const t = await build(); await withApp(t);
+    expect((await post(t,{confirmLogin:'wrong-org'})).statusCode).toBe(400);
+    expect((await post(t,{enabled:'maybe'})).statusCode).toBe(400);
+    expect((await post(t,{passphrase:'wrong'})).statusCode).toBe(401);
+    expect((await t.post({action:'set-scratch',login:'example-org',confirmLogin:'example-org',
+      enabled:'true'}, {csrf:'bad'})).statusCode).toBe(403);
+    await t.db.setProductionEnabled('example-org',true);
+    expect((await post(t)).statusCode).toBe(409);
+    expect((await t.db.getAccount('example-org')).is_scratch).toBe(false);
+    const preview = await build({env:{...PROD,VERCEL_ENV:'preview'}});
+    await preview.open();
+    expect((await post(preview)).statusCode).toBe(403);
+  });
+
+  it('refuses flagging personal and token-only accounts even with a forged installation', async () => {
+    const t=await build(); await t.open();
+    await t.db.upsertAccount({login:'example-org',accountId:1001,accountType:'User',
+      label:'Not scratch',credentialKind:'fine_grained'});
+    await t.db.setInstallation('example-org',{installationId:777,repositorySelection:'all',
+      permissions:MANIFEST_PERMISSIONS,status:'active'});
+    expect((await post(t)).statusCode).toBe(409);
+    expect((await t.db.getAccount('example-org')).is_scratch).toBe(false);
+  });
+});
