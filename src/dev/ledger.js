@@ -1,6 +1,6 @@
 // V-1: account- and connection-scoped run ledger; all SQL statements are static.
 export const RUN_ID = /^[a-z][a-z0-9-]{2,42}$/;
-const TYPES = new Set(['repo','branch','pr','issue','label','webhook','check_run','tag','release','workflow_file','fixture_file','forwarder','ruleset','review_thread']);
+const TYPES = new Set(['repo','branch','pr','issue','label','webhook','check_run','tag','release','workflow_file','fixture_file','forwarder','ruleset','review_thread','pr_label']);
 export function validateRun({ id, account, connection }) {
   if (!RUN_ID.test(id ?? '')) throw new TypeError('Run ID must contain 3–43 lowercase letters, digits or hyphens and start with a letter.');
   if (typeof account !== 'string' || !account.trim()) throw new TypeError('Account is required.');
