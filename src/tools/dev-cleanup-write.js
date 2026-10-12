@@ -18,10 +18,11 @@ const cleanup=defineGithubWrite({
   },
   read:(args,ctx,target)=>readCleanupRun(ctx,target.owner,args.repo,args.runId),
   classify:()=>({}),
-  summarize:({args,target,before})=>`Delete exact recorded PRIVATE scratch ${target.owner}/${args.repo} for run ${args.runId}, close its recorded draft PRs and verify all ${before.plan.count} remaining objects are absent. This cannot be undone.`,
+  summarize:({args,target,before})=>`${before.deleteRepository?'DELETE private scratch repository':'CLOSE recorded PRs and DELETE run-owned test branches in'} ${target.owner}/${args.repo} for run ${args.runId}; verify ${before.plan.count} recorded objects. Irreversible.`,
   apply:async({args,ctx,target,before})=>({data:await executeCleanup(ctx,{owner:target.owner,repo:args.repo,runId:args.runId,before})}),
   readAfter:({args,ctx,target})=>readCleanupAfter(ctx,{owner:target.owner,repo:args.repo,runId:args.runId}),
-  verify:({after,response})=>response.data.verified===true&&after.repo===null&&
+  verify:({after,response,before})=>response.data.verified===true&&
+    (before.deleteRepository?after.repo===null:after.repo!==null)&&
     after.run?.status==='cleaned'&&after.objects.length<50&&after.objects.every(o=>o.cleaned===true),
   inverse:()=>null,
   present:({args,response,after})=>({run_id:args.runId,cleanup:response.data,

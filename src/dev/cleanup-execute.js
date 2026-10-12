@@ -2,6 +2,7 @@
 import { missing, octo, refusal } from '../tools/github-write.js';
 import { requireScratchOrg } from './scratch.js';
 import { planDevCleanup } from './cleanup.js';
+import { inspectTestResources, cleanupTestResources } from './cleanup-non-scratch.js';
 
 const marker = id => `rtc_run=${id}`;
 const equal = (a,b) => String(a??'').toLowerCase() === String(b??'').toLowerCase();
@@ -14,7 +15,6 @@ export function requireExactScratchRepo(repo,run,owner,name) {
     throw refusal('The live repository is not the exact private, run-marked scratch repository. Deletion refused.');
 }
 export async function readCleanupRun(ctx,owner,repo,runId) {
-  await requireScratchOrg(ctx,owner);
   const connection=ctx.connection.client_id, db=ctx.db;
   const run=await db.getDevRun({id:runId,account:owner,connection});
   if(!run)throw refusal('That development run does not belong to this connection.');
@@ -24,16 +24,25 @@ export async function readCleanupRun(ctx,owner,repo,runId) {
   ]);
   const plan=planDevCleanup({run,objects,intents});
   const root=objects.find(x=>x.object_type==='repo');
-  if(!root || root.repo!==repo || !equal(root.object_id,`${owner}/${repo}`))
-    throw refusal('Only a recorded exact scratch repository owned by this run may be cleaned.');
+  if(root) {
+    if(root.repo!==repo || !equal(root.object_id,`${owner}/${repo}`))
+      throw refusal('Only an exact recorded scratch repository may be deleted.');
+    await requireScratchOrg(ctx,owner);
+  }
   const github=await octo(ctx,owner);
   const existing=await getRepo(github,owner,repo);
-  requireExactScratchRepo(existing,run,owner,repo);
-  if(!existing&&run.status!=='cleaning'&&run.status!=='cleaned')
+  if(root)requireExactScratchRepo(existing,run,owner,repo);
+  else {
+    if(!existing)throw refusal('The host repository disappeared. Refusing standalone resource cleanup.');
+    if(!equal(existing.full_name,`${owner}/${repo}`))throw refusal('Unexpected host repository identity.');
+    await inspectTestResources(ctx,{run,owner,repo,objects});
+  }
+  if(root&&!existing&&run.status!=='cleaning'&&run.status!=='cleaned')
     throw refusal('The repository is missing and the run is not already cleaning; reconcile before cleanup.');
-  return {run,plan,objects,existing};
+  return {run,plan,objects,existing,deleteRepository:!!root};
 }
 export async function executeCleanup(ctx,{owner,repo,runId,before}) {
+  if(!before.deleteRepository)return cleanupTestResources(ctx,{owner,repo,runId,before});
   await requireScratchOrg(ctx,owner);
   const connection=ctx.connection.client_id,db=ctx.db;
   if(before.run.status==='cleaned')
