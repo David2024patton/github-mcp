@@ -7,6 +7,7 @@ import { matchesRunDescription, matchesRunFooter } from './run-marker.js';
 import { inspectTestResources, cleanupTestResources } from './cleanup-non-scratch.js';
 import { inspectScratchComments } from './cleanup-comments.js';
 import { assertScratchJournalCoverage } from './cleanup-inventory.js';
+import { assertScenarioResourceBounds } from './scenario-ownership.js';
 
 const equal = (a,b) => String(a??'').toLowerCase() === String(b??'').toLowerCase();
 const getRepo = (github,owner,repo) => missing(async()=>(await github.request('GET /repos/{owner}/{repo}',{owner,repo})).data);
@@ -283,6 +284,7 @@ export async function readCleanupRun(ctx,owner,repo,runId) {
   const plan=planDevCleanup({run,objects,intents});
   const root=objects.find(x=>x.object_type==='repo');
   if(root) {
+    assertScenarioResourceBounds({run,objects,owner,repo});
     if(root.repo!==repo || !equal(root.object_id,`${owner}/${repo}`))
       throw refusal('Only an exact recorded scratch repository may be deleted.');
     await requireScratchOrg(ctx,owner);

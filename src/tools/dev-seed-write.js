@@ -4,13 +4,13 @@ import { missing, octo, ownerOf, refusal } from './github-write.js';
 import { requireScratchOrg } from '../dev/scratch.js';
 import { runDevMutationOnce } from '../dev/execute.js';
 import { createOwnedFixtureBranch, commitOwnedFixtureFile } from '../dev/fixtures.js';
-import { planScenario } from '../dev/scenarios.js';
+import { planScenario, EXECUTABLE_SCENARIOS } from '../dev/scenarios.js';
 import { seedStack, readStack, verifyStack } from '../dev/stack.js';
 import { seedReviewScenario, readReviewScenario, verifyReviewScenario } from '../dev/review-scenario.js';
 import { matchesRunDescription } from '../dev/run-marker.js';
 import { captureScratchOrigin } from '../dev/scratch-origin.js';
 
-export const SEEDABLE=Object.freeze(['repo-basic','failing-ci','release-train','protected-main','stack-of-three','pr-with-threads']);
+export const SEEDABLE=EXECUTABLE_SCENARIOS;
 const RELEASE_TAGS=Object.freeze(['v0.1.0','v0.2.0','v0.3.0']);
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
 const OWNER={type:'string',maxLength:39};

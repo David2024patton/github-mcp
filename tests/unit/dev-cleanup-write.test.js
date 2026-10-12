@@ -652,3 +652,17 @@ describe('V-2 missing journaled scratch resources cannot be silently erased',()=
     });
   }
 });
+
+describe('V-2 scenario cannot acquire extra whole-repository deletion authority',()=>{
+  it('refuses a real but unexpected tag in a repo-basic run, despite matching journal and remote',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'tag',owner:OWNER,repo:REPO,objectId:'v0.1.0',createdSha:'a'.repeat(40)});
+    w.gh.when('GET /repos/{owner}/{repo}/tags').reply(200,[
+      {name:'v0.1.0',commit:{sha:'a'.repeat(40)}}]);
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.filter(c=>c.method==='DELETE'||c.method==='PATCH')).toHaveLength(0);
+    expect(w.gh.invalid).toEqual([]);
+  });
+});
