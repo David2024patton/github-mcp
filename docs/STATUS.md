@@ -25,6 +25,9 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-12 — V-1 guarded scratch create (PR #69):** `github_dev_create_scratch_repo` sends a private GitHub repository create through the normal write/preview/permission pipeline, only after server-side IN-06 verification of a dedicated scratch Organization, an active all-repos GitHub App, and preview mode. `runDevMutationOnce` reserves a deterministic step and journals the exact returned repository `full_name` before any further mutation; uncertain outcomes cannot be replayed. Tests exercise all three tool doors, fail-closed non-scratch/production cases, and object recording. No live scratch org was created or touched. Next: apply real named scenario seeds using this shared runner.
+
+
 **2026-10-12 — V-1 inspection tools (PR #68):** `github_dev_list_scenarios` returns truthful seven named **plan-only** blueprints, with an optional deterministic per-run plan and real scratch-account verification. `github_dev_list_runs` shows only the caller's account/connection runs, exact created-object ledger and claimed/uncertain/recorded step status with strict bounds; read dispatch never calls GitHub. Fake and PostgreSQL share a new bounded intent-list contract. No seed or scratch creation is enabled; IN-06 remains pending. Next: guarded scratch create/seed.
 
 
