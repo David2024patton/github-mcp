@@ -16,6 +16,26 @@ export function boundedRunLimit(limit) {
   if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new TypeError('Limit must be 1–50.');
   return limit;
 }
+// Cursor is an opaque display handle, never an authorization or cleanup claim.
+export function encodeDevRunCursor(row) {
+  if(!RUN_ID.test(row?.id??''))throw new TypeError('Invalid run cursor identity.');
+  const t=new Date(row.created_at).toISOString();
+  return Buffer.from(JSON.stringify({t,id:row.id})).toString('base64url');
+}
+export function decodeDevRunCursor(cursor) {
+  if(typeof cursor!=='string'||cursor.length>256||!/^[A-Za-z0-9_-]{12,256}$/.test(cursor))
+    throw new TypeError('Invalid run cursor.');
+  let value;
+  try {
+    if(Buffer.from(cursor,'base64url').toString('base64url')!==cursor)throw new Error('Noncanonical encoding');
+    value=JSON.parse(Buffer.from(cursor,'base64url').toString('utf8'));
+  }catch{throw new TypeError('Invalid run cursor.');}
+  if(!value||!RUN_ID.test(value.id??'')||typeof value.t!=='string'||
+    !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(value.t)||
+    !Number.isFinite(Date.parse(value.t))||new Date(value.t).toISOString()!==value.t)
+    throw new TypeError('Invalid run cursor.');
+  return {createdAt:value.t,id:value.id};
+}
 export function createDevLedger(sql) {
   return {
     async createDevRun({ id, account, connection, description = '', scenarios = [] }) {
@@ -40,11 +60,18 @@ export function createDevLedger(sql) {
       if(!Number.isSafeInteger(n)||n<0)throw new TypeError('Run count exceeds the safe reporting range.');
       return n;
     },
-    async listDevRuns({ account, connection, limit = 20 }) {
+    async listDevRuns({ account, connection, limit = 20, after = null }) {
       validateRun({ id: 'run-list', account, connection }); boundedRunLimit(limit);
+      if(after&&(!RUN_ID.test(after.id??'')||typeof after.createdAt!=='string'||
+        !Number.isFinite(Date.parse(after.createdAt))))
+        throw new TypeError('Invalid run page boundary.');
+      if(after)return await sql`SELECT id, account, connection, description, scenarios, status, created_at, cleaned_at
+        FROM dev_runs WHERE account = ${account} AND connection = ${connection}
+          AND (date_trunc('milliseconds',created_at),id) < (${after.createdAt}::timestamptz,${after.id})
+        ORDER BY date_trunc('milliseconds',created_at) DESC, id DESC LIMIT ${limit}`;
       return await sql`SELECT id, account, connection, description, scenarios, status, created_at, cleaned_at
         FROM dev_runs WHERE account = ${account} AND connection = ${connection}
-        ORDER BY created_at DESC, id DESC LIMIT ${limit}`;
+        ORDER BY date_trunc('milliseconds',created_at) DESC, id DESC LIMIT ${limit}`;
     },
     async recordDevObject({ runId, account, connection, type, owner, repo = null, objectId, createdSha = null }) {
       validateRun({ id: runId, account, connection });
