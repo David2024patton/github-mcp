@@ -28,7 +28,8 @@ describe('scratch pre-delete two-way durable inventory proof',()=>{
     });
   }
   it('fails closed on omitted or denied inventory, not an inferred empty list',()=>{
-    const {ruleset,...missing}=ids;
+    const missing={...ids};
+    delete missing.ruleset;
     expect(()=>verify(tracked,missing)).toThrow();
     expect(()=>verify(tracked,{...ids,pr:null})).toThrow();
   });
