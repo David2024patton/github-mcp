@@ -37,7 +37,7 @@ const arrange=(scenario)=>(gh,outcome)=>{
   });
   if(failing){
     gh.when('POST /repos/{owner}/{repo}/git/refs').reply(201,{ref:`refs/heads/${BRANCH}`,object:{sha:COMMIT}});
-    gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,{ref:`refs/heads/${BRANCH}`,object:{sha:COMMIT}});
+    gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,request=>({ref:`refs/${request.params.ref}`,object:{sha:COMMIT}}));
   }else{
     gh.when('POST /repos/{owner}/{repo}/labels').reply(201,{name:LABEL,color:'0969da',description:MARK});
     gh.when('GET /repos/{owner}/{repo}/labels/{name}').reply(200,{name:LABEL,color:'0969da',description:MARK});

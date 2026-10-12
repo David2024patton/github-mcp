@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **#102 CI correction:** Account-scoped seed ref fixture now accepts initial default ref and the later test branch, and tool catalog records immutable origin. No new authority.
+
 - **2026-10-12 — #102 scratch initial commit journal (MERGED after exact-head CI):** Both private scratch repository creation doors now independently read and durably record their initial default-branch commit SHA inside the existing atomic run intent. Invalid GitHub ref/readback remains uncertain, not blindly replayed. Fake request-shape and no-duplicate tests; this is offline only, not connected acceptance.
 
 - **2026-10-12 — #101 standalone cleanup identity (MERGED after CI):** Host cleanup refuses a missing recorded branch SHA and any recorded PR with mismatched numeric ID, merged_at, non-draft state (even closed), foreign base repository or altered head SHA. Fake three-door negative regressions protect host repos. No live credentials or scratch actions.
