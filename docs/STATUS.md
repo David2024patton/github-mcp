@@ -25,6 +25,9 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-12 — V-1 exact review fixture revision (PR #78):** Added recorded-scratch-branch Contents compare-and-swap updates for one run-owned review fixture. Original branch HEAD and file blob must match before mutation; new commit is independently journaled and read back, with stale/mismatch/replay tests. Enables a genuinely outdated third review thread in the next scenario. No live GitHub writes; IN-06 pending.
+
+
 **2026-10-12 — V-1 exact thread ID mapping (PR #77):** Bounded GraphQL review-thread enumeration maps durably recorded numeric inline comment IDs to actual thread node IDs. Refuses incomplete pagination and ambiguous matches; verifies exact identity and `isOutdated` independently. The full scenario remains pending, as does IN-06 owner-gated live acceptance.
 
 
