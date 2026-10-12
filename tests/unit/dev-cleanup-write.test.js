@@ -27,6 +27,8 @@ function arrange(gh,outcome){
   gh.when('GET /repos/{owner}/{repo}/deployments').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/environments').reply(200,{total_count:0,environments:[]});
   gh.when('GET /repos/{owner}/{repo}/labels').reply(200,[]);
+  gh.when('GET /repos/{owner}/{repo}/actions/runs').reply(200,{total_count:0,workflow_runs:[]});
+  gh.when('GET /repos/{owner}/{repo}/actions/artifacts').reply(200,{total_count:0,artifacts:[]});
   gh.when('GET /repos/{owner}/{repo}/issues/comments').reply(200,[]);
   gh.when('GET /repos/{owner}/{repo}/pulls/comments').reply(200,[]);
   gh.when('DELETE /repos/{owner}/{repo}').reply(204);
@@ -515,6 +517,31 @@ describe('V-2 protected run deletion',()=>{
       expect(out.done,JSON.stringify(variant).slice(0,100)).toBe(false);
       expect(w.gh.calls.some(x=>x.method==='DELETE'||x.method==='PATCH')).toBe(false);
       expect(w.gh.invalid).toEqual([]);
+    }
+  });
+  it('refuses foreign, unreadable or inconsistent Actions run and artifact inventories',async()=>{
+    for(const [route,variants] of [
+      ['GET /repos/{owner}/{repo}/actions/runs',[
+        {status:200,body:{total_count:1,workflow_runs:[{id:22}]}},
+        {status:200,body:{total_count:0,workflow_runs:[{id:22}]}},
+        {status:200,body:{total_count:0}},
+        {status:403,body:{message:'Not authorized'}}
+      ]],
+      ['GET /repos/{owner}/{repo}/actions/artifacts',[
+        {status:200,body:{total_count:1,artifacts:[{id:33}]}},
+        {status:200,body:{total_count:0,artifacts:[{id:33}]}},
+        {status:200,body:{total_count:0}},
+        {status:403,body:{message:'Not authorized'}}
+      ]]
+    ]){
+      for(const variant of variants){
+        const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+        w.gh.when(route).reply(variant.status,variant.body);
+        const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+        expect(out.done,route+' '+JSON.stringify(variant)).toBe(false);
+        expect(w.gh.calls.some(x=>x.method==='DELETE'||x.method==='PATCH')).toBe(false);
+        expect(w.gh.invalid).toEqual([]);
+      }
     }
   });
   it('refuses orphaned PR-label associations without any GitHub mutation',async()=>{

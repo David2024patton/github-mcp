@@ -26,7 +26,7 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     !Array.isArray(objects)||!run?.id)
     throw refusal('Scratch repository default branch and exact run journal are required.');
   const common={owner,repo,per_page:100};
-  const [branches,pulls,issues,tags,releases,rulesets,hooks,milestones,deployments,environments,labels]=await Promise.all([
+  const [branches,pulls,issues,tags,releases,rulesets,hooks,milestones,deployments,environments,labels,workflowRuns,artifacts]=await Promise.all([
     listAll(github,'GET /repos/{owner}/{repo}/branches',common,{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/pulls',{...common,state:'all'},{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/issues',{...common,state:'all'},{max:100}),
@@ -39,7 +39,9 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     listAll(github,'GET /repos/{owner}/{repo}/milestones',{...common,state:'all'},{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/deployments',common,{max:100}),
     github.request('GET /repos/{owner}/{repo}/environments',common),
-    listAll(github,'GET /repos/{owner}/{repo}/labels',common,{max:100})
+    listAll(github,'GET /repos/{owner}/{repo}/labels',common,{max:100}),
+    github.request('GET /repos/{owner}/{repo}/actions/runs',common),
+    github.request('GET /repos/{owner}/{repo}/actions/artifacts',common)
   ]);
   const inventories=[branches,pulls,issues,tags,releases,rulesets,hooks,milestones,deployments,labels];
   if(inventories.some(x=>x.capped||!Array.isArray(x.items)))
@@ -52,6 +54,15 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
   const env=environments?.data;
   if(env?.total_count!==0||!Array.isArray(env?.environments)||env.environments.length!==0)
     throw refusal('Scratch repository has foreign or unverified deployment environments; deletion refused.');
+  // V-1 creates workflow definitions but does not dispatch real CI.
+  // Repository deletion would silently erase unjournaled runs, logs and
+  // artifacts. An exact zero count AND empty response is required; a denied,
+  // missing or inconsistent inventory cannot be interpreted as empty.
+  const actions=workflowRuns?.data,stored=artifacts?.data;
+  if(actions?.total_count!==0||!Array.isArray(actions?.workflow_runs)||
+    actions.workflow_runs.length!==0||stored?.total_count!==0||
+    !Array.isArray(stored?.artifacts)||stored.artifacts.length!==0)
+    throw refusal('Scratch repository has foreign or unverified Actions runs or artifacts; deletion refused.');
   const owns=(type,id)=>objects.some(x=>x.object_type===type&&
     x.object_id===String(id)&&x.owner.toLowerCase()===owner.toLowerCase()&&x.repo===repo);
   // A SHA belonging to another fixture or branch is not evidence for this branch.
@@ -227,7 +238,7 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
   }
   return {branch_count:branches.items.length,pr_count:pulls.items.length,issue_count:issues.items.length,tag_count:tags.items.length,release_count:releases.items.length,
     ruleset_count:rulesets.items.length,webhook_count:0,milestone_count:0,
-    deployment_count:0,environment_count:0,label_count:listedLabels.size,verified_pulls:verifiedPulls};
+    deployment_count:0,environment_count:0,action_run_count:0,artifact_count:0,label_count:listedLabels.size,verified_pulls:verifiedPulls};
 }
 
 export async function readCleanupRun(ctx,owner,repo,runId) {
