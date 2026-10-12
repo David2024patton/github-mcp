@@ -5,6 +5,7 @@ import { SEEDABLE } from './dev-seed-write.js';
 import { requireScratchOrg } from '../dev/scratch.js';
 import { boundedRunLimit } from '../dev/ledger.js';
 import { summarizeDevProgress } from '../dev/progress.js';
+import { summarizeDevCleanup } from '../dev/cleanup-report.js';
 
 const OWNER={type:'string',maxLength:39,description:'Connected account (default: your default account)'};
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
@@ -54,7 +55,8 @@ const readRuns=defineRead({
     ]);
     const moreMayExist=objects.length===limit||intents.length===limit;
     const progress=summarizeDevProgress({run,objects,intents,limit,moreMayExist});
-    return {run,objects,intents,limit,more_may_exist:moreMayExist,progress,
+    const cleanup=summarizeDevCleanup({run,objects,intents,limit,moreMayExist});
+    return {run,objects,intents,limit,more_may_exist:moreMayExist,progress,cleanup,
       note:'Recorded IDs prove only journal persistence, not connected GitHub acceptance. Uncertain steps must be reconciled.'};
   }
 });

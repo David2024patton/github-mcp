@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **2026-10-12 — V-2 #89 durable per-object report:** Both `github_dev_list_runs(runId)` and confirmed `github_dev_cleanup` now use a shared evidence-only cleanup report: exact owned IDs, per-object journal state, pending/uncertain steps, truncated or conflicting rows, remaining count and explicit safe-resume guidance. Report never claims remote absence or OAuth acceptance from ledger flags; confirmed write separately reports fresh remote verification for that call. No new external permissions or mutating API paths.
+
 - **2026-10-12 — V-2 #88 exact issue cleanup:** For existing host repositories, added a guarded close-only path for run-journaled issues. It verifies exact run footer and issue-not-PR identity, requires the pre-existing `rtc-cleaned` label, closes with GitHub's `not_planned` reason and confirms both state and label before journaling cleanup. No issue deletion or host repository changes outside recorded run items. Partial outcomes remain visible for retry; no connected acceptance.
 
 - **2026-10-12 — V-2 #87 recorded label cleanup:** Existing confirmed cleanup now handles a run-owned label and exact PR-label association in a pre-existing repository. Labels require run marker and collision-free usage scan; any unrecorded issue/PR usage refuses deletion. Associations are removed only by their recorded PR number/label and independently read back. Non-run labels and host repository stay intact. Real connected cleanup remains untested.
