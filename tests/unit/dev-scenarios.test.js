@@ -17,8 +17,9 @@ describe('V-1 deterministic scenario planning',()=>{
     expect(()=>planScenario('stack-of-three',{runId:'bad ID',owner:'example-org',repo:'hello'})).toThrow(/Run ID/);
   });
   it('tags all planned objects but performs no external operations',()=>{
-    const p=planScenario('stack-of-three',{runId:'run-a123',owner:'example-org',repo:'hello'});
+    const p=planScenario('stack-of-three',{runId:'run-a123',owner:'example-org',repo:'hello',scratch:true});
     expect(p.tag).toBe('rtc-run-run-a123');
+    expect(p.objects).toHaveLength(14);
     expect(p.objects.every(o=>o.marker.includes('run-a123'))).toBe(true);
   });
 });

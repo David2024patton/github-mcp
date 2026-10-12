@@ -73,7 +73,7 @@ describe('V-1 real multi-step GitHub scenario safeguards',()=>{
     const prod=await makeWorld({scratchAccount:true,mode:'production'});
     expect(parse(await def.handler({repo:REPO,runId:ID,scenario:'repo-basic',confirm:true},prod.ctx)).done).toBe(false);
     expect(prod.gh.calls).toEqual([]);
-    expect(seeded.SEEDABLE).toEqual(['repo-basic','failing-ci','release-train','protected-main']);
+    expect(seeded.SEEDABLE).toEqual(['repo-basic','failing-ci','release-train','protected-main','stack-of-three']);
   });
   it('never blindly repeats a failed downstream GitHub write after repo creation',async()=>{
     const w=await makeWorld({scratchAccount:true});arrange('repo-basic')(w.gh,'ok');
@@ -154,5 +154,71 @@ describe('protected-main scratch fixture',()=>{
     const call=w.gh.calls.find(x=>x.route==='POST /repos/{owner}/{repo}/rulesets');
     expect(call.body.conditions.ref_name.include).toEqual(['~DEFAULT_BRANCH']);
     expect(call.body.rules[0].parameters.required_status_checks).toEqual([{context:'ci'}]);
+  });
+});
+
+const stackSha=i=>String.fromCharCode(97+i).repeat(40);
+const stackFixture=(gh,outcome)=>{
+  const repo=repository({description:`Developer fixture for ${MARK} (stack-of-three)`});
+  gh.when('GET /repos/{owner}/{repo}').replySequence([
+    {status:404,body:{message:'Not Found'}},{status:200,body:repo},
+    {status:200,body:repository({...repo,...(outcome==='mismatch'?{private:false}:{})})}
+  ]);
+  gh.when('POST /orgs/{org}/repos').reply(201,repo);
+  gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,request=>{
+    const name=request.params.ref,match=name.match(/stack-(\d)$/);
+    const i=Number(match?.[1]??0);
+    return {ref:`refs/${name}`,object:{sha:i?stackSha(i):COMMIT}};
+  });
+  gh.when('POST /repos/{owner}/{repo}/git/refs').reply(201,request=>({
+    ref:request.body.ref,object:{sha:request.body.sha}
+  }));
+  gh.when('PUT /repos/{owner}/{repo}/contents/{path}').reply(201,request=>{
+    const i=Number(request.params.path.match(/stack-(\d)\.md$/)?.[1]);
+    return {content:{path:request.params.path},commit:{sha:stackSha(i)}};
+  });
+  gh.when('GET /repos/{owner}/{repo}/contents/{path}').reply(200,request=>{
+    const i=Number(request.params.path.match(/stack-(\d)\.md$/)?.[1]);
+    return {path:request.params.path,content:Buffer.from(
+      `RTC draft stack ${i} for rtc_run=${ID}\n`).toString('base64')};
+  });
+  gh.when('POST /repos/{owner}/{repo}/labels').reply(201,{name:'rtc-run',description:MARK});
+  gh.when('GET /repos/{owner}/{repo}/labels/{name}').reply(200,{name:'rtc-run',description:MARK});
+  const pull=request=>{
+    const i=Number(request.body?.head?.match(/stack-(\d)$/)?.[1]??
+      (Number(request.params?.pull_number)-70));
+    return {number:70+i,head:{ref:`rtc/${ID}/stack-${i}`,sha:stackSha(i)},
+      base:{ref:i===1?'main':`rtc/${ID}/stack-${i-1}`},
+      body:`Run-owned draft review fixture.\n\n<!-- rtc_run=${ID} -->`,
+      state:'open',draft:true};
+  };
+  gh.when('POST /repos/{owner}/{repo}/pulls').reply(201,request=>pull(request));
+  gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}').reply(200,request=>pull(request));
+  gh.when('POST /repos/{owner}/{repo}/issues/{issue_number}/labels').reply(200,[{name:'rtc-run'}]);
+  gh.when('GET /repos/{owner}/{repo}/issues/{issue_number}/labels').reply(200,[{name:'rtc-run'}]);
+};
+runWriteContract({label:'github_dev_seed(stack-of-three)',definition:def,
+  args:{repo:REPO,runId:ID,scenario:'stack-of-three'},arrange:stackFixture,
+  scratchAccount:true,previewOnly:true,needsConfirm:false,expectedWrites:14,advanceClockOnSleep:true});
+describe('three exact-head stacked draft PRs',()=>{
+  it('journals all fourteen objects and links exact bases, without merging',async()=>{
+    const w=await makeWorld({scratchAccount:true,advanceClockOnSleep:true});stackFixture(w.gh,'ok');
+    const out=parse(await def.handler({repo:REPO,runId:ID,scenario:'stack-of-three',confirm:true},w.ctx));
+    if(!out.done)throw new Error(JSON.stringify({out,steps:w.gh.calls.map(x=>x.route).slice(-22),
+      invalid:w.gh.invalid.map(x=>({route:x.route,path:x.path}))}));
+    expect(out).toMatchObject({status:'applied',done:true,confirmed:true});
+    const saved=await w.db.listDevObjects({runId:ID,account:OWNER,connection:'client-1',limit:50});
+    expect(saved).toHaveLength(14);
+    expect(saved.filter(x=>x.object_type==='pr').map(x=>x.object_id).sort()).toEqual(['71','72','73']);
+    expect(saved.filter(x=>x.object_type==='pr_label').map(x=>x.object_id).sort())
+      .toEqual(['71:rtc-run','72:rtc-run','73:rtc-run']);
+    const prs=w.gh.calls.filter(x=>x.route==='POST /repos/{owner}/{repo}/pulls');
+    expect(prs.map(x=>({head:x.body.head,base:x.body.base,draft:x.body.draft}))).toEqual([
+      {head:`rtc/${ID}/stack-1`,base:'main',draft:true},
+      {head:`rtc/${ID}/stack-2`,base:`rtc/${ID}/stack-1`,draft:true},
+      {head:`rtc/${ID}/stack-3`,base:`rtc/${ID}/stack-2`,draft:true}
+    ]);
+    expect(w.gh.invalid).toEqual([]);
+    expect(w.gh.calls.some(x=>/\/merge$|\/dispatches$/.test(x.path))).toBe(false);
   });
 });

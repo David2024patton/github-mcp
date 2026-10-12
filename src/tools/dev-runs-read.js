@@ -20,7 +20,7 @@ function scope(args,ctx) {
 }
 const readScenarios=defineRead({
   name:'github_dev_list_scenarios',area:'dev',audience:['B'],
-  description:'Show the seven scenario plans and prerequisites; no scenario can run until a real seed tool is built.',
+  description:'Show seven scenarios, five implemented scratch-only seeds, and prerequisites without creating objects.',
   properties:{owner:OWNER,repo:REPO,runId:RUN,name:{type:'string',enum:listScenarioBlueprints().map(x=>x.name)}},
   handler:async(args,ctx)=>{
     const items=listScenarioBlueprints().map(x=>({...x,implemented:SEEDABLE.includes(x.name),execution_available:false,status:SEEDABLE.includes(x.name)?'scratch_gate_required':'plan_only'}));

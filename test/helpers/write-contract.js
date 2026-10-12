@@ -20,8 +20,12 @@ export const NOW = Date.UTC(2026, 9, 10, 18, 0, 0);
 const ENV = { TOKEN_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64url') };
 
 /** A fresh world: fake database and GitHub, a fine-grained credential for example-org, and a connection of the given kind. */
-export async function makeWorld({ mode = 'preview', profile = 'everyday', accounts = ['example-org'], gates = [], scratchAccount = false } = {}) {
-  const db = createFakeDb({ clock: () => NOW });
+export async function makeWorld({ mode = 'preview', profile = 'everyday', accounts = ['example-org'], gates = [], scratchAccount = false, advanceClockOnSleep = false } = {}) {
+  // Long multi-step fixtures must let reserved write slots expire in virtual time.
+  // Production spacing remains real; this only advances the fake clock after a simulated sleep.
+  let offsetMs = 0;
+  const clock = () => NOW + offsetMs;
+  const db = createFakeDb({ clock });
   await db.initSchema();
   const gh = makeFakeGitHub();
   // Most write-contract fixtures classify notification recipients and read org
@@ -41,7 +45,9 @@ export async function makeWorld({ mode = 'preview', profile = 'everyday', accoun
   // Mock-only App transport: obtain an existing fixture user token instead of minting a real App installation token.
   const fixtureCredentials = scratchAccount ? { ...credentials, token: ({ account }) => credentials.token({ account, cred: 'U' }) } : credentials;
   const connection = Object.freeze({ client_id: 'client-1', default_account: accounts[0], accounts: Object.freeze([...accounts]), mode, profile, listing: 'catalog' });
-  const ctx = { connection, db, credentials: fixtureCredentials, fetch: gh.fetch, now: () => NOW, sleep: async () => {}, retryAfterBaseValue: 1, gates };
+  const ctx = { connection, db, credentials: fixtureCredentials, fetch: gh.fetch,
+    now: clock, sleep: async (ms) => { if (advanceClockOnSleep) offsetMs += ms; },
+    retryAfterBaseValue: 1, gates };
   return { db, gh, credentials: fixtureCredentials, connection, ctx };
 }
 
@@ -80,11 +86,11 @@ export function doorsFor(definition) {
  * @param {(opts) => Function[]} [o.gatesFor] `({ protectedLevel, spendLimitCents })` -> gates; defaults to the fixture gates
  */
 export function runWriteContract({ label, definition, args, arrange, needsConfirm, production = false, notifies = [], accessWidening = false, spendCents = 0, quietArgs = null,
-  conveyor = false, profile = 'everyday', scratchAccount = false, previewOnly = false, expectedWrites = 1, gatesFor = ({ protectedLevel, spendLimitCents }) => [...(protectedLevel ? [protectionGate(protectedLevel)] : []), spendGate({ limitCents: spendLimitCents ?? 0 })] }) {
+  conveyor = false, profile = 'everyday', scratchAccount = false, previewOnly = false, expectedWrites = 1, advanceClockOnSleep = false, gatesFor = ({ protectedLevel, spendLimitCents }) => [...(protectedLevel ? [protectionGate(protectedLevel)] : []), spendGate({ limitCents: spendLimitCents ?? 0 })] }) {
   for (const door of doorsFor(definition)) {
     describe(`write contract: ${label} through ${door.name}`, () => {
       const world = async (options = {}, replies = 'ok') => {
-        const w = await makeWorld({ profile, scratchAccount, ...options, ...(options.gates === undefined ? { gates: gatesFor({ spendLimitCents: options.spendLimitCents ?? 100000 }) } : {}) });
+        const w = await makeWorld({ profile, scratchAccount, advanceClockOnSleep, ...options, ...(options.gates === undefined ? { gates: gatesFor({ spendLimitCents: options.spendLimitCents ?? 100000 }) } : {}) });
         arrange(w.gh, replies);
         return w;
       };
