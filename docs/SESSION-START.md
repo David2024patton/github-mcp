@@ -40,6 +40,45 @@ GitHub only as git commits pushed to an `ai/*` branch. Never copy source files t
    `REMAINING-WORK.md` heading to record the exact edit/request/test map. While coding, reuse that packet;
    do not re-read the full map or rediscover unchanged helpers each slice.
 
+## 1a. Select the outcome; recheck blocked work; preserve acceptance (mandatory)
+
+After §0 and the bounded §1 orientation, read STATUS's **Active milestone** and
+**Deferred / conditional work** queue alongside OWNER-INPUTS and the work index.
+State one highest-priority eligible capability and its outstanding acceptance
+criteria, then group coherent implementation PRs around that outcome. Never
+manufacture extra hardening or split trivial work simply to hit five PRs.
+
+For every criterion, distinguish: **implemented code; meaningful automated tests;
+deployed HTTPS/runtime; custom-MCP OAuth-connected behavior; real Hub direct,
+relay and Sandbox routes; credential revocation; run-owned cleanup and remote
+readback**. Reference-server probes, fake providers, green CI, setup configuration,
+READY status or standard GitHub connector calls are not custom-service proof.
+Keep a milestone IN_PROGRESS until its real acceptance gates are independently met.
+
+Every blocked/deferred STATUS entry needs its **exact blocker; evidence or owner
+decision required; dependencies; condition that makes it eligible again; next
+action and observed state**. Recheck those fields at session start and after
+owner responses, relevant merges, reviews or environment changes. If already
+answered, update the code/roadmap and requeue the newly eligible work **now**;
+do not re-ask or let it disappear from the roadmap. Continue approved independent
+work when external acceptance is blocked.
+
+Five substantial safely merged PRs is the ordinary session planning boundary,
+not its goal. Preserve existing tests, reviews, dependency order, owner/destructive
+approvals, scoped credentials, production OFF, $0 spend, cost limits, disabled
+previews and the **scheduled checked** main→live promotion. Stop with precise
+evidence if fewer safe substantial PRs remain; never pad.
+
+**Handoff:** reconcile exact main and post-merge checks; update STATUS, cards,
+work index and a permanent comment on the latest merged PR. State the useful
+capability advanced, actual scenario-level acceptance and remaining blockers.
+Give Chris a **compact standalone continuation prompt** directing the next
+agent to verify live main/concurrent PRs/CI/reviews; read the repository's
+authoritative workflow, latest handoff, milestone and deferred queue; recheck
+owner answers and unblock triggers; work up to five coherent reviewed/green
+PRs toward the outcome; update permanent handoff; and generate the next
+prompt under this same rule. Do not duplicate this section in that prompt.
+
 ## 2. Never do these without Chris (AGENTS "Hard limits")
 
 A real GitHub credential in tests or scripts (beyond X-2's read-only smoke test and the scratch organization);
@@ -136,5 +175,11 @@ commit and push them with the work, and say in one plain-English paragraph what 
 
 ## Restart message for Chris to paste when a session stops
 
-> Continue the GitHub MCP work. Read `docs/SESSION-START.md` and do §0 first: finish any open PR of yours (fix red
-> CI, then merge) before starting the next card. Then keep going card after card; stop only for a real blocker (§6).
+> Resume GitHub MCP from actual main and concurrent PRs, CI and unresolved reviews.
+> Read AGENTS, SESSION-START, STATUS milestone/deferred queue, the permanent
+> latest PR handoff, and the current V-1/V-2 cards. Recheck owner decisions
+> and blocker re-entry conditions; don't repeat answered questions. Advance
+> the highest-priority eligible capability in up to five coherent safely
+> merged PRs, preserving all gates. Separate code/tests from real custom
+> OAuth, cleanup and Hub acceptance. Update the permanent handoff and
+> generate the next similarly compact prompt under SESSION-START §1a.

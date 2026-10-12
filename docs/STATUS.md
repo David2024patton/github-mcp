@@ -6,9 +6,46 @@ required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creat
 
 ## Next
 
-- **Current #125 — safely idempotent scratch create replay (as-if-merged; CI pending):** The existing create API can replay a fully recorded same-run scratch repository only after independent original SHA and live default-branch verification, with post-readback evidence; uncertain, foreign, public, changed and cleaning runs refuse without a second POST. Tests cover duplicate and concurrent requests. #124 remains pending exact-head CI recovery and safe merge; #125 depends on its origin helper.
+- **Active capability: V-1/V-2 usable scratch scenarios with reliable cleanup.**
+  Six scratch-only scenarios have code and fake-provider/CI tests. Required real
+  acceptance remains: run one explicitly authorized fixture *through the custom
+  MCP OAuth connection*, verify immutable journal and remote GitHub readback,
+  then perform **separately authorized** cleanup with independent absence proof.
+  Exact resource inventories, default labels, uncertain writes, permissions and
+  changed commits must refuse destruction. RTC 1 and Toolkit Hub D-4 remain
+  separate external acceptance; no simulated tests count as connected proof.
+- **Current #125 (as-if-merged; exact-head CI pending):** Verified duplicate
+  scratch-repository creation resumes the same active journaled run without a
+  second POST only after exact initial SHA and current default-branch readback.
+  Reject uncertain/foreign/changed/cleaning runs; test duplicate/concurrent
+  requests. This implementation PR also permanently upgrades the development
+  and continuation workflow in AGENTS, SESSION-START and DRIFT-PROTOCOL.
+- **Verified predecessor:** PR #124 merged on main
+  `a8fb4b07e32cabd8332f161d4ad488addf536797` after successful exact-head
+  CI, including independent database tests on Docker Official PostgreSQL 17.
+  Verify #124's post-merge main CI before asserting final-main success.
+- **Next eligible implementation:** After #125's exact-head CI/review/main CI,
+  select V-1/V-2 work by the verified acceptance blockers and next action below.
+  Do not start V-3 just because a five-PR boundary was reached.
 
-- **Current #124 — verify scratch seed resume origin (as-if-merged; CI pending):** When an existing private scratch repository is encountered, require the exact journalled seed-repo initial SHA and optional recorded workflow SHA to match a fresh GitHub default-branch read before allowing another seed mutation. Incomplete/uncertain steps and changed remote history refuse; no write or new authority. #123 safely merged at 70a7dd0372e765cec2c72814aaab426acf90d910; all final main CI checks passed.
+### Deferred / conditional work — maintained acceptance and re-entry queue
+
+| Current state | Exact blocker / dependency | Evidence and automatic re-entry trigger | Next eligible action |
+| --- | --- | --- | --- |
+| **IN-06 scratch setup VERIFIED; genuine V-1/V-2 connected acceptance UNVERIFIED.** `robinson-ai-scratch` App installed/all repos, owner-designated scratch, production OFF and spend $0. | No confirmed custom MCP OAuth-connected test session/secure TEST credentials accessible in this coding-agent context. Real destructive cleanup additionally requires explicit scope/approval. Depends on V-1 seed/V-2 deletion safety. The owner already completed the App/scratch designation and ended testing for the day. | Automatically requeue when the custom-service connection can authenticate and the permitted nonproduction scratch scope is demonstrable. Do **not** re-request IN-06 setup; obtain separate authorization only if the proposed destructive cleanup exceeds existing confirmed scope. | Check service identity/commit; seed one genuine scenario via custom MCP, read journal and independently enumerate GitHub objects; perform only specifically permitted cleanup, verify absence, record remaining IDs and route. |
+| **GitHub default labels block whole-repository deletion** (correct fail-closed behavior). | Default labels not recorded with immutable first-create ownership/provenance; #118+ requires a one-to-one complete inventory. Depends on V-1 initial-snapshot design and V-2 bounded verification. | Requeue when independently captured initial baseline records exactly which labels GitHub created before any other mutation and corresponding authorization is sound. Names, default colors, marker tags and guesses never qualify. | Design, implement and adversarially test baseline proof and independent comparison; refuse whole-repo deletion until proven. |
+| **RTC 1 / Hub D-4 deployed connected acceptance UNVERIFIED.** Reference/fake conformance exists; RTC currently advertises rtc:0. | Consumer TEST identity contract and actual isolated service mode/endpoint, protected credentials, direct/relay/Sandbox and revocation readback not proven. Depends on agreed Hub consumer contract and nonprod protected ingress. | Requeue eligible integration when actual deployed service commit, scoped TEST identity, credentials and Hub access are available; never fix preview/test mismatch by relabeling or relaxing authorization. | Prove deployed HTTPS subset, custom OAuth, Hub direct and restricted relay, Sandbox and revoked-token denial separately; keep certification open otherwise. |
+| **V-3/V-4 successor capabilities and webhook-target plan-only.** | Work-index V-2 dependency is not accepted; dispatch/webhook execution not yet approved to skip the prerequisite. | Requeue after V-1/V-2 completion or a specifically approved documented dependency exception. | Implement the next truly eligible V-card slice; don't skip or silently turn plans into runs. |
+| **Hosting and owner-backup runtime checks outstanding.** Settings saved, not deployment/runtime acceptance. | First scheduled checked main→live promotion and live runtime source/behavior unverified; IN-03 owner passphrase backup incomplete. Depends on scheduled workflow and protected owner credentials. | Requeue when scheduled run and actual live build/commit evidence exist, or when owner securely confirms backup through existing owner process. | Observe scheduled promotion without manual deploy/preview or Neon keepalive; retain production OFF, Basic queued builds, 0.25 CU / five-minute autosuspend and $0 autonomous spend. |
+
+**Deferred-work rule:** At every session start, and after new owner input, dependency merges,
+environment changes or external test evidence, check each row against
+`docs/OWNER-INPUTS.md` and live repo state. When a re-entry condition becomes true,
+put its next action immediately back into the eligible work order and update
+STATUS/index within the next substantive PR. Distinguish implemented, automated
+tests, deployed runtime, connected custom OAuth, Hub routes/revocation and cleanup
+at each handoff; never erase a blocker by deferring it indefinitely.
+
 
 - **#123 — truthful finite scenario progress/preview (MERGED; final-main CI verified):** Read-only progress rejects correctly counted but wrong type distributions; cleanup preview refuses run scenarios whose records violate finite bounds. No writes, external verification still false. #122 merged at ccaeac5cdf48d5889b2031b6ba0cf8a04adf140e; main CI database-job infrastructure rerun pending.
 

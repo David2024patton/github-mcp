@@ -48,6 +48,27 @@ sections below when a step names them.
     No check may be inferred green from its earlier successful siblings. If the chat must stop, leave
     the exact PR, head SHA, failing job, route/field, fix and next command in the card and STATUS.
 
+## Outcome-first development and continuation (owner direction, 2026-10-12)
+
+Plan each session around the highest-priority **eligible user/developer capability and
+its actual acceptance**, not five PRs for their own sake. Five substantive PRs are
+the normal batch **boundary**, never an achievement or excuse for filler, scope creep,
+unsafe merges or weakened tests. Follow SESSION-START §1a, which reconciles the
+STATUS milestone/deferred queue, OWNER-INPUTS and actual main/reviews. Fix demonstrated
+security, correctness and CI defects first. Capture code, meaningful automated
+verification, deployed HTTPS, connected custom OAuth, Hub routes, revocation and
+cleanup separately. Never close an acceptance gate using simulated tests or the
+standard GitHub connector as substitute for the hosted custom MCP.
+
+Every deferred dependency, owner input or external gate must have an explicit blocker,
+required evidence, dependencies, re-entry trigger and next action in STATUS. Recheck
+after a relevant owner answer, dependency merge or environment change; **automatically
+return re-eligible work to the queue**, not ask for already-provided owner input.
+Include workflow/status updates in substantive implementation PRs, not special docs PRs.
+At handoff, permanently record evidence on the last PR and give a compact continuation
+prompt referring to repository rules and this same procedure. If fewer than five
+safe substantive PRs can advance the capability, explain exactly why and stop.
+
 ## What this is
 
 **Robinson GitHub MCP** is a hosted MCP server (Vercel + Neon) that lets Chris's AI agents operate his GitHub accounts

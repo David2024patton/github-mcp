@@ -52,17 +52,18 @@ unless the PR description says "Docs-update: not needed — <reason>".
    APP-NEEDS-APPLIANCE-DESK (a row now covered).
 4. Queue: STATUS says this merged and names the next card; `work-index.json` status updated; delete the resume note.
 
-## C. End of every batch (one small docs PR)
+## C. End of every batch (within the last substantive or next eligible implementation PR, not a forced docs-only PR)
 
-1. Every PLAN acceptance item for the batch checked with evidence; anything unproved stays open with an owner card.
-2. Living docs match the code (ARCHITECTURE tables and env vars, TOOL-CATALOG Card column, OWNER-GUIDE rows).
-3. Retire what no longer instructs anyone (`git mv` to `docs/archive/<folder>/`, RETIRED banner at the top, update
+1. Verify the concrete capability milestone and independently document code, automated tests, deployed custom-service behavior, OAuth, Hub routes, revocation and cleanup; unproved acceptance remains open.
+2. Reconcile STATUS and OWNER-INPUTS for every deferred item: blocker, needed evidence, dependencies, re-entry condition, next action and date checked; return resolved gates to the eligible queue.
+3. Living docs match the code (ARCHITECTURE tables and env vars, TOOL-CATALOG Card column, OWNER-GUIDE rows).
+4. Retire what no longer instructs anyone (`git mv` to `docs/archive/<folder>/`, RETIRED banner at the top, update
    references, one row in `docs/archive/README.md`, one DECISIONS entry).
-4. Run the next batch design's "0. Verify before starting" table against today's code and GitHub (API versions page,
+5. Run the next batch design's "0. Verify before starting" table against today's code and GitHub (API versions page,
    GitHub changelog since the last batch, the vendored description's commit); amend or record "no drift" in STATUS;
    write the next batch's first card.
-5. Retire consumed entries in `docs/designs/CHANGES-SINCE-DESIGN.md`.
-6. MASTER-ROADMAP, `work-index.json`, STATUS, one DECISIONS entry; tell Chris in plain English.
+6. Retire consumed entries in `docs/designs/CHANGES-SINCE-DESIGN.md`.
+7. MASTER-ROADMAP, `work-index.json`, STATUS, one DECISIONS entry; tell Chris in plain English.
 
 ## Planning while a card is being built
 
