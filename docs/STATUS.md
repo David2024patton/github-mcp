@@ -6,6 +6,8 @@ one `ci` merge gate, `src/db.js` creating the 13 foundation tables plus the owne
 
 ## Next
 
+- **#110 — atomic RTC pass-area scope and result retrieval (pending CI):** A same-statement transaction binds each owner-issued pass to persisted immutable read-only server/meta areas with allow_writes false, production_access false, money limit 0 and database CHECK constraints. Every HTTPS request independently refuses missing/altered scope. Dispatcher-owned large result handles are normalized to the RTC top-level handle, with result retention remaining connection-scoped. Expanded Postgres and HTTP regressions. Manifest still rtc:0; full RTC1 and real D-4 acceptance not yet proven.
+
 - **#109 — pinned Hub RTC conformance CI (pending CI):** Vendored reviewed Hub RTC runner/fake with locked source SHA. The existing shapes job executes Hub named wire-level probes against reference and this server's local pass-only HTTP adapter. Intentional rtc:0 manifest fails as not certified; tests verify honest skip/failure, expired/revoked/missing bearer refusals, and that CI does not misreport passing RTC 1. Live D-4 remains unverified.
 
 - **#108 — RTC HTTPS read-only gateway (pending CI):** Public adoption manifest and OpenAPI path; pass-only whoami, tool search/describe/call/batch and result routes. Each read checks live scratch designation, revocation, expiry, profile and shared DB rate. Only server/meta read-only tools are permitted. Manifest deliberately returns rtc:0 until RTC 1 conformance and D-4 acceptance are actually proven; no production, spending or provider mutation.

@@ -615,3 +615,5 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | **Total** | **308** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
+
+<!-- #110: RTC pass-issued server/meta reads have persistent immutable no-writes / $0 scopes; large result handle is top-level for Hub SDK. Full RTC 1 remains incomplete. -->
