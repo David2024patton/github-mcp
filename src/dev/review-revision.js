@@ -22,6 +22,11 @@ export async function reviseOwnedReviewFixture(ctx,{github,run,branch,stepId,
     !rows.some(x=>x.object_type==='fixture_file'&&x.object_id===path&&
       x.created_sha===expectedCommitSha&&x.repo===run.repo))
     throw new TypeError('Review revision requires a recorded branch and original file commit.');
+  // Block an uncertain previous attempt before even inspecting potentially moved refs.
+  const intent=await ctx.db.getDevIntent({runId:run.runId,account:run.account,
+    connection:run.connection,stepId});
+  if(intent&&intent.status!=='recorded')
+    throw new TypeError('This step is already claimed or uncertain. Inspect the run before replay.');
   const p={owner:run.owner,repo:run.repo};
   const [head,current]=await Promise.all([
     github.request('GET /repos/{owner}/{repo}/git/ref/{ref}',{...p,ref:`heads/${branch}`}).then(x=>x.data),
