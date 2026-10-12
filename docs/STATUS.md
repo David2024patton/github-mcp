@@ -25,6 +25,9 @@ repositories.
 
 ## Recent changes (newest first)
 
+**2026-10-12 — V-1 first real scenario seeds (PR #70):** `github_dev_seed` now builds `repo-basic` and `failing-ci` on the real GitHub API, each as three explicitly tracked objects: private run-marked scratch repo; run-specific workflow file committed via Contents API; run label or `rtc/<runId>/failure-ref` branch. Every step uses one-winner claims and exact object recording. Workflows have `workflow_dispatch` only: no Actions run or cost is triggered automatically, so live green/fail acceptance awaits separately approved dispatch (V-3). Reads verify private repo and workflow contents; fake transport exercises real request shapes, nine contract checks across all three doors, retries, scope and partial failure. Five other V-1 blueprints remain plan-only and IN-06 still gates real-account usage. Continue V-1 next session; do not claim end-to-end live CI validation.
+
+
 **2026-10-12 — V-1 guarded scratch create (PR #69):** `github_dev_create_scratch_repo` sends a private GitHub repository create through the normal write/preview/permission pipeline, only after server-side IN-06 verification of a dedicated scratch Organization, an active all-repos GitHub App, and preview mode. `runDevMutationOnce` reserves a deterministic step and journals the exact returned repository `full_name` before any further mutation; uncertain outcomes cannot be replayed. Tests exercise all three tool doors, fail-closed non-scratch/production cases, and object recording. No live scratch org was created or touched. Next: apply real named scenario seeds using this shared runner.
 
 
