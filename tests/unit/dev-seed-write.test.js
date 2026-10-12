@@ -87,3 +87,37 @@ describe('V-1 real multi-step GitHub scenario safeguards',()=>{
     expect(w.gh.calls.filter(x=>x.route==='POST /orgs/{org}/repos')).toHaveLength(1);
   });
 });
+
+const releaseArrange=(gh,outcome)=>{
+  const repo=repository({description:`Developer fixture for ${MARK} (release-train)`});
+  gh.when('GET /repos/{owner}/{repo}').replySequence([
+    {status:404,body:{message:'Not Found'}},
+    {status:200,body:{...repo,...(outcome==='mismatch'?{private:false}:{})}},
+    {status:200,body:repo}
+  ]);
+  gh.when('POST /orgs/{org}/repos').reply(201,repo);
+  gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').reply(200,
+    request=>({ref:`refs/${request.params.ref}`,object:{sha:COMMIT}}));
+  gh.when('POST /repos/{owner}/{repo}/git/refs').reply(201,
+    request=>({ref:request.body.ref,object:{sha:request.body.sha}}));
+  gh.when('POST /repos/{owner}/{repo}/releases').reply(201,
+    {id:128,tag_name:'v0.3.0',draft:true,body:`Draft-only release fixture ${MARK}`});
+  gh.when('GET /repos/{owner}/{repo}/releases/{release_id}').reply(200,
+    {id:128,tag_name:'v0.3.0',draft:true,body:`Draft-only release fixture ${MARK}`});
+};
+runWriteContract({label:'github_dev_seed(release-train)',definition:def,
+  args:{repo:REPO,runId:ID,scenario:'release-train'},arrange:releaseArrange,
+  scratchAccount:true,previewOnly:true,needsConfirm:false,expectedWrites:5});
+describe('release-train durable draft fixture',()=>{
+  it('records three exact tags and the draft release, never publishes',async()=>{
+    const w=await makeWorld({scratchAccount:true});releaseArrange(w.gh,'ok');
+    const out=parse(await def.handler({repo:REPO,runId:ID,scenario:'release-train',confirm:true},w.ctx));
+    expect(out).toMatchObject({status:'applied',done:true,confirmed:true});
+    const rows=await w.db.listDevObjects({runId:ID,account:OWNER,connection:'client-1'});
+    expect(rows.map(x=>x.object_type).sort()).toEqual(['release','repo','tag','tag','tag']);
+    expect(rows.filter(x=>x.object_type==='tag').map(x=>x.object_id).sort())
+      .toEqual(['v0.1.0','v0.2.0','v0.3.0']);
+    expect(rows.find(x=>x.object_type==='release').object_id).toBe('128');
+    expect(w.gh.calls.filter(x=>x.route==='POST /repos/{owner}/{repo}/releases')[0].body.draft).toBe(true);
+  });
+});
