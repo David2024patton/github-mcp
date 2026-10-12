@@ -35,14 +35,35 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     throw refusal('Scratch inventory is incomplete; repository deletion refused.');
   const owns=(type,id)=>objects.some(x=>x.object_type===type&&
     x.object_id===String(id)&&x.owner.toLowerCase()===owner.toLowerCase()&&x.repo===repo);
-  const commits=new Set(objects.filter(x=>['branch','fixture_file','fixture_revision','workflow_file'].includes(x.object_type))
-    .map(x=>x.created_sha).filter(Boolean));
+  // A SHA belonging to another fixture or branch is not evidence for this branch.
+  // A run may advance its own branch with one exact fixture file, and the review
+  // scenario may subsequently record one explicit revision of that same file.
+  const branchTip=new Map();
+  for(const b of branches.items.filter(x=>x?.name!==defaultBranch)) {
+    const saved=objects.filter(x=>x.object_type==='branch'&&x.owner.toLowerCase()===owner.toLowerCase()&&
+      x.repo===repo&&x.object_id===b.name);
+    if(saved.length!==1)throw refusal('A scratch branch has no unique run-owned journal identity.');
+    const suffix=b.name.startsWith(`rtc/${run.id}/`)?b.name.slice(`rtc/${run.id}/`.length):'';
+    const path=`rtc/${run.id}/${suffix}.md`;
+    const files=objects.filter(x=>x.object_type==='fixture_file'&&x.object_id===path&&x.repo===repo);
+    const revisions=objects.filter(x=>x.object_type==='fixture_revision'&&x.repo===repo&&
+      x.object_id.startsWith(`${path}@`));
+    if(files.length>1||revisions.length>1||(revisions.length>0&&files.length!==1))
+      throw refusal('A scratch branch has ambiguous fixture-commit evidence.');
+    const revised=revisions[0];
+    if(revised&&revised.object_id!==`${path}@${revised.created_sha}`)
+      throw refusal('A recorded fixture revision does not bind to its exact commit.');
+    const tip=revised?.created_sha??files[0]?.created_sha??saved[0].created_sha;
+    if(!/^[a-f0-9]{40}$/.test(tip??''))
+      throw refusal('A scratch branch has no valid recorded tip commit.');
+    branchTip.set(b.name,tip);
+  }
   if(!branches.items.some(x=>x.name===defaultBranch))
     throw refusal('The scratch default branch could not be independently listed.');
   for(const b of branches.items) {
     if(b?.name===defaultBranch)continue;
     if(typeof b?.name!=='string'||!b.name.startsWith(`rtc/${run.id}/`)||
-      !owns('branch',b.name)||!commits.has(b.commit?.sha))
+      !owns('branch',b.name)||b.commit?.sha!==branchTip.get(b.name))
       throw refusal('An unrecorded or changed branch exists in the scratch repository. Deletion refused.');
   }
   const numbers=new Set();

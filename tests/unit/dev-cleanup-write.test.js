@@ -91,6 +91,39 @@ describe('V-2 protected run deletion',()=>{
     expect(out.done).toBe(false);
     expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(false);
   });
+  it('refuses another owned branch commit substituted as the current tip',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    const one=`rtc/${RUN}/first`,two=`rtc/${RUN}/second`;
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'branch',owner:OWNER,repo:REPO,objectId:one,createdSha:'a'.repeat(40)});
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'branch',owner:OWNER,repo:REPO,objectId:two,createdSha:'b'.repeat(40)});
+    w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
+      {name:'main',commit:{sha:'a'.repeat(40)}},
+      {name:one,commit:{sha:'b'.repeat(40)}},
+      {name:two,commit:{sha:'b'.repeat(40)}}
+    ]);
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(false);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('refuses another fixture-file commit when the branch has its own recorded fixture',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepare(w);arrange(w.gh,'ok');
+    const branch=`rtc/${RUN}/first`,path=`rtc/${RUN}/first.md`;
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'branch',owner:OWNER,repo:REPO,objectId:branch,createdSha:'a'.repeat(40)});
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'fixture_file',owner:OWNER,repo:REPO,objectId:path,createdSha:'b'.repeat(40)});
+    await w.db.recordDevObject({runId:RUN,account:OWNER,connection:'client-1',
+      type:'fixture_file',owner:OWNER,repo:REPO,objectId:`rtc/${RUN}/other.md`,createdSha:'c'.repeat(40)});
+    w.gh.when('GET /repos/{owner}/{repo}/branches').reply(200,[
+      {name:'main',commit:{sha:'a'.repeat(40)}},{name:branch,commit:{sha:'c'.repeat(40)}}
+    ]);
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.some(c=>c.route==='DELETE /repos/{owner}/{repo}')).toBe(false);
+  });
   it('never allows a production connection to perform developer cleanup',async()=>{
     const w=await makeWorld({scratchAccount:true,mode:'production'});await prepare(w);arrange(w.gh,'ok');
     const result=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
