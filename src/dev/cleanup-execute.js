@@ -26,18 +26,31 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     !Array.isArray(objects)||!run?.id)
     throw refusal('Scratch repository default branch and exact run journal are required.');
   const common={owner,repo,per_page:100};
-  const [branches,pulls,issues,tags,releases,rulesets,hooks]=await Promise.all([
+  const [branches,pulls,issues,tags,releases,rulesets,hooks,milestones,deployments,environments]=await Promise.all([
     listAll(github,'GET /repos/{owner}/{repo}/branches',common,{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/pulls',{...common,state:'all'},{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/issues',{...common,state:'all'},{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/tags',common,{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/releases',common,{max:100}),
     listAll(github,'GET /repos/{owner}/{repo}/rulesets',{...common,includes_parents:false},{max:100}),
-    listAll(github,'GET /repos/{owner}/{repo}/hooks',common,{max:100})
+    listAll(github,'GET /repos/{owner}/{repo}/hooks',common,{max:100}),
+    // These are not V-1 scenario resources. A foreign milestone or deployment
+    // would be erased with its parent repository; never silently consume it.
+    listAll(github,'GET /repos/{owner}/{repo}/milestones',{...common,state:'all'},{max:100}),
+    listAll(github,'GET /repos/{owner}/{repo}/deployments',common,{max:100}),
+    github.request('GET /repos/{owner}/{repo}/environments',common)
   ]);
-  const inventories=[branches,pulls,issues,tags,releases,rulesets,hooks];
+  const inventories=[branches,pulls,issues,tags,releases,rulesets,hooks,milestones,deployments];
   if(inventories.some(x=>x.capped||!Array.isArray(x.items)))
     throw refusal('Scratch inventory is incomplete; repository deletion refused.');
+  if(milestones.items.length||deployments.items.length)
+    throw refusal('Scratch repository has foreign milestones or deployments; deletion refused.');
+  // Environment records can own secrets, deployment rules and reviewers. V-1
+  // never creates an environment, so the only admissible exact inventory is
+  // an independently returned empty array and authoritative total_count=0.
+  const env=environments?.data;
+  if(env?.total_count!==0||!Array.isArray(env?.environments)||env.environments.length!==0)
+    throw refusal('Scratch repository has foreign or unverified deployment environments; deletion refused.');
   const owns=(type,id)=>objects.some(x=>x.object_type===type&&
     x.object_id===String(id)&&x.owner.toLowerCase()===owner.toLowerCase()&&x.repo===repo);
   // A SHA belonging to another fixture or branch is not evidence for this branch.
@@ -197,7 +210,8 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
       throw refusal('An exact recorded scratch PR-label association disappeared; deletion refused.');
   }
   return {branch_count:branches.items.length,pr_count:pulls.items.length,issue_count:issues.items.length,tag_count:tags.items.length,release_count:releases.items.length,
-    ruleset_count:rulesets.items.length,webhook_count:0,verified_pulls:verifiedPulls};
+    ruleset_count:rulesets.items.length,webhook_count:0,milestone_count:0,
+    deployment_count:0,environment_count:0,verified_pulls:verifiedPulls};
 }
 
 export async function readCleanupRun(ctx,owner,repo,runId) {
