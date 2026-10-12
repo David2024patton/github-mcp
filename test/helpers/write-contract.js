@@ -80,7 +80,7 @@ export function doorsFor(definition) {
  * @param {(opts) => Function[]} [o.gatesFor] `({ protectedLevel, spendLimitCents })` -> gates; defaults to the fixture gates
  */
 export function runWriteContract({ label, definition, args, arrange, needsConfirm, production = false, notifies = [], accessWidening = false, spendCents = 0, quietArgs = null,
-  conveyor = false, profile = 'everyday', scratchAccount = false, previewOnly = false, gatesFor = ({ protectedLevel, spendLimitCents }) => [...(protectedLevel ? [protectionGate(protectedLevel)] : []), spendGate({ limitCents: spendLimitCents ?? 0 })] }) {
+  conveyor = false, profile = 'everyday', scratchAccount = false, previewOnly = false, expectedWrites = 1, gatesFor = ({ protectedLevel, spendLimitCents }) => [...(protectedLevel ? [protectionGate(protectedLevel)] : []), spendGate({ limitCents: spendLimitCents ?? 0 })] }) {
   for (const door of doorsFor(definition)) {
     describe(`write contract: ${label} through ${door.name}`, () => {
       const world = async (options = {}, replies = 'ok') => {
@@ -113,7 +113,7 @@ export function runWriteContract({ label, definition, args, arrange, needsConfir
         const w = await world({ mode });
         const out = parse(await door.call(w, { ...args, confirm: true }));
         expect(out).toMatchObject({ done: true, status: 'applied', confirmed: true, requestKey: expect.stringMatching(/^rmcp_/) });
-        expect(writes(w.gh)).toHaveLength(1);
+        expect(writes(w.gh)).toHaveLength(expectedWrites);
         expect(w.gh.invalid).toEqual([]);
         const claim = await w.db.claimChange({ tool: definition.tool.name, summary: 'x', requestKey: out.requestKey });
         expect(claim).toMatchObject({ claimed: false, existing: { confirmed: true } });
@@ -124,7 +124,7 @@ export function runWriteContract({ label, definition, args, arrange, needsConfir
         const first = parse(await door.call(w, { ...args, confirm: true }));
         const second = parse(await door.call(w, { ...args, confirm: true }));
         expect(second).toMatchObject({ status: 'replayed', replayed: true, requestKey: first.requestKey });
-        expect(writes(w.gh)).toHaveLength(1);
+        expect(writes(w.gh)).toHaveLength(expectedWrites);
       });
 
       it('5. a read-back that disagrees is reported as unconfirmed with a warning', async () => {
