@@ -6,8 +6,9 @@ import { runDevMutationOnce } from '../dev/execute.js';
 import { createOwnedFixtureBranch, commitOwnedFixtureFile } from '../dev/fixtures.js';
 import { planScenario } from '../dev/scenarios.js';
 import { seedStack, readStack, verifyStack } from '../dev/stack.js';
+import { seedReviewScenario, readReviewScenario, verifyReviewScenario } from '../dev/review-scenario.js';
 
-export const SEEDABLE=Object.freeze(['repo-basic','failing-ci','release-train','protected-main','stack-of-three']);
+export const SEEDABLE=Object.freeze(['repo-basic','failing-ci','release-train','protected-main','stack-of-three','pr-with-threads']);
 const RELEASE_TAGS=Object.freeze(['v0.1.0','v0.2.0','v0.3.0']);
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
 const OWNER={type:'string',maxLength:39};
@@ -31,7 +32,7 @@ const same=(a,b)=>String(a??'').toLowerCase()===String(b??'').toLowerCase();
 
 export const seed=defineGithubWrite({
   name:'github_dev_seed',area:'dev',audience:['B'],
-  description:'Create journaled scratch CI, draft-release, branch-rules and three-stacked-draft-PR scenarios.',
+  description:'Seed journaled private scratch CI, releases, protections, stacked PRs and actual review threads.',
   properties:{owner:OWNER,repo:REPO,runId:RUN,scenario:{type:'string',enum:[...SEEDABLE]}},
   required:['repo','runId','scenario'],declarations:{production:'never'},
   target:(args,ctx)=>{
@@ -68,6 +69,10 @@ export const seed=defineGithubWrite({
           throw refusal('GitHub did not create the expected private scratch repository.');
         return {objectId:result.full_name};
       }});
+    if(args.scenario==='pr-with-threads'){
+      const objects=await seedReviewScenario(ctx,{github,run});
+      return {data:{run_id:args.runId,scenario:args.scenario,objects:[repo,...objects]}};
+    }
     if(args.scenario==='stack-of-three'){
       const objects=await seedStack(ctx,{github,run});
       return {data:{run_id:args.runId,scenario:args.scenario,objects:[repo,...objects]}};
@@ -154,6 +159,8 @@ export const seed=defineGithubWrite({
   readAfter:async({args,ctx,target,response})=>{
     const github=await octo(ctx,target.owner);
     const base={owner:target.owner,repo:args.repo};
+    if(args.scenario==='pr-with-threads')return readReviewScenario({github,id:args.runId,
+      owner:target.owner,repo:args.repo,response});
     if(args.scenario==='stack-of-three')return readStack({github,id:args.runId,
       owner:target.owner,repo:args.repo,response});
     if(args.scenario==='protected-main'){
@@ -190,7 +197,9 @@ export const seed=defineGithubWrite({
     if(!after?.repository||after.repository.private!==true||
       !same(after.repository.full_name,`${target.owner}/${args.repo}`)||
       !String(after.repository.description??'').includes(marker(args.runId)))return false;
-    if(args.scenario==='stack-of-three'){
+    if(args.scenario==='pr-with-threads'){
+      if(!verifyReviewScenario({id:args.runId,after,response}))return false;
+    }else if(args.scenario==='stack-of-three'){
       if(!verifyStack({id:args.runId,after,response}))return false;
     }else if(args.scenario==='protected-main'){
       const rule=after.ruleset;
@@ -218,7 +227,7 @@ export const seed=defineGithubWrite({
     if(args.scenario==='repo-basic'&&after.extra?.name!==topic(args.runId))return false;
     if(args.scenario==='failing-ci'&&(after.extra?.ref!==`refs/heads/${branchName(args.runId)}`||
       after.extra?.object?.sha!==response.data.objects[2].createdSha))return false;
-    if(response.data.objects.length!==(args.scenario==='stack-of-three'?14:args.scenario==='protected-main'?2:args.scenario==='release-train'?5:3))return false;
+    if(response.data.objects.length!==(args.scenario==='pr-with-threads'?13:args.scenario==='stack-of-three'?14:args.scenario==='protected-main'?2:args.scenario==='release-train'?5:3))return false;
     const stored=await ctx.db.listDevObjects({runId:args.runId,account:target.owner,
       connection:ctx.connection.client_id,limit:50});
     return response.data.objects.every(o=>stored.some(r=>r.object_id===o.objectId&&r.owner===target.owner&&r.repo===args.repo));
@@ -228,6 +237,8 @@ export const seed=defineGithubWrite({
     manual_dispatch_only:['repo-basic','failing-ci'].includes(args.scenario),
     note:args.scenario==='release-train'
       ? 'Draft release and tags only; nothing was published, dispatched, or live-tested without IN-06.'
+      : args.scenario==='pr-with-threads'
+        ? 'Three actual run-owned review threads, one outdated after a separate recorded commit; draft only.'
       : args.scenario==='stack-of-three'
         ? 'Three linked run-owned draft PRs; no merge or workflow dispatch occurred.'
       : args.scenario==='protected-main'
