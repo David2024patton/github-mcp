@@ -1,6 +1,6 @@
 # RTC-REQUIRED-RETENTION — no successful shortened HTTPS read without its complete saved result
 
-Status: IMPLEMENTED (target PR #152; exact-head CI/review pending).
+Status: MERGED (#152; all seven exact-head application/release checks passed).
 Baseline: merged main aba3cf0c0ea2e18764f3a66a925430a49a75ec15 (#151).
 Risk: RTC read result integrity. No migration, provider write, credential
 change, production activation, deletion or spending.

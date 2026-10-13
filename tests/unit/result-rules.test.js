@@ -60,6 +60,20 @@ describe('capText', () => {
     expect(r.value.body).toBe('b'.repeat(3000));
     expect(r.cut).toEqual([]);
   });
+  it('does not erase unrelated short metadata when continuing one long field', () => {
+    const original={id:'a-123',title:'Important short title',
+      body:'a'.repeat(4000)+'b'.repeat(5000),
+      nested:{label:'Keep this label'}};
+    const r=capText(original,{offset:4000});
+    expect(r.value.id).toBe('a-123');
+    expect(r.value.title).toBe('Important short title');
+    expect(r.value.nested.label).toBe('Keep this label');
+    expect(r.value.body.startsWith('b'.repeat(100))).toBe(true);
+    expect(r.value.body).toContain('1000 more characters left out');
+    expect(r.cut).toHaveLength(1);
+    expect(r.cut[0].path).toBe('body');
+    expect(original.body).toHaveLength(9000);
+  });
   it('does not change what it was given', () => {
     const input = { body: 'x'.repeat(5000) };
     capText(input);

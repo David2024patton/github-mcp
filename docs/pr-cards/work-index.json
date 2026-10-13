@@ -18,7 +18,7 @@
     "R",
     "X"
   ],
-  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split \u2014 A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00).",
+  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split — A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00).",
   "cards": [
     {
       "id": "A-1",
@@ -1413,5 +1413,30 @@
     "card": "docs/pr-cards/RTC-BATCH-INTEGRITY.md",
     "externalAcceptance": "UNVERIFIED",
     "next": "Accurate retained-result errors; secure pass acceptance separately."
+  },
+  "rtcIntegrityBatch": {
+    "sourcePRs": [
+      151,
+      152,
+      153,
+      154,
+      155
+    ],
+    "cards": [
+      "docs/pr-cards/RTC-AUTHORITY-BINDING.md",
+      "docs/pr-cards/RTC-REQUIRED-RETENTION.md",
+      "docs/pr-cards/RTC-INLINE-SECRET-SCREEN.md",
+      "docs/pr-cards/RESULT-OWN-KEYS.md",
+      "docs/pr-cards/RESULT-OFFSET-METADATA.md"
+    ],
+    "sourceAndAutomated": "All five #151–#155 source implementations accepted by the complete seven exact-head CI/release gates; #155 merger/final-main CI must still be observed independently.",
+    "deployedExactRevision": "UNVERIFIED for this batch; last independently observed production source #146",
+    "authenticatedCustomMcp": "UNVERIFIED",
+    "directOAuth": "UNVERIFIED",
+    "hubDirectRelaySandbox": "UNVERIFIED",
+    "rtc1": "UNVERIFIED (rtc:0)",
+    "revocation": "UNVERIFIED",
+    "scratchCleanup": "UNVERIFIED; requires separate authorization and remote absence readback",
+    "next": "Verify #155 exact merged main and final-main CI, then preserve no real connected acceptance until scheduled exact-deployed live READY plus securely owner-issued scratch pass; exercise connected read/denial and separately owner-triggered revocation. Keep direct OAuth, Hub RTC1 and cleanup independent."
   }
 }
