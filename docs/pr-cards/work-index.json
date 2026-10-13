@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-12",
+  "updated": "2026-10-13",
   "order": [
     "A",
     "B",
@@ -1401,5 +1401,11 @@
     ],
     "gatewayOwnership": "Hub broker/routing/grant mapping; separately issued scoped service pass",
     "acceptance": "Existing service-owned isolation and deployed TEST route/denial/revocation gates remain OPEN"
+  },
+  "rtcOutputEvidence": {
+    "sourcePR": 143,
+    "card": "docs/pr-cards/RTC-SECRET-OUTPUT.md",
+    "authenticatedAcceptance": "UNVERIFIED",
+    "next": "Complete RTC batch validation/budget and retained-result error integrity; secure pass acceptance separately."
   }
 }

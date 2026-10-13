@@ -8,6 +8,8 @@ import { execFileSync } from 'node:child_process';
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]', 'example.test', 'example.com', 'host']);
 
 const RULES = [
+  // RTC passes have no literal-fixture exemption, even if the payload includes FAKE.
+  { label: 'RTC pass', pattern: /rtc_pass_[A-Za-z0-9_-]{43}/g },
   // GitHub personal, OAuth, user-to-server, server-to-server (installation) and refresh tokens: prefix + 36 base62.
   { label: 'GitHub token', pattern: /\bgh[pousr]_[A-Za-z0-9]{36,}\b/g, fakeAllowed: true },
   // Fine-grained personal access tokens: github_pat_ + 82 characters.

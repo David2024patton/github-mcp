@@ -10,11 +10,9 @@ import { validateArgs } from '../core/validate.js';
 import { capText, describeBody, fitToBudget, projectFields } from '../core/result-rules.js';
 import { summarize } from './summaries.js';
 import { isToolVisible } from '../core/registry.js';
-import { shapeResult } from './util.js';
+import { shapeResult, redact, containsCredential } from './util.js';
 
-const SECRET_SHAPES = [/\bgh[pousr]_[A-Za-z0-9]{8,}/, /\bgithub_pat_[A-Za-z0-9_]{8,}/, /-----BEGIN [A-Z ]*PRIVATE KEY-----/];
-
-const fail = (text) => ({ isError: true, content: [{ type: 'text', text }] });
+const fail = (text) => ({ isError: true, content: [{ type: 'text', text: redact(text) }] });
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
 /** Summary form (unless `detail: 'full'`) of a tool's raw result: a list, `{ ..., items: [...] }` or one object. */
@@ -42,7 +40,7 @@ function projected(value, fields) {
 async function readReply({ tool, args, raw, connection, db, mode }) {
   const shaped = shapeResult(summarized(tool, args, raw), { mode });
   const { value, unknown } = tool.results ? projected(shaped, args?.fields) : { value: shaped, unknown: [] };
-  if (SECRET_SHAPES.some((shape) => shape.test(JSON.stringify(value)))) return fail('The result was withheld because it looked like it contained a credential.');
+  if (containsCredential(JSON.stringify(value))) return fail('The result was withheld because it looked like it contained a credential.');
   if (tool.keepsResult === false) return { content: [{ type: 'text', text: JSON.stringify(value) }], structuredContent: value };
   const capped = capText(value);
   const fit = fitToBudget(capped.value);
@@ -94,7 +92,7 @@ export function createDispatch({ env = process.env, now = Date.now, fetch = glob
       shaped = await readReply({ tool, args, raw: result, connection, db, mode });
       if (shaped.isError) return shaped;
     }
-    if (SECRET_SHAPES.some((shape) => shape.test(JSON.stringify(shaped)))) return fail('The result was withheld because it looked like it contained a credential.');
+    if (containsCredential(JSON.stringify(shaped))) return fail('The result was withheld because it looked like it contained a credential.');
     return shaped;
   };
 }
