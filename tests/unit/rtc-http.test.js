@@ -221,6 +221,31 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
     expect((await invoke('batch',{calls:[{name:'github_whoami',args:{}}]})).statusCode).toBe(200);
     expect(calls).toBe(2);
   });
+  it('rejects inflated declared HTTP length even when parsed JSON is tiny',async()=>{
+    let dispatched=0;
+    const db={getRtcPass:async()=>token,getAccount:async()=>account,
+      consumeRtcPassRate:async()=>true};
+    const handler=createRtcHttpHandler({db,registry,dispatch:async()=>{
+      dispatched++;return {structuredContent:{safe:true}};
+    }});
+    for(const route of ['tool','batch']){
+      const payload=route==='tool'?{}:{calls:[{name:'github_whoami',args:{}}]};
+      for(const declared of ['32769','999999999999999999999','-1','1e7','2.5',
+        ['10','32769'],null]){
+        const req=request('POST',payload,
+          {authorization:'Bearer '+pass,'content-length':declared});
+        req.query=route==='tool'?{name:'github_whoami'}:{};
+        const res=await call((a,b)=>handler(a,b,route),req);
+        expect(res.statusCode,route+': '+String(declared)).toBe(400);
+        expect(json(res).error.code).toBe('invalid_args');
+      }
+      const allowed=request('POST',payload,
+        {authorization:'Bearer '+pass,'content-length':'32768'});
+      allowed.query=route==='tool'?{name:'github_whoami'}:{};
+      expect((await call((a,b)=>handler(a,b,route),allowed)).statusCode).toBe(200);
+    }
+    expect(dispatched).toBe(2);
+  });
   it('never calls write tools and refuses write batches',async()=>{
     expect((await run('tool','POST',{}, {tool:'github_delete_repo'})).statusCode).toBe(404);
     expect((await run('batch','POST',{calls:[{name:'github_delete_repo',args:{confirm:true}}]})).statusCode).toBe(403);
