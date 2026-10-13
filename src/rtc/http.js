@@ -141,6 +141,12 @@ async function readEnvelope({tool,args,value,connection,db}){
     ? {ok:true,result:(({kept_result: _kept,...rest})=>rest)(value),
       handle:existing,summary:String(kept.what??'Large result'),mode:connection.mode}
     : {ok:true,result:value,mode:connection.mode};
+  // The canonical dispatcher screens its own reads, but the independent
+  // HTTPS response boundary must not rely on that implicit guarantee.
+  // Screen even small inline replies and reused-handle summaries, not only
+  // oversized responses about to be written to retention.
+  if(containsCredential(JSON.stringify(body)))
+    throw new Error('Unsafe RTC read envelope');
   if(sizeOf(body)<=RULES.maxBytes)return body;
   // The canonical read has already retained its original complete value.
   // A second 8 KiB page would simply reproduce the same oversized wrapper.
@@ -149,8 +155,8 @@ async function readEnvelope({tool,args,value,connection,db}){
   if(tool==='github_get_result'&&args?.handle)
     return {ok:true,result:{note:'Page exceeds the wire budget. Use a smaller pageSize or fewer fields.'},
       handle:args.handle,summary:'Use narrower result paging',mode:connection.mode};
-  if(!connection?.client_id||typeof db?.putResult!=='function'||
-    containsCredential(JSON.stringify(body)))throw new Error('RTC result retention unavailable');
+  if(!connection?.client_id||typeof db?.putResult!=='function')
+    throw new Error('RTC result retention unavailable');
   const handle='res_'+randomBytes(16).toString('base64url');
   // Store shaped, credential-screened data, not provider payloads.
   // On storage failure, the caller sends sanitized 503, never truncated success.
