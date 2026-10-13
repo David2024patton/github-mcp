@@ -24,3 +24,19 @@ These are **preserved, not approved for automatic deletion**. The old PR closure
 | `ai/gpt6/g-5b-release-lifecycle` | `bb165d819fc49139553527763d9b1044e5a1cea6` | No PR; earlier G-5 write branch, compare with merged G-5 work |
 
 Do not mistake abandoned history for a new work item: code must be compared against present `main`, and any real missing behavior should be completed via a new reviewed PR. No merge of stale branch snapshots into modern main.
+
+## Actual verified first-pass cleanup and five additional divergent PR heads
+
+The owner-authorized Actions run `38474294944` completed with **147 ancestor-confirmed deletions, zero refusals and 15 preserved distinct-history heads**. Main CI after PR #158 passed. Five additional branch heads belong to PRs marked merged by GitHub but have commits not in main's *ancestry* (for example, squash-style merges). They were correctly kept by the ancestry-only deletion rule:
+
+| Preserved branch | Exact source head | Original merged PR |
+| --- | --- | --- |
+| `ai/gpt6/v2-ledger-collision` | `cd28ef9ca8d3cf25ea59971656171516056e3fe2` | #91 |
+| `ai/gpt6/v2-intent-reconciliation` | `f3ba1b05b5a138533381f216d17e642b5737410f` | #92 |
+| `ai/gpt6/v2-all-runs-inventory` | `e34551c619d19db8771a9fbb8f8e867f32fc9ca7` | #93 |
+| `ai/gpt6/v2-run-inventory-cursors` | `f674e7369cb77f1bffd6f775fbf39b0525c42cf8` | #94 |
+| `ai/gpt6/v2-scratch-foreign-artifacts` | `ddf655b0cb6aadcd2bd3868487e33e48904cc44d` | #95 |
+
+### History-preserving resolution (source staged; Actions result required)
+
+The owner requested **no stray historical work branches**. The next one-time workflow builds the **non-production** `archive/legacy-ai-2026-10-13` branch at a newly created commit whose file tree is *exactly* the current `main` tree, but whose parents explicitly include the exact 15 preserved heads. These parents preserve full historical objects without bringing obsolete sources into `main`. It refuses on changed/missing branch heads, new open PRs, unverifiable Git ancestry or archive-ref conflicts. Only *after* remote archival SHA is read back does it retire each original ref using an exact SHA lease. Never merge this archive branch into main; it is historical preservation, **not pending product code**. The permanent handoff must record exact verified archive/ref and deletion counts from the real Actions run, not claim them merely from this PR.
