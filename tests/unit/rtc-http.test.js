@@ -75,7 +75,10 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
   it('forwards result pagination and selected fields through the existing guarded handler',async()=>{
     const handle='res_'+'b'.repeat(22);
     const seen=[];
-    const db={getRtcPass:async()=>token,getAccount:async()=>account,consumeRtcPassRate:async()=>true};
+    const db={getRtcPass:async()=>token,getAccount:async()=>account,consumeRtcPassRate:async()=>true,
+      // This spy-only fixture models an owned stored result before canonical dispatch.
+      // The RTC boundary must not mistake a missing DB function for a 404.
+      getResult:async(h,owner)=>h===handle&&owner===token.client_id?{body:{items:[]}}:null};
     const withResults={...registry,tools:[...registry.tools,{...read,name:'github_get_result',
       inputSchema:{type:'object',required:['handle'],additionalProperties:false,
         properties:{handle:{type:'string'},page:{type:'integer'},pageSize:{type:'integer'},
