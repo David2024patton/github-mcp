@@ -221,9 +221,15 @@ export function createRtcHttpHandler({db,registry,dispatch}){
           return send(res,404,rtcError('not_found'));
         const paging=parseResultQuery(req.query);
         if(!paging)return send(res,400,rtcError('invalid_args'));
+        // The standalone read dispatcher intentionally flattens handler failures
+        // into error text. Never infer "not found" from that text: an outage,
+        // serialization failure or changed result must not become a fake 404.
+        // Probe only the current connection's handle. Unknown and foreign
+        // handles are indistinguishable; storage failures stay sanitized 503.
+        const owned=await db.getResult(handle,connection.client_id);
+        if(!owned)return send(res,404,rtcError('not_found'));
         const result=await run('github_get_result',{handle,...paging},connection);
-        return send(res,result.status===200?200:404,
-          result.status===200?result.body:rtcError('not_found'));
+        return send(res,result.status,result.body);
       }
       return send(res,404,rtcError('not_found'));
     }catch{

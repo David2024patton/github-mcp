@@ -22,6 +22,8 @@ required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creat
 
 ## Next
 
+- **#145 RTC retained-result failure truthfulness (implementation; exact-head and merged-main evidence remain separate):** A known-format saved-result request first checks only this RTC connection's owned handle. Absent/foreign handles return identical 404, while database outage, canonical handler failures and disappearing results return sanitized 503 rather than false 404; malformed queries remain 400. Real dispatcher/fake-store regressions cover owned paging, ownership, storage/provider errors and no leaked internals. No production, pass scope or deployment change. Next eligible independent work: review result-retrieval efficiency and any evidenced RTC hardening gap, while rechecking the real OAuth/read/denial/revocation and scratch evidence gates. This text describes intended source behavior, **not** live pass acceptance.
+
 - **#144 complete RTC batch integrity (MERGED; evidence on PR):** Canonical schema
   checks run for every item before dispatch. Independently bounded read outputs no
   longer combine into an unbounded batch: full UTF-8 envelope stays <=8192 bytes,
