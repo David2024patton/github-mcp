@@ -1,4 +1,5 @@
 // RTC read-only HTTPS integration. Reuses the MCP dispatcher; never accepts OAuth tokens as RTC passes.
+import {rtcBatchReply} from './batch.js';
 import { areaOf } from '../core/meta.js';
 import {validateArgs} from '../core/validate.js';
 import { rtcMetadata,rtcManifest,rtcOpenApi } from './contract.js';
@@ -186,8 +187,12 @@ export function createRtcHttpHandler({db,registry,dispatch}){
           (c.args!==undefined&&(!c.args||typeof c.args!=='object'||Array.isArray(c.args)))||
           Object.keys(c).some(key=>key!=='name'&&key!=='args')))
           return send(res,400,rtcError('invalid_args'));
-        if(calls.some(c=>!allowed().some(t=>t.name===c.name)))
+        const tools=allowed();
+        if(calls.some(c=>!tools.some(t=>t.name===c.name)))
           return send(res,403,rtcError('refused_by_guard'));
+        // Schema-check every item before the first read or additional rate unit.
+        if(calls.some(c=>validateArgs(tools.find(t=>t.name===c.name).inputSchema,c.args??{})))
+          return send(res,400,rtcError('invalid_args'));
         const results=[];
         let current=connection;
         for(let i=0;i<calls.length;i++){
@@ -207,7 +212,8 @@ export function createRtcHttpHandler({db,registry,dispatch}){
           results.push({name:item.name,ok:true,result:result.body.result,
             ...(result.body.handle?{handle:result.body.handle,summary:result.body.summary}:{})});
         }
-        return send(res,200,{ok:true,result:{results}});
+        const reply=await rtcBatchReply({results,connection:current,db});
+        return send(res,200,reply);
       }
       if(route==='results'){
         const handle=name(req,'handle');
