@@ -74,7 +74,7 @@ describe('RTC read envelopes have a truthful complete-data wire budget',()=>{
     }
   });
   it('does not report a missing structured value as a successful reply',async()=>{
-    const f=await fixture({value:undefined});
+    const f=await fixture({dispatchOverride:async()=>({structuredContent:undefined})});
     const response=await f.invoke();
     expect(response.statusCode).toBe(503);
     expect(json(response).error.code).toBe('service_error');
