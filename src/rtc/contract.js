@@ -1,5 +1,6 @@
 // Public, deliberately non-certified RTC adoption metadata. No credential or live-call side effects.
 import { areaOf } from '../core/meta.js';
+import {rtcHttpCapabilities,rtcIdentity} from './scope.js';
 
 const AUDIENCES={B:'builder',O:'owner',Op:'operator'};
 export function rtcMetadata(tool) {
@@ -27,6 +28,8 @@ export function rtcManifest(registry) {
       money:tools.filter(t=>t.declarations?.spend).length},
     profiles:['read_only','everyday','full'],listingModes:['catalog','compact'],
     modes:['preview','production'],devTools:true,adoption:'in_progress',
+    service_identity:rtcIdentity(),https_subset:rtcHttpCapabilities(registry),
+    standalone_mcp:{authentication:'oauth',independent:true},
     note:'Safe read-only HTTP integration in progress. RTC 1 conformance and real D-4 acceptance are not certified.'
   };
 }
