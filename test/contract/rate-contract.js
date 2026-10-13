@@ -8,7 +8,7 @@ import { ETAG_BODY_LIMIT_BYTES } from '../../src/db.js';
 export function runRateContract(name, make) {
   describe(`GitHub rate store: ${name}`, () => {
     it('hands out write slots at least one spacing apart, per installation', async () => {
-      const db = await make();
+      const db = await make({fixedClock:true});
       const first = await db.claimWriteSlot('inst-1', { spacingMs: 1000, maxWaitMs: 5000 });
       const second = await db.claimWriteSlot('inst-1', { spacingMs: 1000, maxWaitMs: 5000 });
       const third = await db.claimWriteSlot('inst-1', { spacingMs: 1000, maxWaitMs: 5000 });
@@ -20,14 +20,14 @@ export function runRateContract(name, make) {
     });
 
     it('two simultaneous claims never get the same second', async () => {
-      const db = await make();
+      const db = await make({fixedClock:true});
       const results = await Promise.all(Array.from({ length: 4 }, () => db.claimWriteSlot('inst-race', { spacingMs: 1000, maxWaitMs: 10000 })));
       const waits = results.map((r) => r.waitMs).sort((a, b) => a - b);
       for (let i = 1; i < waits.length; i++) expect(waits[i] - waits[i - 1]).toBeGreaterThanOrEqual(900);
     });
 
     it('refuses to queue beyond the maximum wait and reserves nothing when it refuses', async () => {
-      const db = await make();
+      const db = await make({fixedClock:true});
       await db.claimWriteSlot('inst-3', { spacingMs: 3000, maxWaitMs: 5000 }); // ends in 3 s
       await db.claimWriteSlot('inst-3', { spacingMs: 3000, maxWaitMs: 5000 }); // starts in 3 s, ends in 6 s
       expect(await db.claimWriteSlot('inst-3', { spacingMs: 3000, maxWaitMs: 5000 })).toBeNull(); // would start in 6 s

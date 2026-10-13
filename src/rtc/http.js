@@ -1,9 +1,8 @@
 // RTC read-only HTTPS integration. Reuses the MCP dispatcher; never accepts OAuth tokens as RTC passes.
-import { toolsForProfile } from '../core/registry.js';
 import { areaOf } from '../core/meta.js';
 import { rtcMetadata,rtcManifest,rtcOpenApi } from './contract.js';
+import {RTC_HTTP_AREAS,rtcHttpTools,rtcIdentity} from './scope.js';
 
-const ALLOWED=new Set(['server','meta']);
 const MAX_REQUEST_BYTES=32768;
 // JSON has already been parsed by the HTTP door. Bound the complete wire
 // payload before allowing a tool dispatch, including multibyte strings.
@@ -28,8 +27,6 @@ const send=(res,status,value)=>{
   res.setHeader('X-Content-Type-Options','nosniff');
   return res.status(status).json(value);
 };
-const scopedTools=registry=>toolsForProfile(registry,'read_only').filter(t=>
-  ALLOWED.has(areaOf(t))&&t.annotations?.readOnlyHint===true&&t.writes!==true&&t.passthrough!==true);
 const name=(req,key)=>{
   const value=req.query?.[key];
   return typeof value==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(value)?value:null;
@@ -90,7 +87,7 @@ async function authenticate(req,res,db){
     !Array.isArray(row.accounts)||row.accounts.length!==1||
     row.accounts[0]!==row.default_account||
     !Array.isArray(row.areas)||row.areas.length!==2||
-    !row.areas.includes('server')||!row.areas.includes('meta')||
+    !RTC_HTTP_AREAS.every(area=>row.areas.includes(area))||
     row.allow_writes!==false||row.production_access!==false||
     Number(row.money_limit_cents)!==0)
     return deny(res,403,rtcError('refused_by_guard'));
@@ -109,7 +106,7 @@ async function authenticate(req,res,db){
 export function createRtcHttpHandler({db,registry,dispatch}){
   if(!db||!registry||typeof dispatch!=='function')
     throw new TypeError('RTC HTTP needs the existing guarded dispatcher.');
-  const allowed=()=>scopedTools(registry);
+  const allowed=()=>rtcHttpTools(registry);
   const run=async(tool,args,connection)=>{
     if(!allowed().some(t=>t.name===tool))return {status:403,body:rtcError('refused_by_guard')};
     const output=await dispatch({registry,name:tool,args,connection,db});
@@ -134,7 +131,8 @@ export function createRtcHttpHandler({db,registry,dispatch}){
       if(!connection)return;
       if(route==='whoami'&&req.method==='GET')
         return send(res,200,{ok:true,result:{profile:'read_only',mode:'preview',
-          areas:connection.areas,accounts:connection.accounts,allow_writes:false}});
+          areas:connection.areas,accounts:connection.accounts,allow_writes:false,
+          production_access:false,money_limit_cents:0,service_identity:rtcIdentity()}});
       if(route==='tools'&&req.method==='GET'){
         const query=parseToolsQuery(req.query);
         if(!query)return send(res,400,rtcError('invalid_args'));

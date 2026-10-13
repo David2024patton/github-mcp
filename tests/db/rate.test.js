@@ -1,9 +1,9 @@
-import { beforeAll, afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, afterAll, beforeEach, afterEach, describe, expect, it } from 'vitest';
 import { createDb } from '../../src/db.js';
 import { openIsolatedSchema, closeIsolatedSchema, neonShapedQuery, rawQuery } from '../../test/helpers/pg-neon-adapter.js';
 import { runRateContract } from '../../test/contract/rate-contract.js';
 
-let db;
+let db,transactionOpen=false;
 beforeAll(async () => {
   if (!process.env.TEST_DATABASE_URL) throw new Error('TEST_DATABASE_URL must point to disposable localhost Postgres (npm run test:db)');
   if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(new URL(process.env.TEST_DATABASE_URL).hostname)) throw new Error('Refusing non-local Postgres in tests');
@@ -13,10 +13,30 @@ beforeAll(async () => {
 });
 afterAll(async () => { await closeIsolatedSchema(); });
 beforeEach(async () => { await rawQuery('TRUNCATE gh_write_slots, gh_rate_state, gh_etag_cache'); });
+afterEach(async () => {
+  if(transactionOpen){await rawQuery('ROLLBACK');transactionOpen=false;}
+});
+async function fixClock(){
+  // Only clock-sensitive slot tests use a transaction-frozen now(). Expiry
+  // tests retain the real clock; no thresholds or assertions are relaxed.
+  await rawQuery('BEGIN');transactionOpen=true;
+}
 
-runRateContract('isolated PostgreSQL', async () => db);
+runRateContract('isolated PostgreSQL', async ({fixedClock=false}={}) => {
+  if(fixedClock)await fixClock();return db;
+});
 
 describe('GitHub rate store on throwaway Postgres only', () => {
+  it('a refused slot leaves the exact reserved timestamp unchanged',async()=>{
+    await fixClock();
+    await db.claimWriteSlot('exact-refusal',{spacingMs:3000,maxWaitMs:5000});
+    await db.claimWriteSlot('exact-refusal',{spacingMs:3000,maxWaitMs:5000});
+    const [before]=await rawQuery("SELECT next_write_at FROM gh_write_slots WHERE installation_key='exact-refusal'");
+    expect(await db.claimWriteSlot('exact-refusal',{spacingMs:3000,maxWaitMs:5000})).toBeNull();
+    const [after]=await rawQuery("SELECT next_write_at FROM gh_write_slots WHERE installation_key='exact-refusal'");
+    expect(after.next_write_at).toEqual(before.next_write_at);
+    expect(await db.claimWriteSlot('exact-refusal',{spacingMs:3000,maxWaitMs:7000})).toEqual({waitMs:6000});
+  });
   it('two separate database handles (two server instances) share one write queue', async () => {
     const instanceA = createDb(neonShapedQuery());
     const instanceB = createDb(neonShapedQuery());
