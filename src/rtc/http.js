@@ -88,7 +88,7 @@ function parseToolsQuery(query={}) {
     !['catalog','compact'].includes(listing))return null;
   return {limit,page,q:q.toLowerCase(),area,audience,listing};
 }
-async function authenticate(req,res,db){
+async function authenticate(req,res,db,{consumeRate=true}={}){
   const bearer=/^Bearer (rtc_pass_[A-Za-z0-9_-]{43})$/.exec(String(req.headers?.authorization??''));
   if(!bearer)return deny(res,401,rtcError('permission'));
   const row=await db.getRtcPass(bearer[1]);
@@ -109,7 +109,7 @@ async function authenticate(req,res,db){
     account.production_enabled!==false||account.account_type!=='Organization'||
     account.installation_status!=='active'||account.repository_selection!=='all')
     return deny(res,403,rtcError('refused_by_guard'));
-  if(!await db.consumeRtcPassRate(bearer[1])){
+  if(consumeRate&&!await db.consumeRtcPassRate(bearer[1])){
     res.setHeader('Retry-After','60');
     return deny(res,429,rtcError('rate_limited'));
   }
@@ -179,8 +179,16 @@ export function createRtcHttpHandler({db,registry,dispatch}){
     try{
       const connection=await authenticate(req,res,db);
       if(!connection)return;
+      // Read-only authorization may be revoked, expire or lose scratch ownership
+      // while a provider/DB read is in flight. Do not release stale data after
+      // completion; no second rate unit is charged for the final check.
+      const sendCurrent=async body=>{
+        const fresh=await authenticate(req,res,db,{consumeRate:false});
+        if(!fresh)return;
+        return send(res,200,body);
+      };
       if(route==='whoami'&&req.method==='GET')
-        return send(res,200,{ok:true,result:{profile:'read_only',mode:'preview',
+        return await sendCurrent({ok:true,result:{profile:'read_only',mode:'preview',
           areas:connection.areas,accounts:connection.accounts,allow_writes:false,
           production_access:false,money_limit_cents:0,service_identity:rtcIdentity()}});
       if(route==='tools'&&req.method==='GET'){
@@ -195,7 +203,7 @@ export function createRtcHttpHandler({db,registry,dispatch}){
         const reply=await rtcDiscoveryReply({
           tools:tools.slice(start,start+limit).map(rtcMetadata),count:tools.length,
           next:start+limit<tools.length?page+1:null,connection,db});
-        return send(res,200,reply);
+        return await sendCurrent(reply);
       }
       if(route==='tool'){
         const tool=name(req,'name');
@@ -204,13 +212,14 @@ export function createRtcHttpHandler({db,registry,dispatch}){
         if(req.method==='GET'){
           const reply=await readEnvelope({tool:'rtc_describe_metadata',args:{},
             value:rtcMetadata(allowed().find(t=>t.name===tool)),connection,db});
-          return send(res,200,reply);
+          return await sendCurrent(reply);
         }
         if(req.method!=='POST'||!req.body||typeof req.body!=='object'||
           Array.isArray(req.body)||!boundedRequest(req.body,req.headers))
           return send(res,400,rtcError('invalid_args'));
         const result=await run(tool,req.body,connection);
-        return send(res,result.status,result.body);
+        return result.status===200?await sendCurrent(result.body)
+          :send(res,result.status,result.body);
       }
       if(route==='batch'){
         const calls=req.body?.calls;
@@ -251,7 +260,7 @@ export function createRtcHttpHandler({db,registry,dispatch}){
             ...(result.body.handle?{handle:result.body.handle,summary:result.body.summary}:{})});
         }
         const reply=await rtcBatchReply({results,connection:current,db});
-        return send(res,200,reply);
+        return await sendCurrent(reply);
       }
       if(route==='results'){
         const handle=name(req,'handle');
@@ -263,7 +272,8 @@ export function createRtcHttpHandler({db,registry,dispatch}){
         // Its trusted typed absence signal becomes 404; all other dispatcher
         // or storage failures remain sanitized 503 without parsing error text.
         const result=await run('github_get_result',{handle,...paging},connection);
-        return send(res,result.status,result.body);
+        return result.status===200?await sendCurrent(result.body)
+          :send(res,result.status,result.body);
       }
       return send(res,404,rtcError('not_found'));
     }catch{
