@@ -1,5 +1,6 @@
 // RTC read-only HTTPS integration. Reuses the MCP dispatcher; never accepts OAuth tokens as RTC passes.
 import { areaOf } from '../core/meta.js';
+import {validateArgs} from '../core/validate.js';
 import { rtcMetadata,rtcManifest,rtcOpenApi } from './contract.js';
 import {RTC_HTTP_AREAS,rtcHttpTools,rtcIdentity} from './scope.js';
 
@@ -115,10 +116,18 @@ export function createRtcHttpHandler({db,registry,dispatch}){
     throw new TypeError('RTC HTTP needs the existing guarded dispatcher.');
   const allowed=()=>rtcHttpTools(registry);
   const run=async(tool,args,connection)=>{
-    if(!allowed().some(t=>t.name===tool))return {status:403,body:rtcError('refused_by_guard')};
+    const selected=allowed().find(t=>t.name===tool);
+    if(!selected)return {status:403,body:rtcError('refused_by_guard')};
+    // The same validator as the canonical MCP dispatcher distinguishes a
+    // caller's malformed arguments from an unavailable upstream service.
+    // Never label a provider failure as a request-validation error.
+    if(validateArgs(selected.inputSchema,args))
+      return {status:400,body:rtcError('invalid_args')};
     const output=await dispatch({registry,name:tool,args,connection,db});
-    if(output?.isError)return {status:400,body:rtcError('invalid_args')};
-    const value=output?.structuredContent??null;
+    if(!output||typeof output!=='object'||output.isError===true||
+      !Object.hasOwn(output,'structuredContent'))
+      return {status:503,body:rtcError('service_error')};
+    const value=output.structuredContent;
     const kept=value?.kept_result;
     if(kept?.handle && /^res_[A-Za-z0-9_-]{20,64}$/.test(kept.handle)) {
       const {kept_result: _discarded,...summary}=value;

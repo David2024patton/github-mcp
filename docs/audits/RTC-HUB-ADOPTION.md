@@ -76,3 +76,14 @@ describe, call and batch routes, where each actual read is independently checked
 The original full standalone OAuth MCP registry and its guarded meta tools remain
 unchanged. This security regression is proven with the actual dispatcher in unit
 CI; no hosted credential, custom OAuth connection or RTC1 certificate is claimed.
+
+## #140 — honest restricted read failure envelopes
+
+The RTC HTTP adapter now runs the existing MCP argument validator before
+calling the same original guarded dispatcher. Actual malformed arguments
+receive `invalid_args`/HTTP 400 without executing a provider read; dispatcher
+failures or missing result shapes receive fixed `service_error`/HTTP 503, not
+an invented claim that the caller's request was invalid or a successful null.
+Explicit `structuredContent:null` remains a valid empty read. No upstream
+private error text is exposed. This is local/CI wire correctness, not evidence
+of a deployed revision or authenticated RTC pass/OAuth acceptance.
