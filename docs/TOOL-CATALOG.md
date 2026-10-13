@@ -1,5 +1,7 @@
 # Tool catalog
 
+Restricted preview RTC search/describe tool metadata is size-bounded to 8192 UTF-8 bytes. Oversized catalog pages and schemas are retained whole under connection-owned 24-hour result handles (#149), without expanding independent MCP tool authority.
+
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
