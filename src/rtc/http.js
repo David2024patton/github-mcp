@@ -159,6 +159,9 @@ export function createRtcHttpHandler({db,registry,dispatch}){
     if(validateArgs(selected.inputSchema,args))
       return {status:400,body:rtcError('invalid_args')};
     const output=await dispatch({registry,name:tool,args,connection,db});
+    if(tool==='github_get_result' && output?.isError===true &&
+      output.failureCode==='retained_result_not_found')
+      return {status:404,body:rtcError('not_found')};
     if(!output||typeof output!=='object'||output.isError===true||
       !Object.hasOwn(output,'structuredContent')||
       output.structuredContent===undefined)
@@ -250,13 +253,9 @@ export function createRtcHttpHandler({db,registry,dispatch}){
           return send(res,404,rtcError('not_found'));
         const paging=parseResultQuery(req.query);
         if(!paging)return send(res,400,rtcError('invalid_args'));
-        // The standalone read dispatcher intentionally flattens handler failures
-        // into error text. Never infer "not found" from that text: an outage,
-        // serialization failure or changed result must not become a fake 404.
-        // Probe only the current connection's handle. Unknown and foreign
-        // handles are indistinguishable; storage failures stay sanitized 503.
-        const owned=await db.getResult(handle,connection.client_id);
-        if(!owned)return send(res,404,rtcError('not_found'));
+        // The canonical result handler performs the only owner-scoped lookup.
+        // Its trusted typed absence signal becomes 404; all other dispatcher
+        // or storage failures remain sanitized 503 without parsing error text.
         const result=await run('github_get_result',{handle,...paging},connection);
         return send(res,result.status,result.body);
       }
