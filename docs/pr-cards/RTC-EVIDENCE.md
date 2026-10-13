@@ -1,6 +1,6 @@
 # RTC-EVIDENCE — truthful deployed identity and restricted HTTP discovery
 
-Status: implementation slice; full/deployed connected acceptance remains IN_PROGRESS.
+Status: MERGED #135 implementation slice; full/deployed connected acceptance remains IN_PROGRESS.
 Baseline: #134 `fcc1993687043a9dbad33903968e2886444ac7c7`, architecture recovery #133.
 Scope: approved existing RTC compatibility and safe service-owned integration evidence.
 
