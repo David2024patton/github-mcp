@@ -22,6 +22,18 @@ describe('projectFields', () => {
     const r = projectFields(v, ['body', 'updated_at'], { alsoKeep: ['untrusted', 'mode'], twins: ['_local', '_display'] });
     expect(r).toEqual({ value: { body: 'x', untrusted: true, updated_at: 't', updated_at_local: 'T' }, unknown: [] });
   });
+  it('preserves own JSON fields named __proto__ without changing output prototypes', () => {
+    const stored=JSON.parse('{"__proto__":{"safe":"kept","second":"present"},"constructor":{"id":2},"other":1}');
+    const out=projectFields(stored,['__proto__.safe','__proto__.second','constructor.id']).value;
+    expect(Object.getPrototypeOf(out)).toBe(Object.prototype);
+    expect(Object.hasOwn(out,'__proto__')).toBe(true);
+    const wire=JSON.parse(JSON.stringify(out));
+    expect(Object.hasOwn(wire,'__proto__')).toBe(true);
+    expect(wire['__proto__']).toEqual({safe:'kept',second:'present'});
+    expect(wire.constructor).toEqual({id:2});
+    expect(({}).safe).toBeUndefined();
+    expect(stored.other).toBe(1);
+  });
   it('does not walk the prototype', () => {
     expect(projectFields({ a: 1 }, ['__proto__', 'constructor']).unknown).toEqual(['__proto__', 'constructor']);
   });
