@@ -29,18 +29,18 @@ async function readResponse(response) {
     throw new Error('Oversize service response');
   return safeParse(await response.text(), response.headers?.get?.('content-type'));
 }
-function resultOf(value, id) {
+export function resultOf(value, id) {
   return value?.jsonrpc === '2.0' && value.id === id && !value.error
     ? value.result : null;
 }
-function structured(reply) {
+export function structured(reply) {
   if (!reply || reply.isError === true) return null;
   if (reply.structuredContent && typeof reply.structuredContent === 'object')
     return reply.structuredContent;
   const text = reply.content?.find?.(item => item.type === 'text')?.text;
   try { return JSON.parse(text); } catch { return null; }
 }
-async function invoke(fetchImpl, origin, token, id, method, params) {
+export async function invoke(fetchImpl, origin, token, id, method, params) {
   const response = await fetchImpl(origin + '/api/mcp?listing=catalog', {
     method: 'POST', redirect: 'error',
     headers: {
