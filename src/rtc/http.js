@@ -188,7 +188,7 @@ export function createRtcHttpHandler({db,registry,dispatch}){
         return send(res,200,body);
       };
       if(route==='whoami'&&req.method==='GET')
-        return sendCurrent({ok:true,result:{profile:'read_only',mode:'preview',
+        return await sendCurrent({ok:true,result:{profile:'read_only',mode:'preview',
           areas:connection.areas,accounts:connection.accounts,allow_writes:false,
           production_access:false,money_limit_cents:0,service_identity:rtcIdentity()}});
       if(route==='tools'&&req.method==='GET'){
@@ -203,7 +203,7 @@ export function createRtcHttpHandler({db,registry,dispatch}){
         const reply=await rtcDiscoveryReply({
           tools:tools.slice(start,start+limit).map(rtcMetadata),count:tools.length,
           next:start+limit<tools.length?page+1:null,connection,db});
-        return sendCurrent(reply);
+        return await sendCurrent(reply);
       }
       if(route==='tool'){
         const tool=name(req,'name');
@@ -212,13 +212,13 @@ export function createRtcHttpHandler({db,registry,dispatch}){
         if(req.method==='GET'){
           const reply=await readEnvelope({tool:'rtc_describe_metadata',args:{},
             value:rtcMetadata(allowed().find(t=>t.name===tool)),connection,db});
-          return sendCurrent(reply);
+          return await sendCurrent(reply);
         }
         if(req.method!=='POST'||!req.body||typeof req.body!=='object'||
           Array.isArray(req.body)||!boundedRequest(req.body,req.headers))
           return send(res,400,rtcError('invalid_args'));
         const result=await run(tool,req.body,connection);
-        return result.status===200?sendCurrent(result.body)
+        return result.status===200?await sendCurrent(result.body)
           :send(res,result.status,result.body);
       }
       if(route==='batch'){
@@ -260,7 +260,7 @@ export function createRtcHttpHandler({db,registry,dispatch}){
             ...(result.body.handle?{handle:result.body.handle,summary:result.body.summary}:{})});
         }
         const reply=await rtcBatchReply({results,connection:current,db});
-        return sendCurrent(reply);
+        return await sendCurrent(reply);
       }
       if(route==='results'){
         const handle=name(req,'handle');
@@ -272,7 +272,7 @@ export function createRtcHttpHandler({db,registry,dispatch}){
         // Its trusted typed absence signal becomes 404; all other dispatcher
         // or storage failures remain sanitized 503 without parsing error text.
         const result=await run('github_get_result',{handle,...paging},connection);
-        return result.status===200?sendCurrent(result.body)
+        return result.status===200?await sendCurrent(result.body)
           :send(res,result.status,result.body);
       }
       return send(res,404,rtcError('not_found'));
