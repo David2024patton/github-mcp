@@ -8,7 +8,7 @@ const json = (value, status = 200) => new Response(JSON.stringify(value), {
   status, headers: { 'content-type': 'application/json' }
 });
 const rpc = (id, result) => json({ jsonrpc: '2.0', id, result });
-function service({ phase = 'read', failAt = null, reportedSha = SHA, sse = false } = {}) {
+function service({ phase = 'read', failAt = null, reportedSha = SHA, sse = false, allowForeign = false } = {}) {
   const calls = [];
   const fetchImpl = async (url, init) => {
     calls.push({ url, method: init.method, bearer: init.headers?.authorization || null });
@@ -28,7 +28,7 @@ function service({ phase = 'read', failAt = null, reportedSha = SHA, sse = false
         accounts: [{ login: SCRATCH, production_enabled: false }] }
     };
     else if (request.params?.name === 'github_repo_list') answer =
-      request.params.arguments.owner === SCRATCH
+      (request.params.arguments.owner === SCRATCH || allowForeign)
         ? { structuredContent: { owner: SCRATCH, count: 0, items: [] } }
         : { isError: true, content: [{ type: 'text', text: 'Forbidden account' }] };
     else throw Error('Unexpected method ' + request.method);
@@ -53,7 +53,8 @@ describe('operator-only native custom MCP evidence, never standard connector evi
     expect(result.ok).toBe(true);
     expect(result.custom_transport_observed).toBe(true);
     expect(result.provider_read_observed).toBe(true);
-    expect(result.resource_denial_observed).toBe(true);
+    expect(result.foreign_account_denial_observed).toBe(true);
+    expect(result.resource_denial_observed).toBe(false);
     expect(result.permitted_write_observed).toBe(false);
     expect(result.provider_readback_observed).toBe(false);
     expect(result.hub_acceptance).toBe(false);
@@ -83,12 +84,19 @@ describe('operator-only native custom MCP evidence, never standard connector evi
   });
 
   it('requires a verified provider read and actual native foreign-scope refusal', async () => {
-    for (const failAt of [1, 2, 3, 4, 5]) {
+    for (const failAt of [1, 2, 3, 4]) {
       const { fetchImpl } = service({ failAt });
       const result = await probeNativeMcp(args(fetchImpl));
       expect(result.ok).toBe(false);
       expect(JSON.stringify(result)).not.toContain(BEARER);
     }
+  });
+
+  it('rejects a foreign account listing that was incorrectly permitted', async () => {
+    const { fetchImpl } = service({ allowForeign: true });
+    const result = await probeNativeMcp(args(fetchImpl));
+    expect(result.ok).toBe(false);
+    expect(result.foreign_account_denial_observed).toBe(false);
   });
 
   it('requires the same revoked native bearer to fail authenticated initialization with HTTP 401', async () => {
