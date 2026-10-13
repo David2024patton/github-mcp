@@ -18,7 +18,9 @@ required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creat
 
 ## Next
 
-- **#137 RTC POST length correctness (implementation; CI pending):** Both tool and batch POST reject malformed/over-32 KiB Content-Length even if parsed JSON is small. Decoded-size bound remains. Missing length has no independently verified raw-byte bound: do not claim full raw-stream enforcement. Regression tests cover malformed, repeated and huge declarations with zero dispatch. No scope, write, production or deployment change; external acceptance remains pending.
+- **#138 credential-free deployed RTC evidence (implementation; CI pending):** A bounded explicit operator probe checks the public manifest, OpenAPI, missing-bearer 401 and reported build against a caller-supplied independently observed Vercel revision. Redirects and non-HTTPS targets are denied, no credentials or provider writes are used. Reports claim no RTC1, authenticated custom OAuth, Hub or cleanup acceptance. Current live branch/deployment still points to #109; scheduled release unobserved. No production activation or TEST relabel.
+
+- **#137 RTC POST length correctness (MERGED; exact-head CI passed; final-main CI reconciliation pending):** Both tool and batch POST reject malformed/over-32 KiB Content-Length even if parsed JSON is small. Decoded-size bound remains. Missing length has no independently verified raw-byte bound: do not claim full raw-stream enforcement. Regression tests cover malformed, repeated and huge declarations with zero dispatch. No scope, write, production or deployment change; external acceptance remains pending.
 
 - **#136 — usable restricted RTC OpenAPI:** Declares exact path parameters, public/pass security, direct tool argument bodies, finite read-only batch shape, paging/fields limits, result/error envelopes and Retry-After. Shared request validators remain unchanged; tests validate schemas against real adapter responses and malformed batches. Public description stays <=8 KiB and eight operations; RTC0 and external acceptance remain unverified.
 
