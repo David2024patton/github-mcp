@@ -1407,5 +1407,11 @@
     "card": "docs/pr-cards/RTC-SECRET-OUTPUT.md",
     "authenticatedAcceptance": "UNVERIFIED",
     "next": "Complete RTC batch validation/budget and retained-result error integrity; secure pass acceptance separately."
+  },
+  "rtcBatchEvidence": {
+    "sourcePR": 144,
+    "card": "docs/pr-cards/RTC-BATCH-INTEGRITY.md",
+    "externalAcceptance": "UNVERIFIED",
+    "next": "Accurate retained-result errors; secure pass acceptance separately."
   }
 }

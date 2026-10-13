@@ -22,6 +22,13 @@ required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creat
 
 ## Next
 
+- **#144 complete RTC batch integrity (MERGED; evidence on PR):** Canonical schema
+  checks run for every item before dispatch. Independently bounded read outputs no
+  longer combine into an unbounded batch: full UTF-8 envelope stays <=8192 bytes,
+  or persists all ordered results/child handles under one connection-owned 24h
+  handle and returns complete-prefix rows/count/continuation. Storage failure is
+  sanitized 503, never silent truncation. Next: retained-result error taxonomy.
+
 - **#143 credential-safe RTC output (MERGED; checks recorded on PR):** Repairs
   missing RTC-pass shape detection in result shaping/whole-output checks and error
   replies. Deep/key-shaped credentials are withheld before retention; errors scrub

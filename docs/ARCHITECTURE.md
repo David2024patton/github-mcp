@@ -231,3 +231,12 @@ Recovery is an explicit owner-authorized administrative action after establishin
 ### RTC service identity and current HTTPS subset (#135)
 
 The unauthenticated `/api/contract` and authenticated `/api/whoami` report safe self-identity, including canonical Vercel build SHA or null. This is not independently verified deployment evidence. Manifest `https_subset` describes only the existing preview/read_only, server/meta pass door; top-level catalog totals still describe standalone MCP. `src/rtc/scope.js` owns the shared actual selector for HTTP dispatch and subset counts; no provider credentials, state or canonical tools move to Hub or shared core. Full conformance remains rtc:0.
+
+### RTC ordered batch retention (#144)
+
+The restricted batch door validates every item against the canonical tool schema before
+executing any read. It still rechecks current DB authority/rate per item. An aggregate
+exceeding 8192 UTF-8 bytes is retained using the existing connection-owned 24-hour
+result store, with a complete-row preview, count/shown, top-level handle and next
+page=1/pageSize=1 for `/api/results/{handle}`. Original child handles remain in the
+full ordered aggregate. Storage failure produces sanitized service_error/503.

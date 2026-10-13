@@ -32,7 +32,7 @@ export function rtcOpenApi(){
         post:{...read('rtcCallRead','Call one authorized read; body is tool arguments directly'),
           requestBody:body({type:'object',additionalProperties:true}),
           'x-max-utf8-bytes':32768}},
-      '/api/tools/_batch':{post:{...read('rtcBatchReads','Call one to ten reads; recheck authority and rate for each'),
+      '/api/tools/_batch':{post:{...read('rtcBatchReads','Validate all args, recheck authority per read; large batches return a retained handle'),
         requestBody:body(schema('BatchRequest')),'x-max-utf8-bytes':32768}},
       '/api/results/{handle}':{parameters:[path('handle',HANDLE)],get:{
         ...read('rtcGetResult','Retrieve only the current pass connection’s retained result'),parameters:[
