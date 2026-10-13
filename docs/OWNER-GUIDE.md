@@ -33,3 +33,21 @@ settings, access or spending always shows you a preview and waits for your OK.
 ## Live testing status — 2026-10-12 UTC
 
 The separate `robinson-ai-scratch` organization is owner-designated; its own custom App is installed, active on All repositories, with 41 recorded permissions, production OFF and spend $0. The custom server responded correctly to OAuth discovery and refused unauthenticated MCP calls, but no custom-MCP OAuth connection or scratch repo write has yet been completed. When testing resumes, connect **this server's** `/api/mcp` endpoint, not the platform's standard GitHub connector. First choose only the scratch account with mode `preview` and profile `read_only`; for guarded scratch writes use `everyday` only after cleanup/recovery is verified. Owner stopped testing for the day; no further owner action is requested now.
+
+## Coding-agent development access (2026-10-13)
+
+The implementing agent uses a renewable native OAuth connection, not a new copied RTC
+pass for every retest. `rtool developer-connect ALIAS --profile full` prepares one mobile
+link using the custom service. Choose the intended account/resources and authorize once;
+return to chat without copying secrets. The agent reruns the command to finish privately,
+then uses developer-check, developer-tools and developer-call. Existing original service
+write previews, owner approvals and resource guards still apply. This developer workflow
+does not reduce the finished product's tool capabilities.
+
+On a managed POSIX cloud runner, configure RTOOL_DEVELOPER_VAULT_DIR to an absolute private
+folder outside every Git checkout. The CLI creates a separate 0600 encryption key and
+AES-GCM encrypted connection files in a 0700 folder; keep that private runner state for
+resumes. OS credential managers remain the desktop default. Neither option places secrets
+in chats, prompts, Git or shared artifacts. Initial provider consent or an expired/revoked
+underlying authorization can still require a new owner sign-in. Source/tests are not
+proof that the new deployed workflow has been exercised against the real provider.
