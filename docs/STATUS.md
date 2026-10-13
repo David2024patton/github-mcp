@@ -22,6 +22,8 @@ required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creat
 
 ## Next
 
+- **#153 RTC HTTP last-mile credential screening (IMPLEMENTED; exact-head CI pending):** Independently check every successful direct restricted HTTPS response (including small inline values and saved-result summary metadata) for credential-shaped data before sending it; unsafe responses yield sanitized 503, never 200 or saved unredacted content. Canonical MCP and already-screened batches are unchanged; controlled negative tests cover both missing guards. External authenticated acceptance and checked live release remain separate. Card: RTC-INLINE-SECRET-SCREEN.md.
+
 - **#152 RTC shortened read integrity (IMPLEMENTED; exact-head CI pending):** Canonical read fallback can transparently mark that it had to omit content when 24h result storage fails. Restricted HTTPS now treats that condition as sanitized 503 rather than claiming a complete 200 response without a retrievable handle; successful canonical handles are unchanged. Real-dispatcher/fake-store regression verifies both paths. Standalone MCP fallback remains independent. No external authenticated or deployment acceptance claimed. Card: RTC-REQUIRED-RETENTION.md.
 
 - **#151 original RTC scratch identity binding (IMPLEMENTED; exact-head CI pending):** Refuse a midflight change of scratch account or pass client identity even when the replacement scope is independently valid, before releasing a successful result or continuing a batch. No extra rate unit on final check or denied next read; fake transport regression covers both drift cases. No production/provider mutations, live release, external custom-MCP OAuth/pass/Hub/revocation or cleanup acceptance. Card: RTC-AUTHORITY-BINDING.md.

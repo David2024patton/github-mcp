@@ -73,6 +73,23 @@ describe('RTC read envelopes have a truthful complete-data wire budget',()=>{
       expect(f.writes()).toBe(0);
     }
   });
+  it('withholds credential-shaped values in small direct HTTPS replies',async()=>{
+    const f=await fixture({value:{items:[{note:'credential='+pass}]}});
+    const res=await f.invoke();
+    expect(res.statusCode).toBe(503);
+    expect(json(res).error.code).toBe('service_error');
+    expect(res.body).not.toContain(pass);
+    expect(f.writes()).toBe(0);
+  });
+  it('withholds credential-shaped summaries attached to apparently valid saved handles',async()=>{
+    const f=await fixture({value:{kept_result:{handle:savedHandle,
+      what:'credential='+pass},items:[{safe:true}]}});
+    const res=await f.invoke();
+    expect(res.statusCode).toBe(503);
+    expect(json(res).error.code).toBe('service_error');
+    expect(res.body).not.toContain(pass);
+    expect(f.writes()).toBe(0);
+  });
   it('does not report a missing structured value as a successful reply',async()=>{
     const f=await fixture({dispatchOverride:async()=>({structuredContent:undefined})});
     const response=await f.invoke();
