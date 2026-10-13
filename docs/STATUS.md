@@ -22,6 +22,9 @@ required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creat
 
 ## Next
 
+- **#151 original RTC scratch identity binding (IMPLEMENTED; exact-head CI pending):** Refuse a midflight change of scratch account or pass client identity even when the replacement scope is independently valid, before releasing a successful result or continuing a batch. No extra rate unit on final check or denied next read; fake transport regression covers both drift cases. No production/provider mutations, live release, external custom-MCP OAuth/pass/Hub/revocation or cleanup acceptance. Card: RTC-AUTHORITY-BINDING.md.
+
+
 - **#150 RTC postread authority revalidation (implementation; CI pending):** Successful restricted HTTPS responses now recheck the service-issued pass and scratch owner after each in-flight read, including the last batch child, without charging a second rate unit. Revocation, expiry, scratch removal and readback failures withhold previously computed payloads and return existing sanitized refusal/status; pre-dispatch and per-child gates remain intact. No real credential, release, prod/write/spend, Hub/core requirement or external acceptance claim. Verify seven exact-head and postmerge main jobs, independent genuine live/OAuth/pass/Hub/cleanup gates.
 
 - **#149 bounded RTC discovery metadata (implementation; CI pending):** Catalog search and individual descriptions may include input schemas too large for the C-1 8192-byte wire budget. Preserve every complete selected entry under the existing connection-owned 24-hour store, send a bounded truthful prefix with counts/next/handle, and retain large single tool descriptions. Malformed, foreign and storage-failure paths remain guarded; zero widened tool scope or provider changes. Automated and genuine connected/deployed acceptance stay distinct.
