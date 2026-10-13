@@ -3,9 +3,6 @@
 name: Prune merged AI branches
 
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/prune-merged-branches.yml']
   pull_request:
     types: [closed]
 
@@ -14,7 +11,7 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: branch-cleanup-${{ github.repository }}
+  group: branch-prune-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:
