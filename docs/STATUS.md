@@ -1,3 +1,8 @@
+## Historical branch archive retry — 2026-10-13
+
+- Run `38476589642` failed **before archive creation or any historical deletion** because the exact-pin preflight found an incorrect transcription of `ai/claude/d-1b-repo-writes`: pinned `c57b886ea1bd1626cd61548a9547ade4241f5db7` vs GitHub's actual `c57b886ea1bd1626cd61548a9547ade4241f5a65`. All 15 refs survived; no archive created.
+- The next reviewed PR corrects the SHA and implements safe resume after a partial archive run, addressing #160's P2 review. Only verified immutable archival parents and unchanged main-tree history allow continued deletion; a missing or modified archive is never trusted. **Actual remote archive, branch removal, final main CI and removal of the one-time workflow still require independent evidence.** Preserve all original refs if anything fails.
+
 ## Owner-authorized branch hygiene — 2026-10-13 (ACTIVE, external archival unverified)
 
 - **Verified:** #158 merged; exact-main CI and policy passed, and actual GitHub Actions run `38474294944` deleted **147** old AI branches already contained in main with **zero** failures. The complete remote inventory then had 15 branch heads with commits not in main ancestry (ten legacy/closed-unmerged and five old merged-PR tips) plus `main` and `live`. No historical commit was deleted.

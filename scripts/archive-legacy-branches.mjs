@@ -10,7 +10,7 @@ export const OLD_HEADS = Object.freeze([
   ['ai/claude/a-5c-webhook-server-tools', 'dcd7d4d82cd5950e20f0497a4e002310082effdb'],
   ['ai/claude/b-1-write-layer', '83b3c3781ef7c4a222d50f2eca1eb1130f7da7ba'],
   ['ai/claude/d-1-repositories', '0aa65dc48739093eb68962328b50f2db4d47e2a4'],
-  ['ai/claude/d-1b-repo-writes', 'c57b886ea1bd1626cd61548a9547ade4241f5db7'],
+  ['ai/claude/d-1b-repo-writes', 'c57b886ea1bd1626cd61548a9547ade4241f5a65'],
   ['ai/claude/d-2b-code-writes', '58545cb15a318991f6c37e0b3fec1b0904f4d463'],
   ['ai/claude/d-3-branches-tags', '3109f58f164cb77dceb2c6969619fea584209dbf'],
   ['ai/claude/e-1-pull-requests', '253f0bb571d540c01ba79a5d272c25679bfc886f'],
@@ -34,6 +34,21 @@ export function validateOldHeads(heads) {
     unique.add(name);
   }
   return true;
+}
+
+export function validateArchiveHistory(parents, archivedTree, baselineTree, heads = OLD_HEADS) {
+  validateOldHeads(heads);
+  if (!Array.isArray(parents) || parents.length !== heads.length + 1 ||
+      !parents.every((sha) => /^[a-f0-9]{40}$/.test(sha)) ||
+      !/^[a-f0-9]{40}$/.test(archivedTree) || archivedTree !== baselineTree) {
+    throw new Error('Existing archive has incorrect parents or a modified file tree');
+  }
+  for (let i = 0; i < heads.length; i += 1) {
+    if (parents[i + 1] !== heads[i][1]) {
+      throw new Error('Existing archive does not preserve pinned historical tip ' + heads[i][0]);
+    }
+  }
+  return parents[0];
 }
 
 export function archiveCommitArgs(tree, main, heads = OLD_HEADS) {
@@ -75,39 +90,62 @@ async function main() {
   const open = await activePRHeads();
   git(['fetch', '--no-tags', '--prune', 'origin', '+refs/heads/*:refs/remotes/origin/*']);
   const mainSha = git(['rev-parse', 'refs/remotes/origin/main']);
-  if (git(['ls-remote', '--heads', 'origin', 'refs/heads/' + ARCHIVE_REF])) {
-    throw new Error('Archive already exists; verify its exact history before any deletion');
+  const archiveRemote = git(['ls-remote', '--heads', 'origin', 'refs/heads/' + ARCHIVE_REF])
+    .split(/\s+/)[0];
+  let archive;
+  if (archiveRemote) {
+    // A partial prior success is resumable, but only after complete remote ancestry proof.
+    archive = archiveRemote;
+  } else {
+    for (const [name, sha] of OLD_HEADS) {
+      if (open.has(name)) throw new Error('Historical branch now has an open PR: ' + name);
+      const remote = git(['rev-parse', '--verify', 'refs/remotes/origin/' + name]);
+      if (remote !== sha) throw new Error('Historical branch changed: ' + name);
+      if (checkAncestor(sha, mainSha)) throw new Error('Expected distinct history changed: ' + name);
+    }
+    git(['config', 'user.name', 'github-actions[bot]']);
+    git(['config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com']);
+    const mainTree = git(['rev-parse', mainSha + '^{tree}']);
+    archive = git(archiveCommitArgs(mainTree, mainSha));
+    if (git(['rev-parse', archive + '^{tree}']) !== mainTree ||
+        OLD_HEADS.some(([, sha]) => !checkAncestor(sha, archive))) {
+      throw new Error('New archive failed its complete ancestry or unchanged-tree proof');
+    }
+    const created = spawnSync('git', [
+      'push', '--porcelain',
+      '--force-with-lease=refs/heads/' + ARCHIVE_REF + ':',
+      'origin', archive + ':refs/heads/' + ARCHIVE_REF
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    if (created.status !== 0) throw new Error('Archive creation refused; original branches untouched');
   }
 
-  // Every recorded remote SHA must still be exact and outside main. No ambiguous or missing refs.
-  for (const [name, sha] of OLD_HEADS) {
-    if (open.has(name)) throw new Error('Historical branch now has an open PR: ' + name);
-    const remote = git(['rev-parse', '--verify', 'refs/remotes/origin/' + name]);
-    if (remote !== sha) throw new Error('Historical branch changed: ' + name);
-    if (checkAncestor(sha, mainSha)) throw new Error('Expected unique history changed: ' + name);
-  }
-
-  git(['config', 'user.name', 'github-actions[bot]']);
-  git(['config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com']);
-  const tree = git(['rev-parse', mainSha + '^{tree}']);
-  const archive = git(archiveCommitArgs(tree, mainSha));
-  // Safety proof: the archive has exactly the same files as main, but it keeps all 15 histories alive.
-  if (git(['rev-parse', archive + '^{tree}']) !== tree ||
-      OLD_HEADS.some(([, sha]) => !checkAncestor(sha, archive))) {
-    throw new Error('Archive did not preserve all historical commits and the unchanged main tree');
-  }
-  const created = spawnSync('git', [
-    'push', '--porcelain',
-    '--force-with-lease=refs/heads/' + ARCHIVE_REF + ':',
-    'origin', archive + ':refs/heads/' + ARCHIVE_REF
-  ], { stdio: ['ignore', 'pipe', 'pipe'] });
-  if (created.status !== 0) throw new Error('Archive ref creation refused; original branches untouched');
   const published = git(['ls-remote', '--heads', 'origin', 'refs/heads/' + ARCHIVE_REF])
     .split(/\s+/)[0];
-  if (published !== archive) throw new Error('Published archive SHA mismatch; original branches untouched');
+  if (published !== archive) throw new Error('Archive ref changed or unavailable; no branch deletion');
+  const parents = git(['show', '-s', '--format=%P', archive]).split(/\s+/);
+  const archivedTree = git(['rev-parse', archive + '^{tree}']);
+  const baseline = validateArchiveHistory(parents, archivedTree,
+    git(['rev-parse', parents[0] + '^{tree}']));
+  if (!checkAncestor(baseline, mainSha) ||
+      OLD_HEADS.some(([, sha]) => !checkAncestor(sha, archive))) {
+    throw new Error('Archive history incomplete or not based on current main');
+  }
+  const tree = archivedTree;
 
   const deleted = [], refused = [];
+  const previouslyDeleted = [];
   for (const [name, sha] of OLD_HEADS) {
+    // A fully validated existing archive makes an already absent source ref safe to skip.
+    const remote = git(['ls-remote', '--heads', 'origin', 'refs/heads/' + name])
+      .split(/\s+/)[0];
+    if (!remote) {
+      previouslyDeleted.push(name);
+      continue;
+    }
+    if (remote !== sha) {
+      refused.push(name + ' (branch tip changed)');
+      continue;
+    }
     // A lease protects commits, not a newly opened PR. Re-read just before each deletion.
     if ((await activePRHeads()).has(name)) {
       refused.push(name + ' (now has an open PR)');
@@ -127,7 +165,8 @@ async function main() {
     'Exact archive commit: ' + archive,
     'Unchanged main tree: ' + tree,
     'Historical commits preserved as parents: ' + OLD_HEADS.length,
-    'Original branch refs deleted: ' + deleted.length,
+    'Original refs deleted in this run: ' + deleted.length,
+    'Previously deleted, safely resumed: ' + previouslyDeleted.length,
     'Deletion refusals: ' + refused.length,
     ...refused.map((name) => '- Refused: ' + name)
   ].join('\n') + '\n';
