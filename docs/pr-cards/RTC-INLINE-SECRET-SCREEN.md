@@ -1,6 +1,6 @@
 # RTC-INLINE-SECRET-SCREEN — independent HTTPS last-mile credential refusal
 
-Status: IMPLEMENTED (target #153; exact-head CI/review pending).
+Status: MERGED (#153; all seven exact-head application/release checks passed).
 Baseline: merged main ff9f0ae0006a12c80e3a8fd89e30bacc753191c8 (#152).
 Risk: outgoing HTTP read credential screening. No provider operation,
 credential handling change, pass grant, migration, write or release change.
