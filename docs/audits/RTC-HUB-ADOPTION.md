@@ -41,3 +41,7 @@ Reject ambiguous array/unknown/oversized discovery parameters before reading the
 ## #117 RTC HTTP wire limits
 
 Single read calls and batched calls now reject JSON bodies exceeding 32 KiB measured in UTF-8 bytes, with a strict top-level batch envelope. This bounds pass-only resource consumption before the dispatcher. Fake HTTP tests exercise valid small reads, oversized multibyte payloads, and unknown envelope keys. No external D-4 evidence, full RTC certification or real OAuth-connected cleanup claim.
+
+## Service-specific gateway recovery acceptance — 2026-10-12
+
+RTC0 manifest must not be changed to RTC1 merely to unblock a Hub probe. Remaining full metadata/profiles/areas/write and two-instance conformance must be reconciled; a separately reviewed restricted read subset is not certification. Existing scratch/default-label ownership and protected OAuth gates remain independent. No standard GitHub connector proves custom MCP acceptance.

@@ -43,8 +43,11 @@ hard-coded; over the limit → HTTP 429 with `Retry-After` and code `rate_limite
 started server (fake GitHub) in this repo's CI and a failure fails `ci`. Until then this server's own write-contract tests
 over MCP, `github_call` and HTTPS cover the same behaviour.
 
-**R4. Contract code lives in `src/core/`** (Batch A, A2): passes, HTTPS doors, manifest, meta-tools, result rules, write
-layer, error envelope — extracted by the hub into `robinson-mcp-core`; this server then switches to the package.
+**R4. External contract, optional internal reuse.** RTC 1 doors remain service-owned and fully usable without
+Hub or shared-library adoption. `src/core/` is an organizational boundary, not proof of portability. A separate
+card may adopt selected immutable published `robinson-mcp-core` exports only after original-service parity and
+reversible rollout. Provider dispatch, credentials, storage, permissions and approvals stay here. No automatic
+all-export migration or K-3 dependency for R-series/Hub connectivity. Existing R-series acceptance is unchanged.
 
 ## 2. Schema
 

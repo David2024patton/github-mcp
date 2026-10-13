@@ -1,5 +1,17 @@
 # STATUS — current work, blockers and next action
 
+## Current gateway recovery disposition — 2026-10-12
+
+Owner requested cross-repository architecture/planning correction. Prioritize independently usable provider tools
+and existing approved RTC/isolation acceptance; do not wait for K-3 publication or force internal code adoption.
+Hub agent owns fixed broker surface, registry, routing, grant mapping, cache, forwarding audit and scale testing.
+This service agent owns authenticated RTC/mode/resource isolation, original direct-MCP parity and safe deployed
+read/denial/revocation evidence. A public manifest, reference conformance or private-core rehearsal is not proof
+of actual hosted acceptance. Full provider roadmap and existing external gates remain; no card is closed here.
+Next: reconcile current implementation/concurrency and existing RTC acceptance gaps, obtain exact deployed
+revision and authorized short-lived read_only non-production pass securely, and run the supported harmless read
+and denials through Hub when available. Never alias preview to TEST without real isolation or expose credentials.
+
 Updated 2026-10-12. **The foundation is built (A-1, PR #1), its database schema exists (A-2, PR #7), the connector login is built (A-3a, PR #8; A-3b, PR #9) the GitHub client exists (A-4, PR #10) the encrypted credential store exists (A-5a, PR #11) and the private setup page exists (A-5b, PR #12) the App webhook and first two tools exist (A-5c, PR #13) the deployment guide is written (A-6, PR #15) the write safety layer exists (B-1, PR #16) the production guard with the two-step production switch exists (B-2, PR #18) the protected list with project ownership exists (B-3, PR #19) the people and spend guards exist (B-4, PR #20) plain-English errors with result shaping exist (B-5, PR #21) and profiles with downscoped tokens exist (B-6, PR #22):** Node 24
 package with a committed lockfile, a fake GitHub for tests, the check scripts, throwaway-Postgres database tests, CI with
 required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creating the 13 foundation tables plus the owner settings table and storing connector logins, the OAuth endpoints and `/api/mcp` (two read-only tools, `github_whoami` and `github_list_accounts`), and `src/github/client.js` (pinned API version, request keys, write spacing, rate blocks, ETag cache) with GitHub's REST and GraphQL descriptions vendored, and `src/github/credentials.js` (encrypted Apps, installation tokens, user authorization, pasted tokens) with one-time secrets. Two read-only tools were the initial baseline. The actual server is now deployed to Vercel with an isolated Neon database and encrypted environment configuration; the custom scratch App was installed; owner-designated setup is complete, but connected acceptance remains pending. Nothing here authorizes changes to Chris's real repositories.
