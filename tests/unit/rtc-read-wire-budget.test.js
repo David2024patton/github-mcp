@@ -110,6 +110,27 @@ describe('RTC read envelopes have a truthful complete-data wire budget',()=>{
     expect(response.body).not.toContain('private result storage details');
     expect(f.writes()).toBe(1);
   });
+  it('refuses an incomplete canonical preview after the original result store fails',async()=>{
+    const value={items:[{text:'é'.repeat(6000)}]};
+    const f=await fixture({value,storageFailure:true,
+      dispatchOverride:async input=>createDispatch()(input)});
+    const response=await f.invoke();
+    expect(response.statusCode).toBe(503);
+    expect(json(response).error.code).toBe('service_error');
+    expect(response.body).not.toContain('private result storage details');
+    expect(response.body).not.toContain('é'.repeat(30));
+    expect(f.writes()).toBe(1);
+  });
+  it('reuses a real canonical retained handle instead of rejecting complete saved reads',async()=>{
+    const value={items:[{text:'é'.repeat(6000)}]};
+    const f=await fixture({value,dispatchOverride:async input=>createDispatch()(input)});
+    const response=await f.invoke();
+    expect(response.statusCode).toBe(200);
+    expect(json(response).handle).toMatch(/^res_/);
+    expect(f.writes()).toBe(1);
+    const stored=await f.db.getResult(json(response).handle,owner);
+    expect(stored.body).toEqual(value);
+  });
   it('retains each large batch child and preserves their individual handles',async()=>{
     const f=await fixture();
     const response=await f.invoke('batch',{calls:[{name:read.name,args:{}},{name:read.name,args:{}}]});
