@@ -3,7 +3,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ARCHIVE_REF, OLD_HEADS, archiveCommitArgs, validateOldHeads } from '../../scripts/archive-legacy-branches.mjs';
+import { ARCHIVE_REF, OLD_HEADS, archiveCommitArgs, validateArchiveHistory, validateOldHeads } from '../../scripts/archive-legacy-branches.mjs';
 
 describe('history-only branch archival', () => {
   it('pins the known 15 divergent source refs without permitting main/live', () => {
@@ -18,6 +18,19 @@ describe('history-only branch archival', () => {
     bad[0][0] = bad[1][0];
     expect(() => validateOldHeads(bad)).toThrow();
     expect(() => archiveCommitArgs('invalid', 'a'.repeat(40))).toThrow();
+    expect(OLD_HEADS.find(([name]) => name === 'ai/claude/d-1b-repo-writes')?.[1]).toBe('c57b886ea1bd1626cd61548a9547ade4241f5a65');
+  });
+
+  it('requires unchanged file tree and all 15 precise parent tips on recovery', () => {
+    const main = 'f'.repeat(40);
+    const tree = 'e'.repeat(40);
+    const parents = [main, ...OLD_HEADS.map(([, sha]) => sha)];
+    expect(validateArchiveHistory(parents, tree, tree)).toBe(main);
+    expect(() => validateArchiveHistory(parents.slice(0, -1), tree, tree)).toThrow();
+    expect(() => validateArchiveHistory(parents, tree, 'd'.repeat(40))).toThrow();
+    const wrong = [...parents];
+    wrong[4] = '0'.repeat(40);
+    expect(() => validateArchiveHistory(wrong, tree, tree)).toThrow();
   });
 
   it('archives all 15 source commits as ancestors without incorporating any source files', () => {
