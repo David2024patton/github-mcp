@@ -68,7 +68,7 @@ describe('capText', () => {
     expect(r.value.id).toBe('a-123');
     expect(r.value.title).toBe('Important short title');
     expect(r.value.nested.label).toBe('Keep this label');
-    expect(r.value.body).toStartWith('b'.repeat(100));
+    expect(r.value.body.startsWith('b'.repeat(100))).toBe(true);
     expect(r.value.body).toContain('1000 more characters left out');
     expect(r.cut).toHaveLength(1);
     expect(r.cut[0].path).toBe('body');
