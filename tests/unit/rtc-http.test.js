@@ -76,7 +76,10 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
     const handle='res_'+'b'.repeat(22);
     const seen=[];
     const db={getRtcPass:async()=>token,getAccount:async()=>account,consumeRtcPassRate:async()=>true};
-    const withResults={...registry,tools:[...registry.tools,{...read,name:'github_get_result'}]};
+    const withResults={...registry,tools:[...registry.tools,{...read,name:'github_get_result',
+      inputSchema:{type:'object',required:['handle'],additionalProperties:false,
+        properties:{handle:{type:'string'},page:{type:'integer'},pageSize:{type:'integer'},
+          fields:{type:'array',items:{type:'string'}},offset:{type:'integer'}}}}]};
     const handler=createRtcHttpHandler({db,registry:withResults,dispatch:async({name,args,connection})=>{
       seen.push({name,args,client:connection.client_id});
       return {structuredContent:{page_info:{page:args.page},items:[{summary:'owned'}]}};
@@ -221,7 +224,7 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
     expect((await invoke('batch',{calls:[{name:'github_whoami',args:{}}],
       extra:{unexpected:true}})).statusCode).toBe(400);
     expect(calls).toBe(0);
-    expect((await invoke('tool',{small:'data'})).statusCode).toBe(200);
+    expect((await invoke('tool',{})).statusCode).toBe(200);
     expect((await invoke('batch',{calls:[{name:'github_whoami',args:{}}]})).statusCode).toBe(200);
     expect(calls).toBe(2);
   });
@@ -295,6 +298,50 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
     expect(foreignReads).toBe(0);
     expect((await invoke('tool','POST',{}, {name:'github_whoami'})).statusCode).toBe(200);
     expect((await invoke('batch','POST',{calls:[{name:'github_whoami',args:{}}]})).statusCode).toBe(200);
+  });
+  it('distinguishes caller validation from upstream read failures without leaking details',async()=>{
+    const constrained={...read,name:'github_safe_probe',inputSchema:{type:'object',
+      required:['target'],properties:{target:{type:'string',minLength:1}},
+      additionalProperties:false}};
+    const expected={...registry,tools:[...registry.tools,constrained]};
+    let dispatches=0;
+    const db={getRtcPass:async()=>token,getAccount:async()=>account,
+      consumeRtcPassRate:async()=>true};
+    let output={isError:true,content:[{type:'text',text:'provider secret in error'}]};
+    const handler=createRtcHttpHandler({db,registry:expected,dispatch:async()=>{
+      dispatches++;return output;
+    }});
+    const invoke=async(route,body)=>{
+      const req=request('POST',body,{authorization:'Bearer '+pass});
+      req.query=route==='tool'?{name:constrained.name}:{};
+      return call((a,b)=>handler(a,b,route),req);
+    };
+    for(const body of [{},{target:''},{target:123},{target:'ok',extra:true}]){
+      const response=await invoke('tool',body);
+      expect(response.statusCode).toBe(400);
+      expect(json(response).error.code).toBe('invalid_args');
+    }
+    expect(dispatches).toBe(0);
+    const provider=await invoke('tool',{target:'ok'});
+    expect(provider.statusCode).toBe(503);
+    expect(json(provider).error.code).toBe('service_error');
+    expect(provider.body).not.toContain('provider secret in error');
+    expect(dispatches).toBe(1);
+    // Error shape and missing results are never presented as successful null reads.
+    for(const malformed of [undefined,{content:[{type:'text',text:'no structured reply'}]}]){
+      output=malformed;
+      const failed=await invoke('tool',{target:'ok'});
+      expect(failed.statusCode).toBe(503);
+      expect(json(failed).ok).toBe(false);
+    }
+    output={structuredContent:null};
+    const legitimate=await invoke('tool',{target:'ok'});
+    expect(legitimate.statusCode).toBe(200);
+    expect(json(legitimate)).toMatchObject({ok:true,result:null,mode:'preview'});
+    output={isError:true,content:[{type:'text',text:'private runtime text'}]};
+    const batch=await invoke('batch',{calls:[{name:constrained.name,args:{target:'ok'}}]});
+    expect(batch.statusCode).toBe(503);
+    expect(batch.body).not.toContain('private runtime text');
   });
   it('never calls write tools and refuses write batches',async()=>{
     expect((await run('tool','POST',{}, {tool:'github_delete_repo'})).statusCode).toBe(404);
