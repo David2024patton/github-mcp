@@ -69,7 +69,8 @@ export async function probeNativeMcp({
     ok: false, phase: ['read', 'revoked'].includes(phase) ? phase : null,
     checks: [], custom_transport_observed: false, provider_read_observed: false,
     permitted_write_observed: false, provider_readback_observed: false,
-    resource_denial_observed: false, credential_revocation_observed: false,
+    resource_denial_observed: false, foreign_account_denial_observed: false,
+    credential_revocation_observed: false,
     deployment_sha_independently_retrieved_by_script: false,
     hub_acceptance: false, cleanup_acceptance: false
   };
@@ -148,7 +149,7 @@ export async function probeNativeMcp({
     });
     return r.status === 200 && resultOf(r.value, 5)?.isError === true;
   });
-  report.resource_denial_observed = denied;
+  report.foreign_account_denial_observed = denied;
   report.ok = report.checks.every(c => c.passed);
   return report;
 }
