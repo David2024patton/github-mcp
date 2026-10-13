@@ -6,7 +6,11 @@ export const RTC_HTTP_AREAS=Object.freeze(['server','meta']);
 export function rtcHttpTools(registry){
   return toolsForProfile(registry,'read_only').filter(tool=>
     RTC_HTTP_AREAS.includes(areaOf(tool))&&tool.annotations?.readOnlyHint===true&&
-    tool.writes!==true&&tool.passthrough!==true);
+    tool.writes!==true&&tool.passthrough!==true&&
+    // Registry-consuming wrappers run nested tool calls on the full registry.
+    // The restricted HTTPS door already offers bounded discovery and batching;
+    // never let a nested meta-tool bypass area/rate checks.
+    tool.usesRegistry!==true);
 }
 export function rtcIdentity(revision=process.env.VERCEL_GIT_COMMIT_SHA){
   const valid=typeof revision==='string'&&/^[a-f0-9]{40}$/.test(revision);

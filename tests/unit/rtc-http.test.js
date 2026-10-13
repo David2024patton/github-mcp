@@ -3,6 +3,10 @@ import {randomBytes} from 'node:crypto';
 import {request,call,json} from '../../test/helpers/http-harness.js';
 import {createRtcHttpHandler} from '../../src/rtc/http.js';
 import {rtcManifest,rtcMetadata} from '../../src/rtc/contract.js';
+import {rtcHttpTools} from '../../src/rtc/scope.js';
+import {createDispatch} from '../../src/tools/dispatch.js';
+import * as meta from '../../src/tools/meta.js';
+
 const pass='rtc_pass_'+randomBytes(32).toString('base64url');
 const read={name:'github_whoami',description:'Read safe scope',area:'server',audience:['B'],compact:true,
   inputSchema:{type:'object',properties:{}},annotations:{readOnlyHint:true}};
@@ -245,6 +249,52 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
       expect((await call((a,b)=>handler(a,b,route),allowed)).statusCode).toBe(200);
     }
     expect(dispatched).toBe(2);
+  });
+  it('prevents registry-driven meta wrappers from escaping the RTC pass area',async()=>{
+    let foreignReads=0;
+    const outside={name:'github_repo_private_read',area:'repos',description:'Outside pass area',
+      inputSchema:{type:'object',properties:{},additionalProperties:false},
+      annotations:{readOnlyHint:true},compact:true};
+    const wrapped={tools:[...meta.tools,read,outside],handlers:{
+      ...meta.handlers,github_whoami:async()=>({scope:'server'}),
+      github_repo_private_read:async()=>{foreignReads++;return {scope:'repos'};}
+    }};
+    const db={getRtcPass:async()=>token,getAccount:async()=>account,
+      consumeRtcPassRate:async()=>true};
+    const handler=createRtcHttpHandler({db,registry:wrapped,dispatch:createDispatch()});
+    const invoke=async(route,method,body,query={})=>{
+      const req=request(method,method==='GET'?query:body,{authorization:'Bearer '+pass});
+      req.query=query;
+      return call((a,b)=>handler(a,b,route),req);
+    };
+    // Existing standalone MCP retains its complete guarded meta-tool registry.
+    expect(wrapped.tools.some(t=>t.name==='github_batch')).toBe(true);
+    const standalone=await createDispatch()({registry:wrapped,name:'github_batch',
+      args:{calls:[{name:outside.name,args:{}}]},db,
+      connection:{profile:'read_only',mode:'preview',client_id:token.client_id}});
+    expect(standalone.isError).not.toBe(true);
+    expect(foreignReads).toBe(1);
+    foreignReads=0;
+    // None of the registry-consuming wrappers may enter restricted HTTP;
+    // the explicit HTTPS tools and batch routes remain available and scoped.
+    expect(rtcHttpTools(wrapped).map(t=>t.name)).toEqual(['github_whoami']);
+    expect(rtcManifest(wrapped).https_subset.counts.tools).toBe(1);
+    const discovered=await invoke('tools','GET',{}, {listing:'catalog'});
+    expect(json(discovered).result.tools.map(t=>t.name)).toEqual(['github_whoami']);
+    for(const name of ['github_batch','github_search_tools','github_describe_tool',
+      'github_call',outside.name]){
+      const get=await invoke('tool','GET',{}, {name});
+      expect(get.statusCode,name).toBe(404);
+      const post=await invoke('tool','POST',{calls:[{name:outside.name,args:{}}]}, {name});
+      expect(post.statusCode,name).toBe(404);
+    }
+    const nested=await invoke('batch','POST',{calls:[
+      {name:'github_whoami',args:{}},{name:'github_batch',args:{calls:[{name:outside.name}]}}
+    ]});
+    expect(nested.statusCode).toBe(403);
+    expect(foreignReads).toBe(0);
+    expect((await invoke('tool','POST',{}, {name:'github_whoami'})).statusCode).toBe(200);
+    expect((await invoke('batch','POST',{calls:[{name:'github_whoami',args:{}}]})).statusCode).toBe(200);
   });
   it('never calls write tools and refuses write batches',async()=>{
     expect((await run('tool','POST',{}, {tool:'github_delete_repo'})).statusCode).toBe(404);
