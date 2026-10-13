@@ -26,6 +26,7 @@ function git(args) {
   return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 }
 
+// Actions maintenance control-plane call, not a provider tool: same pinned REST API version.
 async function openPRHeads() {
   const repo = process.env.GITHUB_REPOSITORY;
   const token = process.env.GITHUB_TOKEN;
@@ -38,7 +39,7 @@ async function openPRHeads() {
     headers: {
       Authorization: 'Bearer ' + token,
       Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28'
+      'X-GitHub-Api-Version': '2026-03-10'
     }
   });
   if (!response.ok) throw new Error('Cannot independently read open PRs; preserving every branch');

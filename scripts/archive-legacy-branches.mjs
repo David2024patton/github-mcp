@@ -52,6 +52,7 @@ function checkAncestor(older, newer) {
     { stdio: ['ignore', 'pipe', 'pipe'] }).status === 0;
 }
 
+// Actions maintenance control-plane call, not a provider tool: same pinned REST API version.
 async function activePRHeads() {
   if (process.env.GITHUB_REPOSITORY !== 'Robinson-AI-Systems/github-mcp' || !process.env.GITHUB_TOKEN) {
     throw new Error('Wrong repository or no GitHub Actions token; no archive or deletion');
@@ -60,7 +61,7 @@ async function activePRHeads() {
     '/repos/Robinson-AI-Systems/github-mcp/pulls?state=open&per_page=100';
   const response = await fetch(url, {
     headers: { Authorization: 'Bearer ' + process.env.GITHUB_TOKEN,
-      Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }
+      Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10' }
   });
   if (!response.ok) throw new Error('Open PR list unavailable; no archival or deletion');
   const prs = await response.json();
