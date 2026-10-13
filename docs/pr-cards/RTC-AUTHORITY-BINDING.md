@@ -1,6 +1,6 @@
 # RTC-AUTHORITY-BINDING — preserve scratch identity across a read
 
-Status: IMPLEMENTED (target PR #151; exact-head CI and review pending).
+Status: MERGED (#151; all seven exact-head application/release checks passed).
 Baseline: main fe88d9402d0be903ef7c17004bc866ffb3507c93 (#150).
 Risk: read-only RTC response authorization identity. No migrations, provider
 writes, new credential or pass defaults, account access, production or spending.
