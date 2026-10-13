@@ -108,6 +108,11 @@ async function main() {
 
   const deleted = [], refused = [];
   for (const [name, sha] of OLD_HEADS) {
+    // A lease protects commits, not a newly opened PR. Re-read just before each deletion.
+    if ((await activePRHeads()).has(name)) {
+      refused.push(name + ' (now has an open PR)');
+      continue;
+    }
     const attempt = spawnSync('git', [
       'push', '--porcelain',
       '--force-with-lease=refs/heads/' + name + ':' + sha,
