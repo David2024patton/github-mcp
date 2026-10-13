@@ -7,6 +7,7 @@
 // Anything else answers "unknown tool", and so does a write tool the connection's profile does not include (B-6: hidden by name, not just unlisted).
 import { randomBytes } from 'node:crypto';
 import { validateArgs } from '../core/validate.js';
+import {RetainedResultNotFound} from '../core/result-errors.js';
 import { capText, describeBody, fitToBudget, projectFields } from '../core/result-rules.js';
 import { summarize } from './summaries.js';
 import { isToolVisible } from '../core/registry.js';
@@ -78,7 +79,11 @@ export function createDispatch({ env = process.env, now = Date.now, fetch = glob
       const callTool = (innerName, innerArgs) => dispatch({ registry, name: innerName, args: innerArgs, connection, db });
       result = await handler(args ?? {}, { connection, db, env, now, fetch, credentials, ...(sleep ? { sleep } : {}), ...(isWrite ? { gates } : {}), ...(tool.usesRegistry ? { registry, callTool } : {}) });
     } catch (error) {
-      return fail(error instanceof TypeError ? error.message : 'That tool could not complete right now. Nothing was changed.');
+      const response=fail(error instanceof TypeError ? error.message : 'That tool could not complete right now. Nothing was changed.');
+      // Only the trusted canonical result handler may distinguish absent/foreign
+      // handles. Keep the existing MCP-readable message, never parse its text.
+      return name==='github_get_result' && error instanceof RetainedResultNotFound
+        ? {...response,failureCode:'retained_result_not_found'} : response;
     }
     const mode = connection?.mode;
     let shaped;

@@ -39,7 +39,7 @@ describe('RTC retained-result error taxonomy and ownership',()=>{
     const res=await f.invoke({handle,page:'1',pageSize:'1'});
     expect(res.statusCode).toBe(200);
     expect(json(res)).toMatchObject({ok:true,result:{items:[{safe:'owned'}]}});
-    expect(f.lookups()).toBe(2); // scoped existence check plus canonical read
+    expect(f.lookups()).toBe(1); // one canonical owner-scoped read
     expect(f.rates()).toBe(1);
   });
   it('does not disclose absent, expired or foreign handles to another pass',async()=>{
@@ -73,15 +73,30 @@ describe('RTC retained-result error taxonomy and ownership',()=>{
       expect(res.body).not.toContain('private provider detail');
     }
   });
-  it('reports a disappearing result as unavailable rather than inventing a 404',async()=>{
+  it('avoids two-read disappearance races without changing owner scope',async()=>{
     const f=await fixture();
     const getResult=f.db.getResult.bind(f.db);
     let reads=0;
     f.db.getResult=async(...args)=>{reads++;return reads===1?getResult(...args):null;};
     const res=await f.invoke();
-    expect(res.statusCode).toBe(503);
-    expect(json(res).error.code).toBe('service_error');
-    expect(reads).toBe(2);
+    expect(res.statusCode).toBe(200);
+    expect(json(res).result.items).toEqual([{safe:'owned'}]);
+    expect(reads).toBe(1);
+  });
+  it('classifies only trusted canonical absent-handle errors as 404',async()=>{
+    const f=await fixture({stored:false});
+    const absent=await f.invoke();
+    expect(absent.statusCode).toBe(404);
+    expect(json(absent).error.code).toBe('not_found');
+    const out=await createDispatch()({registry:{tools:server.tools,handlers:server.handlers},
+      name:'github_get_result',args:{handle},connection:{...row},db:f.db});
+    expect(out).toMatchObject({isError:true,failureCode:'retained_result_not_found'});
+    expect(JSON.stringify(out)).not.toContain('scratch-org');
+    const unrelated=await fixture({dispatch:async()=>({isError:true,
+      content:[{type:'text',text:'That result was not found.'}]})});
+    const failure=await unrelated.invoke();
+    expect(failure.statusCode).toBe(503);
+    expect(json(failure).error.code).toBe('service_error');
   });
   it('keeps argument and authorization denials before scoped lookup',async()=>{
     const f=await fixture();

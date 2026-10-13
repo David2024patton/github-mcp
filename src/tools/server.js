@@ -1,6 +1,7 @@
 // Tools that describe this server and the connection using them (A-5c). Read-only: they read the database and call no GitHub
 // endpoint. They show which credential types exist, never a credential, not even its last characters.
 import { randomBytes } from 'node:crypto';
+import {RetainedResultNotFound} from '../core/result-errors.js';
 import { GITHUB_API_VERSION } from '../github/client.js';
 import { GithubClientError, formatDenver } from '../github/errors.js';
 import { defineGithubWrite } from './define-github-write.js';
@@ -135,7 +136,7 @@ async function recentChanges(args, ctx) {
 async function getResult(args, ctx) {
   const owner = ctx.connection.client_id ?? ctx.connection.pass_id;
   const row = owner ? await ctx.db.getResult(args.handle, String(owner)) : null;
-  if (!row) throw new TypeError('That result was not found. Results are kept for 24 hours and only for the connection that made them; run the search again.');
+  if (!row) throw new RetainedResultNotFound();
   // A page that would not fit gets a smaller page size (halved until it does); page_info says which size was used, so paging stays consistent.
   const keep = { alsoKeep: ['untrusted', 'page_info'], twins: ['_local', '_display'] };
   const listName = listKeyOf(row.body) === '' ? 'items' : listKeyOf(row.body);
