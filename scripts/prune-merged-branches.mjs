@@ -87,6 +87,11 @@ async function main() {
       report.alreadyMerged.push(name);
       continue;
     }
+    // A new PR can appear without changing its branch SHA: recheck immediately before deletion.
+    if ((await openPRHeads()).has(name)) {
+      report.protectedOpen.push(name);
+      continue;
+    }
     // Exact-tip lease: a newer push cannot accidentally be discarded.
     const removed = spawnSync('git', [
       'push',
