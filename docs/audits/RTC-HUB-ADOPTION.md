@@ -87,3 +87,16 @@ an invented claim that the caller's request was invalid or a successful null.
 Explicit `structuredContent:null` remains a valid empty read. No upstream
 private error text is exposed. This is local/CI wire correctness, not evidence
 of a deployed revision or authenticated RTC pass/OAuth acceptance.
+
+## #141 — two-phase protected custom RTC pass acceptance tool
+
+The manual `rtc:auth-evidence` command can exercise the service's own public
+revision preflight, short-lived owner-provided pass, limited read-only scope,
+non-mutating write-discovery denials and a harmless server read. Its second
+explicit phase checks that the same pass is refused *after* separate owner
+revocation; the script neither issues nor revokes a pass. It refuses non-pinned
+origins and deployment mismatch before sending the pass, never prints a token
+or response data, and uses only fixed service-owned HTTP routes. No live pass is
+available in this agent session; CI uses fake transport exclusively. Thus
+source implementation is available but deployed/authenticated custom RTC,
+OAuth MCP, Toolkit Hub and cleanup acceptance remain separately unverified.
