@@ -224,7 +224,7 @@ describe('RTC gated, pass-only HTTPS boundary',()=>{
     expect((await invoke('batch',{calls:[{name:'github_whoami',args:{}}],
       extra:{unexpected:true}})).statusCode).toBe(400);
     expect(calls).toBe(0);
-    expect((await invoke('tool',{small:'data'})).statusCode).toBe(200);
+    expect((await invoke('tool',{})).statusCode).toBe(200);
     expect((await invoke('batch',{calls:[{name:'github_whoami',args:{}}]})).statusCode).toBe(200);
     expect(calls).toBe(2);
   });
