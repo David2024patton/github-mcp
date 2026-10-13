@@ -33,18 +33,4 @@ export function rtcManifest(registry) {
     note:'Safe read-only HTTP integration in progress. RTC 1 conformance and real D-4 acceptance are not certified.'
   };
 }
-export function rtcOpenApi(){
-  const r=(summary)=>({summary,security:[{rtcPass:[]}],responses:{200:{description:'RTC envelope'}}});
-  return {openapi:'3.1.0',info:{title:'Robinson GitHub RTC preview HTTPS API',version:'0.1.0'},
-    paths:{
-      '/api/contract':{get:{summary:'Public contract status',responses:{200:{description:'Manifest'}}}},
-      '/api/openapi.json':{get:{summary:'Public API description',responses:{200:{description:'OpenAPI'}}}},
-      '/api/whoami':{get:r('View read-only pass scope')},
-      '/api/tools':{get:r('Search available scoped tools')},
-      '/api/tools/{name}':{get:r('Describe a tool'),post:r('Call one authorized read')},
-      '/api/tools/_batch':{post:r('Call up to ten authorized reads')},
-      '/api/results/{handle}':{get:r('Retrieve a connection-owned result')}
-    },
-    components:{securitySchemes:{rtcPass:{type:'http',scheme:'bearer'}}}
-  };
-}
+export {rtcOpenApi} from './openapi.js';
