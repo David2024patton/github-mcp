@@ -1,4 +1,7 @@
 // RTC read-only HTTPS integration. Reuses the MCP dispatcher; never accepts OAuth tokens as RTC passes.
+import {randomBytes} from 'node:crypto';
+import {RULES,sizeOf} from '../core/result-rules.js';
+import {containsCredential} from '../tools/util.js';
 import {rtcBatchReply} from './batch.js';
 import { areaOf } from '../core/meta.js';
 import {validateArgs} from '../core/validate.js';
@@ -112,6 +115,37 @@ async function authenticate(req,res,db){
   return {client_id:row.client_id,default_account:row.default_account,
     accounts:[row.default_account],areas:[...row.areas],mode:'preview',profile:'read_only',listing:'compact'};
 }
+// The canonical MCP read is limited to 8 KiB, but the RTC wire envelope adds
+// fields around it. Never send an oversized success or silently drop a result.
+// Retain the already-shaped value under the current connection; a retained
+// canonical handle is preferable to a second copy when one already exists.
+async function readEnvelope({tool,args,value,connection,db}){
+  const kept=value?.kept_result;
+  const existing=kept?.handle && /^res_[A-Za-z0-9_-]{20,64}$/.test(kept.handle)
+    ? kept.handle : null;
+  const body=existing
+    ? {ok:true,result:(({kept_result: _kept,...rest})=>rest)(value),
+      handle:existing,summary:String(kept.what??'Large result'),mode:connection.mode}
+    : {ok:true,result:value,mode:connection.mode};
+  if(sizeOf(body)<=RULES.maxBytes)return body;
+  // The canonical read has already retained its original complete value.
+  // A second 8 KiB page would simply reproduce the same oversized wrapper.
+  if(existing)return {ok:true,result:{note:'Read the retained handle in smaller pages or fields.'},
+    handle:existing,summary:'Read result retained',mode:connection.mode};
+  if(tool==='github_get_result'&&args?.handle)
+    return {ok:true,result:{note:'Page exceeds the wire budget. Use a smaller pageSize or fewer fields.'},
+      handle:args.handle,summary:'Use narrower result paging',mode:connection.mode};
+  if(!connection?.client_id||typeof db?.putResult!=='function||
+    containsCredential(JSON.stringify(body)))throw new Error('RTC result retention unavailable');
+  const handle='res_'+randomBytes(16).toString('base64url');
+  // Store shaped, credential-screened data, not provider payloads.
+  // On storage failure, the caller sends sanitized 503, never truncated success.
+  await db.putResult({handle,connection:connection.client_id,
+    summary:'RTC read result',body:value});
+  return {ok:true,result:{},handle,summary:'Complete read retained for paging',
+    mode:connection.mode};
+}
+
 export function createRtcHttpHandler({db,registry,dispatch}){
   if(!db||!registry||typeof dispatch!=='function')
     throw new TypeError('RTC HTTP needs the existing guarded dispatcher.');
@@ -126,16 +160,11 @@ export function createRtcHttpHandler({db,registry,dispatch}){
       return {status:400,body:rtcError('invalid_args')};
     const output=await dispatch({registry,name:tool,args,connection,db});
     if(!output||typeof output!=='object'||output.isError===true||
-      !Object.hasOwn(output,'structuredContent'))
+      !Object.hasOwn(output,'structuredContent')||
+      output.structuredContent===undefined)
       return {status:503,body:rtcError('service_error')};
-    const value=output.structuredContent;
-    const kept=value?.kept_result;
-    if(kept?.handle && /^res_[A-Za-z0-9_-]{20,64}$/.test(kept.handle)) {
-      const {kept_result: _discarded,...summary}=value;
-      return {status:200,body:{ok:true,result:summary,handle:kept.handle,
-        summary:String(kept.what??'Large result'),mode:connection.mode}};
-    }
-    return {status:200,body:{ok:true,result:value,mode:connection.mode}};
+    return {status:200,body:await readEnvelope({
+      tool,args,value:output.structuredContent,connection,db})};
   };
   return async(req,res,route)=>{
     if(route==='contract'||route==='openapi'){
