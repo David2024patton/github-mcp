@@ -1,3 +1,11 @@
+# Final verified disposition — branch history audit, October 13, 2026
+
+**Cleanup completed through independent GitHub-hosted proof**. Original branch count: 163. GitHub Actions first-pass run `38474294944` removed 147 already-merged branch tips with no failures. The 15 intentionally preserved divergent tips were then attached as explicit Git commit parents to `archive/legacy-ai-2026-10-13`, commit `b01f6f913446829df0a122329a098b2e9e092fcd`, in completed successful run `38477439595`. The Action independently deleted **all 15 original development branches with zero refusals**. Readback via GitHub Git Commit API proves **16 parents** in the required order (archival baseline `f695acab8c3c6724d038dc604d82479b211d25be` and the 15 previously divergent exact tips). The archive commit's tree `07333bb1292ad17bf20eca61f3f82f2e9de49e10` exactly equals that baseline main tree, so no unreviewed historical file changes entered current `main`. An independent full remote branch enumeration after archive completion returned **`main`, `live`, and `archive/legacy-ai-2026-10-13`**. There were no open/draft PRs at that checkpoint. This ref is a deliberate permanent historical archive, **not** unresolved active work and **must not be merged into main or deleted**.
+
+The remaining permanent merge-pruning workflow deletes a future `ai/*` branch only if its exact source tip is contained in main, after independent GitHub open-PR checks and an exact remote lease. Privileged checkout/setup-node actions are pinned to immutable SHAs. The final work unit removes the one-time archive workflow and runner, but that housekeeping PR itself requires exact-head green CI and subsequent branch cleanup verification. Authentic custom-MCP provider/Hub/revocation/scratch acceptance remains independent and unverified; these operations were **Git housekeeping, not a provider test**.
+
+---
+
 # Branch hygiene audit — 2026-10-13
 
 Owner requested a comprehensive audit and safe cleanup of forgotten work branches. At inspection the repo had **163 remote branches**: `main`, `live`, 151 branches for already-merged PRs, six for closed-unmerged PRs, and four branches without matching PRs. No open or draft PRs were present; final main/live and exact-main CI were aligned.
@@ -14,7 +22,7 @@ These are **preserved, not approved for automatic deletion**. The old PR closure
 | --- | --- | --- |
 | `ai/claude/a-5c-webhook-server-tools` | `dcd7d4d82cd5950e20f0497a4e002310082effdb` | #14 closed as duplicate of merged #13 |
 | `ai/claude/b-1-write-layer` | `83b3c3781ef7c4a222d50f2eca1eb1130f7da7ba` | #17 closed as duplicate of merged #16; review findings warrant checking current guards |
-| `ai/claude/d-1b-repo-writes` | `c57b886ea1bd1626cd61548a9547ade4241f5db7` | #28 closed as duplicate of merged #29 |
+| `ai/claude/d-1b-repo-writes` | `c57b886ea1bd1626cd61548a9547ade4241f5a65` | #28 closed as duplicate of merged #29 |
 | `ai/claude/d-2b-code-writes` | `58545cb15a318991f6c37e0b3fec1b0904f4d463` | #31 closed without merge; review findings warrant checking current tools |
 | `ai/claude/d-3-branches-tags` | `3109f58f164cb77dceb2c6969619fea584209dbf` | #34 closed as duplicate of merged #33; review findings warrant checking current guards |
 | `ai/claude/e-1-pull-requests` | `253f0bb571d540c01ba79a5d272c25679bfc886f` | #36 closed without merge; review findings warrant checking current tools |
