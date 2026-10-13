@@ -54,7 +54,8 @@ async function main() {
   const apply = process.argv.includes('--apply');
   const only = process.env.MERGED_HEAD_BRANCH || '';
   if (only && !cleanupCandidate(only)) {
-    throw new Error('Merged PR head is outside the AI branch namespace; no cleanup attempted');
+    console.log('Merged PR head is outside the AI branch namespace; nothing to prune');
+    return;
   }
   // A failed API read is a hard refusal, not evidence that no work is open.
   const open = await openPRHeads();
