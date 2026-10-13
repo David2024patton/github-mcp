@@ -17,7 +17,8 @@
     "rtc:auth-evidence": "node scripts/rtc-auth-evidence.mjs",
     "rtc:public-evidence": "node scripts/rtc-public-evidence.mjs",
     "test:rtc": "vitest run tests/unit/rtc-conformance.test.js tests/unit/rtc-http.test.js tests/unit/rtc-pass-foundation.test.js",
-    "check:developer-evidence": "node scripts/check-developer-evidence.mjs && node --test scripts/check-developer-evidence.test.mjs"
+    "check:developer-evidence": "node scripts/check-developer-evidence.mjs && node --test scripts/check-developer-evidence.test.mjs",
+    "mcp:native-evidence": "node scripts/native-mcp-evidence.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
