@@ -3,6 +3,7 @@ import {randomBytes} from 'node:crypto';
 import {RULES,sizeOf} from '../core/result-rules.js';
 import {containsCredential} from '../tools/util.js';
 import {rtcBatchReply} from './batch.js';
+import {rtcDiscoveryReply} from './discovery.js';
 import { areaOf } from '../core/meta.js';
 import {validateArgs} from '../core/validate.js';
 import { rtcMetadata,rtcManifest,rtcOpenApi } from './contract.js';
@@ -191,15 +192,20 @@ export function createRtcHttpHandler({db,registry,dispatch}){
           (!q||t.name.toLowerCase().includes(q)||t.description.toLowerCase().includes(q)));
         if(listing==='compact')tools=tools.filter(t=>t.compact===true);
         const start=(page-1)*limit;
-        return send(res,200,{ok:true,result:{tools:tools.slice(start,start+limit).map(rtcMetadata),
-          count:tools.length,next:start+limit<tools.length?page+1:null}});
+        const reply=await rtcDiscoveryReply({
+          tools:tools.slice(start,start+limit).map(rtcMetadata),count:tools.length,
+          next:start+limit<tools.length?page+1:null,connection,db});
+        return send(res,200,reply);
       }
       if(route==='tool'){
         const tool=name(req,'name');
         if(!tool||!allowed().some(t=>t.name===tool))
           return send(res,404,rtcError('not_found'));
-        if(req.method==='GET')
-          return send(res,200,{ok:true,result:rtcMetadata(allowed().find(t=>t.name===tool))});
+        if(req.method==='GET'){
+          const reply=await readEnvelope({tool:'rtc_describe_metadata',args:{},
+            value:rtcMetadata(allowed().find(t=>t.name===tool)),connection,db});
+          return send(res,200,reply);
+        }
         if(req.method!=='POST'||!req.body||typeof req.body!=='object'||
           Array.isArray(req.body)||!boundedRequest(req.body,req.headers))
           return send(res,400,rtcError('invalid_args'));
