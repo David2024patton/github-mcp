@@ -18,6 +18,9 @@ required GitHub Actions `ci` and `release-policy` merge gates, `src/db.js` creat
 
 ## Next
 
+- **#134 — service-owned two-process RTC evidence:** Actual restricted HTTP adapters in two child processes use separate PostgreSQL connections to one disposable schema. Overlapping reads must yield exactly 60 successes and four `rate_limited` denials; both workers must then observe pass revocation and removed scratch designation. No provider credentials, real TEST relabeling or deployment. CI database verification required; manifest remains rtc:0 and full/deployed acceptance remains open.
+- **Architecture recovery #133 reconciled:** standalone OAuth MCP and provider-owned tools/credentials/dispatch/state/approvals/results remain intact. Optional Hub uses external RTC; optional shared-core adoption is not a gate. Earlier unpublished description-selection work is saved on its local branch and is not merged, deployed or counted as implementation progress. Remaining work is reprioritized to service-owned RTC compatibility and safe nonproduction evidence.
+
 - **#132 — exclusive V-2 cleanup execution:** One account/connection-scoped persistent executor claim serializes different request keys for the same run. Verified completion/definite rejection releases only that executor; uncertain provider/DB outcomes or a crashed worker retain the claim. No TTL takeover. Existing read tools disclose only acquisition time and required owner-authorized recovery, never the executor identity. Shared fake/Postgres and separate-connection database tests; connected acceptance remains unverified.
 
 - **#131 — standalone cleanup identity readback (MERGED; all seven exact-head checks successful):** PR closure revalidates exact draft/head/base/body and numeric identity; issue closure and labeling retain exact number/body/title/type. Changed readback stops later mutations and leaves the journal unfinished. Fake-provider regressions; connected acceptance remains open.

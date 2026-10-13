@@ -45,3 +45,9 @@ Single read calls and batched calls now reject JSON bodies exceeding 32 KiB meas
 ## Service-specific gateway recovery acceptance — 2026-10-12
 
 RTC0 manifest must not be changed to RTC1 merely to unblock a Hub probe. Remaining full metadata/profiles/areas/write and two-instance conformance must be reconciled; a separately reviewed restricted read subset is not certification. Existing scratch/default-label ownership and protected OAuth gates remain independent. No standard GitHub connector proves custom MCP acceptance.
+
+## #134 — actual two-process shared-database subset verification
+
+`tests/db/rtc-cross-process.test.js` starts two separate Node HTTP processes using `test/helpers/rtc-rate-worker.mjs`. Each process opens its own PostgreSQL connection to the same uniquely named disposable localhost schema and executes the real restricted `createRtcHttpHandler`, `getRtcPass`, account-isolation checks and atomic `consumeRtcPassRate`. Sixty-four overlapping authenticated whoami requests must produce exactly sixty successes and four 429 responses with `rate_limited`/Retry-After. Both processes independently refuse the revoked pass and later removed scratch designation. A separate pass retains an independent rate budget. Child processes inherit only the disposable database/schema configuration; no provider credentials or passes appear in command lines or output.
+
+This closes the previously missing automated cross-process test for the implemented read-only RTC subset. The pinned full runner still reports rtc:0 and skips its dependent full-conformance checks; this subset result is not a fabricated passing `limits.two_instance` runner probe. Mode stays preview, not TEST. No actual deployed URL, owner-issued live pass, Hub route, OAuth acceptance or certification is asserted. Local PostgreSQL is absent; mandatory CI's disposable database runs this test before merge.
