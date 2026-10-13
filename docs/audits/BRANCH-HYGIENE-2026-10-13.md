@@ -48,3 +48,7 @@ After #158 merged, an independent review flagged privileged Actions version tags
 ## First archive orchestration attempt — no data loss
 
 The verified main merge of #159 did **not** run the archive: Actions run `38475812451` was cancelled before its job started. GitHub's shared `branch-cleanup` concurrency group allowed competing push/closed-PR maintenance runs to displace the archive's pending slot. Original historical refs and their commits remained intact. The corrective next PR isolates the one-time archive from unrelated pruning and removes the no-longer-needed bulk push trigger from the routine pruner; each future closed-PR cleanup is scoped to its own PR number. No archival completion or deletion of the 15 divergent refs is claimed until a successful run and remote readback.
+
+## Fail-closed archival retry — 2026-10-13
+
+GitHub Actions run `38476589642` failed **before mutation** on the exact-SHA check because the pinned `ai/claude/d-1b-repo-writes` SHA was incorrectly transcribed. The actual branch SHA is `c57b886ea1bd1626cd61548a9547ade4241f5a65`. The corrected archive protocol verifies pre-existing archive parent identities and unchanged tree and supports safe resumption after an interruption; it skips a previously deleted source ref only after independent archive provenance proof. This addresses the #160 P2 review finding. No archive or historical-ref cleanup is accepted on source evidence alone.
