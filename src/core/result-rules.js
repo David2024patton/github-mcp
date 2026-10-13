@@ -74,7 +74,10 @@ export function capText(value, { textLimit = RULES.textLimit, logLines = RULES.l
           return `[${lines.length - logLines} earlier lines left out]\n${lines.slice(-logLines).join('\n')}`;
         }
       }
-      const start = Math.min(offset, node.length);
+      // An offset is for continuing text that exceeded the text budget.
+      // Do not erase unrelated short identifiers, titles or summaries when a
+      // retained result contains several strings alongside the long field.
+      const start = node.length > textLimit ? Math.min(offset, node.length) : 0;
       if (node.length - start > textLimit) {
         cut.push({ path, kept: textLimit, total: node.length, unit: 'characters' });
         return `${node.slice(start, start + textLimit)}… [${node.length - start - textLimit} more characters left out]`;
