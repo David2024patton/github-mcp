@@ -212,3 +212,11 @@ partial failures and replay behavior. Planning does not edit in-flight E-2/G-3 c
 
 
 **2026-10-12 — Batch G implementation gate closed; production and account verification remain separate.** All G-1 through G-6 catalog rows have a merged build reference (#39–#64), fake-transport/contract and database suites were required by exact-head CI, and the post-merge #65 aggregate CI passed (run 38189322554). `docs/audits/G-BATCH-CLOSEOUT.md` is the evidence map. This closes **implementation** only: no Vercel deployment, GitHub App installation, live secret transfer, owner approval, or connected-account smoke test is implied. Batch V proceeds on fake GitHub pending IN-06.
+
+## 2026-10-12 — owner-requested independent server / universal gateway planning repair
+
+RTC external interoperability is independent of shared internal implementation. Hub owns compact broker,
+routing and grant mapping; this service owns provider credentials, canonical tools, state and guarded dispatch.
+Core adoption is optional and separately gated; do not require K-3 for RTC/Hub acceptance or reduce standalone
+capability for common code. Existing source/fake/deployed/real evidence and every owner/CI/release gate remain.
+This explicit docs/planning request permits this focused documentation PR; routine cadence remains unchanged.

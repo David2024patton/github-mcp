@@ -18,7 +18,7 @@
     "R",
     "X"
   ],
-  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split — A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00).",
+  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split \u2014 A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00).",
   "cards": [
     {
       "id": "A-1",
@@ -1387,5 +1387,19 @@
         "IN-05"
       ]
     }
-  ]
+  ],
+  "gatewayBoundary": {
+    "sharedCoreAdoption": "OPTIONAL_NOT_REQUIRED_FOR_RTC",
+    "serviceOwnership": [
+      "direct MCP",
+      "provider credentials",
+      "canonical schemas",
+      "guarded execution",
+      "durable state",
+      "approval",
+      "results"
+    ],
+    "gatewayOwnership": "Hub broker/routing/grant mapping; separately issued scoped service pass",
+    "acceptance": "Existing service-owned isolation and deployed TEST route/denial/revocation gates remain OPEN"
+  }
 }
