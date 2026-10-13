@@ -23,9 +23,13 @@ async function fixture({change='none',changeAfter=1,rateLimit=Infinity}={}){
         throw Error('private pass-table detail');
       return {...row,
         ...(change==='revoked'&&reads>=changeAfter?{revoked_at:new Date()}:{}),
-        ...(change==='expired'&&reads>=changeAfter?{expires_at:new Date(0)}:{})};
+        ...(change==='expired'&&reads>=changeAfter?{expires_at:new Date(0)}:{}),
+        ...(change==='owner_switch'&&reads>=changeAfter
+          ?{default_account:'other-scratch',accounts:['other-scratch']}:{}),
+        ...(change==='client_switch'&&reads>=changeAfter
+          ?{client_id:'rtc-'+'b'.repeat(24)}:{})};
     },
-    getAccount:async()=>({...account,
+    getAccount:async(login)=>({...account,login,
       ...(change==='scratch'&&reads>=changeAfter?{is_scratch:false}:{})}),
     consumeRtcPassRate:async()=>{rates++;return rates<=rateLimit;}
   };
@@ -75,6 +79,33 @@ describe('RTC successful reply final authority check',()=>{
     expect(f.reads()).toBe(2);
     expect(f.lookups()).toBe(3);
     expect(f.rates()).toBe(2);
+  });
+  it('does not release a finished read after a still-valid pass switches scratch owner or client',async()=>{
+    for(const change of ['owner_switch','client_switch']){
+      const f=await fixture({change});
+      const res=await f.invoke();
+      expect(res.statusCode,change).toBe(403);
+      expect(json(res).error.code).toBe('refused_by_guard');
+      expect(res.body).not.toContain('private read result');
+      expect(f.reads()).toBe(1);
+      expect(f.lookups()).toBe(2);
+      expect(f.rates()).toBe(1);
+    }
+  });
+  it('does not mix two scratch owners or client identities within a batch',async()=>{
+    for(const change of ['owner_switch','client_switch']){
+      const f=await fixture({change});
+      const res=await f.invoke('batch',{calls:[
+        {name:read.name,args:{}},{name:read.name,args:{}}
+      ]});
+      expect(res.statusCode,change).toBe(403);
+      expect(json(res).error.code).toBe('refused_by_guard');
+      expect(res.body).not.toContain('private read result');
+      expect(f.reads()).toBe(1);
+      expect(f.lookups()).toBe(2);
+      // Refuse a changed principal before charging for an undispatched read.
+      expect(f.rates()).toBe(1);
+    }
   });
   it('does not double-charge the pass rate for the final authority check',async()=>{
     const f=await fixture({rateLimit:1});
