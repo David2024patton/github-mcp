@@ -88,7 +88,7 @@ function parseToolsQuery(query={}) {
     !['catalog','compact'].includes(listing))return null;
   return {limit,page,q:q.toLowerCase(),area,audience,listing};
 }
-async function authenticate(req,res,db,{consumeRate=true}={}){
+async function authenticate(req,res,db,{consumeRate=true,expectedAuthority=null}={}){
   const bearer=/^Bearer (rtc_pass_[A-Za-z0-9_-]{43})$/.exec(String(req.headers?.authorization??''));
   if(!bearer)return deny(res,401,rtcError('permission'));
   const row=await db.getRtcPass(bearer[1]);
@@ -108,6 +108,13 @@ async function authenticate(req,res,db,{consumeRate=true}={}){
   if(!account||account.login!==row.default_account||account.is_scratch!==true||
     account.production_enabled!==false||account.account_type!=='Organization'||
     account.installation_status!=='active'||account.repository_selection!=='all')
+    return deny(res,403,rtcError('refused_by_guard'));
+  // A still-valid pass may be re-scoped while a read is in flight. Its
+  // new authority must not release results fetched for the previous owner,
+  // or mix two owners inside one batch, even if both are scratch accounts.
+  // Refuse scope drift before consuming a rate unit for the next read.
+  if(expectedAuthority&&(row.client_id!==expectedAuthority.client_id||
+    row.default_account!==expectedAuthority.default_account))
     return deny(res,403,rtcError('refused_by_guard'));
   if(consumeRate&&!await db.consumeRtcPassRate(bearer[1])){
     res.setHeader('Retry-After','60');
@@ -183,7 +190,8 @@ export function createRtcHttpHandler({db,registry,dispatch}){
       // while a provider/DB read is in flight. Do not release stale data after
       // completion; no second rate unit is charged for the final check.
       const sendCurrent=async body=>{
-        const fresh=await authenticate(req,res,db,{consumeRate:false});
+        const fresh=await authenticate(req,res,db,{
+          consumeRate:false,expectedAuthority:connection});
         if(!fresh)return;
         return send(res,200,body);
       };
@@ -248,7 +256,7 @@ export function createRtcHttpHandler({db,registry,dispatch}){
           // consume another shared rate unit before every subsequent dispatch.
           // Never continue with the original, potentially stale connection.
           if(i>0){
-            current=await authenticate(req,res,db);
+            current=await authenticate(req,res,db,{expectedAuthority:connection});
             if(!current)return;
           }
           const item=calls[i];
