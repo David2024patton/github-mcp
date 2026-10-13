@@ -1,6 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {randomBytes} from 'node:crypto';
 import {createRtcHttpHandler} from '../../src/rtc/http.js';
+import {rtcHttpTools} from '../../src/rtc/scope.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
 import {createFakeDb} from '../../test/helpers/fake-db.js';
 import {request,call,json} from '../../test/helpers/http-harness.js';
@@ -47,7 +48,7 @@ describe('RTC discovery and describe HTTP budgets',()=>{
     expect(Buffer.byteLength(first.body,'utf8')).toBeLessThanOrEqual(8192);
     const reply=json(first);
     expect(reply.handle).toMatch(/^res_/);
-    expect(reply.result.count).toBe(35+server.tools.length);
+    expect(reply.result.count).toBe(35+rtcHttpTools({tools:server.tools}).length);
     expect(reply.result.requested).toBe(25);
     expect(reply.result.shown).toBe(reply.result.tools.length);
     expect(reply.result.shown).toBeLessThan(25);
