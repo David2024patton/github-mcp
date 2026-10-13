@@ -44,3 +44,7 @@ The owner requested **no stray historical work branches**. The next one-time wor
 ## Privileged maintenance review correction
 
 After #158 merged, an independent review flagged privileged Actions version tags and a mismatched GitHub REST pin. The successor #159 pins checkout/setup-node to independently resolved full commit SHAs and uses the project's selected GitHub API date `2026-03-10` for these isolated Actions control-plane open-PR checks. These checks are not custom MCP provider calls, and they continue to fail closed if unavailable. Close the #158 review threads only after verified exact-head CI and the replacement changes merge; preserve PR history and review context.
+
+## First archive orchestration attempt — no data loss
+
+The verified main merge of #159 did **not** run the archive: Actions run `38475812451` was cancelled before its job started. GitHub's shared `branch-cleanup` concurrency group allowed competing push/closed-PR maintenance runs to displace the archive's pending slot. Original historical refs and their commits remained intact. The corrective next PR isolates the one-time archive from unrelated pruning and removes the no-longer-needed bulk push trigger from the routine pruner; each future closed-PR cleanup is scoped to its own PR number. No archival completion or deletion of the 15 divergent refs is claimed until a successful run and remote readback.
