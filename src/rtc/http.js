@@ -131,6 +131,12 @@ async function readEnvelope({tool,args,value,connection,db}){
   const kept=value?.kept_result;
   const existing=kept?.handle && /^res_[A-Za-z0-9_-]{20,64}$/.test(kept.handle)
     ? kept.handle : null;
+  // Canonical dispatch can return a shortened preview when its 24h result
+  // store is down. That is an honest standalone MCP fallback but cannot
+  // satisfy RTC's complete-result-or-handle HTTPS contract. Never send an
+  // incomplete payload as HTTP 200, even if the small preview fits the wire.
+  if(value&&typeof value==='object'&&Object.hasOwn(value,'kept_result')&&!existing)
+    throw new Error('RTC canonical result has no retrievable handle');
   const body=existing
     ? {ok:true,result:(({kept_result: _kept,...rest})=>rest)(value),
       handle:existing,summary:String(kept.what??'Large result'),mode:connection.mode}
