@@ -63,3 +63,16 @@ Public manifest retains the full standalone catalog totals/profiles/modes, with 
 ## #136 — complete current read-only OpenAPI wire description
 
 The public OpenAPI document now declares every required path parameter, eight unique operation IDs, public/pass-only security, direct tool argument bodies, 32 KiB JSON request bound, one-to-ten finite read batches, result query limits, retained-handle/RTC envelopes and documented 429 Retry-After. Schemas are exercised against the real restricted adapter’s success/refusal responses and malformed batches; all placeholders resolve. The complete UTF-8 document stays within 8 KiB. No HTTP method, provider tool, scope, mode or guard is added. OpenAPI completeness for this subset is not full RTC1 or deployed/genuine authenticated acceptance. Official OpenAPI 3.1 path-parameter requirement: https://spec.openapis.org/oas/v3.1.0.html.
+
+## #139 — nested RTC meta-tool scope escape correction
+
+A server-owned restricted RTC HTTP pass is scoped to read-only server/meta. The
+existing `github_batch` tool advertises read-only area meta but consumes the
+full registry and could call nested tools from other provider areas; discovery
+wrappers could also describe out-of-area tools. Do not confuse the parent tool's
+area with all the operations it can dispatch. The RTC HTTP selector now excludes
+all `usesRegistry` wrappers, while keeping the separate built-in HTTP search,
+describe, call and batch routes, where each actual read is independently checked.
+The original full standalone OAuth MCP registry and its guarded meta tools remain
+unchanged. This security regression is proven with the actual dispatcher in unit
+CI; no hosted credential, custom OAuth connection or RTC1 certificate is claimed.
