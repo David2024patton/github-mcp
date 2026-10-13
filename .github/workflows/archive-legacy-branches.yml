@@ -1,0 +1,35 @@
+# One-time owner-authorized retirement of distinct-history legacy work refs.
+# Preserves all 15 exact historical tips under one explicit, non-production archive ref.
+name: Archive legacy AI branch history
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/archive-legacy-branches.yml']
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: branch-cleanup-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    if: github.repository == 'Robinson-AI-Systems/github-mcp'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Preserve immutable commit ancestry before retiring historical branch refs
+        run: node scripts/archive-legacy-branches.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
