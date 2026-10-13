@@ -14,6 +14,7 @@
     "test": "vitest run --config vitest.config.js",
     "test:db": "bash scripts/local-postgres-test.sh",
     "test:shapes": "vitest run --config vitest.shapes.config.js",
+    "rtc:auth-evidence": "node scripts/rtc-auth-evidence.mjs",
     "rtc:public-evidence": "node scripts/rtc-public-evidence.mjs",
     "test:rtc": "vitest run tests/unit/rtc-conformance.test.js tests/unit/rtc-http.test.js tests/unit/rtc-pass-foundation.test.js"
   },
