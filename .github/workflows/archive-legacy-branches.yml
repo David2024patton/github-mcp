@@ -11,10 +11,6 @@ permissions:
   contents: write
   pull-requests: read
 
-concurrency:
-  group: branch-cleanup-${{ github.repository }}
-  cancel-in-progress: false
-
 jobs:
   archive:
     if: github.repository == 'Robinson-AI-Systems/github-mcp'
