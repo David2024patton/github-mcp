@@ -1,6 +1,6 @@
 # RESULT-OWN-KEYS — JSON projection cannot mutate object prototypes
 
-Status: IMPLEMENTED (target PR #154; exact-head CI/review pending).
+Status: MERGED (#154; all seven exact-head application/release checks passed).
 Baseline: #153 head 7ea9112d097f7ace9ffee2a86996e759490552dc,
 subsequently merged as part of main f8a675886cb1d22f4fcc2a75e654cb12e08b8a48.
 Risk: data integrity and own-property isolation in original service result
