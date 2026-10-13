@@ -1,0 +1,42 @@
+# Delete only obsolete AI work branches whose exact tips are already contained in main.
+# Branches with any unpublished commits remain untouched for manual reconciliation.
+name: Prune merged AI branches
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/prune-merged-branches.yml']
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: branch-cleanup-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    if: >-
+      github.repository == 'Robinson-AI-Systems/github-mcp' &&
+      (github.event_name == 'push' ||
+       (github.event.pull_request.merged == true &&
+        github.event.pull_request.head.repo.full_name == github.repository))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Delete only exact-tip-verified, already-merged AI branches
+        run: node scripts/prune-merged-branches.mjs --apply
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MERGED_HEAD_BRANCH: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
