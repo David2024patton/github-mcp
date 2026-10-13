@@ -22,7 +22,7 @@ docs/audits/RTC-HUB-ADOPTION.md, RTC-EVIDENCE card.
 - Checks public exact-source SHA before sending the pass. Sends pass only to
   known same-origin RTC service read routes, never a write endpoint.
 - Read phase: verify whoami preview/read_only, zero money/writes/prod,
-  catalog restricted to server/meta, `github_enable_production` and
+  complete catalog (no unseen pages) restricted to server/meta, `github_enable_production` and
   `github_batch` metadata refused, actual harmless `github_whoami` POST read.
 - Owner separately revokes through protected server setup; later run
   `npm run rtc:auth-evidence -- revoked` with same securely held pass,

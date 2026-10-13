@@ -69,6 +69,8 @@ export async function probeRtcAuthenticated({origin,providerRevision,pass,phase,
     const r=await call(fetchImpl,origin,pass,'/api/tools?listing=catalog&limit=100');
     const tools=r.value?.result?.tools;
     return r.status===200&&r.value?.ok===true&&Array.isArray(tools)&&
+      // The restricted catalog must be fully observed, not only page one.
+      r.value?.result?.count===tools.length&&r.value?.result?.next===null&&
       tools.some(t=>t.name==='github_whoami')&&tools.every(t=>
         ['server','meta'].includes(t.area)&&t.writes===false&&
         t.money===false&&t.name!=='github_batch');

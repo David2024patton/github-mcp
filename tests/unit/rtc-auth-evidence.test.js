@@ -11,14 +11,15 @@ const manifest={rtc:0,server:'robinson-github-mcp',prefix:'github',
 const identity={mode:'preview',profile:'read_only',areas:['server','meta'],
   allow_writes:false,production_access:false,money_limit_cents:0,
   service_identity:{reported_revision:sha}};
-const listing={tools:[{name:'github_whoami',area:'server',writes:false,money:false}]};
+const listing={count:1,next:null,tools:[{name:'github_whoami',area:'server',writes:false,money:false}]};
 function mock({revoked=false,override={}}={}){
   const seen=[];
   const fetchImpl=async(url,options)=>{
     seen.push({url,options});
     const path=new URL(url).pathname;
     const key=path==='/api/tools'?'list':path;
-    let payload=override[key];
+    let payload=(path==='/api/whoami'&&options.headers.authorization
+      ? override.authenticatedWhoami : undefined)??override[key];
     if(!payload){
       if(path==='/api/contract')payload={status:200,value:manifest};
       else if(path==='/api/openapi.json')payload={status:200,
@@ -92,10 +93,12 @@ describe('explicit protected service-owned RTC connected probe',()=>{
   });
   it('fails closed on narrowed/expired scopes, unsafe catalog, absent denial or read failure',async()=>{
     const variants=[
-      {'/api/whoami':{status:200,value:{ok:true,result:{
+      {authenticatedWhoami:{status:200,value:{ok:true,result:{
         ...identity,allow_writes:true}}}},
-      {list:{status:200,value:{ok:true,result:{tools:[
+      {list:{status:200,value:{ok:true,result:{count:1,next:null,tools:[
         {name:'github_whoami',area:'repos',writes:false,money:false}]}}}},
+      {list:{status:200,value:{ok:true,result:{count:2,next:2,tools:[
+        {name:'github_whoami',area:'server',writes:false,money:false}]}}}},
       {'/api/tools/github_enable_production':{status:200,value:{ok:true}}},
       {'/api/tools/github_batch':{status:200,value:{ok:true}}},
       {'/api/tools/github_whoami':{status:503,value:{ok:false,error:{code:'service_error'}}}},
