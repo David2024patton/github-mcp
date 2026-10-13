@@ -25,7 +25,15 @@ function merge(into, from) {
   if (Array.isArray(into) && Array.isArray(from)) return into.map((item, i) => merge(item, from[i]));
   if (isObject(into) && isObject(from)) {
     const out = { ...into };
-    for (const [k, v] of Object.entries(from)) out[k] = k in out ? merge(out[k], v) : v;
+    // The result may contain JSON data named "__proto__" (or "constructor").
+    // A normal assignment invokes the inherited prototype setter, silently
+    // losing the selected field and changing the projected object's prototype.
+    // Treat only own keys as merge inputs and always create an own data property.
+    for (const [k, v] of Object.entries(from)) {
+      const next = Object.hasOwn(out, k) ? merge(out[k], v) : v;
+      Object.defineProperty(out, k, { value: next, enumerable: true,
+        configurable: true, writable: true });
+    }
     return out;
   }
   return from ?? into;
