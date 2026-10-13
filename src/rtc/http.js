@@ -6,7 +6,14 @@ import {RTC_HTTP_AREAS,rtcHttpTools,rtcIdentity} from './scope.js';
 const MAX_REQUEST_BYTES=32768;
 // JSON has already been parsed by the HTTP door. Bound the complete wire
 // payload before allowing a tool dispatch, including multibyte strings.
-function boundedRequest(value) {
+function boundedRequest(value,headers={}) {
+  // JSON parsing discards raw whitespace and escapes. Reject declared
+  // oversized wire bodies even if the parsed object is tiny.
+  const declared=headers?.['content-length'];
+  if(declared!==undefined&&
+    (typeof declared!=='string'||!/^(0|[1-9][0-9]*)$/.test(declared)||
+      !Number.isSafeInteger(Number(declared))||Number(declared)>MAX_REQUEST_BYTES))
+    return false;
   try {
     const json=JSON.stringify(value);
     return typeof json==='string'&&Buffer.byteLength(json,'utf8')<=MAX_REQUEST_BYTES;
@@ -152,7 +159,7 @@ export function createRtcHttpHandler({db,registry,dispatch}){
         if(req.method==='GET')
           return send(res,200,{ok:true,result:rtcMetadata(allowed().find(t=>t.name===tool))});
         if(req.method!=='POST'||!req.body||typeof req.body!=='object'||
-          Array.isArray(req.body)||!boundedRequest(req.body))
+          Array.isArray(req.body)||!boundedRequest(req.body,req.headers))
           return send(res,400,rtcError('invalid_args'));
         const result=await run(tool,req.body,connection);
         return send(res,result.status,result.body);
@@ -161,7 +168,7 @@ export function createRtcHttpHandler({db,registry,dispatch}){
         const calls=req.body?.calls;
         if(req.method!=='POST'||!req.body||typeof req.body!=='object'||
           Array.isArray(req.body)||Object.keys(req.body).some(k=>k!=='calls')||
-          !boundedRequest(req.body)||!Array.isArray(calls)||calls.length===0||calls.length>10)
+          !boundedRequest(req.body,req.headers)||!Array.isArray(calls)||calls.length===0||calls.length>10)
           return send(res,400,rtcError('invalid_args'));
         // Reject the whole batch before dispatching any read. A malformed later item
         // must not cause earlier reads to be executed under ambiguous arguments.
