@@ -135,7 +135,7 @@ async function readEnvelope({tool,args,value,connection,db}){
   if(tool==='github_get_result'&&args?.handle)
     return {ok:true,result:{note:'Page exceeds the wire budget. Use a smaller pageSize or fewer fields.'},
       handle:args.handle,summary:'Use narrower result paging',mode:connection.mode};
-  if(!connection?.client_id||typeof db?.putResult!=='function||
+  if(!connection?.client_id||typeof db?.putResult!=='function'||
     containsCredential(JSON.stringify(body)))throw new Error('RTC result retention unavailable');
   const handle='res_'+randomBytes(16).toString('base64url');
   // Store shaped, credential-screened data, not provider payloads.
