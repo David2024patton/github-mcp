@@ -19,11 +19,12 @@ describe('F-1 issue triage reads', () => {
     const w = await world();
     const prs = Array.from({ length: 100 }, (_, n) => issue(n + 1, { pull_request: { url: 'https://api.github.com/pr' } }));
     w.gh.when(path).replySequence([{ status: 200, body: prs }, { status: 200, body: [issue(101), issue(102)] }]);
-    const { body } = await call(w, 'github_issue_list', { repo: 'hello', max: 2, labels: 'bug' });
+    const { body } = await call(w, 'github_issue_list', { repo: 'hello', max: 2, labels: 'bug', type: 'Bug' });
     expect(body.count).toBe(2);
     expect(body.items.map(x => x.number)).toEqual([101, 102]);
     expect(body.scanned).toBe(102);
     expect(w.gh.calls.filter(x => x.route === path).map(x => x.query.page)).toEqual(['1', '2']);
+    expect(w.gh.calls.filter(x => x.route === path).map(x => x.query.type)).toEqual(['Bug', 'Bug']);
     expect(w.gh.invalid).toEqual([]);
   });
 
