@@ -48,21 +48,27 @@ export const issueTransfer = defineGithubWrite({
     const sourceOcto = await octo(ctx, t.owner), destOcto = await octo(ctx, dest.owner);
     const issue = await missing(async () => (await sourceOcto.request(issueRoute,
       { owner: t.owner, repo: t.repo, issue_number: args.number })).data);
-    if (!issue || issue.pull_request || !issue.node_id || issue.number !== args.number)
-      throw refusal('The source issue could not be verified (a PR cannot be transferred).');
+    if (issue?.pull_request || (issue && !issue.node_id))
+      throw refusal('The source cannot be transferred: it is a PR or lacks a verified issue node ID.');
+    const alreadyMoved = !issue || issue.number !== args.number;
     const repository = await missing(async () => (await destOcto.request(repoRoute,
       { owner: dest.owner, repo: dest.repo })).data);
     if (!repository || !repository.node_id || repository.has_issues === false ||
         (repository.full_name && !SAME(repository.full_name, slug(dest.owner, dest.repo))))
       throw refusal('The destination does not exist, lacks verified identity, or has issues disabled.');
-    return { issueNodeId: issue.node_id, sourceTitle: issue.title,
-      destination: dest, destinationNodeId: repository.node_id };
+    // Keep an already-moved original number as a safe state to allow the
+    // durable journal to answer an exact-key replay. A fresh key cannot move
+    // an absent source again: apply explicitly refuses before mutation.
+    return { issueNodeId: issue?.node_id ?? null, sourceTitle: issue?.title ?? null,
+      alreadyMoved, destination: dest, destinationNodeId: repository.node_id };
   },
   classify: () => ({}),
   summarize: ({ args, before, target: t }) =>
     `Transfer issue #${args.number} from ${slug(t.owner,t.repo)} to ${slug(before.destination.owner,before.destination.repo)}.`
     + ` GitHub may notify issue subscribers; ${args.createLabelsIfMissing ? 'create matching labels if absent' : 'do not create missing labels'}.`,
   apply: async ({ ctx, target: t, args, before }) => {
+    if (before.alreadyMoved)
+      throw refusal('The source issue is absent or already transferred; no second transfer was sent.');
     const result = await graphql(await octo(ctx, t.owner), TRANSFER, {
       issue: before.issueNodeId, destination: before.destinationNodeId,
       createLabels: args.createLabelsIfMissing === true

@@ -54,6 +54,14 @@ describe('issue transfer destination boundaries', () => {
     });
     expect(w.gh.invalid).toEqual([]);
   });
+  it('never sends a second transfer when the original source number is already moved and no prior request journal exists', async () => {
+    const w = await makeWorld({});
+    w.gh.when(SOURCE).reply(200, moved());
+    w.gh.when(DEST).reply(200, destination);
+    const out = await call(w, { ...args, confirm: true });
+    expect(out.done).toBe(false);
+    expect(mutations(w.gh)).toEqual([]);
+  });
   it('refuses transferring a PR as an issue', async () => {
     const w = await makeWorld({});
     w.gh.when(SOURCE).reply(200, { ...source, pull_request: { url: 'pr' } });
