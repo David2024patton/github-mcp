@@ -82,15 +82,19 @@ export const issueReact = defineGithubWrite({
     const { author } = await inspect(ctx, t, args);
     const reactions = await inventory(ctx, t, args);
     const reaction = args.mode === 'remove' ? reactions.find(x => x.id === args.reactionId) : null;
-    if (args.mode === 'remove' && (!reaction || reaction.content !== args.content))
-      throw refusal('That exact reaction ID and content were not found on this resource.');
+    if (args.mode === 'remove' && reaction && reaction.content !== args.content)
+      throw refusal('The reaction ID exists but its content does not match the requested reaction.');
+    // An absent reaction is already in the requested final state. Do not send
+    // a second DELETE, and allow the journal to recognize an exact-key replay.
     return { author, reaction: reaction ? { id: reaction.id, content: reaction.content, user: reaction.user?.login } : null };
   },
   classify: ({ args, ctx, target: t, before }) => args.mode === 'add' && before?.author
     ? notifyOutsiders(ctx, { logins: [before.author], repoOwner: t.owner })
     : ({}),
   summarize: ({ args, target: t }) => `${args.mode} ${args.content} reaction on ${args.kind} #${args.number ?? args.commentId} in ${slug(t.owner, t.repo)}`,
-  apply: ({ args, ctx, target: t }) => octo(ctx, t.owner).then(o => o.request(routes[args.kind][args.mode === 'add' ? 'add' : 'remove'], {
+  apply: ({ args, ctx, target: t, before }) => args.mode === 'remove' && !before.reaction
+    ? { unchanged: true }
+    : octo(ctx, t.owner).then(o => o.request(routes[args.kind][args.mode === 'add' ? 'add' : 'remove'], {
     ...pathArgs(args, t),
     ...(args.mode === 'add' ? { content: args.content } : { reaction_id: args.reactionId })
   })),
