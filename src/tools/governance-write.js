@@ -113,7 +113,7 @@ export const rulesetSave=defineGithubWrite({
   readAfter:({args:a,ctx,target:t,response:q})=>
     get(ctx,t,a.rulesetId??q?.data?.id),
   verify:({args:a,before:b,after:x,response:q})=>!!x&&
-    x.id===(a.rulesetId??q?.data?.id)&&own(null??{},x)!==null&&
+    x.id===(a.rulesetId??q?.data?.id)&&
     eq(normalizeRuleset(x),b.merged),
   inverse:()=>null,
   present:({after:x})=>({id:x?.id,name:x?.name,enforcement:x?.enforcement,

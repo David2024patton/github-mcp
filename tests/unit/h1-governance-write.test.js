@@ -19,7 +19,7 @@ const routes={
 };
 const def=n=>({tool:h.tools.find(x=>x.name===n),handler:h.handlers[n]});
 function arrangeRule(gh,outcome,action){
- let applied=false,deleted=false;
+ let applied=false;
  gh.when(routes.list).reply(200,[]);
  if(action==='delete'){
   gh.when(routes.get).replySequence([
@@ -33,7 +33,7 @@ function arrangeRule(gh,outcome,action){
  });
  gh.when(routes.post).reply(201,()=>{applied=true;return base});
  gh.when(routes.put).reply(200,()=>{applied=true;return {...base,enforcement:'evaluate'}});
- gh.when(routes.del).reply(204,()=>{deleted=true;return null});
+ gh.when(routes.del).reply(204,null);
 }
 function arrangeCheck(gh,outcome,action){
  let changed=false;
