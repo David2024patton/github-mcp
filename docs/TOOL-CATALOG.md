@@ -180,8 +180,8 @@ Card(s): F-1.
 | `github_issue_set_assignees` | Add or remove assignees | P·M | C | I | Op | E | F-1 built #168 |
 | `github_issue_set_sub_issue` | Add, remove or reorder a sub-issue | P | N | I | Op | E | F-1 built #170 |
 | `github_issue_set_dependency` | Add or remove a 'blocked by' link | P | N | I | Op | E | F-1 built #170 |
-| `github_issue_transfer` | Move an issue to another repository (GraphQL) | C | N | I | Op | F | F-1 |
-| `github_issue_react` | Add or remove a reaction on an issue, comment or review comment | P·M | C | I | Op | E | F-1 implemented (pending PR) |
+| `github_issue_transfer` | Move an issue to another repository (GraphQL) | C·M | N | I | Op | E | F-1 built final PR |
+| `github_issue_react` | Add or remove a reaction on an issue, comment or review comment | P·M | C | I | Op | E | F-1 built #172 |
 
 ## Labels and milestones (`github_label_*, github_milestone_*`) — 7
 
