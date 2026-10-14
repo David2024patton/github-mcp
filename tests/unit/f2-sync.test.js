@@ -90,7 +90,42 @@ describe('F-2 cross-account label reconciliation',()=>{
     const result=await call(w,{...args,confirm:true});
     expect(result).toMatchObject({status:'unconfirmed',done:false});
     expect(result.result.failed).toBe(true);
-    expect(result.result.outcomes[0].operations[0].confirmed).toBe(false);
+    expect(result.result.outcomes[0].operations[0].confirmed).toBe(true);
+    expect(result.result.independent_readback[0].matches_source).toBe(false);
     expect(writes(w.gh)).toHaveLength(1);
   });
+  it('performs explicitly confirmed deletion of a destination-only label and verifies absence',async()=>{
+    const w=await makeWorld({profile:'full'});
+    const state={source:[],hello:[{id:20,name:'local',color:'123456',description:'Extra'}]};
+    w.gh.when(route).reply(200,q=>state[q.params.repo]??[]);
+    w.gh.when(get).replySequence([
+      {status:200,body:state.hello[0]},{status:404,body:{message:'Not Found'}}
+    ]);
+    w.gh.when('DELETE /repos/{owner}/{repo}/labels/{name}').reply(204,()=>{
+      state.hello=[];
+      return null;
+    });
+    const out=await call(w,{...args,deleteOthers:true,confirm:true});
+    expect(out).toMatchObject({done:true,status:'applied'});
+    expect(out.result.delete_others).toBe(true);
+    expect(writes(w.gh)).toHaveLength(1);
+    expect(writes(w.gh)[0].method).toBe('DELETE');
+    expect(out.result.independent_readback[0].matches_source).toBe(true);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('refuses source inventory drift before the first destination mutation',async()=>{
+    const w=await makeWorld({profile:'full'});
+    let sourceReads=0;
+    w.gh.when(route).reply(200,q=>{
+      if(q.params.repo==='source'){
+        sourceReads+=1;
+        return sourceReads===1?[label]:[{...label,color:'ffffff'}];
+      }
+      return [];
+    });
+    const out=await call(w,{...args,confirm:true});
+    expect(out.done).toBe(false);
+    expect(writes(w.gh)).toEqual([]);
+  });
+
 });

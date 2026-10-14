@@ -75,13 +75,29 @@ const checkDestination=async(ctx,args,t)=>{
   }
 };
 
+function targetMatches(desired,actualLabels,deleteOthers){
+  try{
+    const wanted=mapLabels(desired),actual=mapLabels(actualLabels);
+    for(const row of wanted.values()){
+      const found=actual.get(row.name.toLowerCase());
+      if(!found||found.name!==row.name||found.color!==row.color||found.description!==row.description)return false;
+    }
+    return !deleteOthers||actual.size===wanted.size;
+  }catch{return false;}
+}
+function allTargetsMatch(plan,after,deleteOthers){
+  if(!Array.isArray(after)||after.length!==plan.repositories.length)return false;
+  return after.every((report,i)=>!report.error&&key(report)===key(plan.repositories[i])
+    &&targetMatches(plan.desired,report.labels,deleteOthers));
+}
+
 export const labelSync=defineGithubWrite({
   name:'github_label_sync',area:'label',audience:['O','Op'],
   description:'Synchronize labels from one connected repository to others, with an exact preview and per-target readback.',
   properties:{sourceOwner:OWNER,sourceRepo:REPO,
     targets:{type:'array',minItems:1,maxItems:5,items:DEST},
     deleteOthers:{type:'boolean',description:'Only true may remove labels absent from source; always needs confirmation.'}},
-  required:['sourceRepo','targets'],declarations:{production:'never',confirm:'always'},target,
+  required:['sourceRepo','targets'],declarations:{production:'never',confirm:'always',profiles:['full']},target,
   read:async(args,ctx)=>{
     const src={owner:args.sourceOwner??ctx.connection.default_account,repo:args.sourceRepo};
     if(!accounts(ctx,src))throw refusal('The source account is not connected.');
@@ -144,30 +160,24 @@ export const labelSync=defineGithubWrite({
     }
     return reports;
   },
-  verify:({args,before:b,after,response:r})=>{
-    if(r?.data?.failed||!Array.isArray(after)||after.length!==b.repositories.length)return false;
-    const wanted=mapLabels(b.desired);
-    for(const report of after){
-      if(report.error)return false;
-      const actual=mapLabels(report.labels);
-      for(const row of wanted.values()){
-        const found=actual.get(row.name.toLowerCase());
-        if(!found||found.name!==row.name||found.color!==row.color||found.description!==row.description)return false;
-      }
-      if(args.deleteOthers===true&&actual.size!==wanted.size)return false;
-    }
-    return true;
-  },
+  verify:({args,before:b,after,response:r})=>
+    !r?.data?.failed&&allTargetsMatch(b,after,args.deleteOthers===true),
   inverse:()=>null,
-  present:({before:b,after,response:r})=>({
-    source:key(b.source),destination_count:b.repositories.length,planned_mutations:b.total,
-    delete_others:false===b.deleteOthers?false:undefined,
-    outcomes:r?.data?.outcomes??[],failed:r?.data?.failed??true,
-    ...(r?.data?.reason?{reason:r.data.reason}:{}),
-    independent_readback:Array.isArray(after)?after.map(t=>({
-      repository:key(t),readable:!t.error,label_count:t.labels?.length??null
-    })):[]
-  })
+  present:({args,before:b,after,response:r})=>{
+    const finalMatch=allTargetsMatch(b,after,args.deleteOthers===true);
+    return {
+      source:key(b.source),destination_count:b.repositories.length,planned_mutations:b.total,
+      delete_others:args.deleteOthers===true,
+      outcomes:r?.data?.outcomes??[],failed:!!r?.data?.failed||!finalMatch,
+      ...(r?.data?.reason?{reason:r.data.reason}:!finalMatch?{
+        reason:'One or more destination label inventories did not independently match the requested final state'
+      }:{}),
+      independent_readback:Array.isArray(after)?after.map(t=>({
+        repository:key(t),readable:!t.error,label_count:t.labels?.length??null,
+        matches_source:!!t.labels&&targetMatches(b.desired,t.labels,args.deleteOthers===true)
+      })):[]
+    };
+  }
 });
 export const tools=[labelSync.tool];
 export const handlers={[labelSync.tool.name]:labelSync.handler};
