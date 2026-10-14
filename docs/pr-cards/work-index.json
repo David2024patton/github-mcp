@@ -956,13 +956,13 @@
         "H-3"
       ],
       "card": "docs/pr-cards/H-4.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 490,
       "units": [
         "H-4"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [
         "IN-09"
       ]
