@@ -1,3 +1,7 @@
+## October 14, 2026 — genuine custom public H-1 read evidence and fixture ownership
+
+Confirmed separate public scratch fixture via actual custom GitHub MCP while current live b51cda4 was independently Vercel READY. Scoped public branch-protection and repo ruleset reads passed with no configured protection/rulesets; organization ruleset list is separately 403 due missing organization administration grant. Private H-1 calls are still **BLOCKED — PROVIDER PLAN** and cannot borrow public acceptance. New public fixture is retained for released H-1 writes and separately queued exact cleanup, never mistaken for pre-existing quarantined private run. Private cleanup exact target: `robinson-ai-scratch/rtc-ghaccept-oct13-f1a` under run `ghaccept-oct13-f1a`, not approved for deletion. No upgraded GitHub subscription, permission widening, production activation or spending.
+
 ## October 14, 2026 — H-2 delivery lifecycle controls (PR #190, exact-head CI and merge required)
 
 New genuine webhook-delete, redelivery and ping operations complete the existing webhook delivery/cleanup control family at source: exact hook identification, public HTTPS target validation, service-owned confirmed write journal, independent 404 or unique new-delivery/GUID readback, unconfirmed asynchronous outcomes, confirmation and production classifications. Tests exercise three doors, provider request-shape validation, missing delivery identity, unsafe URL refusal, capped inventory and replay. No live webhook creation, deletion, delivery retry, production account activation or spending performed. No secret values in tools.
@@ -68,7 +72,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
       "GITHUB-CUSTOM-SCRATCH-READ"
     ],
     "status": "BLOCKED",
-    "lastEvidence": "2026-10-14: live custom run inventory returned journal_ready=true but remote_verified=false, and can_execute_without_new_confirmation=false. Historical ten late-appearing default labels remain; no cleanup has been attempted or claimed."
+    "lastEvidence": "2026-10-14: live custom run inventory returned journal_ready=true but remote_verified=false, and can_execute_without_new_confirmation=false. Historical ten late-appearing default labels remain; no cleanup has been attempted or claimed. Exact quarantined target identified: private robinson-ai-scratch/rtc-ghaccept-oct13-f1a, owned run ghaccept-oct13-f1a (one recorded repo intent; baseline label provenance unconfirmed). This is NOT deletion approval."
   },
   {
     "id": "GITHUB-NATIVE",
@@ -107,12 +111,12 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "id": "GITHUB-H1-PUBLIC-SCRATCH",
     "priority": 1,
     "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
-    "task": "Create an isolated EMPTY disposable public scratch repository, no secrets or user content; verify supported H-1 public governance reads and, after exact H-1 source release and permitted write guards, guarded mutation/denial/readback; track its cleanup separately",
+    "task": "On the separate already-created empty PUBLIC scratch repository, run supported H-1 protection/ruleset write, denial, readback and cleanup after source #188 is in independently verified READY live; never use private scratch or sensitive content",
     "procedure": "docs/pr-cards/H-1.md",
     "gates": "Owner approved a separate public disposable scratch; never alter existing private repository; capture exact name/run ownership, approval, profile and source SHA; production writes remain OFF until independently authorized and connected. Public evidence does not prove private acceptance.",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-14: owner directed separate public-only safe acceptance; repository creation and tests have not yet been performed; test result must remain separate from blocked private scenarios."
+    "lastEvidence": "2026-10-14: owner authorized separate disposable PUBLIC scratch. Genuine custom MCP created robinson-ai-scratch/rtc-ghaccept-h1-public-oct14 under full PREVIEW connection with explicit public visibility confirmation; exact repo readback shows public, empty and default main. Public github_protection_get succeeded (no classic policy), repository github_ruleset_list succeeded with empty complete inventory. Public write tests remain pending checked #188 deployment/production gates; these reads do NOT establish private H-1 acceptance."
   },
   {
     "id": "GITHUB-H2-WEBHOOK-READS",
@@ -135,6 +139,43 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: source-only feature in #190; owner production remains OFF, so no real delivery actions, deletion or attempted mutations claimed."
+  },
+  {
+    "id": "GITHUB-H1-PUBLIC-READ",
+    "priority": 1,
+    "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
+    "task": "Confirm custom H-1 branch-protection and repository ruleset reads on separate public, non-sensitive scratch fixture",
+    "procedure": "docs/pr-cards/H-1.md",
+    "gates": "PREVIEW/full, GitHub App enrolled scratch, public fixture independently identified; no private repository visibility change",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-14: exact custom GitHub Cloud github_batch on PUBLIC robinson-ai-scratch/rtc-ghaccept-h1-public-oct14 returned github_repo_get public/empty, github_protection_get success with classic_protection_readable=false and protected=false, and github_ruleset_list count=0 complete=true. Independent Vercel READY release verified b51cda454f01720b3c638f83b9766b30eceaa9fb. Read-only scenario only; no write acceptance, private 403 remains separate."
+  },
+  {
+    "id": "GITHUB-H1-PUBLIC-OWNER-CLEANUP",
+    "priority": 3,
+    "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
+    "task": "After public feature tests, inspect and clean exactly disposable public robinson-ai-scratch/rtc-ghaccept-h1-public-oct14 with separate guard/confirmation and independent 404 absence readback",
+    "procedure": "docs/pr-cards/H-1.md",
+    "gates": "Only exact named public fixture, confirmed no foreign changes; require exact owner confirmation of deletion, do not touch original private quarantined run ghaccept-oct13-f1a",
+    "dependsOn": [
+      "GITHUB-H1-PUBLIC-SCRATCH"
+    ],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: new public fixture created via github_repo_create; no delete requested or executed. It is not a substitute for quarantined private fixture cleanup."
+  },
+  {
+    "id": "GITHUB-H1-CLASSIC-WRITE-POSTRELEASE",
+    "priority": 2,
+    "requiredRevision": "674fea131e0eb0002f474bb8f529d0f619011286",
+    "task": "Independently exercise new H-1 classic complete-object set and remove using isolated public scratch, including preserve-other-controls, readback and exact cleanup",
+    "procedure": "docs/pr-cards/H-1.md",
+    "gates": "Source #188 merged; requires reviewed source in READY live, explicit production-enabled test credential and independent per-operation confirmation. Current live PREVIEW/production OFF: no mutation authorized. Private H-1 403 remains BLOCKED — PROVIDER PLAN.",
+    "dependsOn": [
+      "GITHUB-H1-PUBLIC-READ"
+    ],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: source #188 exact-head CI passed and merged commit 674fea131e0eb0002f474bb8f529d0f619011286, but live remained b51cda454f01720b3c638f83b9766b30eceaa9fb; no new deployed mutation or approval claimed."
   }
 ]
 ```
