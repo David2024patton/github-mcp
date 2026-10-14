@@ -129,10 +129,15 @@ export const issueLock = defineGithubWrite({
     reason: { type: 'string', enum: ['off-topic', 'too heated', 'resolved', 'spam'] } },
   required: ['repo', 'number', 'locked'],
   declarations: { production: 'never' },
-  target,
+  target: (args, ctx) => {
+    if (!args.locked && args.reason !== undefined) throw new TypeError('Only a lock may specify a reason.');
+    return target(args, ctx);
+  },
   read: async (args, ctx, t) => {
     const i = await getIssue(ctx, t, args.number);
     if (!i) throw refusal(`Issue or PR #${args.number} does not exist.`, 404);
+    if (i.locked && args.locked && args.reason && i.active_lock_reason !== args.reason)
+      throw refusal('Already locked with a different reason; no change made. Unlock separately before applying a new lock reason.');
     return { locked: !!i.locked, reason: i.active_lock_reason };
   },
   classify: () => ({}),
@@ -144,7 +149,7 @@ export const issueLock = defineGithubWrite({
       ...(args.locked && args.reason ? { lock_reason: args.reason } : {}) });
   },
   readAfter: ({ args, ctx, target: t }) => getIssue(ctx, t, args.number),
-  verify: ({ args, after }) => !!after && !!after.locked === args.locked,
+  verify: ({ args, after }) => !!after && !!after.locked === args.locked && (!args.locked || !args.reason || after.active_lock_reason === args.reason),
   inverse: ({ args, before, target: t }) => before.locked === args.locked ? null : ({ tool: 'github_issue_lock', args: { owner: t.owner, repo: t.repo, number: args.number, locked: !args.locked } }),
   present: ({ args, after }) => ({ number: args.number, locked: !!after.locked, active_lock_reason: after.active_lock_reason ?? null })
 });
@@ -190,7 +195,10 @@ export const issueSetLabels = defineGithubWrite({
     labels: { type: 'array', minItems: 0, maxItems: 30, items: { type: 'string', minLength: 1, maxLength: 100 } } },
   required: ['repo', 'number', 'mode', 'labels'],
   declarations: { production: 'never' },
-  target,
+  target: (args, ctx) => {
+    if (args.mode !== 'replace' && args.labels.length === 0) throw new TypeError('Empty labels are only valid for replace (clear all).');
+    return target(args, ctx);
+  },
   read: async (args, ctx, t) => {
     const i = await getIssue(ctx, t, args.number);
     if (!i) throw refusal(`Issue or PR #${args.number} does not exist.`, 404);
@@ -203,9 +211,17 @@ export const issueSetLabels = defineGithubWrite({
     if (args.mode === 'replace' && args.labels.length === 0) return o.request('DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels', p);
     if (args.mode === 'replace') return o.request('PUT /repos/{owner}/{repo}/issues/{issue_number}/labels', { ...p, labels: args.labels });
     if (args.mode === 'add') return o.request('POST /repos/{owner}/{repo}/issues/{issue_number}/labels', { ...p, labels: args.labels });
-    const removable = args.labels.filter(n => before.labels.some(x => x.toLowerCase() === n.toLowerCase()));
-    for (const name of removable) await o.request('DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels/{name}', { ...p, name });
-    return { removed: removable.length };
+    // One atomic provider request per journaled intent. Do not partially delete
+    // multiple labels and then incorrectly classify a failed later DELETE as no-op.
+    const remove = new Set(normalized(args.labels));
+    const remainder = before.labels.filter(name => !remove.has(name.toLowerCase()));
+    if (remainder.length === before.labels.length) return { unchanged: true };
+    const latest = await getIssue(ctx, t, args.number);
+    if (!latest || JSON.stringify(normalized(normalizeLabels(latest))) !== JSON.stringify(normalized(before.labels)))
+      throw refusal('Issue labels changed since preview. Review the new labels before changing them.');
+    return remainder.length === 0
+      ? o.request('DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels', p)
+      : o.request('PUT /repos/{owner}/{repo}/issues/{issue_number}/labels', { ...p, labels: remainder });
   },
   readAfter: ({ args, ctx, target: t }) => getIssue(ctx, t, args.number),
   verify: ({ args, before, after }) => {
@@ -213,7 +229,8 @@ export const issueSetLabels = defineGithubWrite({
     const got = normalized(normalizeLabels(after)), requested = normalized(args.labels);
     if (args.mode === 'replace') return JSON.stringify(got) === JSON.stringify(requested);
     if (args.mode === 'add') return requested.every(x => got.includes(x)) && normalized(before.labels).every(x => got.includes(x));
-    return requested.every(x => !got.includes(x)) && got.every(x => normalized(before.labels).includes(x));
+    const remaining = normalized(before.labels).filter(x => !requested.includes(x));
+    return JSON.stringify(got) === JSON.stringify(remaining);
   },
   inverse: () => null,
   present: ({ args, after }) => ({ number: args.number, labels: normalizeLabels(after) })
