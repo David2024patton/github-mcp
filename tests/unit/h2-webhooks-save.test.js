@@ -76,15 +76,15 @@ describe('H-2 webhook signing secret lifecycle',()=>{
   });
   it('updates an existing webhook without raw provider configuration in the journal',async()=>{
     const w=await makeWorld(opts);
-    w.gh.when(one).reply(200,hook(['issues']));
     w.gh.when(update).reply(200,hook(['push']));
-    // The independent readback must return the changed events, not the initial baseline.
+    // Preflight, transient complete-config reread, then independent post-write readback.
     w.gh.when(one).replySequence([
+      {status:200,body:hook(['issues'])},
       {status:200,body:hook(['issues'])},
       {status:200,body:hook(['push'])}]);
     const result=await call(w,'github_webhook_save',{
       repo:'hello',hookId:7,events:['push'],confirm:true});
-    expect(result.done).toBe(true);
+    expect(result,JSON.stringify({result,invalid:w.gh.invalid})).toMatchObject({done:true,status:'applied'});
     const patch=w.gh.calls.find(x=>x.route===update);
     expect(patch.body.config.secret).toMatch(/^[a-f0-9]{64}$/);
     expect(patch.body.events).toEqual(['push']);
