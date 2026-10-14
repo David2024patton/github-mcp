@@ -79,6 +79,62 @@ describe('F-1 moderation and metadata exact semantics', () => {
     expect(writes(w)).toEqual([]);
   });
 
+  it('removes multiple labels in one provider request and leaves unrelated labels intact', async () => {
+    const w = await makeWorld({});
+    seq(w.gh, GET, [
+      [200, issue({ labels: [{ name: 'old' }, { name: 'second' }, { name: 'keep' }] })],
+      [200, issue({ labels: [{ name: 'old' }, { name: 'second' }, { name: 'keep' }] })],
+      [200, issue({ labels: [{ name: 'keep' }] })]
+    ]);
+    w.gh.when('PUT /repos/{owner}/{repo}/issues/{issue_number}/labels').reply(200, [{ name: 'keep' }]);
+    const r = await call(w, 'github_issue_set_labels', { repo: 'hello', number: 7, mode: 'remove', labels: ['old', 'second', 'old'] });
+    expect(r.body.done).toBe(true);
+    expect(writes(w)).toHaveLength(1);
+    expect(writes(w)[0].route).toBe('PUT /repos/{owner}/{repo}/issues/{issue_number}/labels');
+    expect(writes(w)[0].body.labels).toEqual(['keep']);
+  });
+
+  it('refuses empty add/remove before any provider request', async () => {
+    for (const mode of ['add', 'remove']) {
+      const w = await makeWorld({});
+      const r = await call(w, 'github_issue_set_labels', { repo: 'hello', number: 7, mode, labels: [] });
+      expect(r.out.isError).toBe(true);
+      expect(w.gh.calls.filter(c => c.route === GET)).toHaveLength(0);
+      expect(writes(w)).toEqual([]);
+    }
+  });
+
+  it('detects label changes between preview and single-mutation removal', async () => {
+    const w = await makeWorld({});
+    seq(w.gh, GET, [
+      [200, issue({ labels: [{ name: 'old' }, { name: 'keep' }] })],
+      [200, issue({ labels: [{ name: 'other' }, { name: 'keep' }] })]
+    ]);
+    const r = await call(w, 'github_issue_set_labels', { repo: 'hello', number: 7, mode: 'remove', labels: ['old'] });
+    expect(r.body?.done).not.toBe(true);
+    expect(writes(w)).toEqual([]);
+  });
+
+  it('requires exact requested lock reason in provider readback', async () => {
+    const w = await makeWorld({});
+    seq(w.gh, GET, [
+      [200, issue({ locked: false })],
+      [200, issue({ locked: true, active_lock_reason: 'spam' })]
+    ]);
+    w.gh.when('PUT /repos/{owner}/{repo}/issues/{issue_number}/lock').reply(204, null);
+    const r = await call(w, 'github_issue_lock', { repo: 'hello', number: 7, locked: true, reason: 'resolved' });
+    expect(r.body).toMatchObject({ done: false, status: 'unconfirmed' });
+    expect(writes(w)).toHaveLength(1);
+  });
+
+  it('refuses to silently overwrite the reason on an existing lock', async () => {
+    const w = await makeWorld({});
+    w.gh.when(GET).reply(200, issue({ locked: true, active_lock_reason: 'spam' }));
+    const r = await call(w, 'github_issue_lock', { repo: 'hello', number: 7, locked: true, reason: 'resolved' });
+    expect(r.body?.done).not.toBe(true);
+    expect(writes(w)).toEqual([]);
+  });
+
   it('does not send DELETE to unlock an already unlocked issue', async () => {
     const w = await makeWorld({});
     seq(w.gh, GET, [[200, issue({ locked: false })], [200, issue({ locked: false })]]);
