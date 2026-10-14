@@ -49,11 +49,11 @@ describe('F-1 issue triage reads', () => {
   it('reads optional relationships with explicit incomplete availability', async () => {
     const w = await world();
     w.gh.when('GET /repos/{owner}/{repo}/issues/{issue_number}').reply(200, issue(3));
-    w.gh.when('GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues').reply(200, [issue(8)]);
+    w.gh.when('GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues').reply(200, [issue(8, { author_association: 'NONE' })]);
     w.gh.when('GET /repos/{owner}/{repo}/issues/{issue_number}/dependencies/blocked_by').reply(403, { message: 'Forbidden' });
     w.gh.when('GET /repos/{owner}/{repo}/issues/{issue_number}/dependencies/blocking').reply(200, []);
     const r = await call(w, 'github_issue_get', { repo: 'hello', number: 3, includeRelations: true });
-    expect(r.body.relations.sub_issues.items).toMatchObject([{ number: 8 }]);
+    expect(r.body.relations.sub_issues.items).toMatchObject([{ number: 8, author_association: 'NONE', untrusted: true }]);
     expect(r.body.relations.blocked_by).toMatchObject({ available: false, reason: 'could_not_read' });
     expect(w.gh.invalid).toEqual([]);
   });
