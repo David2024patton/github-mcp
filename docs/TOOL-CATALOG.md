@@ -339,9 +339,9 @@ Card(s): H-1.
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_protection_get` | Classic branch protection on a branch, in plain words | — | C | I | B,O | R | H-1 built #184 |
-| `github_protection_set` | Change branch protection by reading it first and changing only what was asked (GitHub's PUT replaces everything) | C·Prod | F | I | O | F | H-1 built #188 |
+| `github_protection_set` | Change branch protection by reading it first and changing only what was asked (GitHub's PUT replaces everything) | C·A·Prod | F | I | O | F | H-1 built #188 |
 | `github_protection_set_required_checks` | Add or remove required status checks, keeping the rest | C·Prod | F | I | B,O | F | H-1 built #185 |
-| `github_protection_remove` | Remove branch protection | C·D·Prod | C | I | O | F | H-1 built #188 |
+| `github_protection_remove` | Remove branch protection | C·A·D·Prod | C | I | O | F | H-1 built #188 |
 | `github_ruleset_list` | Rulesets of a repository or organization with enforcement and targets | — | C | I | B,O | R | H-1 built #184 |
 | `github_ruleset_get` | One ruleset in plain words, optionally with its history | — | C | I | B,O | R | H-1 built #184 |
 | `github_ruleset_save` | Create or update a ruleset (read-merge-write for updates) | C·A·Prod | F | I | O | F | H-1 built #185 |
