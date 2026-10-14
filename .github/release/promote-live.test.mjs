@@ -103,21 +103,31 @@ test('real atomic git promotion, read-back and second same-day update refusal', 
   }
 });
 
-test('the preferred Denver 00:01 release has bounded off-hour schedule backups', () => {
+test('bounded schedule backups preserve midnight, daily marker and owner recovery', () => {
   const workflow = readFileSync(new URL('../workflows/daily-live.yml', import.meta.url), 'utf8');
-  const schedules = [...workflow.matchAll(/^\s*- cron: '([^']+)'[^\n]*\n\s+timezone: (\S+)\s*$/gm)]
-    .map(([,cron,timezone]) => ({cron,timezone}));
-  assert.deepEqual(schedules, [
-    {cron:'1 0 * * *',timezone:'America/Denver'},
-    {cron:'19 0 * * *',timezone:'America/Denver'},
-    {cron:'19 1 * * *',timezone:'America/Denver'},
-    {cron:'37 5 * * *',timezone:'America/Denver'}
-  ]);
-  assert.equal(new Set(schedules.map(x => x.cron)).size, schedules.length);
-  // A backup can run only the existing schedule-restricted, exact-main,
-  // checked, atomically day-marked promoter—not a push/PR-triggered promotion.
-  assert.match(workflow, /if: github\.event_name == 'schedule' && github\.ref == 'refs\/heads\/main'/);
+  const crons = [...workflow.matchAll(/cron: '([^']+)'/g)].map(m => m[1]);
+  assert.deepEqual(crons, ['1 0 * * *', '17 0 * * *', '17 1 * * *', '37 5 * * *', '43 12 * * *']);
+  assert.equal((workflow.match(/timezone: America\/Denver/g) || []).length, 4);
+  assert.match(workflow, /recover_missed_daily:/);
+  assert.match(workflow, /default: false/);
+  assert.match(workflow, /github.actor == 'christcr2012'/);
+  assert.match(workflow, /RECOVER_MISSED_DAILY:/);
   assert.match(workflow, /cancel-in-progress: false/);
-  assert.match(workflow, /run: node \.github\/release\/promote-live\.mjs/);
-  assert.match(workflow, /permissions:\s*\n\s*contents: write\s*\n\s*checks: read/);
+});
+test('recovery requires explicit owner, expected repository, main and elapsed midnight', async () => {
+  const { authorizedReleaseInvocation } = await import('./promote-live.mjs');
+  const env = { GITHUB_REPOSITORY: 'example/repo', GITHUB_REF: 'refs/heads/main',
+    GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_ACTOR: 'christcr2012',
+    RECOVER_MISSED_DAILY: 'true', GH_TOKEN: 'fixture' };
+  const time = new Date('2026-10-14T11:00:00Z');
+  assert.equal(authorizedReleaseInvocation(env, 'example/repo', time), true);
+  for (const change of [{ GITHUB_ACTOR: 'other' }, { RECOVER_MISSED_DAILY: 'false' },
+    { RECOVER_MISSED_DAILY: undefined }, { GITHUB_REF: 'refs/heads/live' },
+    { GITHUB_REPOSITORY: 'other/repo' }, { GITHUB_EVENT_NAME: 'push' },
+    { GH_TOKEN: '' }])
+    assert.equal(authorizedReleaseInvocation({ ...env, ...change }, 'example/repo', time), false);
+  assert.equal(authorizedReleaseInvocation(env, 'example/repo', new Date('2026-10-14T06:00:00Z')), false);
+  assert.equal(authorizedReleaseInvocation(env, 'example/repo', new Date('2026-12-14T07:00:00Z')), false);
+  assert.equal(authorizedReleaseInvocation(env, 'example/repo', new Date('2026-12-14T07:01:00Z')), true);
+  assert.equal(authorizedReleaseInvocation({ ...env, GITHUB_EVENT_NAME: 'schedule' }, 'example/repo', time), true);
 });
