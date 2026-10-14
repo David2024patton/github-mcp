@@ -192,7 +192,7 @@ Card(s): F-2.
 | `github_label_list` | Labels in a repository | — | C | I | B,Op | R | F-2 built #175 |
 | `github_label_save` | Create or update a label by name | P | C | I | B,Op | E | F-2 built #175 |
 | `github_label_delete` | Delete a label (removes it from every issue) | C | C | I | Op | E | F-2 built #175 |
-| `github_label_sync` | Make several repositories carry the same label set (preview lists every add/change; never deletes unless asked) | P | N | I | O,Op | F | F-2 |
+| `github_label_sync` | Copy labels across connected accounts, preview exact changes and require explicit approval for deletion | C | N | I | O,Op | F | F-2 built #176 |
 | `github_milestone_list` | Milestones with progress | — | C | I | Op | R | F-2 built #175 |
 | `github_milestone_save` | Create, update or close a milestone | P | C | I | Op | E | F-2 built #175 |
 | `github_milestone_delete` | Delete a milestone | C | C | I | Op | E | F-2 built #175 |
