@@ -191,6 +191,6 @@ export function findSettings(query, { max = 3, scope } = {}) {
 export function fill(value, { org: orgName, user, repo }) {
   if (typeof value === 'string') return value.replaceAll('{org}', orgName ?? '{org}').replaceAll('{user}', user ?? '{user}').replaceAll('{repo}', repo ?? '{repo}');
   if (Array.isArray(value)) return value.map((v) => fill(v, { org: orgName, user, repo }));
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, fill(v, { org: orgName, user })]));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, fill(v, { org: orgName, user, repo })]));
   return value;
 }
