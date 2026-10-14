@@ -976,13 +976,13 @@
         "H-4"
       ],
       "card": "docs/pr-cards/O-1.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 500,
       "units": [
         "O-1"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": []
     },
     {
