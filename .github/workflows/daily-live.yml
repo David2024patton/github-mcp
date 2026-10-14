@@ -5,14 +5,24 @@ on:
   # that scheduler failure; the script's atomic Denver-day tag permits only one
   # checked main -> live promotion across all schedule events and reruns.
   schedule:
-    - cron: '1 0 * * *' # preferred 00:01 Denver, DST aware
+    # Primary Denver midnight release, with bounded missed-event recovery.
+    # The UTC backup also avoids relying exclusively on timezone triggers.
+    - cron: '1 0 * * *'
       timezone: America/Denver
-    - cron: '19 0 * * *' # missed/queued midnight event recovery
+    - cron: '17 0 * * *'
       timezone: America/Denver
-    - cron: '19 1 * * *' # later independent scheduler recovery
+    - cron: '17 1 * * *'
       timezone: America/Denver
-    - cron: '37 5 * * *' # delayed same-day recovery after early failures
+    - cron: '37 5 * * *'
       timezone: America/Denver
+    - cron: '43 12 * * *'
+  workflow_dispatch:
+    inputs:
+      recover_missed_daily:
+        description: 'Owner-only checked recovery of a missed daily release'
+        type: boolean
+        required: true
+        default: false
   pull_request:
     types: [opened, synchronize, reopened, edited]
   push:
@@ -43,7 +53,10 @@ jobs:
 
   promote:
     name: scheduled-live-promotion
-    if: github.event_name == 'schedule' && github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' ||
+       (github.event_name == 'workflow_dispatch' && inputs.recover_missed_daily == true && github.actor == 'christcr2012' && github.triggering_actor == 'christcr2012'))
     needs: policy
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -58,4 +71,5 @@ jobs:
       - name: Checked daily fast-forward only
         env:
           GH_TOKEN: ${{ github.token }}
+          RECOVER_MISSED_DAILY: ${{ inputs.recover_missed_daily }}
         run: node .github/release/promote-live.mjs
