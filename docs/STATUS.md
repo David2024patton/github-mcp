@@ -192,6 +192,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: source #188 exact-head CI passed and merged commit 674fea131e0eb0002f474bb8f529d0f619011286, but live remained b51cda454f01720b3c638f83b9766b30eceaa9fb; no new deployed mutation or approval claimed."
+  },
+  {
+    "id": "GITHUB-H2-SIGNER-LIFECYCLE",
+    "priority": 1,
+    "requiredRevision": "72c64e8d06b05b5254041df5f42d7e5cabcd3608",
+    "task": "Verify the custom deployed webhook creation, update and secret rotation against an independently approved disposable public scratch fixture, prove receiver HMAC signatures and cleanup with run-owned evidence",
+    "procedure": "docs/pr-cards/H-2.md",
+    "gates": "Exact READY live ancestry of implementation; approved isolated scratch owner/run, service OAuth with legitimate provider permissions; preview/production and independent owner write/cleanup approvals preserved",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: implementation/test source staged; no claimed CI, deployment, provider mutation, HMAC acceptance or cleanup. GitHub masks signer values; require receiver signature verification."
   }
 ]
 ```
@@ -328,7 +339,20 @@ See pr-cards/DEVELOPER-CONNECTION.md. No production provider activation or paid 
 
 **Owner release timing update — 2026-10-13:** Daily checked main-to-live release now targets 00:01 America/Denver using GitHub native timezone support, so both daylight and standard time remain 12:01 a.m. All exact-head CI, atomic daily-marker, fast-forward, preview/build-cost and independent live/provider approval gates remain unchanged. Owner separately approved one manual release after this setup work completes; schedule syntax/CI, actual deployment and connected acceptance remain distinct evidence. GitHub scheduling can be delayed; no guaranteed start time is claimed.
 
-# STATUS — current work, blockers and next action
+# STATUS
+
+## October 14, 2026 — H-2 webhook create/update and signing-key rotation implementation
+
+Added real `github_webhook_save` and `github_webhook_rotate_secret` with
+server-generated signing keys, an encrypted ten-minute one-time private setup-page
+reveal, readback and event/destination verification. Changed existing webhook saves
+explicitly rotate the signer; callers are warned to update their receivers. Keys and
+unredacted callback paths do not enter the tool result or change journal.
+Three-door safety and provider-shape tests are required before merging; genuine
+connected GitHub, receiver HMAC acceptance, and fixture cleanup remain separately
+queued for the next checked READY release. No live writes, credential expansion,
+production activation, or spend permission is inferred.
+ — current work, blockers and next action
 
 ## Current gateway recovery disposition — 2026-10-12
 
