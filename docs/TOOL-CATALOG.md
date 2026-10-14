@@ -206,7 +206,7 @@ Card(s): F-3.
 | `github_discussion_list` | Discussions in a repository by category (GraphQL) | — | C | I | Op | R | F-3 built #178 |
 | `github_discussion_get` | One discussion with its comments and answer (GraphQL) | — | C | I | Op | R | F-3 built #178 |
 | `github_discussion_create` | Start a discussion (GraphQL) | P·M | N | I | Op | E | F-3 built #178 |
-| `github_discussion_comment` | Comment on a discussion or mark a comment as the answer (GraphQL) | P·M | N | I | Op | E | F-3 built #178 |
+| `github_discussion_comment` | Comment on a discussion or mark a comment as the answer (GraphQL) | C·M | N | I | Op | E | F-3 built #178 |
 | `github_project_list` | Projects (v2) of an org or user | — | N | I,U | Op | R | F-3 |
 | `github_project_get` | One project: fields, views, item counts | — | N | I,U | Op | R | F-3 |
 | `github_project_list_items` | Items in a project with field values | — | N | I,U | Op | R | F-3 |
