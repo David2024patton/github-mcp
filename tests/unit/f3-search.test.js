@@ -61,7 +61,11 @@ describe('F-3 genuine GitHub REST search routes',()=>{
   });
   it('rejects searches beyond the 1000-result page window before network',async()=>{
     const w=await makeWorld({});
-    const result=await call(w,{type:'code',query:'needle',page:30,max:50});
-    expect(result).toBeUndefined();
+    const dispatch=createDispatch({credentials:w.credentials,fetch:w.gh.fetch,now:w.ctx.now,gates:[]});
+    const result=await dispatch({registry,name:'github_search_github',
+      args:{type:'code',query:'needle',page:30,max:50},connection:w.connection,db:w.db});
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/1000 results/i);
+    expect(w.gh.calls).toEqual([]);
   });
 });

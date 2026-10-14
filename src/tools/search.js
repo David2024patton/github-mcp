@@ -53,7 +53,8 @@ export const searchGitHub=defineRead({
     const query=a.type==='issue'?`${a.query} is:issue`:a.type==='pull_request'?`${a.query} is:pr`:a.query;
     const route=ROUTES[a.type];
     const params={q:query,per_page:max,page,
-      ...(a.order?{order:a.order}:{}),...(a.sort?{sort:a.sort}:{})};
+      ...(a.order?{order:a.order}:{}),...(a.sort?{sort:a.sort}:{}),
+      ...(a.type==='code'?{headers:{accept:'application/vnd.github.text-match+json'}}:{})};
     const {data}=await octokit.request(route,params);
     if(!data||!Array.isArray(data.items)||!Number.isSafeInteger(data.total_count))
       throw new TypeError('GitHub returned malformed search results. No result was trusted.');
