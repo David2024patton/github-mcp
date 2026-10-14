@@ -23,7 +23,7 @@ const expectIssue = (issue, number) => {
 const brief = (i) => ({
   number: i.number, title: i.title, state: i.state, state_reason: i.state_reason,
   body: i.body, labels: (i.labels ?? []).map(l => typeof l === 'string' ? l : l.name),
-  assignees: (i.assignees ?? []).map(a => a.login), milestone: i.milestone?.number ?? null, html_url: i.html_url
+  assignees: (i.assignees ?? []).map(a => a.login), milestone: i.milestone?.number ?? null, type: i.type?.name ?? i.type ?? null, html_url: i.html_url
 });
 
 export const issueCreate = defineGithubWrite({
@@ -32,7 +32,7 @@ export const issueCreate = defineGithubWrite({
   properties: { owner: OWNER, repo: REPO, title: TITLE, body: BODY,
     labels: { type: 'array', maxItems: 30, items: { type: 'string', minLength: 1, maxLength: 100 } },
     assignees: { type: 'array', maxItems: 10, items: { type: 'string', minLength: 1, maxLength: 39 } },
-    milestone: NUMBER },
+    milestone: NUMBER, type: { type: 'string', minLength: 1, maxLength: 100 } },
   required: ['repo', 'title'],
   declarations: { production: 'never', notifies: true },
   target,
@@ -47,10 +47,13 @@ export const issueCreate = defineGithubWrite({
     ...(args.body !== undefined ? { body: args.body } : {}),
     ...(args.labels !== undefined ? { labels: args.labels } : {}),
     ...(args.assignees !== undefined ? { assignees: args.assignees } : {}),
-    ...(args.milestone !== undefined ? { milestone: args.milestone } : {}) })),
+    ...(args.milestone !== undefined ? { milestone: args.milestone } : {}),
+    ...(args.type !== undefined ? { type: args.type } : {}) })),
   readAfter: ({ ctx, target: t, response }) => getIssue(ctx, t, response.data.number),
   verify: ({ args, after }) => !!after && !after.pull_request && after.title === args.title
-    && (args.body === undefined || after.body === args.body)
+    && (args.body === undefined || (after.body ?? '') === args.body)
+    && (args.milestone === undefined || (after.milestone?.number ?? null) === args.milestone)
+    && (args.type === undefined || (after.type?.name ?? after.type ?? null) === args.type)
     && (args.labels === undefined || args.labels.every(n => (after.labels ?? []).some(l => l.name === n || l === n)))
     && (args.assignees === undefined || args.assignees.every(n => (after.assignees ?? []).some(a => a.login?.toLowerCase() === n.toLowerCase()))),
   inverse: () => null, // GitHub issues cannot be deleted; closing is not a complete inverse.
@@ -62,32 +65,37 @@ export const issueUpdate = defineGithubWrite({
   description: 'Update issue title, body, state, state reason or milestone; omitted fields stay unchanged.',
   properties: { owner: OWNER, repo: REPO, number: NUMBER, title: TITLE, body: BODY,
     state: { type: 'string', enum: ['open', 'closed'] },
-    stateReason: { type: 'string', enum: ['completed', 'not_planned', 'reopened'] },
+    stateReason: { type: 'string', enum: ['completed', 'not_planned', 'duplicate', 'reopened'] },
+    duplicateIssueId: NUMBER, type: { type: 'string', minLength: 1, maxLength: 100 },
     milestone: { type: ['integer', 'null'], minimum: 1 } },
   required: ['repo', 'number'],
   declarations: { production: 'never', notifies: true },
   target: (args, ctx) => {
-    if (!['title', 'body', 'state', 'milestone'].some(k => Object.hasOwn(args, k))) throw new TypeError('Provide at least one field to update.');
+    if (!['title', 'body', 'state', 'milestone', 'type'].some(k => Object.hasOwn(args, k))) throw new TypeError('Provide at least one field to update.');
     if (args.stateReason && !args.state) throw new TypeError('stateReason needs an explicit state.');
     if (args.state === 'open' && args.stateReason && args.stateReason !== 'reopened') throw new TypeError('Opening an issue uses reopened.');
-    if (args.state === 'closed' && args.stateReason === 'reopened') throw new TypeError('Closing an issue needs completed or not_planned.');
+    if (args.state === 'closed' && args.stateReason === 'reopened') throw new TypeError('Closing an issue needs completed, not_planned or duplicate.');
+    if (args.duplicateIssueId !== undefined && args.stateReason !== 'duplicate') throw new TypeError('duplicateIssueId requires stateReason duplicate.');
     return target(args, ctx);
   },
   read: (args, ctx, t) => getIssue(ctx, t, args.number).then(i => expectIssue(i, args.number)),
   classify: ({ args, ctx, target: t }) => notifyOutsiders(ctx, { text: `${args.title ?? ''}\n${args.body ?? ''}`, repoOwner: t.owner }),
-  summarize: ({ args, target: t }) => `Update issue #${args.number} in ${slug(t.owner, t.repo)} (${Object.keys(args).filter(k => ['title', 'body', 'state', 'milestone'].includes(k)).join(', ')})`,
+  summarize: ({ args, target: t }) => `Update issue #${args.number} in ${slug(t.owner, t.repo)} (${Object.keys(args).filter(k => ['title', 'body', 'state', 'milestone', 'type'].includes(k)).join(', ')})`,
   apply: ({ args, ctx, target: t }) => octo(ctx, t.owner).then(o => o.request('PATCH /repos/{owner}/{repo}/issues/{issue_number}', { owner: t.owner, repo: t.repo, issue_number: args.number,
     ...(args.title !== undefined ? { title: args.title } : {}),
     ...(args.body !== undefined ? { body: args.body } : {}),
     ...(args.state !== undefined ? { state: args.state } : {}),
     ...(args.stateReason !== undefined ? { state_reason: args.stateReason } : {}),
-    ...(args.milestone !== undefined ? { milestone: args.milestone } : {}) })),
+    ...(args.duplicateIssueId !== undefined ? { duplicate_issue_id: args.duplicateIssueId } : {}),
+    ...(args.type !== undefined ? { type: args.type } : {}),
+    ...(args.milestone !== undefined ? { milestone: args.milestone } : {}) })), 
   readAfter: ({ args, ctx, target: t }) => getIssue(ctx, t, args.number),
   verify: ({ args, after }) => !!after && !after.pull_request &&
     (args.title === undefined || after.title === args.title) &&
-    (args.body === undefined || after.body === args.body) &&
+    (args.body === undefined || (after.body ?? '') === args.body) &&
     (args.state === undefined || after.state === args.state) &&
     (args.stateReason === undefined || after.state_reason === args.stateReason) &&
+    (args.type === undefined || (after.type?.name ?? after.type ?? null) === args.type) &&
     (args.milestone === undefined || (after.milestone?.number ?? null) === args.milestone),
   inverse: () => null,
   present: ({ after }) => brief(after)
