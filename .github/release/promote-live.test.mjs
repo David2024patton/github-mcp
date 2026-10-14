@@ -103,8 +103,21 @@ test('real atomic git promotion, read-back and second same-day update refusal', 
   }
 });
 
-test('owner release schedule is 00:01 Denver with native DST handling', () => {
+test('the preferred Denver 00:01 release has bounded off-hour schedule backups', () => {
   const workflow = readFileSync(new URL('../workflows/daily-live.yml', import.meta.url), 'utf8');
-  assert.equal((workflow.match(/^\s*- cron:/gm) || []).length, 1);
-  assert.match(workflow, /- cron: '1 0 \* \* \*'[^\n]*\n\s+timezone: America\/Denver\s*\n/);
+  const schedules = [...workflow.matchAll(/^\s*- cron: '([^']+)'[^\n]*\n\s+timezone: (\S+)\s*$/gm)]
+    .map(([,cron,timezone]) => ({cron,timezone}));
+  assert.deepEqual(schedules, [
+    {cron:'1 0 * * *',timezone:'America/Denver'},
+    {cron:'19 0 * * *',timezone:'America/Denver'},
+    {cron:'19 1 * * *',timezone:'America/Denver'},
+    {cron:'37 5 * * *',timezone:'America/Denver'}
+  ]);
+  assert.equal(new Set(schedules.map(x => x.cron)).size, schedules.length);
+  // A backup can run only the existing schedule-restricted, exact-main,
+  // checked, atomically day-marked promoter—not a push/PR-triggered promotion.
+  assert.match(workflow, /if: github\.event_name == 'schedule' && github\.ref == 'refs\/heads\/main'/);
+  assert.match(workflow, /cancel-in-progress: false/);
+  assert.match(workflow, /run: node \.github\/release\/promote-live\.mjs/);
+  assert.match(workflow, /permissions:\s*\n\s*contents: write\s*\n\s*checks: read/);
 });

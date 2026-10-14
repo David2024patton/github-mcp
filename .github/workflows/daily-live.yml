@@ -1,7 +1,17 @@
 name: Daily live policy
 on:
+  # 00:01 remains the intended Denver release. GitHub has previously omitted
+  # its schedule event entirely (Oct 14, 2026). Off-hour backups protect against
+  # that scheduler failure; the script's atomic Denver-day tag permits only one
+  # checked main -> live promotion across all schedule events and reruns.
   schedule:
-    - cron: '1 0 * * *' # 00:01 Denver year-round; GitHub may delay.
+    - cron: '1 0 * * *' # preferred 00:01 Denver, DST aware
+      timezone: America/Denver
+    - cron: '19 0 * * *' # missed/queued midnight event recovery
+      timezone: America/Denver
+    - cron: '19 1 * * *' # later independent scheduler recovery
+      timezone: America/Denver
+    - cron: '37 5 * * *' # delayed same-day recovery after early failures
       timezone: America/Denver
   pull_request:
     types: [opened, synchronize, reopened, edited]
