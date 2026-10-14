@@ -2,54 +2,13 @@
   "version": 1,
   "repository": "Robinson-AI-Systems/github-mcp",
   "archive": "archive/housekeeping-2026-10-13",
+  "maintenanceBranch": "ai/codex/completion-recovery-20261014",
   "branches": [
     {
-      "name": "ai/gpt6/f1-issue-moderation",
-      "sha": "12ab4ac9b84a8294bb5561aa1e30a2820de8c477",
-      "disposition": "superseded",
-      "prs": [],
-      "reason": "Earlier F-1 drafts superseded by merged issue triage, moderation and relationship PRs #167, #168 and #170; preserve full draft history without introducing obsolete trees."
-    },
-    {
-      "name": "ai/gpt6/f1-issue-moderation-168",
-      "sha": "83a3b2d1dfef7e78740844cc149197bcbddb4a01",
+      "name": "ai/gpt6/f3-projects-item-writes-20261014",
+      "sha": "e4353a20f303ed7a10f6b88e4f8c584e6d76d509",
       "disposition": "merged",
-      "prs": [
-        168
-      ],
-      "reason": "Verified merged PR; preserve exact source history including squash-merged tips."
-    },
-    {
-      "name": "ai/gpt6/f1-issue-moderation-v2",
-      "sha": "63b1b6725359aa92ba7bc85d1bfb2a4ee96fec22",
-      "disposition": "superseded",
-      "prs": [],
-      "reason": "Earlier F-1 drafts superseded by merged issue triage, moderation and relationship PRs #167, #168 and #170; preserve full draft history without introducing obsolete trees."
-    },
-    {
-      "name": "ai/gpt6/f1-issue-relationships-169",
-      "sha": "badc61528295eaca8d610746a2fb4044289dffa0",
-      "disposition": "superseded",
-      "prs": [],
-      "reason": "Earlier F-1 drafts superseded by merged issue triage, moderation and relationship PRs #167, #168 and #170; preserve full draft history without introducing obsolete trees."
-    },
-    {
-      "name": "ai/gpt6/f1-issue-triage",
-      "sha": "9a944c04157bb85a47574ec3cff7a329c7d0ab11",
-      "disposition": "merged",
-      "prs": [
-        167
-      ],
-      "reason": "Verified merged PR; preserve exact source history including squash-merged tips."
-    },
-    {
-      "name": "ai/gpt6/f1-relations-170",
-      "sha": "b6e732e721c33b3652729424083145a903e9a300",
-      "disposition": "merged",
-      "prs": [
-        170
-      ],
-      "reason": "Verified merged PR; preserve exact source history including squash-merged tips."
+      "reason": "Verified main includes this implementation; preserve exact source-tip history before pruning."
     }
   ]
 }
