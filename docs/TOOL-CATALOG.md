@@ -340,12 +340,12 @@ Card(s): H-1.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_protection_get` | Classic branch protection on a branch, in plain words | — | C | I | B,O | R | H-1 built #184 |
 | `github_protection_set` | Change branch protection by reading it first and changing only what was asked (GitHub's PUT replaces everything) | C·Prod | F | I | O | F | H-1 |
-| `github_protection_set_required_checks` | Add or remove required status checks, keeping the rest | C·Prod | F | I | B,O | F | H-1 |
+| `github_protection_set_required_checks` | Add or remove required status checks, keeping the rest | C·Prod | F | I | B,O | F | H-1 built #185 |
 | `github_protection_remove` | Remove branch protection | C·D·Prod | C | I | O | F | H-1 |
 | `github_ruleset_list` | Rulesets of a repository or organization with enforcement and targets | — | C | I | B,O | R | H-1 built #184 |
 | `github_ruleset_get` | One ruleset in plain words, optionally with its history | — | C | I | B,O | R | H-1 built #184 |
-| `github_ruleset_save` | Create or update a ruleset (read-merge-write for updates) | C·Prod | F | I | O | F | H-1 |
-| `github_ruleset_delete` | Delete a ruleset | C·D·Prod | C | I | O | F | H-1 |
+| `github_ruleset_save` | Create or update a ruleset (read-merge-write for updates) | C·A·Prod | F | I | O | F | H-1 built #185 |
+| `github_ruleset_delete` | Delete a ruleset | C·D·Prod | C | I | O | F | H-1 built #185 |
 | `github_ruleset_list_rule_suites` | Recent rule evaluations: which push or merge was blocked by which rule, and why | — | N | I | B,O | R | H-1 built #184 |
 
 ## Webhooks (`github_webhook_*`) — 8

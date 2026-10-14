@@ -14,6 +14,10 @@ Adds confirmed and journalled project item membership, field updates and removal
 
 Four genuine governance read tools added: classic branch protection (separating effective rulesets), scoped repo/org rule list/get/history and rule-suite evaluation diagnostics. All operations are bounded and describe enforcement without permission shortcuts. Projects field update readback explicitly requests updated field IDs, since default GitHub item GET does not include them. No deployed external proof claimed; next H-1 changes preserve owner approval, no production access, and the checked release cadence.
 
+## October 14, 2026 — H-1 ruleset governance changes (PR #185)
+
+Implements safeguarded complete ruleset create/update/delete and narrow required-check modifications. Whole ruleset writes preserve preexisting conditions, active rules, enforcement, source and bypass actors; inability to read bypass membership refuses updates. All changes are production classified, preview/confirmation/journal/replay gated. No owner production account activation, provider mutation or independent deployment acceptance claimed. Remaining H-1 classic protection whole-object set/remove is still outstanding. Session boundary #185, next #190.
+
 ## Release acceptance queue — workflow optimization 2026-10-14
 
 Owner-authorized guidance/tooling maintenance: consolidated session procedure, focused
