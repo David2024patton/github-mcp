@@ -1,3 +1,23 @@
+## Scratch cleanup default-label blocker correction — October 14, 2026
+
+Owner explicitly requested resolving the recurring initial-label cleanup refusal.
+Confirmed whole-repository disposal now accepts the immutable first-create label
+observation only when bound to the exact complete scoped create intent/repository
+journal and independently unchanged by ID, name, color and description. No label
+creator provenance is inferred. Initial labels are covered by explicit disposal of
+their disposable parent, not standalone label deletion authority. Separately
+journaled run labels retain their existing marker/readback checks. Missing baseline
+runs retain the strict recorded-label-only path; no retroactive adoption.
+Both post-freeze and immediately-pre-DELETE inventories recheck the baseline.
+Added/changed/replaced/missing/duplicate labels, overlapping baseline/run labels,
+foreign data, incomplete inventories, and protected/non-scratch targets still refuse.
+Preview names the initial-label count and unverified creator provenance.
+Targeted three-door write contracts and regression tests cover unchanged defaults,
+drift/races and defaults plus fixture labels. Custom connection read verified PREVIEW,
+scratch organization, production OFF, $0 spend and zero existing runs.
+Source/CI, scheduled deployment, actual custom seed/readback/confirmed cleanup remain
+separate; this change does not claim live cleanup before checked release.
+
 ## October 13, 2026 — F-1 review findings remediated before merge
 
 Six independently filed PR #167 code-review findings were addressed in the same guarded issue workflow: GitHub issue types on create/update/list, verification of requested milestone rather than accepting a silent provider drop, nullable milestone validation for explicit clearing, normalized empty/null issue-body readback, supported duplicate closure reason and optional canonical duplicate issue ID, and preservation of contributor trust metadata on nested related issues. New targeted tests cover denied or unconfirmed readback, nullable/invalid schema types, and nested untrusted input. The exact PR head and checks must be revalidated after these review changes; no reviewer thread is considered resolved by merely editing the source.

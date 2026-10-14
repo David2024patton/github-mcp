@@ -118,3 +118,13 @@ describe('V-2 exact remote read-only cleanup preflight',()=>{
     expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);
   });
 });
+
+it('accepts unchanged creation-bound initial labels without granting read-side deletion consent',async()=>{
+  const w=await world({birth:true});
+  w.gh.when('GET /repos/{owner}/{repo}/labels').reply(200,[
+    {id:11,name:'bug',color:'d73a4a',description:null}]);
+  const out=await handler(args,w.ctx);
+  expect(out).toMatchObject({status:'remote_snapshot_accepted',deletion_authorized:false,
+    inventory_counts:{labels:1}});
+  expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);
+});
