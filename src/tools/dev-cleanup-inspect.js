@@ -98,7 +98,7 @@ export async function inspectCleanupPreview(args,ctx){
       if(args.includeBirthLabels)
         labelAudit=await auditBirthDrift(args,ctx,{owner,state,github});
       const snapshot=await inspectScratchArtifacts(github,{
-        owner,repo:args.repo,run:state.run,objects:state.objects,
+        owner,repo:args.repo,run:state.run,objects:state.objects,intents:state.intents,birth:state.birth,
         defaultBranch:state.existing.default_branch
       });
       return {...cleanupPreflightResult({...base,phase:'scratch_remote_inventory',snapshot}),...(labelAudit?{birth_label_drift:labelAudit}:{})};

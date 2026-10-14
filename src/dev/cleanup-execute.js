@@ -9,6 +9,7 @@ import { inspectScratchComments } from './cleanup-comments.js';
 import { assertScratchJournalCoverage } from './cleanup-inventory.js';
 import { assertScenarioResourceBounds } from './scenario-ownership.js';
 import { withCleanupExecution } from './cleanup-execution.js';
+import { baselineScratchLabels } from './cleanup-birth-labels.js';
 
 const equal = (a,b) => String(a??'').toLowerCase() === String(b??'').toLowerCase();
 const getRepo = (github,owner,repo) => missing(async()=>(await github.request('GET /repos/{owner}/{repo}',{owner,repo})).data);
@@ -24,7 +25,7 @@ export function requireExactScratchRepo(repo,run,owner,name) {
 // Refuse whole-repository deletion when independently listed PRs, issues or
 // non-default branches are absent from the durable run journal. The bounded
 // lists are complete or deletion is denied; no search-by-marker authorizes it.
-export async function inspectScratchArtifacts(github,{owner,repo,run,objects,defaultBranch}) {
+export async function inspectScratchArtifacts(github,{owner,repo,run,objects,defaultBranch,intents=[],birth=null}) {
   if(typeof defaultBranch!=='string'||!defaultBranch||
     !Array.isArray(objects)||!run?.id)
     throw refusal('Scratch repository default branch and exact run journal are required.');
@@ -219,19 +220,20 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
   // independently of the PR's immutable head. Verify their exact live forms
   // before a whole-repository delete, rather than trusting journal IDs alone.
   const savedLabels=objects.filter(x=>x.object_type==='label');
-  // An exact recorded label does not authorize erasing unrelated repository
-  // labels. GitHub may add defaults on creation; these too remain foreign
-  // until captured in an independently verified run-owned baseline.
+  // Confirmed disposal covers the exact unchanged first-create label baseline;
+  // it does not assert label creator provenance or authorize standalone deletion.
+  const baseline=baselineScratchLabels({run,objects,intents,birth,owner,repo,
+    labels:labels.items,savedLabels});
   const listedLabels=new Set();
   for(const label of labels.items){
     const name=label?.name;
     if(typeof name!=='string'||!name||listedLabels.has(name)||
-      savedLabels.filter(x=>x.object_id===name&&x.repo===repo&&
+      !baseline.has(name)&&savedLabels.filter(x=>x.object_id===name&&x.repo===repo&&
         x.owner.toLowerCase()===owner.toLowerCase()).length!==1)
       throw refusal('Scratch repository contains an unrecorded or ambiguous label; deletion refused.');
     listedLabels.add(name);
   }
-  if(listedLabels.size!==savedLabels.length||
+  if(listedLabels.size!==savedLabels.length+baseline.size||
     savedLabels.some(x=>!listedLabels.has(x.object_id)))
     throw refusal('The recorded scratch labels do not match the complete live label inventory.');
   for(const label of savedLabels) {
@@ -278,9 +280,10 @@ export async function readCleanupRun(ctx,owner,repo,runId) {
   const connection=ctx.connection.client_id, db=ctx.db;
   const run=await db.getDevRun({id:runId,account:owner,connection});
   if(!run)throw refusal('That development run does not belong to this connection.');
-  const [objects,intents]=await Promise.all([
+  const [objects,intents,birth]=await Promise.all([
     db.listDevObjects({runId,account:owner,connection,limit:50}),
-    db.listDevIntents({runId,account:owner,connection,limit:50})
+    db.listDevIntents({runId,account:owner,connection,limit:50}),
+    db.getDevBirthLabels({runId,account:owner,connection})
   ]);
   const plan=planDevCleanup({run,objects,intents});
   const root=objects.find(x=>x.object_type==='repo');
@@ -300,7 +303,7 @@ export async function readCleanupRun(ctx,owner,repo,runId) {
   }
   if(root&&!existing&&run.status!=='cleaning'&&run.status!=='cleaned')
     throw refusal('The repository is missing and the run is not already cleaning; reconcile before cleanup.');
-  return {run,plan,objects,existing,deleteRepository:!!root};
+  return {run,plan,objects,intents,birth,existing,deleteRepository:!!root};
 }
 export async function executeCleanup(ctx,{owner,repo,runId,before}) {
   return withCleanupExecution(ctx,{owner,runId},()=>executeExclusiveCleanup(ctx,{owner,repo,runId,before}));
@@ -320,7 +323,7 @@ async function executeExclusiveCleanup(ctx,{owner,repo,runId,before}) {
   requireExactScratchRepo(live,snapshot.run,owner,repo);
   // Missing after a prior partial cleanup is safe to reconcile, never a reason to delete a substitute.
   if(live) {
-    const preflight=await inspectScratchArtifacts(github,{owner,repo,run:snapshot.run,objects:snapshot.objects,
+    const preflight=await inspectScratchArtifacts(github,{owner,repo,run:snapshot.run,objects:snapshot.objects,intents:snapshot.intents,birth:snapshot.birth,
       defaultBranch:live.default_branch});
     for(const item of snapshot.objects.filter(x=>x.object_type==='pr'&&!x.cleaned)){
       const number=Number(item.object_id);
@@ -352,7 +355,7 @@ async function executeExclusiveCleanup(ctx,{owner,repo,runId,before}) {
     const latest=await getRepo(github,owner,repo);
     requireExactScratchRepo(latest,snapshot.run,owner,repo);
     if(!latest)throw refusal('The scratch repository disappeared before deletion; inspect the run.');
-    await inspectScratchArtifacts(github,{owner,repo,run:snapshot.run,objects:snapshot.objects,
+    await inspectScratchArtifacts(github,{owner,repo,run:snapshot.run,objects:snapshot.objects,intents:snapshot.intents,birth:snapshot.birth,
       defaultBranch:latest.default_branch});
     await github.request('DELETE /repos/{owner}/{repo}',{owner,repo});
   }
