@@ -21,11 +21,17 @@ const get=async(ctx,t,id)=>missing(async()=>{
   const x=(await (await octo(ctx,t.owner)).request('GET '+route(t,'/{hook_id}'),
     {...args(t),hook_id:id})).data;
   if(x?.id!==id)throw refusal('Webhook numeric identity could not be verified.');
-  return x;
+  let target_host=null;
+  try{target_host=publicHttpsUrl(x.config?.url).hostname;}catch{}
+  // Only this allowlisted projection may enter the change journal.
+  return {id:x.id,active:x.active===true,
+    events:Array.isArray(x.events)?x.events.slice(0,100):[],
+    target_host};
 });
 const host=webhook=>{
-  try{return publicHttpsUrl(webhook.config?.url).hostname;}
-  catch{throw refusal('Webhook delivery target is not a verified public HTTPS URL.');}
+  if(!webhook.target_host)
+    throw refusal('Webhook delivery target is not a verified public HTTPS URL.');
+  return webhook.target_host;
 };
 const inspect=async(a,ctx,t)=>{
   const hook=await get(ctx,t,a.hookId);
@@ -37,7 +43,10 @@ const deliveries=async(ctx,t,hookId)=>{
   const r=await listAll(await octo(ctx,t.owner),'GET '+route(t,'/{hook_id}/deliveries'),
     {...args(t),hook_id:hookId,per_page:100},{max:100});
   if(r.capped||r.items.length===100)throw refusal('Webhook deliveries reached the 100-item safety limit; do not act on a potentially incomplete list.');
-  return r.items;
+  // Read-back is persisted in the request journal: never retain provider payloads,
+  // signing headers, raw callback URLs or request/response bodies.
+  return r.items.map(d=>({id:d.id,guid:d.guid??null,event:d.event??null,
+    redelivery:d.redelivery===true}));
 };
 const summarizeTarget=(t,a)=>t.scope==='org'?t.owner:slug(t.owner,a.repo);
 
@@ -74,7 +83,7 @@ export const webhookRedeliver=defineGithubWrite({
       {...args(t),hook_id:a.hookId,delivery_id:a.deliveryId})).data;
     if(d?.id!==a.deliveryId||!d.guid)throw refusal('Original delivery ID and GUID cannot be verified.');
     const inventory=await deliveries(ctx,t,a.hookId);
-    return {...snapshot,delivery:d,known:inventory.map(v=>v.id)};
+    return {...snapshot,delivery:{id:d.id,guid:d.guid,event:d.event??null},known:inventory.map(v=>v.id)};
   },
   classify:({ctx,target:t})=>productionReason(ctx,t).then(production=>({production})),
   summarize:({args:a,target:t,before:b})=>
