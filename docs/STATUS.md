@@ -1,3 +1,9 @@
+## October 13, 2026 — F-1 issue moderation PR #168 (source in progress)
+
+Building directly atop safely merged PR #167, this approved second F-1 implementation delivers issue/PR conversation locks, editing a comment with same-repository provenance verification, label add/remove/replace including explicit empty clearing, and assignee add/remove with full notification consent guard. Exact provider readback and shared three-door write-contract tests are included. F-1 continues IN_PROGRESS with four advanced relation/transfer/reaction tools not yet delivered. No live provider-write acceptance is inferred from tests; no scratch repo is created or cleaned. Current main already includes pager, nullable issue validator and PR #167 review repairs. Preserve standard production-OFF, $0-spend and V-2 cleanup gates.
+
+Reconciled after independently merged scratch cleanup PR #169. The cleanup birth-label safety fix is retained without change.
+
 ## Scratch cleanup default-label blocker correction — October 14, 2026
 
 Owner explicitly requested resolving the recurring initial-label cleanup refusal.
