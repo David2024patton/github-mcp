@@ -69,7 +69,8 @@ async function call(w,name,args){
  const d=createDispatch({credentials:w.credentials,fetch:w.gh.fetch,
   now:w.ctx.now,sleep:w.ctx.sleep,gates:[]});
  const x=await d({registry,name,args,connection:w.connection,db:w.db});
- return x.structuredContent??parse(x);
+ // Dispatch refusals for unavailable profile/foreign scope use unstructured error text.
+ return x.structuredContent??(x.isError?{done:false,error:x.content?.[0]?.text}:parse(x));
 }
 describe('H-1 governance mutations fail closed',()=>{
  it('refuses everyday-profile governance writes without provider requests',async()=>{
