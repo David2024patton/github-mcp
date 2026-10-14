@@ -120,7 +120,7 @@ export const manageInvitation=defineGithubWrite({
   description:'Change permission or cancel one verified pending repository invitation with exact readback.',
   properties:{...BASE,invitationId:ID,action:{type:'string',enum:['update','cancel']},
     permission:PERMISSION},required:['repo','invitationId','action'],
-  declarations:{production:'always',confirm:'always',profiles:['full']},
+  declarations:{production:'always',confirm:'always',accessWidening:true,profiles:['full']},
   target:(a,c)=>{
     if(a.action==='update'&&!a.permission||a.action==='cancel'&&a.permission)
       throw new TypeError('Update needs permission; cancellation must not include it.');
