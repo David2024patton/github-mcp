@@ -68,7 +68,7 @@ describe('F-1 issue write semantics', () => {
     const w = await makeWorld({});
     w.gh.when('GET /repos/{owner}/{repo}').reply(200, { has_issues: true });
     const r = await call(w, 'github_issue_create', { repo: 'hello', title: 'Please check @not-our-team' });
-    expect(r.body).toMatchObject({ done: false, status: 'needs_confirm' });
+    expect(r.body).toMatchObject({ done: false, status: 'needs_confirmation' });
     expect(writes(w.gh)).toEqual([]);
   });
 
