@@ -818,17 +818,20 @@
       "batch": "F",
       "design": "docs/designs/BATCH-F.md",
       "dependencies": [
-        "V-5"
+        "C-2"
       ],
       "card": "docs/pr-cards/F-1.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 450,
       "units": [
         "F-1"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "ownerInputs": []
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": [
+        167
+      ]
     },
     {
       "id": "F-2",

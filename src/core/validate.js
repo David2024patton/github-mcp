@@ -3,12 +3,19 @@
 // integer / number (minimum, maximum), boolean, array (items, maxItems, minItems). Anything else is refused, not guessed.
 // Returns a plain sentence for the first problem, or null when the arguments are acceptable.
 const MAX_DEPTH = 6;
+const SCHEMA_TYPES = new Set(['object','string','integer','number','boolean','array','null']);
 
 function check(spec, value, path, depth) {
   if (depth > MAX_DEPTH) return `${path} is nested too deeply.`;
   const type = spec?.type;
   const label = path || 'The arguments';
+  if (Array.isArray(type)) {
+    if (!type.length || new Set(type).size !== type.length || type.some(t => !SCHEMA_TYPES.has(t))) return `${label} has an unsupported type.`;
+    const failures = type.map(t => check({ ...spec, type: t }, value, path, depth));
+    return failures.includes(null) ? null : `${label} must be one of: ${type.join(' or ')}.`;
+  }
   switch (type) {
+    case 'null': return value === null ? null : `${label} must be null.`;
     case 'string':
       if (typeof value !== 'string') return `${label} must be text.`;
       if (spec.enum && !spec.enum.includes(value)) return `${label} must be one of: ${spec.enum.join(', ')}.`;

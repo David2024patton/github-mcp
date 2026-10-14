@@ -5,7 +5,8 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { requireMcpToken } from './mcp-auth.js';
-import { LISTINGS, listedTool, toolsForListing } from './registry.js';
+import { LISTINGS } from './registry.js';
+import { pageToolsForListing } from './tool-pages.js';
 
 const unknownTool = (name) => ({ isError: true, content: [{ type: 'text', text: `Unknown or unavailable tool: ${String(name).slice(0, 80)}` }] });
 export const denyAll = async ({ name }) => unknownTool(name);
@@ -23,7 +24,7 @@ export function createMcpHandler({ db, registry, env = process.env, toConnection
     const connection = await requireMcpToken(req, res, db, env, { toConnection });
     if (!connection) return;
     const server = new Server(serverInfo, { capabilities: { tools: {} } });
-    server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: toolsForListing(registry, connection.profile, listingFor(req, connection)).map(listedTool) }));
+    server.setRequestHandler(ListToolsRequestSchema, async (request) => pageToolsForListing(registry, connection.profile, listingFor(req, connection), request.params?.cursor));
     server.setRequestHandler(CallToolRequestSchema, async (request) =>
       dispatch({ registry, name: request.params?.name, args: request.params?.arguments, connection, db }));
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });

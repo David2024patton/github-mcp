@@ -5,7 +5,6 @@
 const get = (o, path) => path.split('.').reduce((a, k) => (a === null || a === undefined ? undefined : a[k]), o);
 const login = (path) => (o) => get(o, path)?.login;
 const names = (path, key = 'name') => (o) => get(o, path)?.map((x) => x?.[key]).filter((x) => x !== undefined);
-const logins = (path) => names(path, 'login');
 const count = (path) => (o) => (Array.isArray(get(o, path)) ? get(o, path).length : undefined);
 const first = (...paths) => (o) => paths.map((p) => get(o, p)).find((v) => v !== undefined && v !== null);
 const TEXT = ['body', 'title', 'message', 'text', 'description', 'name'];
@@ -32,7 +31,7 @@ export const SUMMARIES = Object.freeze({
   review: shape({ id: 'id', user: login('user'), state: 'state', submitted_at: 'submitted_at', commit_id: 'commit_id', body: 'body', html_url: 'html_url' }),
   review_thread: shape({ id: 'id', resolved: 'isResolved', outdated: 'isOutdated', path: 'path', line: 'line', comments: (o) => o.comments?.totalCount ?? o.comments?.nodes?.length,
     first_comment: (o) => { const c = o.comments?.nodes?.[0]; return c ? { author: c.author?.login, body: c.body, author_association: c.authorAssociation } : undefined; } }),
-  issue: shape({ number: 'number', title: 'title', state: 'state', state_reason: 'state_reason', user: login('user'), labels: names('labels'), assignees: logins('assignees'), milestone: 'milestone.title',
+  issue: shape({ number: 'number', title: 'title', state: 'state', state_reason: 'state_reason', user: first('author', 'user.login'), labels: (o) => (o.labels ?? []).map(l => typeof l === 'string' ? l : l?.name), assignees: (o) => (o.assignees ?? []).map(a => typeof a === 'string' ? a : a?.login), milestone: first('milestone.title', 'milestone'),
     comments: 'comments', is_pull_request: (o) => (o.pull_request ? true : undefined), created_at: 'created_at', updated_at: 'updated_at', html_url: 'html_url' }),
   comment: shape({ id: 'id', user: login('user'), created_at: 'created_at', updated_at: 'updated_at', body: 'body', html_url: 'html_url' }),
   label: shape({ name: 'name', color: 'color', description: 'description', default: 'default' }),

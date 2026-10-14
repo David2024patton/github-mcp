@@ -115,7 +115,8 @@ describe('the read-only dispatcher', () => {
     const schema = { type: 'object', properties: { a: { type: 'string', enum: ['x'] } }, required: ['a'] };
     expect(validateArgs(schema, { a: 'x' })).toBeNull();
     expect(validateArgs(schema, {})).toContain('required');
-    expect(validateArgs({ properties: { n: { type: 'null' } } }, { n: 1 })).toContain('unsupported');
+    expect(validateArgs({ properties: { n: { type: 'null' } } }, { n: 1 })).toContain('must be null');
+    expect(validateArgs({ properties: { n: { type: 'null' } } }, { n: null })).toBeNull();
   });
 });
 
