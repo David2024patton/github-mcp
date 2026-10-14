@@ -341,6 +341,19 @@ See pr-cards/DEVELOPER-CONNECTION.md. No production provider activation or paid 
 
 # STATUS
 
+## October 14, 2026 — H-3 collaborator and deploy-key source under review
+
+Implemented full H-3 source for collaborators, pending invitation management, and
+public-only SSH deploy-key lifecycle. The seven native operations include bounded
+privacy-preserving inventories, permission/invitation readbacks, direct membership
+checks, duplicate key detection, per-operation approval/production/access guards,
+and private-key header refusal without logging inputs. Five mutation contracts
+are under test through the three regular tool doors. No source is a deployed
+provider acceptance pass: wait for exact-head CI/review/merge, checked READY release
+and separately authorized live scratch access/cleanup tests. Production and spend
+remain disabled. Approved parent card H-3 remains IN_PROGRESS until proven.
+
+
 ## October 14, 2026 — H-2 webhook create/update and signing-key rotation implementation
 
 Added real `github_webhook_save` and `github_webhook_rotate_secret` with
