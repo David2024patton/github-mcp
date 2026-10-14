@@ -112,7 +112,7 @@ const save=defineGithubWrite({
     const fields={config,...(a.events?{events:a.events}:{}),
       ...(a.active!==undefined?{active:a.active}:{})};
     const response=await gh.request((a.hookId?'PATCH ':'POST ')+ROUTE(t,a.hookId?'/{hook_id}':''),
-      {...PARAMS(t),...(a.hookId?{hook_id:a.hookId,name:'web'}:{name:'web'}),
+      {...PARAMS(t),...(a.hookId?{hook_id:a.hookId}:{name:'web'}),
         ...(!a.hookId?{active:a.active??true,events:a.events,
           config:{...config,content_type:a.contentType??'json'}}:fields)});
     const id=a.hookId??response.data?.id;
