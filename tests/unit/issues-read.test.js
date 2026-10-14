@@ -23,7 +23,7 @@ describe('F-1 issue triage reads', () => {
     expect(body.count).toBe(2);
     expect(body.items.map(x => x.number)).toEqual([101, 102]);
     expect(body.scanned).toBe(102);
-    expect(w.gh.calls.filter(x => x.route === path).map(x => x.query.page)).toEqual([1, 2]);
+    expect(w.gh.calls.filter(x => x.route === path).map(x => x.query.page)).toEqual(['1', '2']);
     expect(w.gh.invalid).toEqual([]);
   });
 
