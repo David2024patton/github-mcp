@@ -9,10 +9,23 @@ const ID={type:'integer',minimum:1},NAME={type:'string',minLength:1,maxLength:10
 const RULE={type:'object',properties:{type:{type:'string',minLength:1,maxLength:80},
   parameters:{type:'object',additionalProperties:true}},
   required:['type'],additionalProperties:false};
-const ACTOR={type:'object',properties:{actor_id:ID,
-  actor_type:{type:'string',enum:['Team','Role','Integration','OrganizationAdmin']},
+const ACTOR={type:'object',properties:{
+  actor_id:{type:['integer','null'],minimum:1},
+  actor_type:{type:'string',enum:[
+    'Team','RepositoryRole','Integration','OrganizationAdmin','User','DeployKey']},
   bypass_mode:{type:'string',enum:['always','pull_request','exempt']}},
-  required:['actor_id','actor_type','bypass_mode'],additionalProperties:false};
+  required:['actor_type','bypass_mode'],additionalProperties:false};
+const validateActors=actors=>{
+  if(actors===undefined)return;
+  for(const actor of actors){
+    const optionalId=actor.actor_type==='DeployKey'||actor.actor_type==='OrganizationAdmin';
+    if(!optionalId&&(!Number.isSafeInteger(actor.actor_id)||actor.actor_id<1))
+      throw new TypeError('A bypass actor of this type needs a positive numeric actor_id.');
+    if(optionalId&&actor.actor_id!==undefined&&actor.actor_id!==null&&
+      (!Number.isSafeInteger(actor.actor_id)||actor.actor_id<1))
+      throw new TypeError('An optional bypass actor_id must be null or a positive integer.');
+  }
+};
 const target=(a,c)=>{
   if(a.scope==='org'&&a.repo)throw new TypeError('Organization rulesets cannot target a repository.');
   if(a.scope!=='org'&&!a.repo)throw new TypeError('A repository ruleset needs the repository name.');
@@ -68,6 +81,7 @@ export const rulesetSave=defineGithubWrite({
   declarations:{production:'always',confirm:'always',accessWidening:true,profiles:['full']},
   target:(a,c)=>{
     const t=target(a,c);
+    validateActors(a.bypassActors);
     if(a.rulesetId===undefined&&(!a.name||!a.target||!a.enforcement||
       !Array.isArray(a.rules)||!a.conditions))
       throw new TypeError('New rulesets require name, target, enforcement, rules and conditions.');
@@ -141,6 +155,11 @@ export const rulesetDelete=defineGithubWrite({
 const CHECK={type:'string',minLength:1,maxLength:200};
 const checksParams=(a,t)=>({owner:t.owner,repo:a.repo,branch:a.branch});
 const requiredRoute=(suffix='')=>`/repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks${suffix}`;
+const otherChecks=(v,context)=>{
+  if(v===undefined)return undefined;
+  if(!Array.isArray(v))return null;
+  return v.filter(check=>check.context!==context);
+};
 const getChecks=(ctx,t,a)=>octo(ctx,t.owner).then(gh=>gh.request(
   'GET '+requiredRoute(),checksParams(a,t)).then(x=>x.data));
 export const requiredChecks=defineGithubWrite({
@@ -173,7 +192,7 @@ export const requiredChecks=defineGithubWrite({
     d.contexts.includes(a.context)===(a.action==='add')&&
     b.current.contexts.filter(x=>x!==a.context).every(x=>d.contexts.includes(x))&&
     d.contexts.every(x=>x===a.context||b.current.contexts.includes(x))&&
-    eq(d.checks??[],b.current.checks??[]),
+    eq(otherChecks(d.checks,a.context),otherChecks(b.current.checks,a.context)),
   inverse:()=>null,present:({args:a,after:d})=>({branch:a.branch,
     strict:d.strict,contexts:d.contexts})
 });

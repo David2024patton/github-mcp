@@ -40,7 +40,8 @@ function arrangeCheck(gh,outcome,action){
  gh.when(routes.checks).reply(200,()=>({
   strict:true,contexts:changed&&outcome==='ok'?
    action==='add'?['ci','security']:[]:['ci'],
-  checks:[]}));
+  checks:[{context:'ci',app_id:99},...(changed&&outcome==='ok'&&action==='add'
+   ?[{context:'security',app_id:null}]:[])]}));
  gh.when(routes.add).reply(200,()=>{changed=true;return ['ci','security']});
  gh.when(routes.rem).reply(200,()=>{changed=true;return []});
 }
@@ -100,6 +101,37 @@ describe('H-1 governance mutations fail closed',()=>{
   const x=await call(w,'github_protection_set_required_checks',{
    repo:'hello',branch:'main',action:'add',context:'ci',confirm:true});
   expect(x.done).toBe(false);expect(w.gh.calls.filter(q=>q.route===routes.add)).toHaveLength(0);
+ });
+ it('supports valid repository-role and omitted-ID deploy-key bypass actors',async()=>{
+  const w=await makeWorld({mode:'production',profile:'full'});
+  w.gh.when(routes.get).reply(200,base);
+  const r=await call(w,'github_ruleset_save',{repo:'hello',rulesetId:42,dryRun:true,
+   bypassActors:[
+    {actor_type:'RepositoryRole',actor_id:5,bypass_mode:'always'},
+    {actor_type:'DeployKey',bypass_mode:'always'},
+    {actor_type:'OrganizationAdmin',actor_id:null,bypass_mode:'always'}]});
+  expect(r).toMatchObject({status:'preview'});
+  expect(r.preview).toMatch(/ACCESS CHANGE/);
+  expect(w.gh.calls.filter(x=>x.route===routes.put)).toHaveLength(0);
+ });
+ it('refuses invalid bypass actor IDs before any GitHub request',async()=>{
+  const w=await makeWorld({mode:'production',profile:'full'});
+  const r=await call(w,'github_ruleset_save',{repo:'hello',rulesetId:42,dryRun:true,
+   bypassActors:[{actor_type:'User',bypass_mode:'always'}]});
+  expect(r.done).toBe(false);
+  expect(w.gh.calls).toHaveLength(0);
+ });
+ it('does not confirm a context addition that silently alters an unrelated app-bound check',async()=>{
+  const w=await makeWorld({mode:'production',profile:'full'});
+  w.gh.when(routes.checks).replySequence([
+   {status:200,body:{strict:true,contexts:['ci'],checks:[{context:'ci',app_id:8}]}},
+   {status:200,body:{strict:true,contexts:['ci','security'],
+     checks:[{context:'ci',app_id:123},{context:'security',app_id:null}]}}]);
+  w.gh.when(routes.add).reply(200,[]);
+  const r=await call(w,'github_protection_set_required_checks',{
+   repo:'hello',branch:'main',action:'add',context:'security',confirm:true});
+  expect(r).toMatchObject({done:false,status:'unconfirmed'});
+  expect(w.gh.calls.filter(x=>x.route===routes.add)).toHaveLength(1);
  });
  it('rejects changing a ruleset in a foreign account',async()=>{
   const w=await makeWorld({mode:'production'});
