@@ -97,11 +97,11 @@ describe('token-budget check (C-2)', () => {
     const fat = { name: 'github_fat', description: 'd', inputSchema: { type: 'object', properties: { a: { type: 'string', description: words(1600) } } } };
     expect(checkBudgets([fat])).toEqual(['github_fat: schema over 1500 tokens']);
   });
-  it('fails a compact listing over 5,000 tokens and an everyday catalog over 22,000', () => {
-    const compact = Array.from({ length: 120 }, (_, i) => ({ name: `github_c${i}`, compact: true, description: words(24), inputSchema: { type: 'object', properties: { a: { type: 'string', description: words(20) } } } }));
+  it('fails any compact page over 5,000 tokens or everyday catalog page over 22,000', () => {
+    const compact = Array.from({ length: 120 }, (_, i) => ({ name: `github_c${i}`, compact: true, description: words(24), inputSchema: { type: 'object', properties: { a: { type: 'string', description: words(250) } } } }));
     expect(checkBudgets(compact).some((f) => f.startsWith('compact listing is'))).toBe(true);
-    const catalog = Array.from({ length: 400 }, (_, i) => ({ name: `github_e${i}`, description: words(24), inputSchema: { type: 'object', properties: { a: { type: 'string', description: words(30) } } } }));
-    expect(checkBudgets(catalog).some((f) => f.startsWith('everyday catalog listing is'))).toBe(true);
+    const catalog = Array.from({ length: 400 }, (_, i) => ({ name: `github_e${i}`, description: words(24), inputSchema: { type: 'object', properties: { a: { type: 'string', description: words(950) } } } }));
+    expect(checkBudgets(catalog).some((f) => f.startsWith('everyday catalog page is'))).toBe(true);
     expect(listingTokens(compact).compact).toBeGreaterThan(5000);
     expect(listingTokens(catalog).compact).toBe(listingTokens([]).compact);
   });
