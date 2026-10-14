@@ -173,7 +173,7 @@ Card(s): F-1.
 | `github_issue_lock` | Lock or unlock conversation | P | C | I | Op | E | F-1 |
 | `github_issue_list_comments` | Comments on an issue or PR | — | C | I | B,Op | R | F-1 built #167 |
 | `github_issue_comment` | Comment on an issue or PR | P·M | C | I | B,Op | E | F-1 built #167 |
-| `github_issue_edit_comment` | Edit a comment | P | C | I | B,Op | E | F-1 |
+| `github_issue_edit_comment` | Edit a comment | P·M | C | I | B,Op | E | F-1 |
 | `github_issue_list_timeline` | Everything that happened to an issue (events, references, cross-links) | — | C | I | Op | R | F-1 built #167 |
 | `github_issue_set_labels` | Add, remove or replace labels on an issue or PR | P | F | I | B,Op | E | F-1 |
 | `github_issue_set_assignees` | Add or remove assignees | P·M | C | I | Op | E | F-1 |
