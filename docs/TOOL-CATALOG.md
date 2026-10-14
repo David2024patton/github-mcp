@@ -383,15 +383,15 @@ Card(s): H-4.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_security_get_settings` | Repository security features: secret scanning, push protection, Dependabot alerts/updates, code security, private vulnerability reporting | — | F | I | O,B | R | H-4 |
-| `github_security_set_feature` | Turn a security feature on or off (paid features on private repositories raise spend) | C·Prod·$* | F | I | O | F | H-4 |
+| `github_security_get_settings` | Repository security features: secret scanning, push protection, Dependabot alerts/updates, code security, private vulnerability reporting | — | F | I | O,B | R | H-4 settings source implementation under CI |
+| `github_security_set_feature` | Turn a security feature on or off (paid features on private repositories raise spend) | C·Prod | F | I | O | F | H-4 settings source implementation under CI |
 | `github_security_list_alerts` | Dependabot, code scanning or secret scanning alerts for a repo or org (kind chosen by argument) | — | C | I | O,B,Op | R | H-4 security-triage source, CI pending |
 | `github_security_get_alert` | One alert in plain words (secret scanning: the secret itself is never returned) | — | F | I | O,B | R | H-4 security-triage source, CI pending |
 | `github_security_update_alert` | Dismiss, resolve or reopen an alert with a reason | C·Prod | C | I | O,B | E | H-4 security-triage source, CI pending |
 | `github_security_list_advisories` | Repository security advisories, or global advisories by package | — | C | I | O,B | R | H-4 security-triage source, CI pending |
 | `github_security_compare_dependencies` | Dependencies added, removed or changed between two commits or branches (a PR), with known vulnerabilities and licences | — | N | I | B,O | R | H-4 security-triage source, CI pending |
-| `github_actions_get_settings` | Repository Actions settings: allowed actions, default token permissions, fork PR approval, retention | — | N | I | O,B | R | H-4 |
-| `github_actions_set_settings` | Change repository Actions settings | C·Prod | N | I | O | F | H-4 |
+| `github_actions_get_settings` | Repository Actions settings: allowed actions, default token permissions, fork PR approval, retention | — | N | I | O,B | R | H-4 settings source implementation under CI |
+| `github_actions_set_settings` | Change repository Actions settings | C·Prod·A | N | I | O | F | H-4 settings source implementation under CI |
 
 ## Owner: organization and members (`github_org_*`) — 12
 

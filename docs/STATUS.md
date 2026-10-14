@@ -225,6 +225,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: H-4 first source implementation staged only. No actual source CI, deployment, security-alert provider writes or fixture cleanup acceptance claimed."
+  },
+  {
+    "id": "GITHUB-H4-SETTINGS",
+    "priority": 2,
+    "requiredRevision": "4e02b5d339b7da9a3685b333dfc2ea6d29d8003e",
+    "task": "After independently checked READY deployment, inspect security and all GitHub Actions settings through the real custom MCP, then run explicitly authorized isolated feature and policy write/readback/denial tests with exact fixture cleanup",
+    "procedure": "docs/pr-cards/H-4.md",
+    "gates": "Source and legitimate OAuth permission deployed; safe disposable scratch only, full-profile/production confirmation and owner approval where required, zero spend and private paid feature refusal unchanged",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: H-4 settings source staged for required exact-head CI. No production feature switch, paid security activation, live TEST write or independent cleanup acceptance."
   }
 ]
 ```
@@ -362,6 +373,23 @@ See pr-cards/DEVELOPER-CONNECTION.md. No production provider activation or paid 
 **Owner release timing update — 2026-10-13:** Daily checked main-to-live release now targets 00:01 America/Denver using GitHub native timezone support, so both daylight and standard time remain 12:01 a.m. All exact-head CI, atomic daily-marker, fast-forward, preview/build-cost and independent live/provider approval gates remain unchanged. Owner separately approved one manual release after this setup work completes; schedule syntax/CI, actual deployment and connected acceptance remain distinct evidence. GitHub scheduling can be delayed; no guaranteed start time is claimed.
 
 # STATUS
+
+## October 14, 2026 — H-4 security/Actions settings source
+
+New native security-feature and Actions settings read/write tools complete
+the remaining H-4 catalog rows at source. A verified repository identity
+and named-field PATCH preserve security feature settings; private premium
+activation refuses without a verified billable-committer count and explicit
+owner budget, including the current $0 policy. Actions policy update merges
+only one named section after reading the full baseline (workflow token,
+allowed actions and pinning, fork approvals, selected allowlist or retention),
+and independently verifies all other settings. Five-section provider
+readback, refusal, replay and all three-door contracts are mandatory
+CI checks. Deployment, authenticated provider write/denial and fixture
+cleanup remain unverified, so H-4 stays IN_PROGRESS. No external settings
+were changed, nor production enabled.
+
+
 
 ## October 14, 2026 — H-4 security triage and dependency read source staged
 
