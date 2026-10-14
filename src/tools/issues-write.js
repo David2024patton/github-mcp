@@ -200,6 +200,7 @@ export const issueSetLabels = defineGithubWrite({
   summarize: ({ args, target: t }) => `${args.mode} ${args.labels.length} label(s) on #${args.number} in ${slug(t.owner, t.repo)}`,
   apply: async ({ args, ctx, target: t, before }) => {
     const o = await octo(ctx, t.owner), p = { owner: t.owner, repo: t.repo, issue_number: args.number };
+    if (args.mode === 'replace' && args.labels.length === 0) return o.request('DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels', p);
     if (args.mode === 'replace') return o.request('PUT /repos/{owner}/{repo}/issues/{issue_number}/labels', { ...p, labels: args.labels });
     if (args.mode === 'add') return o.request('POST /repos/{owner}/{repo}/issues/{issue_number}/labels', { ...p, labels: args.labels });
     const removable = args.labels.filter(n => before.labels.some(x => x.toLowerCase() === n.toLowerCase()));
