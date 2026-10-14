@@ -2,7 +2,6 @@ import {describe,it,expect} from 'vitest';
 import {makeWorld,runWriteContract,parse} from '../../test/helpers/write-contract.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
 import {registry} from '../../src/tools/index.js';
-import * as reads from '../../src/tools/security-read.js';
 import * as updates from '../../src/tools/security-alerts-write.js';
 
 const SECRET='NONPUBLIC_TEST_SECRET_MUST_NOT_APPEAR';
@@ -59,7 +58,7 @@ async function call(w,name,args){
   const dispatch=createDispatch({env:w.ctx.env,credentials:w.credentials,
     fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep,gates:[]});
   const result=await dispatch({registry,name,args,connection:w.connection,db:w.db});
-  return result.structuredContent??parse(result);
+  return result.structuredContent??(result.isError?{done:false,error:result.content?.[0]?.text}:parse(result));
 }
 describe('H-4 security investigation and confidentiality',()=>{
   it('omits literal secret and untrusted metadata on list/get/update plus change log',async()=>{
@@ -96,7 +95,7 @@ describe('H-4 security investigation and confidentiality',()=>{
     w.gh.when(routes.depOne).reply(200,raw('dependabot'));
     const r=await call(w,'github_security_get_alert',{
       repo:'hello',kind:'dependabot',number:11});
-    expect(r.isError??r.done).not.toBe(true);
+    expect(r.done).toBe(false);
   });
   it('bounds advisory data and checks the actual route contract',async()=>{
     const w=await makeWorld({mode:'preview',profile:'full'});
