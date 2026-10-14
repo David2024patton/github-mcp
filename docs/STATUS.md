@@ -214,6 +214,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: H-3 source and tests proposed; no merged CI or real provider permission-change acceptance. GitHub account production OFF and spend $0. Retain any rejected external changes as blocked acceptance, not false code passes."
+  },
+  {
+    "id": "GITHUB-H4-ALERT-TRIAGE",
+    "priority": 2,
+    "requiredRevision": "dc28fe19562c23a287449e1ec9a36d9f484ccd40",
+    "task": "After checked READY promotion, verify actual custom GitHub MCP security alert inventories and sanitized details; exercise authorized scratch alert status changes and exact readback; check advisory and PR dependency-review routes with provider-plan denial recorded separately",
+    "procedure": "docs/pr-cards/H-4.md",
+    "gates": "MCP-issued OAuth to enrolled account; real test alerts and legitimate permission/plan eligibility; production OFF and independent approval for any production-classified change",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: H-4 first source implementation staged only. No actual source CI, deployment, security-alert provider writes or fixture cleanup acceptance claimed."
   }
 ]
 ```
@@ -351,6 +362,21 @@ See pr-cards/DEVELOPER-CONNECTION.md. No production provider activation or paid 
 **Owner release timing update — 2026-10-13:** Daily checked main-to-live release now targets 00:01 America/Denver using GitHub native timezone support, so both daylight and standard time remain 12:01 a.m. All exact-head CI, atomic daily-marker, fast-forward, preview/build-cost and independent live/provider approval gates remain unchanged. Owner separately approved one manual release after this setup work completes; schedule syntax/CI, actual deployment and connected acceptance remain distinct evidence. GitHub scheduling can be delayed; no guaranteed start time is claimed.
 
 # STATUS
+
+## October 14, 2026 — H-4 security triage and dependency read source staged
+
+The first H-4 source integration now provides read/list of Dependabot, Code
+Scanning and Secret Scanning alerts, repository/global advisories and
+pull-request/commit-based dependency comparison. A guarded security alert status
+change uses kind-specific reasons and independent sanitized readback. Literal
+secret-scanning credential material and metadata must never enter any result
+or durable write journal. The new tests include three-door mutation contracts,
+secret non-disclosure, source-correct fake GitHub requests and plan-limited
+dependency-review 403 mapping. H-4 remains IN_PROGRESS: paid security feature
+controls and Actions settings are next, and no provider/live acceptance is
+claimed before checked READY source deployment. Existing production OFF/$0
+limits and owner approvals remain unchanged.
+
 
 ## October 14, 2026 — H-3 collaborator and deploy-key source under review
 
