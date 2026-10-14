@@ -34,7 +34,7 @@ const getProject=async(ctx,t,a)=>{
 const getItem=(ctx,t,a,itemId)=>missing(async()=>
   (await(await octo(ctx,t.owner)).request(
     'GET /orgs/{org}/projectsV2/{project_number}/items/{item_id}',
-    {...p(t,a),item_id:itemId})).data);
+    {...p(t,a),item_id:itemId,...(a.action==='set_fields'?{fields:a.fields.map(f=>f.id)}:{})})).data);
 const readFull=(ctx,t,route,params,max)=>{
   return octo(ctx,t.owner).then(gh=>listAll(gh,route,{...params,per_page:100},{max}));
 };
