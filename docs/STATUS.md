@@ -1,3 +1,19 @@
+### Owner-requested throughput measurement update — October 14, 2026
+
+Focused maintenance: 400–800 changed production lines and 2–5 completely
+integrated slices per substantive PR on rolling averages, with evidence-backed
+exceptions and no padding. Existing session tooling now reports remaining
+coarse roadmap units and IDs without conflating them with PR slices or live
+acceptance. Source/CI/deployed/provider evidence remains separate.
+No provider operation, release, approval or safety gate is changed.
+
+Verification: all 61 focused session-tool tests passed locally across the five
+updated repositories, including real disposable Git ancestry, unchanged queues,
+partial/review/blocked/optional/planned counts, duplicate/unknown status rejection
+and Google native-ledger parsing. Each actual index/ledger also loaded successfully.
+Required exact-head Actions gates and reviews must pass before merge; this note
+claims no deployed or genuine external-provider acceptance.
+
 ## October 14, 2026 — genuine custom public H-1 read evidence and fixture ownership
 
 Confirmed separate public scratch fixture via actual custom GitHub MCP while current live b51cda4 was independently Vercel READY. Scoped public branch-protection and repo ruleset reads passed with no configured protection/rulesets; organization ruleset list is separately 403 due missing organization administration grant. Private H-1 calls are still **BLOCKED — PROVIDER PLAN** and cannot borrow public acceptance. New public fixture is retained for released H-1 writes and separately queued exact cleanup, never mistaken for pre-existing quarantined private run. Private cleanup exact target: `robinson-ai-scratch/rtc-ghaccept-oct13-f1a` under run `ghaccept-oct13-f1a`, not approved for deletion. No upgraded GitHub subscription, permission widening, production activation or spending.
