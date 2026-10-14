@@ -214,6 +214,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: H-3 source and tests proposed; no merged CI or real provider permission-change acceptance. GitHub account production OFF and spend $0. Retain any rejected external changes as blocked acceptance, not false code passes."
+  },
+  {
+    "id": "GITHUB-H4-ALERT-TRIAGE",
+    "priority": 2,
+    "requiredRevision": "dc28fe19562c23a287449e1ec9a36d9f484ccd40",
+    "task": "After checked READY promotion, verify actual custom GitHub MCP security alert inventories and sanitized details; exercise authorized scratch alert status changes and exact readback; check advisory and PR dependency-review routes with provider-plan denial recorded separately",
+    "procedure": "docs/pr-cards/H-4.md",
+    "gates": "MCP-issued OAuth to enrolled account; real test alerts and legitimate permission/plan eligibility; production OFF and independent approval for any production-classified change",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: H-4 first source implementation staged only. No actual source CI, deployment, security-alert provider writes or fixture cleanup acceptance claimed."
   }
 ]
 ```
