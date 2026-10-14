@@ -1,3 +1,9 @@
+## October 14, 2026 — H-1 classic protection implementation and public/private evidence boundary (PR #188, source gates pending)
+
+The active H-1 outcome now includes real guarded `github_protection_set` and `github_protection_remove` handlers and three-door behavioral contracts. Full read-merge-write preserves app-bound checks, review/dismissal/bypass membership, push restrictions and observable policy flags, refuses incomplete provider inventories, requires explicit baseline to create and independently reads back after a single confirmed write. The source PR still requires exact-head CI, review, merge and then checked live deployment for external provider acceptance; no production write has been made. This session's verified Vercel READY deployment dpl_BBJGByfds3nkkgStzP2oQKdUrDrk and alias github-mcp-xi.vercel.app point to existing main/live b51cda454f01720b3c638f83b9766b30eceaa9fb. Genuine custom connection PREVIEW/full read the original private scratch repository.
+
+User direction: do not upgrade a GitHub plan or change the existing private fixture's visibility. Two existing private-repository H-1 custom reads returned GitHub HTTP 403 requiring public repo or upgraded plan, recorded as **BLOCKED — PROVIDER PLAN**, neither passed nor source-code failed. Public scratch tests need a separately created EMPTY disposable public run-owned repo, no secrets, separate published-version proof and guarded cleanup. Its success must not stand in for unavailable private-protection acceptance. Existing quarantined run ghaccept-oct13-f1a remains intact; deletion requires exact target identification and independent owner confirmation. Continue separately eligible substantial implementation without treating subscription limitations as project-wide blockers.
+
 ### Workflow maintenance handoff — owner publication approved
 
 New offline session utility: eight behavioral tests passed, including actual Git ancestry, partial releases, unknown/failed deployments, rollback, dependency gating, invalid queues, PR alignment and bounded output. All repository queues validate. Existing source/status evidence is preserved; no provider acceptance or release was performed. Owner explicitly approved publication on October 14; publish the reviewed maintenance branch, require exact-head CI/reviews, and merge only when those gates pass. No extra production release is authorized by this approval. Full broad application suites on the shared runner were interrupted after resource/time-limit failures; do not claim them passed. Existing exact-head remote CI/review gates must pass before any main merge.
@@ -48,7 +54,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "task": "Resolve exact quarantined initial-label scratch fixture through guarded remote preflight, explicit owner authorization, confirmed deletion and absence readback",
     "procedure": "docs/pr-cards/V-2.md",
     "gates": "Existing run ghaccept-oct13-f1a only; exact disposal decision and independent owner confirmation are still mandatory",
-    "dependsOn": ["GITHUB-CUSTOM-SCRATCH-READ"],
+    "dependsOn": [
+      "GITHUB-CUSTOM-SCRATCH-READ"
+    ],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-14: live custom run inventory returned journal_ready=true but remote_verified=false, and can_execute_without_new_confirmation=false. Historical ten late-appearing default labels remain; no cleanup has been attempted or claimed."
   },
@@ -62,6 +70,39 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "Existing ledger/card remains authoritative; current live/provider acceptance must be reconciled at session start. Seed revision conservatively includes reviewed current main."
+  },
+  {
+    "id": "GITHUB-H1-PRIVATE-PROTECTION",
+    "priority": 2,
+    "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
+    "task": "Re-run exact classic branch protection read against an eligible private scratch repository, without modifying visibility or paying for an upgrade",
+    "procedure": "docs/pr-cards/H-1.md",
+    "gates": "BLOCKED — PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
+    "dependsOn": [],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-14: real custom github_protection_get on private robinson-ai-scratch/rtc-ghaccept-oct13-f1a returned provider HTTP 403, with GitHub upgrade-or-public explanation. No grant, mutation or subscription change; remains unverified for private repositories."
+  },
+  {
+    "id": "GITHUB-H1-PRIVATE-RULESETS",
+    "priority": 2,
+    "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
+    "task": "Re-run scoped private-repository ruleset inventory when GitHub plan legitimately permits it",
+    "procedure": "docs/pr-cards/H-1.md",
+    "gates": "BLOCKED — PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
+    "dependsOn": [],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-14: real custom github_ruleset_list on private robinson-ai-scratch/rtc-ghaccept-oct13-f1a returned provider HTTP 403 with upgrade-or-public explanation, not a successful private feature result."
+  },
+  {
+    "id": "GITHUB-H1-PUBLIC-SCRATCH",
+    "priority": 1,
+    "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
+    "task": "Create an isolated EMPTY disposable public scratch repository, no secrets or user content; verify supported H-1 public governance reads and, after exact H-1 source release and permitted write guards, guarded mutation/denial/readback; track its cleanup separately",
+    "procedure": "docs/pr-cards/H-1.md",
+    "gates": "Owner approved a separate public disposable scratch; never alter existing private repository; capture exact name/run ownership, approval, profile and source SHA; production writes remain OFF until independently authorized and connected. Public evidence does not prove private acceptance.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: owner directed separate public-only safe acceptance; repository creation and tests have not yet been performed; test result must remain separate from blocked private scenarios."
   }
 ]
 ```
