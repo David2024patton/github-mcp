@@ -189,13 +189,13 @@ Card(s): F-2.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_label_list` | Labels in a repository | — | C | I | B,Op | R | F-2 |
-| `github_label_save` | Create or update a label by name | P | C | I | B,Op | E | F-2 |
-| `github_label_delete` | Delete a label (removes it from every issue) | C | C | I | Op | E | F-2 |
+| `github_label_list` | Labels in a repository | — | C | I | B,Op | R | F-2 built #175 |
+| `github_label_save` | Create or update a label by name | P | C | I | B,Op | E | F-2 built #175 |
+| `github_label_delete` | Delete a label (removes it from every issue) | C | C | I | Op | E | F-2 built #175 |
 | `github_label_sync` | Make several repositories carry the same label set (preview lists every add/change; never deletes unless asked) | P | N | I | O,Op | F | F-2 |
-| `github_milestone_list` | Milestones with progress | — | C | I | Op | R | F-2 |
-| `github_milestone_save` | Create, update or close a milestone | P | C | I | Op | E | F-2 |
-| `github_milestone_delete` | Delete a milestone | C | C | I | Op | E | F-2 |
+| `github_milestone_list` | Milestones with progress | — | C | I | Op | R | F-2 built #175 |
+| `github_milestone_save` | Create, update or close a milestone | P | C | I | Op | E | F-2 built #175 |
+| `github_milestone_delete` | Delete a milestone | C | C | I | Op | E | F-2 built #175 |
 
 ## Discussions, projects and search (`github_discussion_*, github_project_*, github_search_*`) — 10
 
