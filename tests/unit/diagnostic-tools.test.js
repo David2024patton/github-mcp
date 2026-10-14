@@ -119,7 +119,7 @@ describe('github_where_is_setting', () => {
     expect(s.setting).toContain('two-factor');
     expect(s.url).toBe('https://github.com/organizations/example-org/settings/security');
     expect(s.steps[0]).toMatchObject({ n: 1 });
-    expect(s.verifyWith).toMatchObject({ tool: 'github_org_get', args: { org: 'example-org' }, field: 'two_factor_requirement_enabled', equals: true });
+    expect(s.verifyWith).toMatchObject({ tool: 'github_admin_check_setting', args: { owner: 'example-org', settingId: 'org-require-2fa', expectedBoolean: true }, field: 'verified', equals: true });
     const named = await call('github_where_is_setting', w, { query: '2fa', org: 'example-org' });
     expect(named.settings[0].url).toContain('/organizations/example-org/');
   });
@@ -150,7 +150,7 @@ describe('the dashboard map', () => {
       expect(s.steps.length, s.id).toBeGreaterThan(0);
       for (const step of s.steps) expect(step.action && step.target, s.id).toBeTruthy();
       expect(s.expected, s.id).toBeTruthy();
-      expect(['org', 'user']).toContain(s.scope);
+      expect(['org', 'user', 'repo']).toContain(s.scope);
       if (s.verifyWith) expect(CATALOG.has(s.verifyWith.tool), `${s.id}: ${s.verifyWith.tool}`).toBe(true);
     }
   });
