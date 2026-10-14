@@ -48,22 +48,22 @@ runWriteContract({
  label:'github_ruleset_save create',definition:def('github_ruleset_save'),
  args:{repo:'hello',name:'Guard main',target:'branch',
   enforcement:'active',conditions:base.conditions,rules:base.rules},
- production:true,needsConfirm:true,arrange:(gh,o)=>arrangeRule(gh,o,'create')
+ production:true,needsConfirm:true,profile:'full',arrange:(gh,o)=>arrangeRule(gh,o,'create')
 });
 runWriteContract({
  label:'github_ruleset_save update',definition:def('github_ruleset_save'),
  args:{repo:'hello',rulesetId:42,enforcement:'evaluate'},
- production:true,needsConfirm:true,arrange:(gh,o)=>arrangeRule(gh,o,'update')
+ production:true,needsConfirm:true,profile:'full',arrange:(gh,o)=>arrangeRule(gh,o,'update')
 });
 runWriteContract({
  label:'github_ruleset_delete',definition:def('github_ruleset_delete'),
  args:{repo:'hello',rulesetId:42},
- production:true,needsConfirm:true,arrange:(gh,o)=>arrangeRule(gh,o,'delete')
+ production:true,needsConfirm:true,profile:'full',arrange:(gh,o)=>arrangeRule(gh,o,'delete')
 });
 runWriteContract({
  label:'github_protection_set_required_checks',definition:def('github_protection_set_required_checks'),
  args:{repo:'hello',branch:'main',action:'add',context:'security'},
- production:true,needsConfirm:true,arrange:(gh,o)=>arrangeCheck(gh,o,'add')
+ production:true,needsConfirm:true,profile:'full',arrange:(gh,o)=>arrangeCheck(gh,o,'add')
 });
 async function call(w,name,args){
  const d=createDispatch({credentials:w.credentials,fetch:w.gh.fetch,
@@ -72,6 +72,13 @@ async function call(w,name,args){
  return x.structuredContent??parse(x);
 }
 describe('H-1 governance mutations fail closed',()=>{
+ it('refuses everyday-profile governance writes without provider requests',async()=>{
+  const w=await makeWorld({mode:'production',profile:'everyday'});
+  const x=await call(w,'github_ruleset_delete',{
+   repo:'hello',rulesetId:42,confirm:true});
+  expect(x.done).toBe(false);
+  expect(w.gh.calls).toHaveLength(0);
+ });
  it('refuses incomplete existing bypass visibility before any PUT',async()=>{
   const w=await makeWorld({mode:'production',profile:'full'});
   w.gh.when(routes.get).reply(200,{...base,bypass_actors:undefined});
@@ -87,7 +94,7 @@ describe('H-1 governance mutations fail closed',()=>{
   expect(x.preview).toMatch(/ACCESS CHANGE/);expect(x.preview).toMatch(/PRODUCTION/);
  });
  it('does not send an add when a required check is already present',async()=>{
-  const w=await makeWorld({mode:'production'});
+  const w=await makeWorld({mode:'production',profile:'full'});
   arrangeCheck(w.gh,'ok','add');
   const x=await call(w,'github_protection_set_required_checks',{
    repo:'hello',branch:'main',action:'add',context:'ci',confirm:true});

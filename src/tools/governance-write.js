@@ -65,7 +65,7 @@ export const rulesetSave=defineGithubWrite({
     conditions:{type:'object',additionalProperties:true},
     rules:{type:'array',maxItems:50,items:RULE},
     bypassActors:{type:'array',maxItems:50,items:ACTOR}},
-  declarations:{production:'always',confirm:'always',accessWidening:true},
+  declarations:{production:'always',confirm:'always',accessWidening:true,profiles:['full']},
   target:(a,c)=>{
     const t=target(a,c);
     if(a.rulesetId===undefined&&(!a.name||!a.target||!a.enforcement||
@@ -124,7 +124,7 @@ export const rulesetDelete=defineGithubWrite({
   description:'Permanently delete an exact ruleset only after confirmation and independent absence readback.',
   properties:{owner:OWNER,repo:REPO,scope:{type:'string',enum:['repo','org']},
     rulesetId:ID},required:['rulesetId'],
-  declarations:{production:'always',confirm:'always'},target,
+  declarations:{production:'always',confirm:'always',profiles:['full']},target,
   read:async(a,ctx,t)=>({current:await get(ctx,t,a.rulesetId)}),
   classify:()=>({production:'removes governance and may allow previously blocked changes'}),
   summarize:({args:a,target:t,before:b})=>
@@ -149,7 +149,7 @@ export const requiredChecks=defineGithubWrite({
   properties:{owner:OWNER,repo:REPO,branch:{type:'string',minLength:1,maxLength:255},
     action:{type:'string',enum:['add','remove']},context:CHECK},
   required:['repo','branch','action','context'],
-  declarations:{production:'always',confirm:'always'},
+  declarations:{production:'always',confirm:'always',profiles:['full']},
   target:(a,c)=>({owner:ownerOf(a,c),repo:a.repo,ref:a.branch,scope:'repo'}),
   read:async(a,ctx,t)=>{
     const d=await getChecks(ctx,t,a);
