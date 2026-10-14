@@ -72,6 +72,38 @@ describe('F-1 issue write semantics', () => {
     expect(writes(w.gh)).toEqual([]);
   });
 
+  it('confirms create type, milestone and cleared body only after exact provider readback', async () => {
+    for (const [milestoneReadback, confirmed] of [[{ number: 2 }, true], [null, false]]) {
+      const w = await makeWorld({});
+      w.gh.when('GET /repos/{owner}/{repo}').reply(200, { has_issues: true });
+      w.gh.when('POST /repos/{owner}/{repo}/issues').reply(201, issue({ title: 'Created' }));
+      w.gh.when(get).reply(200, issue({ title: 'Created', body: null, milestone: milestoneReadback, type: { name: 'Bug' } }));
+      const result = await call(w, 'github_issue_create', { repo: 'hello', title: 'Created', body: '', type: 'Bug', milestone: 2 });
+      expect(result.body.done).toBe(confirmed);
+      expect(result.body.status).toBe(confirmed ? 'applied' : 'unconfirmed');
+      const sent = writes(w.gh)[0].body;
+      expect(sent).toMatchObject({ type: 'Bug', milestone: 2, body: '' });
+    }
+  });
+
+  it('clears milestone with null and accepts null as cleared body', async () => {
+    const w = await makeWorld({});
+    seq(w.gh, get, [[200, issue({ milestone: { number: 3 } })], [200, issue({ milestone: null, body: null })]]);
+    w.gh.when('PATCH /repos/{owner}/{repo}/issues/{issue_number}').reply(200, issue({ milestone: null }));
+    const r = await call(w, 'github_issue_update', { repo: 'hello', number: 7, body: '', milestone: null });
+    expect(r.body.done).toBe(true);
+    expect(writes(w.gh)[0].body).toMatchObject({ body: '', milestone: null });
+  });
+
+  it('closes a duplicate with its canonical issue and preserves type readback', async () => {
+    const w = await makeWorld({});
+    seq(w.gh, get, [[200, issue()], [200, issue({ state: 'closed', state_reason: 'duplicate', type: { name: 'Task' } })]]);
+    w.gh.when('PATCH /repos/{owner}/{repo}/issues/{issue_number}').reply(200, issue());
+    const r = await call(w, 'github_issue_update', { repo: 'hello', number: 7, state: 'closed', stateReason: 'duplicate', duplicateIssueId: 99, type: 'Task' });
+    expect(r.body.done).toBe(true);
+    expect(writes(w.gh)[0].body).toMatchObject({ state_reason: 'duplicate', duplicate_issue_id: 99, type: 'Task' });
+  });
+
   it('preserves omitted body/milestone rather than implicitly clearing either', async () => {
     const w = await makeWorld({});
     seq(w.gh, get, [[200, issue()], [200, issue({ title: 'Changed' })]]);
