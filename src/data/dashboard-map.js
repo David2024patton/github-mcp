@@ -163,7 +163,7 @@ export const SETTINGS = Object.freeze([
       { action: 'Type your username to confirm, yourself', target: 'Delete your account' }
     ],
     expected: 'Deleting removes everything and cannot be undone. This server will never do it.'
-  }
+  },
   ...EXTRA_GUIDES
 ]);
 
