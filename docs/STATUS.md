@@ -1,3 +1,7 @@
+## October 14, 2026 — H-2 webhook observability source (PR #189, pending exact-head CI)
+
+Added three real webhook read operations for repository and organization scopes: bounded list, exact detail and delivery history/inspection. Requests remain scoped to the enrolled connection, exact numeric hook/delivery identities are checked and secret-bearing hook configurations, callback path/query, request/response bodies and headers are not surfaced. Tests cover fake GitHub REST shapes, result redaction and refusals. Subsequent H-2 webhook mutations, service-generated signing keys, one-time private display, delivery replay and protected deletion still need separate complete implementation/acceptance. CI and merge cannot be treated as provider pass. Public scratch H-1 reads observed an empty true ruleset inventory and absent classic protection; private-repo HTTP 403 is still **BLOCKED — PROVIDER PLAN**. Owner-approved public fixture `robinson-ai-scratch/rtc-ghaccept-h1-public-oct14` is a separately disposable, non-sensitive test repository; preserve it for H-1 checks following checked release, and do not delete original private quarantine.
+
 ## October 14, 2026 — H-1 classic protection implementation and public/private evidence boundary (PR #188, source gates pending)
 
 The active H-1 outcome now includes real guarded `github_protection_set` and `github_protection_remove` handlers and three-door behavioral contracts. Full read-merge-write preserves app-bound checks, review/dismissal/bypass membership, push restrictions and observable policy flags, refuses incomplete provider inventories, requires explicit baseline to create and independently reads back after a single confirmed write. The source PR still requires exact-head CI, review, merge and then checked live deployment for external provider acceptance; no production write has been made. This session's verified Vercel READY deployment dpl_BBJGByfds3nkkgStzP2oQKdUrDrk and alias github-mcp-xi.vercel.app point to existing main/live b51cda454f01720b3c638f83b9766b30eceaa9fb. Genuine custom connection PREVIEW/full read the original private scratch repository.
@@ -103,6 +107,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: owner directed separate public-only safe acceptance; repository creation and tests have not yet been performed; test result must remain separate from blocked private scenarios."
+  },
+  {
+    "id": "GITHUB-H2-WEBHOOK-READS",
+    "priority": 2,
+    "requiredRevision": "13ad5a165ffa3432ffab77f2a2aecda3ee88cbbe",
+    "task": "Re-run custom MCP webhook list/detail/delivery read and explicit outsider refusal once the source commit is in independently verified READY production",
+    "procedure": "docs/pr-cards/H-2.md",
+    "gates": "App permission and only owned/disposable fixture; non-sensitive webhook subscription only after separately approved safe creation; production activation and secret transmission prohibited",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: feature source branch H-2; not yet merged or deployed. No read/handler claim against production."
   }
 ]
 ```
