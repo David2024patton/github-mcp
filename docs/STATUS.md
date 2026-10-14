@@ -10,6 +10,10 @@ Implemented three native, scoped GitHub REST tools: Projects v2 list, exact proj
 
 Adds confirmed and journalled project item membership, field updates and removal to complete the five Projects v2 catalog operations at source. Exact org/project/source/item ownership checks, finite enumerations, three-door write-contract tests, no production or cost changes. Source CI/merge are separate from queued genuine custom MCP provider write/readback/cleanup. F-3 source workflow complete when #183 merges; Projects saved views are deliberately deferred (no supported REST views list route).
 
+## October 14, 2026 — H-1 exact protection and ruleset reads (PR #184)
+
+Four genuine governance read tools added: classic branch protection (separating effective rulesets), scoped repo/org rule list/get/history and rule-suite evaluation diagnostics. All operations are bounded and describe enforcement without permission shortcuts. Projects field update readback explicitly requests updated field IDs, since default GitHub item GET does not include them. No deployed external proof claimed; next H-1 changes preserve owner approval, no production access, and the checked release cadence.
+
 ## Release acceptance queue — workflow optimization 2026-10-14
 
 Owner-authorized guidance/tooling maintenance: consolidated session procedure, focused
