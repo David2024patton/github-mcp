@@ -19,15 +19,43 @@
     },
     {
       "layer": "deployed",
-      "status": "unverified"
+      "status": "verified",
+      "source": "deployment_provider",
+      "service": "robinson-github-mcp",
+      "origin": "https://github-mcp-chris-projects-de6cd1bf.vercel.app",
+      "commit": "5a0ca5d2992bc576c5fdcc88525fb1eb95943fc9",
+      "transport": "deployment_api",
+      "observations": [
+        "vercel_ready",
+        "deployment:dpl_E2jb8VqWJyyxYnnfBGPsyTtsYdfL",
+        "main_live_exact_commit_verified_2026_10_13"
+      ]
     },
     {
       "layer": "custom_transport",
-      "status": "unverified"
+      "status": "verified",
+      "source": "custom_service",
+      "service": "robinson-github-mcp",
+      "origin": "https://github-mcp-chris-projects-de6cd1bf.vercel.app",
+      "commit": "5a0ca5d2992bc576c5fdcc88525fb1eb95943fc9",
+      "transport": "native_mcp",
+      "observations": [
+        "authenticated_initialize",
+        "tools_list",
+        "github_whoami",
+        "mobile_cloud_connection_callable_2026_10_13"
+      ]
     },
     {
       "layer": "provider",
-      "status": "unverified"
+      "status": "unverified",
+      "observations": [
+        "partial:github_repo_list_scratch_zero_repositories",
+        "partial:github_dev_list_runs_zero",
+        "partial:foreign_account_denied_before_provider",
+        "permitted_write_not_tested",
+        "provider_readback_not_tested"
+      ]
     },
     {
       "layer": "hub",
