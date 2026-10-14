@@ -369,13 +369,13 @@ Card(s): H-3.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_collab_list` | Collaborators with permission and how they got it, plus pending invitations | — | C | I | O,Op | R | H-3 |
-| `github_collab_add` | Invite a collaborator or change their permission | C·A·M | F | I | O | F | H-3 |
-| `github_collab_remove` | Remove a collaborator | C | C | I | O | F | H-3 |
-| `github_collab_manage_invitation` | Change or cancel a pending repository invitation | C·A* | C | I | O | F | H-3 |
-| `github_deploykey_list` | Deploy keys with read-only/write flag and last use | — | C | I | O | R | H-3 |
-| `github_deploykey_add` | Add a deploy key (public key only; write access is access-widening and production) | C·A·Prod* | F | I | O | F | H-3 |
-| `github_deploykey_delete` | Remove a deploy key | C | C | I | O | F | H-3 |
+| `github_collab_list` | Collaborators with permission and how they got it, plus pending invitations | — | C | I | O,Op | R | H-3 source implementation pending CI/merge |
+| `github_collab_add` | Invite a collaborator or change their permission | C·A·M | F | I | O | F | H-3 source implementation pending CI/merge |
+| `github_collab_remove` | Remove a collaborator | C | C | I | O | F | H-3 source implementation pending CI/merge |
+| `github_collab_manage_invitation` | Change or cancel a pending repository invitation | C·A* | C | I | O | F | H-3 source implementation pending CI/merge |
+| `github_deploykey_list` | Deploy keys with read-only/write flag and last use | — | C | I | O | R | H-3 source implementation pending CI/merge |
+| `github_deploykey_add` | Add a deploy key (public key only; write access is access-widening and production) | C·A·Prod* | F | I | O | F | H-3 source implementation pending CI/merge |
+| `github_deploykey_delete` | Remove a deploy key | C | C | I | O | F | H-3 source implementation pending CI/merge |
 
 ## Security features and alerts; Actions settings (`github_security_*, github_actions_*settings`) — 9
 
