@@ -114,6 +114,133 @@ export const issueComment = defineGithubWrite({
   present: ({ after }) => ({ id: after.id, body: after.body, author: after.user?.login, html_url: after.html_url })
 });
 
-const all = [issueCreate, issueUpdate, issueComment];
+
+export const issueLock = defineGithubWrite({
+  name: 'github_issue_lock', area: 'issue', audience: ['Op'],
+  description: 'Lock or unlock conversation on an issue or PR; verify locked status.',
+  properties: { owner: OWNER, repo: REPO, number: NUMBER, locked: { type: 'boolean' },
+    reason: { type: 'string', enum: ['off-topic', 'too heated', 'resolved', 'spam'] } },
+  required: ['repo', 'number', 'locked'],
+  declarations: { production: 'never' },
+  target,
+  read: async (args, ctx, t) => {
+    const i = await getIssue(ctx, t, args.number);
+    if (!i) throw refusal(`Issue or PR #${args.number} does not exist.`, 404);
+    return { locked: !!i.locked, reason: i.active_lock_reason };
+  },
+  classify: () => ({}),
+  summarize: ({ args, target: t }) => `${args.locked ? 'Lock' : 'Unlock'} #${args.number} in ${slug(t.owner, t.repo)}`,
+  apply: async ({ args, ctx, target: t, before }) => {
+    if (before.locked === args.locked) return { unchanged: true };
+    const route = `${args.locked ? 'PUT' : 'DELETE'} /repos/{owner}/{repo}/issues/{issue_number}/lock`;
+    return (await octo(ctx, t.owner)).request(route, { owner: t.owner, repo: t.repo, issue_number: args.number,
+      ...(args.locked && args.reason ? { lock_reason: args.reason } : {}) });
+  },
+  readAfter: ({ args, ctx, target: t }) => getIssue(ctx, t, args.number),
+  verify: ({ args, after }) => !!after && !!after.locked === args.locked,
+  inverse: ({ args, target: t }) => ({ tool: 'github_issue_lock', args: { owner: t.owner, repo: t.repo, number: args.number, locked: !args.locked } }),
+  present: ({ args, after }) => ({ number: args.number, locked: !!after.locked, active_lock_reason: after.active_lock_reason ?? null })
+});
+
+const commentRoute = 'GET /repos/{owner}/{repo}/issues/comments/{comment_id}';
+const getComment = (ctx, t, id) => missing(async () => (await (await octo(ctx, t.owner)).request(commentRoute,
+  { owner: t.owner, repo: t.repo, comment_id: id })).data);
+const belongsToRepo = (c, t) => {
+  const prefix = `https://api.github.com/repos/${t.owner}/${t.repo}/issues/`;
+  return typeof c?.issue_url === 'string' && c.issue_url.toLowerCase().startsWith(prefix.toLowerCase())
+    && /^[0-9]+$/.test(c.issue_url.slice(prefix.length));
+};
+
+export const issueEditComment = defineGithubWrite({
+  name: 'github_issue_edit_comment', area: 'issue', audience: ['B', 'Op'],
+  description: 'Edit an existing issue or PR comment within the exact selected repository.',
+  properties: { owner: OWNER, repo: REPO, commentId: NUMBER, body: MENTION_BODY },
+  required: ['repo', 'commentId', 'body'],
+  declarations: { production: 'never', notifies: true },
+  target,
+  read: async (args, ctx, t) => {
+    const c = await getComment(ctx, t, args.commentId);
+    if (!c) throw refusal('Comment does not exist.', 404);
+    if (!belongsToRepo(c, t)) throw refusal('Comment ownership cannot be verified for this repository.');
+    return { id: c.id, body: c.body, issue_url: c.issue_url };
+  },
+  classify: ({ args, ctx, target: t }) => notifyOutsiders(ctx, { text: args.body, repoOwner: t.owner }),
+  summarize: ({ args, target: t }) => `Edit comment #${args.commentId} in ${slug(t.owner, t.repo)}`,
+  apply: ({ args, ctx, target: t }) => octo(ctx, t.owner).then(o => o.request('PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}',
+    { owner: t.owner, repo: t.repo, comment_id: args.commentId, body: args.body })),
+  readAfter: ({ args, ctx, target: t }) => getComment(ctx, t, args.commentId),
+  verify: ({ args, after, target: t }) => !!after && after.id === args.commentId && after.body === args.body && belongsToRepo(after, t),
+  inverse: ({ before, target: t }) => ({ tool: 'github_issue_edit_comment', args: { owner: t.owner, repo: t.repo, commentId: before.id, body: before.body } }),
+  present: ({ after }) => ({ id: after.id, body: after.body, html_url: after.html_url })
+});
+
+const normalizeLabels = i => (i.labels ?? []).map(l => typeof l === 'string' ? l : l.name);
+const normalized = v => [...new Set(v.map(x => String(x).toLowerCase()))].sort();
+export const issueSetLabels = defineGithubWrite({
+  name: 'github_issue_set_labels', area: 'issue', audience: ['B', 'Op'],
+  description: 'Add, remove or replace issue or PR labels; verify the resulting exact label set.',
+  properties: { owner: OWNER, repo: REPO, number: NUMBER, mode: { type: 'string', enum: ['add','remove','replace'] },
+    labels: { type: 'array', minItems: 1, maxItems: 30, items: { type: 'string', minLength: 1, maxLength: 100 } } },
+  required: ['repo', 'number', 'mode', 'labels'],
+  declarations: { production: 'never' },
+  target,
+  read: async (args, ctx, t) => {
+    const i = await getIssue(ctx, t, args.number);
+    if (!i) throw refusal(`Issue or PR #${args.number} does not exist.`, 404);
+    return { number: i.number, labels: normalizeLabels(i) };
+  },
+  classify: () => ({}),
+  summarize: ({ args, target: t }) => `${args.mode} ${args.labels.length} label(s) on #${args.number} in ${slug(t.owner, t.repo)}`,
+  apply: async ({ args, ctx, target: t, before }) => {
+    const o = await octo(ctx, t.owner), p = { owner: t.owner, repo: t.repo, issue_number: args.number };
+    if (args.mode === 'replace') return o.request('PUT /repos/{owner}/{repo}/issues/{issue_number}/labels', { ...p, labels: args.labels });
+    if (args.mode === 'add') return o.request('POST /repos/{owner}/{repo}/issues/{issue_number}/labels', { ...p, labels: args.labels });
+    const removable = args.labels.filter(n => before.labels.some(x => x.toLowerCase() === n.toLowerCase()));
+    for (const name of removable) await o.request('DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels/{name}', { ...p, name });
+    return { removed: removable.length };
+  },
+  readAfter: ({ args, ctx, target: t }) => getIssue(ctx, t, args.number),
+  verify: ({ args, before, after }) => {
+    if (!after) return false;
+    const got = normalized(normalizeLabels(after)), requested = normalized(args.labels);
+    if (args.mode === 'replace') return JSON.stringify(got) === JSON.stringify(requested);
+    if (args.mode === 'add') return requested.every(x => got.includes(x)) && normalized(before.labels).every(x => got.includes(x));
+    return requested.every(x => !got.includes(x)) && got.every(x => normalized(before.labels).includes(x));
+  },
+  inverse: () => null,
+  present: ({ args, after }) => ({ number: args.number, labels: normalizeLabels(after) })
+});
+
+export const issueSetAssignees = defineGithubWrite({
+  name: 'github_issue_set_assignees', area: 'issue', audience: ['Op'],
+  description: 'Add or remove issue assignees with outsider-notification preview and exact readback.',
+  properties: { owner: OWNER, repo: REPO, number: NUMBER, mode: { type: 'string', enum: ['add','remove'] },
+    assignees: { type: 'array', minItems: 1, maxItems: 10, items: { type: 'string', minLength: 1, maxLength: 39 } } },
+  required: ['repo', 'number', 'mode', 'assignees'],
+  declarations: { production: 'never', notifies: true },
+  target,
+  read: async (args, ctx, t) => {
+    const i = expectIssue(await getIssue(ctx, t, args.number), args.number);
+    return { number: i.number, assignees: (i.assignees ?? []).map(a => a.login) };
+  },
+  classify: ({ args, ctx, target: t }) => args.mode === 'add'
+    ? notifyOutsiders(ctx, { logins: args.assignees, repoOwner: t.owner })
+    : notifyOutsiders(ctx, { repoOwner: t.owner }),
+  summarize: ({ args, target: t }) => `${args.mode} assignees ${args.assignees.join(', ')} for #${args.number} in ${slug(t.owner, t.repo)}`,
+  apply: ({ args, ctx, target: t }) => octo(ctx, t.owner).then(o => o.request(`${args.mode === 'add' ? 'POST' : 'DELETE'} /repos/{owner}/{repo}/issues/{issue_number}/assignees`,
+    { owner: t.owner, repo: t.repo, issue_number: args.number, assignees: args.assignees })),
+  readAfter: ({ args, ctx, target: t }) => getIssue(ctx, t, args.number),
+  verify: ({ args, before, after }) => {
+    if (!after) return false;
+    const got = normalized((after.assignees ?? []).map(a => a.login)), requested = normalized(args.assignees);
+    return args.mode === 'add'
+      ? requested.every(x => got.includes(x)) && normalized(before.assignees).every(x => got.includes(x))
+      : requested.every(x => !got.includes(x)) && got.every(x => normalized(before.assignees).includes(x));
+  },
+  inverse: () => null,
+  present: ({ args, after }) => ({ number: args.number, assignees: (after.assignees ?? []).map(a => a.login) })
+});
+
+const all = [issueCreate, issueUpdate, issueComment, issueLock, issueEditComment, issueSetLabels, issueSetAssignees];
 export const tools = all.map(d => d.tool);
 export const handlers = Object.fromEntries(all.map(d => [d.tool.name, d.handler]));
