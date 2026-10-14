@@ -96,4 +96,36 @@ describe('H-2 webhook mutation safety and refused paths',()=>{
   expect(r.done).toBe(false);
   expect(w.gh.calls).toHaveLength(0);
  });
+ it('does not persist raw hook configuration in the confirmed delete change journal',async()=>{
+  const w=await makeWorld({mode:'production',profile:'full'});
+  arrange(w.gh,'ok','delete');
+  w.gh.when(routes.hook).replySequence([
+   {status:200,body:{...hook,config:{...hook.config,secret:'FAKE_SIGNING_VALUE_NEVER_STORE',
+     url:'https://hooks.fictional.net/webhook?token=PRIVATE_QUERY_NEVER_STORE'}}},
+   {status:404,body:{message:'Not Found'}}]);
+  const r=await call(w,'github_webhook_delete',{repo:'hello',hookId:7,confirm:true});
+  expect(r).toMatchObject({done:true,status:'applied'});
+  const row=await w.db.getChange(1);
+  const recorded=JSON.stringify({row,result:r});
+  expect(recorded).not.toContain('FAKE_SIGNING_VALUE_NEVER_STORE');
+  expect(recorded).not.toContain('PRIVATE_QUERY_NEVER_STORE');
+ });
+ it('never journals webhook delivery payloads or HTTP authorization headers',async()=>{
+  const w=await makeWorld({mode:'production',profile:'full'});
+  arrange(w.gh,'ok','retry');
+  w.gh.when(routes.delivery).reply(200,{...original,
+   request:{payload:{password:'DELIVERY_PRIVATE_NEVER_STORE'},
+    headers:{Authorization:'HEADER_PRIVATE_NEVER_STORE'}}});
+  w.gh.when(routes.list).replySequence([
+   {status:200,body:[original]},
+   {status:200,body:[original,{id:10,guid:'guid-9',event:'push',redelivery:true,
+     request:{payload:{key:'AFTER_PRIVATE_NEVER_STORE'}}}]}]);
+  const r=await call(w,'github_webhook_redeliver',{
+   repo:'hello',hookId:7,deliveryId:9,confirm:true});
+  expect(r).toMatchObject({done:true,status:'applied'});
+  const recorded=JSON.stringify({row:await w.db.getChange(1),result:r});
+  for(const secret of ['DELIVERY_PRIVATE_NEVER_STORE','HEADER_PRIVATE_NEVER_STORE',
+   'AFTER_PRIVATE_NEVER_STORE'])expect(recorded).not.toContain(secret);
+ });
+
 });
