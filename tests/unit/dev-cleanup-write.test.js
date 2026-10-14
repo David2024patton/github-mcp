@@ -666,3 +666,60 @@ describe('V-2 scenario cannot acquire extra whole-repository deletion authority'
     expect(w.gh.invalid).toEqual([]);
   });
 });
+
+const birthLabel={id:11,name:'bug',color:'d73a4a',description:'Initial label'};
+async function prepareBirth(w) {
+  const scope={runId:RUN,account:OWNER,connection:'client-1'};
+  await w.db.createDevRun({id:RUN,account:OWNER,connection:'client-1',scenarios:['repo-basic']});
+  await w.db.claimDevIntent({...scope,stepId:'seed-repo',type:'repo',
+    owner:OWNER,repo:REPO,objectName:REPO});
+  await w.db.completeDevBirthIntent({...scope,stepId:'seed-repo',
+    objectId:`${OWNER}/${REPO}`,createdSha:'a'.repeat(40),labels:[birthLabel]});
+}
+function arrangeBirth(gh,outcome) {
+  arrange(gh,outcome);
+  gh.when('GET /repos/{owner}/{repo}/labels').reply(200,[birthLabel]);
+}
+runWriteContract({label:'github_dev_cleanup unchanged container birth labels',definition:def,
+  args:{runId:RUN,repo:REPO},scratchAccount:true,previewOnly:true,
+  needsConfirm:true,expectedWrites:1,prepare:prepareBirth,arrange:arrangeBirth});
+describe('confirmed scratch container birth-label disposal',()=>{
+  it.each([
+    [{...birthLabel,id:12}],
+    [{...birthLabel,name:'renamed'}],
+    [{...birthLabel,color:'ffffff'}],
+    [{...birthLabel,description:'repurposed'}],
+    [],
+    [birthLabel,{id:12,name:'foreign',color:'ffffff',description:null}],
+    [birthLabel,birthLabel]
+  ])('refuses changed, missing, replaced, duplicate or added initial labels: %j',async labels=>{
+    const w=await makeWorld({scratchAccount:true});await prepareBirth(w);arrangeBirth(w.gh,'ok');
+    w.gh.when('GET /repos/{owner}/{repo}/labels').reply(200,labels);
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.filter(c=>c.method==='DELETE')).toHaveLength(0);
+  });
+  it('rechecks baseline after the freeze and immediately before repository deletion',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepareBirth(w);arrangeBirth(w.gh,'ok');
+    w.gh.when('GET /repos/{owner}/{repo}/labels').replySequence([
+      {status:200,body:[birthLabel]},
+      {status:200,body:[{...birthLabel,description:'changed during cleanup'}]}
+    ]);
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.filter(c=>c.method==='DELETE')).toHaveLength(0);
+  });
+  it('permits unchanged initial labels alongside a verified run-created label',async()=>{
+    const w=await makeWorld({scratchAccount:true});await prepareBirth(w);arrangeBirth(w.gh,'ok');
+    const scope={runId:RUN,account:OWNER,connection:'client-1',stepId:'seed-label'};
+    await w.db.claimDevIntent({...scope,type:'label',owner:OWNER,repo:REPO,objectName:'rtc-run'});
+    await w.db.completeDevIntent({...scope,objectId:'rtc-run'});
+    const label={id:12,name:'rtc-run',color:'0969da',description:`rtc_run=${RUN}`};
+    w.gh.when('GET /repos/{owner}/{repo}/labels').reply(200,[birthLabel,label]);
+    w.gh.when('GET /repos/{owner}/{repo}/labels/{name}').reply(200,label);
+    const out=parse(await def.handler({runId:RUN,repo:REPO,confirm:true},w.ctx));
+    expect(out.done).toBe(true);
+    expect(w.gh.calls.filter(c=>c.method==='DELETE')).toHaveLength(1);
+    expect(w.gh.invalid).toEqual([]);
+  });
+});

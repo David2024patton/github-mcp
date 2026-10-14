@@ -19,7 +19,7 @@ const cleanup=defineGithubWrite({
   },
   read:(args,ctx,target)=>readCleanupRun(ctx,target.owner,args.repo,args.runId),
   classify:()=>({}),
-  summarize:({args,target,before})=>`${before.deleteRepository?'DELETE private scratch repository':'CLOSE recorded PRs and DELETE run-owned test branches in'} ${target.owner}/${args.repo} for run ${args.runId}; verify ${before.plan.count} recorded objects. Irreversible.`,
+  summarize:({args,target,before})=>`${before.deleteRepository?'DELETE private scratch repository':'CLOSE recorded PRs and DELETE run-owned test branches in'} ${target.owner}/${args.repo} for run ${args.runId}; verify ${before.plan.count} recorded objects${before.deleteRepository?` and ${before.birth?.labels.length??0} unchanged first-create labels (creator unverified)`:''}. Irreversible.`,
   apply:async({args,ctx,target,before})=>({data:await executeCleanup(ctx,{owner:target.owner,repo:args.repo,runId:args.runId,before})}),
   readAfter:({args,ctx,target})=>readCleanupAfter(ctx,{owner:target.owner,repo:args.repo,runId:args.runId}),
   verify:({after,response,before})=>response.data.verified===true&&
