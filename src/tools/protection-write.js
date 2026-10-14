@@ -51,7 +51,7 @@ const reads=(raw)=>{
       if(!q?.context||!c.contexts.includes(q.context)||
         !(q.app_id===null||Number.isSafeInteger(q.app_id)))
         throw refusal('Required-check provider identity cannot be preserved.');
-      return {context:q.context,app_id:q.app_id??-1};
+      return {context:q.context,...(q.app_id===null?{}:{app_id:q.app_id})};
     });
     if(new Set(list.map(q=>q.context)).size!==list.length||
       new Set(c.contexts).size!==list.length)
