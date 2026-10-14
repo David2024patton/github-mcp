@@ -21,7 +21,7 @@ export const issueList = defineRead({
   name: 'github_issue_list', area: 'issue', audience: ['B', 'Op'], summaryType: 'issue',
   description: 'List real issues by state, label, assignee or milestone; refill pages to exclude PRs.',
   properties: { owner: OWNER, repo: REPO, state: { type: 'string', enum: ['open', 'closed', 'all'] },
-    labels: { type: 'string', maxLength: 250 }, assignee: { type: 'string', maxLength: 39 },
+    labels: { type: 'string', maxLength: 250 }, type: { type: 'string', maxLength: 100 }, assignee: { type: 'string', maxLength: 39 },
     milestone: { type: 'string', maxLength: 50 }, max: MAX },
   required: ['repo'],
   handler: (args, ctx) => plain(async () => {
@@ -33,6 +33,7 @@ export const issueList = defineRead({
     for (let page = 1; page <= 10 && items.length < want; page++) {
       const params = { owner, repo: args.repo, state: args.state ?? 'open', per_page: 100, page,
         ...(args.labels !== undefined ? { labels: args.labels } : {}),
+        ...(args.type !== undefined ? { type: args.type } : {}),
         ...(args.assignee !== undefined ? { assignee: args.assignee } : {}),
         ...(args.milestone !== undefined ? { milestone: args.milestone } : {}) };
       const batch = (await octokit.request('GET /repos/{owner}/{repo}/issues', params)).data;
