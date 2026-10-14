@@ -64,10 +64,11 @@ describe('F-1 moderation and metadata exact semantics', () => {
   it('replaces labels with an explicit empty array to clear all', async () => {
     const w = await makeWorld({});
     seq(w.gh, GET, [[200, issue()], [200, issue({ labels: [] })]]);
-    w.gh.when('PUT /repos/{owner}/{repo}/issues/{issue_number}/labels').reply(200, []);
+    w.gh.when('DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels').reply(204, null);
     const r = await call(w, 'github_issue_set_labels', { repo: 'hello', number: 7, mode: 'replace', labels: [] });
     expect(r.body.done).toBe(true);
-    expect(writes(w)[0].body.labels).toEqual([]);
+    expect(writes(w)[0].method).toBe('DELETE');
+    expect(writes(w)[0].route).toBe('DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels');
   });
 
   it('refuses new assignees outside own people until confirmed', async () => {
