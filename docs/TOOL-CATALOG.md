@@ -212,7 +212,7 @@ Card(s): F-3.
 | `github_project_list_items` | Items in a project with field values | — | N | I,U | Op | R | F-3 |
 | `github_project_set_item` | Add an issue/PR to a project or set an item's field value | P | N | I,U | Op | E | F-3 |
 | `github_project_remove_item` | Remove an item from a project | C | N | I,U | Op | E | F-3 |
-| `github_search_github` | Search code, issues, pull requests, commits, repositories or users with GitHub's search syntax (type chosen by argument) | — | C | I | B,Op | R | F-3 |
+| `github_search_github` | Search code, issues, pull requests, commits, repositories or users with GitHub's search syntax (type chosen by argument) | — | C | I | B,Op | R | F-3 built #177 |
 
 ## Actions: workflows, runs, jobs and logs (`github_actions_*`) — 12
 
