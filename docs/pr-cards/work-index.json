@@ -917,14 +917,17 @@
         "H-1"
       ],
       "card": "docs/pr-cards/H-2.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 400,
       "units": [
         "H-2"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "ownerInputs": []
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": [
+        189
+      ]
     },
     {
       "id": "H-3",
