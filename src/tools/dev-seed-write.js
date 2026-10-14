@@ -74,7 +74,7 @@ export const seed=defineGithubWrite({
           throw refusal('GitHub did not create the expected private scratch repository.');
         const createdSha=await captureScratchOrigin(github,{
           owner:target.owner,repo:args.repo,runId:args.runId,created:result});
-        const birthLabels=await captureScratchBirthLabels(github,{owner:target.owner,repo:args.repo});
+        const birthLabels=await captureScratchBirthLabels(github,{owner:target.owner,repo:args.repo,sleep:ctx.sleep});
         return {objectId:result.full_name,createdSha,birthLabels};
       }});
     if(args.scenario==='pr-with-threads'){
