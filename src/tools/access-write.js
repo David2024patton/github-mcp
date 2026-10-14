@@ -27,7 +27,7 @@ const listInvitations=async(ctx,t)=>{
     'GET /repos/{owner}/{repo}/invitations',{...params(t),per_page:100},{max:500});
   if(data.capped)throw refusal('Invitation inventory is truncated; no access write is safe.');
   return data.items.map(x=>({id:x.id,login:x.invitee?.login??null,
-    permission:x.permissions??x.permission??null}));
+    permission:x.permissions==='write'?'push':x.permissions==='read'?'pull':x.permissions??x.permission??null}));
 };
 const direct=async(ctx,t)=>{
   const data=await listAll(await octo(ctx,t.owner),
@@ -148,7 +148,7 @@ export const manageInvitation=defineGithubWrite({
       (a.action==='cancel'?'DELETE ':'PATCH ')+
         '/repos/{owner}/{repo}/invitations/{invitation_id}',
       {...params(t),invitation_id:a.invitationId,
-        ...(a.action==='update'?{permission:a.permission}:{})}));
+        ...(a.action==='update'?{permissions:a.permission==='push'?'write':a.permission==='pull'?'read':a.permission}:{})}));
   },
   readAfter:({ctx,target:t})=>listInvitations(ctx,t),
   verify:({args:a,before:b,after:items})=>{
