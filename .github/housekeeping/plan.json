@@ -2,6 +2,7 @@
   "version": 1,
   "repository": "Robinson-AI-Systems/github-mcp",
   "archive": "archive/housekeeping-2026-10-13",
+  "maintenanceBranch": "ai/codex/completion-recovery-20261014",
   "branches": [
     {
       "name": "ai/gpt6/f1-issue-moderation",
@@ -50,6 +51,12 @@
         170
       ],
       "reason": "Verified merged PR; preserve exact source history including squash-merged tips."
+    },
+    {
+      "name": "ai/gpt6/f3-projects-item-writes-20261014",
+      "sha": "e4353a20f303ed7a10f6b88e4f8c584e6d76d509",
+      "disposition": "merged",
+      "reason": "Verified main includes this implementation; preserve exact source-tip history before pruning."
     }
   ]
 }
