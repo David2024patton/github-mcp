@@ -83,6 +83,6 @@ describe('F-1 exact issue relationship ownership and idempotency', () => {
     const r = await call(w, 'github_issue_set_dependency', { repo: 'hello', number: 7, blockingNumber: 8, mode: 'remove' });
     expect(r.body.done).toBe(true);
     expect(writes(w)).toHaveLength(1);
-    expect(writes(w)[0].params?.issue_id ?? writes(w)[0].path_params?.issue_id ?? writes(w)[0].query?.issue_id ?? writes(w)[0].body?.issue_id).toBeDefined();
+    expect(writes(w)[0].params.issue_id).toBe('108');
   });
 });
