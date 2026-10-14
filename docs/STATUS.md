@@ -192,6 +192,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: source #188 exact-head CI passed and merged commit 674fea131e0eb0002f474bb8f529d0f619011286, but live remained b51cda454f01720b3c638f83b9766b30eceaa9fb; no new deployed mutation or approval claimed."
+  },
+  {
+    "id": "GITHUB-H2-SIGNER-LIFECYCLE",
+    "priority": 1,
+    "requiredRevision": "72c64e8d06b05b5254041df5f42d7e5cabcd3608",
+    "task": "Verify the custom deployed webhook creation, update and secret rotation against an independently approved disposable public scratch fixture, prove receiver HMAC signatures and cleanup with run-owned evidence",
+    "procedure": "docs/pr-cards/H-2.md",
+    "gates": "Exact READY live ancestry of implementation; approved isolated scratch owner/run, service OAuth with legitimate provider permissions; preview/production and independent owner write/cleanup approvals preserved",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: implementation/test source staged; no claimed CI, deployment, provider mutation, HMAC acceptance or cleanup. GitHub masks signer values; require receiver signature verification."
   }
 ]
 ```
