@@ -36,7 +36,7 @@ const inspect=async(a,ctx,t)=>{
 const deliveries=async(ctx,t,hookId)=>{
   const r=await listAll(await octo(ctx,t.owner),'GET '+route(t,'/{hook_id}/deliveries'),
     {...args(t),hook_id:hookId,per_page:100},{max:100});
-  if(r.capped)throw refusal('Webhook deliveries exceed the verified inventory cap; do not act on an incomplete list.');
+  if(r.capped||r.items.length===100)throw refusal('Webhook deliveries reached the 100-item safety limit; do not act on a potentially incomplete list.');
   return r.items;
 };
 const summarizeTarget=(t,a)=>t.scope==='org'?t.owner:slug(t.owner,a.repo);
