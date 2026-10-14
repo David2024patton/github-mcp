@@ -93,8 +93,22 @@ const save=defineGithubWrite({
     else if(!a.url||!a.events?.length)throw refusal('New webhook requires URL and events.');
     const gh=await octo(ctx,t.owner);
     const value=makeKey();
+    // On updates re-read full configuration transiently: GitHub may require
+    // complete callback fields even in a PATCH. Never journal the raw URL.
+    let originalUrl=null,originalType=null;
+    if(a.hookId){
+      const current=(await gh.request('GET '+ROUTE(t,'/{hook_id}'),
+        {...PARAMS(t),hook_id:a.hookId})).data;
+      if(current?.id!==a.hookId)throw refusal('Webhook changed before the update; refusing.');
+      originalUrl=current.config?.url;
+      originalType=current.config?.content_type;
+      if(!originalUrl||destination(originalUrl)!==b.hook.host||
+        !['json','form'].includes(originalType)||
+        String(current.config?.insecure_ssl??'0')==='1')
+        throw refusal('Existing callback configuration is incomplete or unsafe; no update was sent.');
+    }
     const config={secret:value,insecure_ssl:'0',
-      ...(a.url?{url:a.url}:{}),...(a.contentType?{content_type:a.contentType}:{})};
+      url:a.url??originalUrl,content_type:a.contentType??originalType};
     const fields={config,...(a.events?{events:a.events}:{}),
       ...(a.active!==undefined?{active:a.active}:{})};
     const response=await gh.request((a.hookId?'PATCH ':'POST ')+ROUTE(t,a.hookId?'/{hook_id}':''),
@@ -120,7 +134,7 @@ const save=defineGithubWrite({
     (a.events===undefined||
       x.events.length===a.events.length&&a.events.every(e=>x.events.includes(e))),
   inverse:()=>null,
-  present:({args:a,response:r,after:x})=>({
+  present:({response:r,after:x})=>({
     webhook_id:r.id,hostname:x?.host??null,signing_secret_reveal:r.reveal,
     secret_expires_in_minutes:10,
     warning:'A receiver must be configured with the new secret. GitHub never returns its actual signing key for independent comparison.'})
