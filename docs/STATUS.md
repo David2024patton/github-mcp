@@ -6,6 +6,10 @@ New offline session utility: eight behavioral tests passed, including actual Git
 
 Implemented three native, scoped GitHub REST tools: Projects v2 list, exact project detail with fields, and item listing with bounded field values. GitHub App installation reads are limited to enrolled organization owners; user-owned REST Projects v2 explicitly reject App installation/user credentials, so these tools fail closed with the GitHub-authorized classic/GraphQL path guidance rather than silently switching accounts. Project identity is verified before item enumeration and inventory caps are disclosed. Focused fake-provider request-shape/denial tests and full required exact-head CI are merge gates, not provider acceptance. F-3 still needs separately guarded project add/field edits/removals, and all deployed/provider acceptance remains queued.
 
+## October 14, 2026 — F-3 Project membership and field write workflow (PR #183)
+
+Adds confirmed and journalled project item membership, field updates and removal to complete the five Projects v2 catalog operations at source. Exact org/project/source/item ownership checks, finite enumerations, three-door write-contract tests, no production or cost changes. Source CI/merge are separate from queued genuine custom MCP provider write/readback/cleanup. F-3 source workflow complete when #183 merges; Projects saved views are deliberately deferred (no supported REST views list route).
+
 ## Release acceptance queue — workflow optimization 2026-10-14
 
 Owner-authorized guidance/tooling maintenance: consolidated session procedure, focused
