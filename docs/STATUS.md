@@ -236,6 +236,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: H-4 settings source staged for required exact-head CI. No production feature switch, paid security activation, live TEST write or independent cleanup acceptance."
+  },
+  {
+    "id": "GITHUB-O1-OWNER-OVERVIEW",
+    "priority": 2,
+    "requiredRevision": "5a34577e3890b33a5f49347ad67692c7f3c40ca8",
+    "task": "After checked READY release of merged O-1 source, run real custom GitHub MCP organization/personal dashboard guidance, verification of exact org 2FA and bounded owner/security status; distinguish provider 403/plan and validate relevant UI links with actual owner/browser readback",
+    "procedure": "docs/pr-cards/O-1.md",
+    "gates": "Saved service-issued OAuth and enrolled org only; PREVIEW read-only, production OFF, no spend or destructive change; browser-only completion requires independent owner/browser confirmation",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: O-1 source under exact-head CI and merge review; no deployed O-1 proof, no human UI audit, no production mutation."
   }
 ]
 ```
