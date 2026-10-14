@@ -178,8 +178,8 @@ Card(s): F-1.
 | `github_issue_list_timeline` | Everything that happened to an issue (events, references, cross-links) | — | C | I | Op | R | F-1 built #167 |
 | `github_issue_set_labels` | Add, remove or replace labels on an issue or PR | P | F | I | B,Op | E | F-1 built #168 |
 | `github_issue_set_assignees` | Add or remove assignees | P·M | C | I | Op | E | F-1 built #168 |
-| `github_issue_set_sub_issue` | Add, remove or reorder a sub-issue | P | N | I | Op | E | F-1 |
-| `github_issue_set_dependency` | Add or remove a 'blocked by' link | P | N | I | Op | E | F-1 |
+| `github_issue_set_sub_issue` | Add, remove or reorder a sub-issue | P | N | I | Op | E | F-1 built #170 |
+| `github_issue_set_dependency` | Add or remove a 'blocked by' link | P | N | I | Op | E | F-1 built #170 |
 | `github_issue_transfer` | Move an issue to another repository (GraphQL) | C | N | I | Op | F | F-1 |
 | `github_issue_react` | Add or remove a reaction on an issue, comment or review comment | P | C | I | Op | E | F-1 |
 
