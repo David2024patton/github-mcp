@@ -180,8 +180,8 @@ Card(s): F-1.
 | `github_issue_set_assignees` | Add or remove assignees | P·M | C | I | Op | E | F-1 built #168 |
 | `github_issue_set_sub_issue` | Add, remove or reorder a sub-issue | P | N | I | Op | E | F-1 built #170 |
 | `github_issue_set_dependency` | Add or remove a 'blocked by' link | P | N | I | Op | E | F-1 built #170 |
-| `github_issue_transfer` | Move an issue to another repository (GraphQL) | C | N | I | Op | F | F-1 |
-| `github_issue_react` | Add or remove a reaction on an issue, comment or review comment | P | C | I | Op | E | F-1 |
+| `github_issue_transfer` | Move an issue to another repository (GraphQL) | C·M | N | I | Op | E | F-1 built final PR |
+| `github_issue_react` | Add or remove a reaction on an issue, comment or review comment | P·M | C | I | Op | E | F-1 built #172 |
 
 ## Labels and milestones (`github_label_*, github_milestone_*`) — 7
 
@@ -189,13 +189,13 @@ Card(s): F-2.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_label_list` | Labels in a repository | — | C | I | B,Op | R | F-2 |
-| `github_label_save` | Create or update a label by name | P | C | I | B,Op | E | F-2 |
-| `github_label_delete` | Delete a label (removes it from every issue) | C | C | I | Op | E | F-2 |
-| `github_label_sync` | Make several repositories carry the same label set (preview lists every add/change; never deletes unless asked) | P | N | I | O,Op | F | F-2 |
-| `github_milestone_list` | Milestones with progress | — | C | I | Op | R | F-2 |
-| `github_milestone_save` | Create, update or close a milestone | P | C | I | Op | E | F-2 |
-| `github_milestone_delete` | Delete a milestone | C | C | I | Op | E | F-2 |
+| `github_label_list` | Labels in a repository | — | C | I | B,Op | R | F-2 built #175 |
+| `github_label_save` | Create or update a label by name | P | C | I | B,Op | E | F-2 built #175 |
+| `github_label_delete` | Delete a label (removes it from every issue) | C | C | I | Op | E | F-2 built #175 |
+| `github_label_sync` | Copy labels across connected accounts, preview exact changes and require explicit approval for deletion | C | N | I | O,Op | F | F-2 built #176 |
+| `github_milestone_list` | Milestones with progress | — | C | I | Op | R | F-2 built #175 |
+| `github_milestone_save` | Create, update or close a milestone | P | C | I | Op | E | F-2 built #175 |
+| `github_milestone_delete` | Delete a milestone | C | C | I | Op | E | F-2 built #175 |
 
 ## Discussions, projects and search (`github_discussion_*, github_project_*, github_search_*`) — 10
 
@@ -203,16 +203,16 @@ Card(s): F-3.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_discussion_list` | Discussions in a repository by category (GraphQL) | — | C | I | Op | R | F-3 |
-| `github_discussion_get` | One discussion with its comments and answer (GraphQL) | — | C | I | Op | R | F-3 |
-| `github_discussion_create` | Start a discussion (GraphQL) | P·M | N | I | Op | E | F-3 |
-| `github_discussion_comment` | Comment on a discussion or mark a comment as the answer (GraphQL) | P·M | N | I | Op | E | F-3 |
-| `github_project_list` | Projects (v2) of an org or user | — | N | I,U | Op | R | F-3 |
-| `github_project_get` | One project: fields, views, item counts | — | N | I,U | Op | R | F-3 |
-| `github_project_list_items` | Items in a project with field values | — | N | I,U | Op | R | F-3 |
-| `github_project_set_item` | Add an issue/PR to a project or set an item's field value | P | N | I,U | Op | E | F-3 |
-| `github_project_remove_item` | Remove an item from a project | C | N | I,U | Op | E | F-3 |
-| `github_search_github` | Search code, issues, pull requests, commits, repositories or users with GitHub's search syntax (type chosen by argument) | — | C | I | B,Op | R | F-3 |
+| `github_discussion_list` | Discussions in a repository by category (GraphQL) | — | C | I | Op | R | F-3 built #178 |
+| `github_discussion_get` | One discussion with its comments and answer (GraphQL) | — | C | I | Op | R | F-3 built #178 |
+| `github_discussion_create` | Start a discussion (GraphQL) | P·M | N | I | Op | E | F-3 built #178 |
+| `github_discussion_comment` | Comment on a discussion or mark a comment as the answer (GraphQL) | C·M | N | I | Op | E | F-3 built #178 |
+| `github_project_list` | Projects (v2) of an org or user | — | N | I,U | Op | R | F-3 built #182 |
+| `github_project_get` | One project: fields, views, item counts | — | N | I,U | Op | R | F-3 built #182 |
+| `github_project_list_items` | Items in a project with field values | — | N | I,U | Op | R | F-3 built #182 |
+| `github_project_set_item` | Add an issue/PR to a project or set an item's field value | C | N | I | Op | E | F-3 built #183 |
+| `github_project_remove_item` | Remove an item from a project | C | N | I | Op | E | F-3 built #183 |
+| `github_search_github` | Search code, issues, pull requests, commits, repositories or users with GitHub's search syntax (type chosen by argument) | — | C | I | B,Op | R | F-3 built #177 |
 
 ## Actions: workflows, runs, jobs and logs (`github_actions_*`) — 12
 
@@ -319,7 +319,7 @@ Card(s): V-1 … V-5. The owner alone can enable an exact Organization as `is_sc
 | `github_dev_seed` | Build a scenario in the scratch account or on test branches: repos, branches, commits, PRs, issues, labels, workflow files; preview lists every object | P | N | I | B | E | V-1 built #70–#80; initial scratch SHA #102; exact marker #90; resume commit provenance #124; first-create label evidence #126 (no deletion authority; six scratch scenarios; webhook-target pending V-4) |
 | `github_dev_list_runs` | Connection-scoped runs and birth labels, plus opt-in remote cleanup/first-label identity drift diagnostics (no deletion authority), and paged previews | — | N | — | B | R | V-1 #68; V-2 #93; truthful scenario and preview #123 |
 <!-- #106: all-runs cleanup preview includes at-most-five run proposals; each still needs fresh verification and explicit per-run confirmation. -->
-| `github_dev_create_scratch_repo` | Throwaway repository in the scratch account, tagged with the run | P | N | I | B | E | V-1 built #69; initial scratch SHA #102; exact verified same-run replay #125; origin label evidence #126 (not deletion authority) |
+| `github_dev_create_scratch_repo` | Throwaway repository in the scratch account, tagged with the run | P | N | I | B | E | V-1 built #69; initial scratch SHA #102; exact verified same-run replay #125; origin label evidence #126 (not deletion authority); delayed-default-label stabilization with zero-default support #174 |
 | `github_dev_cleanup` | Clean confirmed run-owned scratch repositories, or exact unprotected standalone test PRs/branches; reject foreign scratch resources, enforce a single executable scenario's finite resource types/counts, then independently verify ownership before deletion; never delete host repositories | C | N | I | B | E | V-2 built #85–#90; two-way resource inventory #121; finite scenario limits #122; exclusive executor #132; connected scratch acceptance pending |
 | `github_dev_create_test_branch` | Branch `rtc/<run>/<name>` from any ref in an allowed repo (never production) | P | N | I | B | E | V-3 |
 | `github_dev_open_test_pr` | Draft PR from a test branch, labelled with the run | P | N | I | B | E | V-3 |
@@ -338,15 +338,15 @@ Card(s): H-1.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_protection_get` | Classic branch protection on a branch, in plain words | — | C | I | B,O | R | H-1 |
+| `github_protection_get` | Classic branch protection on a branch, in plain words | — | C | I | B,O | R | H-1 built #184 |
 | `github_protection_set` | Change branch protection by reading it first and changing only what was asked (GitHub's PUT replaces everything) | C·Prod | F | I | O | F | H-1 |
-| `github_protection_set_required_checks` | Add or remove required status checks, keeping the rest | C·Prod | F | I | B,O | F | H-1 |
+| `github_protection_set_required_checks` | Add or remove required status checks, keeping the rest | C·Prod | F | I | B,O | F | H-1 built #185 |
 | `github_protection_remove` | Remove branch protection | C·D·Prod | C | I | O | F | H-1 |
-| `github_ruleset_list` | Rulesets of a repository or organization with enforcement and targets | — | C | I | B,O | R | H-1 |
-| `github_ruleset_get` | One ruleset in plain words, optionally with its history | — | C | I | B,O | R | H-1 |
-| `github_ruleset_save` | Create or update a ruleset (read-merge-write for updates) | C·Prod | F | I | O | F | H-1 |
-| `github_ruleset_delete` | Delete a ruleset | C·D·Prod | C | I | O | F | H-1 |
-| `github_ruleset_list_rule_suites` | Recent rule evaluations: which push or merge was blocked by which rule, and why | — | N | I | B,O | R | H-1 |
+| `github_ruleset_list` | Rulesets of a repository or organization with enforcement and targets | — | C | I | B,O | R | H-1 built #184 |
+| `github_ruleset_get` | One ruleset in plain words, optionally with its history | — | C | I | B,O | R | H-1 built #184 |
+| `github_ruleset_save` | Create or update a ruleset (read-merge-write for updates) | C·A·Prod | F | I | O | F | H-1 built #185 |
+| `github_ruleset_delete` | Delete a ruleset | C·D·Prod | C | I | O | F | H-1 built #185 |
+| `github_ruleset_list_rule_suites` | Recent rule evaluations: which push or merge was blocked by which rule, and why | — | N | I | B,O | R | H-1 built #184 |
 
 ## Webhooks (`github_webhook_*`) — 8
 

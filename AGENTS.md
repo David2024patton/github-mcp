@@ -1,4 +1,34 @@
 # AGENTS.md — the rules. Read this first, every session.
+
+## Original Toolkit is reference-only — owner clarification 2026-10-14
+
+`Robinson-AI-Systems/robinsons-toolkit-mcp` is the historical capability reference,
+not an active implementation/deployment target. The standalone custom MCP servers
+and optional `robinsons-toolkit-hub` replace it. Do not maintain/rebuild the original,
+resume its recovery PRs, synchronize implementations back to it, or require a bridge.
+Preserve its code/history for coverage and behavioral research. When the owner chooses a new provider MCP, its implementing agent inventories the
+relevant legacy tool names, families, workflows and intended behavior, reconciles them
+with current provider contracts, and tracks coverage in THAT project's cards/index.
+The Hub stays provider-agnostic: discover/connect/authorize/route/read results for
+new contract-compatible MCP servers without provider-specific handlers or a fixed
+family list. Future services and legacy catalog parity are not Hub completion gates.
+Do not copy provider capabilities into the Hub or start speculative server projects.
+Mapped/planned is not implemented or accepted. Service autonomy and all existing
+provider/security/owner gates remain binding.
+
+
+## Efficient release-aware execution — owner instruction 2026-10-14
+
+[SESSION-START](docs/SESSION-START.md) is the consolidated session procedure;
+`npm run session:status` prints the read-only release acceptance queue and PR boundary.
+Its workflow/cadence/merge-versus-live-proof rules supersede older conflicting procedural
+wording below, but never override explicit safety or pre-merge owner/card gates.
+Use substantial cohesive outcomes; numeric production-line targets are advisory rather
+than artificial hard caps. Full mandatory checks run before publication, with focused
+checks during development. Product acceptance stays open until real evidence passes.
+The owner explicitly authorized this cross-repository guidance/tooling optimization;
+routine implementation sessions still prohibit filler/documentation-only PRs.
+
 ## Mobile and tool-unavailable connection recovery
 
 Before treating absent private-plugin tools as an acceptance blocker, follow
@@ -79,8 +109,7 @@ sections below when a step names them.
     is the current task — fix it before any new card.
 12. **Problems are not blockers.** Red CI, lint, failing tests, wrong parameters, conflicts and unclear code are yours to
     fix; stop only for a hard limit or an owner decision the current step needs (SESSION-START §6).
-13. **Thin slices, then a recovery point.** Run each slice's tests and lint before writing the next (≤ ~150 lines between
-    runs); end every turn right after a push whose resume note names the exact next action.
+13. **Thin slices, then a recovery point.** Run each slice's tests and lint before writing the next (at meaningful seams); end every turn right after a push whose resume note names the exact next action.
 14. **Slow CI is not a stalled agent.** The full unit job routinely takes >200 seconds. On no-shell GitHub REST
     sessions, query the exact-head check runs once, then switch to independent review/docs work; two unchanged
     pending reads trigger a bounded wait/checkpoint, not rapid polling. Only read job logs once the job is completed.
@@ -112,27 +141,6 @@ block. Continue the normal up-to-five substantive PR sequence without filler.
 Only stop early after demonstrating that **all** remaining approved independent
 work is unavailable or a genuine execution limitation prevents further progress.
 Never issue the next-session continuation prompt to avoid resolving a blocker.
-
-## Outcome-first development and continuation (owner direction, 2026-10-12)
-
-Plan each session around the highest-priority **eligible user/developer capability and
-its actual acceptance**, not five PRs for their own sake. Five substantive PRs are
-the normal batch **boundary**, never an achievement or excuse for filler, scope creep,
-unsafe merges or weakened tests. Follow SESSION-START §1a, which reconciles the
-STATUS milestone/deferred queue, OWNER-INPUTS and actual main/reviews. Fix demonstrated
-security, correctness and CI defects first. Capture code, meaningful automated
-verification, deployed HTTPS, connected custom OAuth, Hub routes, revocation and
-cleanup separately. Never close an acceptance gate using simulated tests or the
-standard GitHub connector as substitute for the hosted custom MCP.
-
-Every deferred dependency, owner input or external gate must have an explicit blocker,
-required evidence, dependencies, re-entry trigger and next action in STATUS. Recheck
-after a relevant owner answer, dependency merge or environment change; **automatically
-return re-eligible work to the queue**, not ask for already-provided owner input.
-Include workflow/status updates in substantive implementation PRs, not special docs PRs.
-At handoff, permanently record evidence on the last PR and give a compact continuation
-prompt referring to repository rules and this same procedure. If fewer than five
-safe substantive PRs can advance the capability, explain exactly why and stop.
 
 ## What this is
 
@@ -222,7 +230,7 @@ plain words in the tool description or setup page. Money is shown in dollars and
   approved semantics, owner gates, the queue or tests.
 - **Drift and reconciliation** (`docs/implementation-contracts/DRIFT-PROTOCOL.md`): checklist A before each PR, B inside
   each PR written as if it had already merged, C when a batch finishes.
-- **PR size:** about 500 production lines and 15 files, hard stop ~800 lines, at most one migration, one risk area
+- **PR size:** about 500 production lines and 15 files, advisory size estimate, at most one migration, one risk area
   (PLAYBOOK Step 3a).
 - **Model:** whichever model Chris selected does the work. Sol 5.6 is the routine implementer: light effort for an
   already-tested pattern (a new read tool), medium for the trust layer, guards, merges, secrets, credentials, passes,

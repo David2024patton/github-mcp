@@ -1,3 +1,113 @@
+### Workflow maintenance handoff — owner publication approved
+
+New offline session utility: eight behavioral tests passed, including actual Git ancestry, partial releases, unknown/failed deployments, rollback, dependency gating, invalid queues, PR alignment and bounded output. All repository queues validate. Existing source/status evidence is preserved; no provider acceptance or release was performed. Owner explicitly approved publication on October 14; publish the reviewed maintenance branch, require exact-head CI/reviews, and merge only when those gates pass. No extra production release is authorized by this approval. Full broad application suites on the shared runner were interrupted after resource/time-limit failures; do not claim them passed. Existing exact-head remote CI/review gates must pass before any main merge.
+
+## October 14, 2026 — F-3 Projects v2 organization read workflow (PR #182)
+
+Implemented three native, scoped GitHub REST tools: Projects v2 list, exact project detail with fields, and item listing with bounded field values. GitHub App installation reads are limited to enrolled organization owners; user-owned REST Projects v2 explicitly reject App installation/user credentials, so these tools fail closed with the GitHub-authorized classic/GraphQL path guidance rather than silently switching accounts. Project identity is verified before item enumeration and inventory caps are disclosed. Focused fake-provider request-shape/denial tests and full required exact-head CI are merge gates, not provider acceptance. F-3 still needs separately guarded project add/field edits/removals, and all deployed/provider acceptance remains queued.
+
+## October 14, 2026 — F-3 Project membership and field write workflow (PR #183)
+
+Adds confirmed and journalled project item membership, field updates and removal to complete the five Projects v2 catalog operations at source. Exact org/project/source/item ownership checks, finite enumerations, three-door write-contract tests, no production or cost changes. Source CI/merge are separate from queued genuine custom MCP provider write/readback/cleanup. F-3 source workflow complete when #183 merges; Projects saved views are deliberately deferred (no supported REST views list route).
+
+## October 14, 2026 — H-1 exact protection and ruleset reads (PR #184)
+
+Four genuine governance read tools added: classic branch protection (separating effective rulesets), scoped repo/org rule list/get/history and rule-suite evaluation diagnostics. All operations are bounded and describe enforcement without permission shortcuts. Projects field update readback explicitly requests updated field IDs, since default GitHub item GET does not include them. No deployed external proof claimed; next H-1 changes preserve owner approval, no production access, and the checked release cadence.
+
+## October 14, 2026 — H-1 ruleset governance changes (PR #185)
+
+Implements safeguarded complete ruleset create/update/delete and narrow required-check modifications. Whole ruleset writes preserve preexisting conditions, active rules, enforcement, source and bypass actors; inability to read bypass membership refuses updates. All changes are production classified, preview/confirmation/journal/replay gated. No owner production account activation, provider mutation or independent deployment acceptance claimed. Remaining H-1 classic protection whole-object set/remove is still outstanding. Session boundary #185, next #190.
+
+## Release acceptance queue — workflow optimization 2026-10-14
+
+Owner-authorized guidance/tooling maintenance: consolidated session procedure, focused
+checks between meaningful edits, substantial capability grouping, and read-only queued
+acceptance/PR-boundary report. This records source/tooling work, not a live/provider pass.
+The queue below seeds existing outstanding obligations; reconcile exact scenarios and
+already-proven evidence from the unchanged cards/ledger before running. Keep all prior
+open obligations, original fixture ownership, approvals and deployment provenance.
+
+<!-- release-acceptance:start -->
+```json
+[
+  {
+    "id": "GITHUB-CUSTOM-SCRATCH-READ",
+    "priority": 1,
+    "requiredRevision": "1c6c1f4af8d5aedaf3b3a438c75bd1f6f128ad16",
+    "task": "Confirm custom Chat-mode scratch repository identity, bounded search and run ledger read through service-owned OAuth",
+    "procedure": "docs/pr-cards/NATIVE-MCP-ACCEPTANCE.md",
+    "gates": "Read-only, enrolled scratch account, full PREVIEW profile, production OFF; verified Vercel READY and alias",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-14: custom Robinson GitHub Cloud returned PREVIEW/full and sole enrolled scratch Organization. Genuine github_batch calls returned private rtc-ghaccept-oct13-f1a repo, its existing active run (one journal row), successful project-scoped repository search and exact repo read. Independently Vercel READY dpl_ALZaayEj8fGWPuSSVZNMCyyy71VK matched live SHA and three production aliases. No writes, revocation, Hub route or cleanup executed."
+  },
+  {
+    "id": "GITHUB-SCRATCH-CLEANUP",
+    "priority": 2,
+    "requiredRevision": "1c6c1f4af8d5aedaf3b3a438c75bd1f6f128ad16",
+    "task": "Resolve exact quarantined initial-label scratch fixture through guarded remote preflight, explicit owner authorization, confirmed deletion and absence readback",
+    "procedure": "docs/pr-cards/V-2.md",
+    "gates": "Existing run ghaccept-oct13-f1a only; exact disposal decision and independent owner confirmation are still mandatory",
+    "dependsOn": ["GITHUB-CUSTOM-SCRATCH-READ"],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-14: live custom run inventory returned journal_ready=true but remote_verified=false, and can_execute_without_new_confirmation=false. Historical ten late-appearing default labels remain; no cleanup has been attempted or claimed."
+  },
+  {
+    "id": "GITHUB-NATIVE",
+    "priority": 1,
+    "requiredRevision": "9e74a9d2c0c566b2ddb572780bb467adc4f269f9",
+    "task": "Complete remaining actual custom MCP read/write/denial/readback and exact run-owned cleanup",
+    "procedure": "docs/pr-cards/NATIVE-MCP-ACCEPTANCE.md",
+    "gates": "Saved developer OAuth; only approved scratch repository and creation-baseline evidence",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Existing ledger/card remains authoritative; current live/provider acceptance must be reconciled at session start. Seed revision conservatively includes reviewed current main."
+  }
+]
+```
+<!-- release-acceptance:end -->
+
+<!-- Current repair also records no-change daily receipts: backups cannot publish later same-day development after a successful no-op. -->
+## October 14 owner-requested daily release recovery repair — current
+
+Owner request on October 14: investigate and repair missed daily releases across the MCP repositories and Appliance Desk, including the quoted owner-run checked recovery. This supersedes the prior scheduled-only/no-new-trigger restriction for missed-event recovery only. Primary 00:01 Denver remains; retries are 00:17, 01:17 and 05:37 Denver plus 12:43 UTC. Explicit recovery defaults OFF and requires both the original actor and the triggering actor to be christcr2012, main, true recovery input and elapsed midnight. Every path retains successful exact-main CI, ancestry, atomic once-per-Denver-day receipt and independent readback. No production-provider activation, spending, force push or preview build is authorized.
+
+Local release safety tests pass. Merge requires exact-head application CI and review resolution. Source repair is separate from observed schedule execution and Vercel READY/alias proof; inspect actual daily run and receipt, do not equate main/live drift after a release with failure. These infrastructure PRs do not replace the existing substantive implementation batch.
+
+## October 14, 2026 — missed scheduled release: no event, recovery schedule proposed in PR #179
+
+Independent GitHub Actions run inventory for `Robinson-AI-Systems/github-mcp` returned **zero `event=schedule` runs** after the 00:01 America/Denver October 14 deadline. The existing `.github/workflows/daily-live.yml` was on the actual default `main`, its IANA `timezone` syntax is supported, and push/PR policy checks ran; therefore no scheduled promotion job existed to run `.github/release/promote-live.mjs`. `live` remains `5414978c433f9cf3ce26e8733f3dfc4cfb16e381`, with Vercel production READY at that same older SHA (observed deployment `dpl_39JZfpwEJDhcpSsDEJzuFNzJzcxZ`). Exact scheduler-side root cause is not observable via a nonexistent run; GitHub documents that schedules can be dropped under load or deactivated and that a cron-edit commit can reactivate an inactive schedule.
+
+PR #179 preserves preferred 00:01 Denver and adds independently schedulable **00:19, 01:19 and 05:37 Denver** fallback windows with timezone-aware DST. Each is still `schedule` only, runs the unchanged exact-main checked promoter, and respects its **atomic one-per-Denver-day marker**, strict checks, fast-forward and remote readback. Push/PR events still cannot promote. Test the full matrix and actual post-merge schedule event; CI proving cron syntax is not evidence GitHub scheduled it. No manual `live` update, bypass, one-time promotion or production activation is authorized by this fix. If the following window fails to create any `schedule` run, inspect GitHub Actions workflow enabled state and scheduled actor, and escalate with the exact zero-run evidence; do not weaken the release policy.
+
+## October 14, 2026 — F-3 native GitHub Discussions (PR #178)
+
+Adds real GraphQL discussions list/get and guarded create/comment/chosen-answer tools. Creation resolves the exact category and repository node IDs from GitHub with complete category enumeration. A chosen answer verifies the selected comment belongs to the requested discussion before mutation, and each mutation independently reads back the actual discussion/comment GraphQL identity. Outsider notification guard applies to discussion text and authors; preview and durable journal remain standard. Three-door write-contract/GraphQL schema tests cover source, reply, answer and negative foreign identities. Search is already merged in #177; Projects v2 remains incomplete until later PRs. No native hosted OAuth acceptance or production changes are implied by CI.
+
+## October 14, 2026 — F-3 cross-type GitHub search (PR #177)
+
+Add `github_search_github` with actual GitHub pinned-version code, issue, PR, commit, repository and user search endpoints. Enforce issue/PR query distinction and provider-response filtering, page and 1000-result API bounds, disclose incomplete results and trim returned search fragments/messages. Six real request-shape tests exercise the right route, arguments, and capped projection. F-3 discussions/Projects v2 remain incomplete; no claim of source completion or native deployed connected acceptance. Production/off/spending/$0 policies unchanged.
+
+## October 14, 2026 — F-2 cross-account labels synchronization completed in source (PR #176)
+
+Adds `github_label_sync`: chooses a connected source repository, independently reads each connected destination, denies duplicates/foreign accounts/protected destinations, previews the complete per-repo create/update/delete plan (deletes opt-in only), requires confirmation and uses each destination's ordinary guarded, separately journalled label save/delete tool. Re-checks source and each destination inventory before mutation, reports per-resource partial outcomes, and independently compares all target inventories against source before confirming. Bounded 100 labels/repo, five destination repositories and 20 per-label changes per call; no silent truncation or unlimited work. Cross-account tests prove the actual destination credential selection and refusal cases. All 7 F-2 cataloged operations are now source-built when PR #176 passes/merges; independent hosted exact-revision, provider acceptance, Hub, revocation and cleanup remain unverified until exercised. Scheduled daily release only; production OFF, autonomous spend $0.
+
+## October 14, 2026 — F-2 repository labels and milestones CRUD (PR #175)
+
+Implement native GitHub REST label/milestone listing, guarded create/edit/rename and confirmed deletion. Color validation, repository-bound reads, rename collision refusal and exact readback are required; milestone closing and due dates are explicit, and no label or milestone deletion runs without confirmation. The sync operation is separately incomplete; do not mark F-2 complete until cross-account dry-run/execute and partial-result acceptance pass. GitHub request-shape checks and three-door write contracts provide automated evidence, not native deployed acceptance. No production promotion/activation or spending change.
+
+## October 13, 2026 — live scratch acceptance revealed delayed GitHub default-label creation
+
+Through the independently connected production custom MCP (deployed revision `5414978`, PREVIEW/full and production OFF), run `ghaccept-oct13-f1a` successfully created private run-marked `robinson-ai-scratch/rtc-ghaccept-oct13-f1a` with an exact durable repo record and provider readback. The cleanup remote preflight correctly refused deletion: the initial GitHub label observation was empty and ten GitHub organization defaults appeared later. No deletion occurred; the exact run/repo remain quarantined. Real cleanup acceptance remains NOT PROVEN. This PR prevents premature future birth snapshots with bounded, multi-read stable GitHub label observation (a permanently empty customized organization requires the entire stable observation window) after creation; it neither silently rewrites the historical run nor widens destructive permissions. Owner must separately resolve or authorize removal of the exact quarantined repo after safety review; preserve the prior absolute foreign-label deletion refusal. Source/CI validation and live acceptance stay separate.
+
+## October 13, 2026 — F-1 full issues source workflow (transfer implementation awaiting acceptance)
+
+The final F-1 operation `github_issue_transfer` now uses independently read GitHub GraphQL source issue and destination repository node IDs, checks both connected account scope and destination protection (source uses normal write gates), requires explicit confirmation, performs one journaled GitHub mutation and confirms the moved issue independently by exact destination REST readback. It disallows pull-request transfer, same-repo transfer and unsafe label creation defaults; foreign, pr-only and locked destinations refuse. Full write-contract across the three service doors and semantic/denial tests accompany the implementation. All 15 cataloged F-1 issue tools are now implemented at source when this PR merges. CI, scheduled checked production deployment, native connected provider-write/readback, Hub, revocation and run-owned cleanup remain separately unverified; F-1 real-world milestone acceptance stays IN_PROGRESS until genuinely observed. Existing production OFF and $0 spending remain unchanged.
+
+## October 13, 2026 — F-1 reactions on issues and comments (implementation PR pending)
+
+Added guarded `github_issue_react` for issues, issue comments and pull-request review comments: verified same-repository source ownership, reaction inventory, exact reaction ID/content before removal, one journaled mutation, readback by provider reaction ID or proven absence, and outsider-author notification confirmation. Three-door write-contract and negative ownership tests accompany it. F-1 remains IN_PROGRESS until transfer is delivered; source/CI and native custom provider acceptance are separate. Production remains OFF and spending $0.
+
 ## October 13, 2026 — F-1 linked issue relationships (PR #170, source pending checks)
 
 After current main including merged #167 issue triage, #169 birth-label scratch-cleanup correction and #168 issue moderation, PR #170 adds native sub-issue creation/removal/reorder and blocked-by dependency add/remove. Both tools resolve exact parent and child issue identities through GitHub before acting, refuse self-links and unverified cross-repository IDs, reject truncated relation inventories, no-op when already linked/unlinked, send at most one mutation per guarded journal intent and require exact relationship readback. Reuses all service-owned auth, preview, protection, spend and confirmation gates; no production switch or scratch resource write. New exact GitHub shape and three-door write-contract tests accompany the source. F-1 stays IN_PROGRESS: transfer and reactions remain unfinished, and live custom provider acceptance is separate. The #169 default-label fix is preserved unmodified; genuine scratch create/readback/cleanup awaits exact checked main-to-live promotion.

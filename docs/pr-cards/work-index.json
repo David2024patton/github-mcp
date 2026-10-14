@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-13",
+  "updated": "2026-10-14",
   "order": [
     "A",
     "B",
@@ -695,7 +695,8 @@
         127,
         128,
         129,
-        130
+        130,
+        174
       ]
     },
     {
@@ -821,18 +822,20 @@
         "C-2"
       ],
       "card": "docs/pr-cards/F-1.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
         "F-1"
       ],
-      "readiness": "READY",
+      "readiness": "COMPLETE",
       "ownerInputs": [],
       "pr": [
         167,
         168,
-        170
+        170,
+        172,
+        173
       ]
     },
     {
@@ -844,14 +847,18 @@
         "F-1"
       ],
       "card": "docs/pr-cards/F-2.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 250,
       "units": [
         "F-2"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "ownerInputs": []
+      "readiness": "COMPLETE",
+      "ownerInputs": [],
+      "pr": [
+        175,
+        176
+      ]
     },
     {
       "id": "F-3",
@@ -862,15 +869,20 @@
         "F-2"
       ],
       "card": "docs/pr-cards/F-3.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
         "F-3"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [
         "IN-11"
+      ],
+      "pr": [
+        177,
+        178,
+        183
       ]
     },
     {
@@ -882,14 +894,18 @@
         "F-3"
       ],
       "card": "docs/pr-cards/H-1.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 450,
       "units": [
         "H-1"
       ],
       "readiness": "WRITE_CARD_AT_START",
-      "ownerInputs": []
+      "ownerInputs": [],
+      "pr": [
+        184,
+        185
+      ]
     },
     {
       "id": "H-2",
