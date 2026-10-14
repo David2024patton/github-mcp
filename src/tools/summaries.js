@@ -5,7 +5,6 @@
 const get = (o, path) => path.split('.').reduce((a, k) => (a === null || a === undefined ? undefined : a[k]), o);
 const login = (path) => (o) => get(o, path)?.login;
 const names = (path, key = 'name') => (o) => get(o, path)?.map((x) => x?.[key]).filter((x) => x !== undefined);
-const logins = (path) => names(path, 'login');
 const count = (path) => (o) => (Array.isArray(get(o, path)) ? get(o, path).length : undefined);
 const first = (...paths) => (o) => paths.map((p) => get(o, p)).find((v) => v !== undefined && v !== null);
 const TEXT = ['body', 'title', 'message', 'text', 'description', 'name'];
