@@ -18,7 +18,7 @@
     "R",
     "X"
   ],
-  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split — A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00).",
+  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split — A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00). Owner-approved execution: adjacent small roadmap slices are grouped into cohesive outcome-sized PRs; fixed PR counts and multiple-of-five session boundaries are retired. See docs/SESSION-START.md.",
   "cards": [
     {
       "id": "A-1",
