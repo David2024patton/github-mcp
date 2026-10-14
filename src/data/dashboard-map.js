@@ -1,9 +1,10 @@
+import { EXTRA_GUIDES } from './dashboard-sections.js';
 // Settings GitHub gives no API for (B-8 seed; O-1 walks every settings page against the live dashboard and completes the map).
 // Each entry returns structured steps (contract section 11): `{ n, action, target, value? }`, the page `url` (with {org} / {user}
 // filled in when the account is known), what the owner should see afterwards, and, where GitHub lets the value be read, the
 // read-back `verifyWith` (a tool that exists in docs/TOOL-CATALOG.md). A guided setting is never reported done unless it is
 // read back or Chris says so.
-export const MAP_STATUS = 'seed: the settings GitHub has no API for. O-1 completes it against the live dashboard.';
+export const MAP_STATUS = 'Guided owner settings index: verify the current GitHub page before changing settings; UI-only changes need manual confirmation.';
 
 const org = (path) => `https://github.com/organizations/{org}/${path}`;
 const me = (path) => `https://github.com/settings/${path}`;
@@ -18,7 +19,7 @@ export const SETTINGS = Object.freeze([
       { action: 'Press the button', target: 'Save' }
     ],
     expected: 'The box stays ticked. Members without two-factor are removed unless they turn it on, so check the member list first.',
-    verifyWith: { tool: 'github_org_get', args: { org: '{org}' }, field: 'two_factor_requirement_enabled', equals: true }
+    verifyWith: { tool: 'github_admin_check_setting', args: { settingId: 'org-require-2fa', owner: '{org}', expectedBoolean: true }, field: 'verified', equals: true }
   },
   {
     id: 'org-saml-sso', scope: 'org', title: 'SAML single sign-on (Enterprise Cloud)', page: 'Organization settings → Authentication security',
@@ -163,6 +164,7 @@ export const SETTINGS = Object.freeze([
     ],
     expected: 'Deleting removes everything and cannot be undone. This server will never do it.'
   }
+  ...EXTRA_GUIDES
 ]);
 
 const norm = (text) => String(text ?? '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -186,9 +188,9 @@ export function findSettings(query, { max = 3, scope } = {}) {
 }
 
 /** Fills {org} and {user} in a string, an object or an array. */
-export function fill(value, { org: orgName, user }) {
-  if (typeof value === 'string') return value.replaceAll('{org}', orgName ?? '{org}').replaceAll('{user}', user ?? '{user}');
-  if (Array.isArray(value)) return value.map((v) => fill(v, { org: orgName, user }));
+export function fill(value, { org: orgName, user, repo }) {
+  if (typeof value === 'string') return value.replaceAll('{org}', orgName ?? '{org}').replaceAll('{user}', user ?? '{user}').replaceAll('{repo}', repo ?? '{repo}');
+  if (Array.isArray(value)) return value.map((v) => fill(v, { org: orgName, user, repo }));
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, fill(v, { org: orgName, user })]));
   return value;
 }
