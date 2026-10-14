@@ -67,7 +67,7 @@ const scratchCreate=defineGithubWrite({
         const github=await octo(ctx,target.owner);
         const createdSha=await captureScratchOrigin(github,{
           owner:target.owner,repo:args.name,runId:args.runId,created:data});
-        const birthLabels=await captureScratchBirthLabels(github,{owner:target.owner,repo:args.name});
+        const birthLabels=await captureScratchBirthLabels(github,{owner:target.owner,repo:args.name,sleep:ctx.sleep});
         return {objectId:data.full_name,createdSha,birthLabels};
       }});
     return {data:created};
