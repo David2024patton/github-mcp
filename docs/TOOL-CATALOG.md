@@ -207,9 +207,9 @@ Card(s): F-3.
 | `github_discussion_get` | One discussion with its comments and answer (GraphQL) | — | C | I | Op | R | F-3 built #178 |
 | `github_discussion_create` | Start a discussion (GraphQL) | P·M | N | I | Op | E | F-3 built #178 |
 | `github_discussion_comment` | Comment on a discussion or mark a comment as the answer (GraphQL) | C·M | N | I | Op | E | F-3 built #178 |
-| `github_project_list` | Projects (v2) of an org or user | — | N | I,U | Op | R | F-3 |
-| `github_project_get` | One project: fields, views, item counts | — | N | I,U | Op | R | F-3 |
-| `github_project_list_items` | Items in a project with field values | — | N | I,U | Op | R | F-3 |
+| `github_project_list` | Projects (v2) of an org or user | — | N | I,U | Op | R | F-3 built #182 |
+| `github_project_get` | One project: fields, views, item counts | — | N | I,U | Op | R | F-3 built #182 |
+| `github_project_list_items` | Items in a project with field values | — | N | I,U | Op | R | F-3 built #182 |
 | `github_project_set_item` | Add an issue/PR to a project or set an item's field value | P | N | I,U | Op | E | F-3 |
 | `github_project_remove_item` | Remove an item from a project | C | N | I,U | Op | E | F-3 |
 | `github_search_github` | Search code, issues, pull requests, commits, repositories or users with GitHub's search syntax (type chosen by argument) | — | C | I | B,Op | R | F-3 built #177 |
