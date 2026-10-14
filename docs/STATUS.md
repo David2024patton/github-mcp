@@ -203,6 +203,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: implementation/test source staged; no claimed CI, deployment, provider mutation, HMAC acceptance or cleanup. GitHub masks signer values; require receiver signature verification."
+  },
+  {
+    "id": "GITHUB-H3-ACCESS-LIFECYCLE",
+    "priority": 2,
+    "requiredRevision": "8e5ecfa92cd5eb9a2c17ef9dc74093d5a80c30d0",
+    "task": "Verify through the custom deployed MCP the enrolled scratch repository collaborator, invitation and public deploy-key read/write/denial/readback and exact approved cleanup workflows",
+    "procedure": "docs/pr-cards/H-3.md",
+    "gates": "Checked READY deployment contains merged H-3 source; scratch-only, explicit owner authority and fixture safeguards, no production settings or spend activation without independent approval",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: H-3 source and tests proposed; no merged CI or real provider permission-change acceptance. GitHub account production OFF and spend $0. Retain any rejected external changes as blocked acceptance, not false code passes."
   }
 ]
 ```
