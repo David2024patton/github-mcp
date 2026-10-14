@@ -11,6 +11,7 @@ const members={type:'object',properties:{users:member,teams:member,apps:member},
 const CHECK={type:'object',properties:{context:{type:'string',minLength:1,maxLength:200},
   app_id:{type:'integer',minimum:-1}},required:['context'],additionalProperties:false};
 const checkChanges={type:['object','null'],properties:{strict:BOOL,
+  contexts:{type:'array',maxItems:100,uniqueItems:true,items:{type:'string',minLength:1,maxLength:200}},
   checks:{type:'array',maxItems:100,items:CHECK}},additionalProperties:false};
 const reviewChanges={type:['object','null'],properties:{
   dismiss_stale_reviews:BOOL,require_code_owner_reviews:BOOL,
@@ -56,7 +57,7 @@ const reads=(raw)=>{
     if(new Set(list.map(q=>q.context)).size!==list.length||
       new Set(c.contexts).size!==list.length)
       throw refusal('Incomplete required-check contexts; refusing whole-object replacement.');
-    return {strict:c.strict,checks:list};
+    return {strict:c.strict,contexts:[...c.contexts],checks:list};
   })();
   const pr=raw.required_pull_request_reviews===null?null:(()=>{
     const r=raw.required_pull_request_reviews;
@@ -102,8 +103,11 @@ const mergeChanges=(base,changes)=>{
   for(const k of ['required_status_checks','enforce_admins','required_pull_request_reviews','restrictions'])
     if(next[k]===undefined)throw refusal('A new branch protection requires explicit '+k+'; no defaults are invented.');
   const checks=next.required_status_checks;
-  if(checks!==null&&(!Array.isArray(checks.checks)||typeof checks.strict!=='boolean'))
-    throw refusal('Required-check settings must include strict and the complete context/app list.');
+  if(checks!==null&&(!Array.isArray(checks.checks)||!Array.isArray(checks.contexts)||
+    typeof checks.strict!=='boolean'||checks.checks.length!==checks.contexts.length||
+    new Set(checks.contexts).size!==checks.contexts.length||
+    !checks.checks.every(q=>checks.contexts.includes(q.context))))
+    throw refusal('Required-check settings must include strict, contexts and the complete app-bound check list.');
   if(next.required_pull_request_reviews!==null){
     const r=next.required_pull_request_reviews;
     if(typeof r.dismiss_stale_reviews!=='boolean'||typeof r.require_code_owner_reviews!=='boolean'||
