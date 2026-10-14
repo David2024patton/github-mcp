@@ -894,17 +894,18 @@
         "F-3"
       ],
       "card": "docs/pr-cards/H-1.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
         "H-1"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "COMPLETE",
       "ownerInputs": [],
       "pr": [
         184,
-        185
+        185,
+        188
       ]
     },
     {
