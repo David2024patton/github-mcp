@@ -821,18 +821,20 @@
         "C-2"
       ],
       "card": "docs/pr-cards/F-1.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
         "F-1"
       ],
-      "readiness": "READY",
+      "readiness": "COMPLETE",
       "ownerInputs": [],
       "pr": [
         167,
         168,
-        170
+        170,
+        172,
+        173
       ]
     },
     {

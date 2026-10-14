@@ -33,6 +33,7 @@ import * as issuesRead from './issues-read.js';
 import * as issuesWrite from './issues-write.js';
 import * as issuesRelationsWrite from './issues-relations-write.js';
 import * as issuesReactionsWrite from './issues-reactions-write.js';
+import * as issuesTransferWrite from './issues-transfer-write.js';
 import * as devRunsRead from './dev-runs-read.js';
 import * as devScratchWrite from './dev-scratch-write.js';
 import * as devSeedWrite from './dev-seed-write.js';
@@ -42,4 +43,4 @@ import * as pullsMerge from './pulls-merge.js';
 import * as pullsStacks from './pulls-stacks.js';
 
 // Tool modules are added here as their cards land.
-export const registry = mergeNamespaces([meta, server, diagnostics, devRunsRead, devScratchWrite, devSeedWrite, devCleanupWrite, repos, reposWrite, codeRead, codeWrite, branches, pullsRead, issuesRead, issuesWrite, issuesRelationsWrite, issuesReactionsWrite, pullsWrite, pullsMerge, pullsStacks, reviews, reviewsWrite, actionsRead, actionsWrite, checksRead, checksWrite, variables, secrets, environmentsRead, environmentsWrite, environmentsPolicies, deploymentsRead, deploymentsWrite, releasesRead, releasesWrite, releasesAssets, pagesRead, packagesRead, pagesWrite, packagesWrite, packagesRestore]);
+export const registry = mergeNamespaces([meta, server, diagnostics, devRunsRead, devScratchWrite, devSeedWrite, devCleanupWrite, repos, reposWrite, codeRead, codeWrite, branches, pullsRead, issuesRead, issuesWrite, issuesRelationsWrite, issuesReactionsWrite, issuesTransferWrite, pullsWrite, pullsMerge, pullsStacks, reviews, reviewsWrite, actionsRead, actionsWrite, checksRead, checksWrite, variables, secrets, environmentsRead, environmentsWrite, environmentsPolicies, deploymentsRead, deploymentsWrite, releasesRead, releasesWrite, releasesAssets, pagesRead, packagesRead, pagesWrite, packagesWrite, packagesRestore]);
