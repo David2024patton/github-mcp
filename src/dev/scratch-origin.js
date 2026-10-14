@@ -62,7 +62,8 @@ export async function verifySeedResumeOrigin(github,{owner,repo,runId,existing,r
 // GitHub can seed organization-default labels asynchronously AFTER responding
 // to POST /orgs/{org}/repos. An immediate empty/partial read is not a usable
 // deletion-time baseline. Poll bounded, independently complete inventories
-// until nonempty metadata agrees across three consecutive reads, including
+// until nonempty metadata agrees across three consecutive reads, or a
+// completely empty inventory stays unchanged for the entire bounded window, including
 // a minimum observation window. Custom org default-label sets are supported:
 // no guessed fixed count or automatic adoption of later labels.
 //
@@ -78,10 +79,14 @@ export async function captureScratchBirthLabels(github,{owner,repo,sleep=ms=>new
       throw refusal('The initial scratch label inventory was incomplete. The repository intent remains uncertain.');
     const labels=validateScratchBirthLabels(page.items);
     const current=JSON.stringify([...labels].sort((a,b)=>a.id-b.id));
-    if(labels.length>0&&current===fingerprint)stable+=1;
-    else {fingerprint=labels.length>0?current:null;stable=labels.length>0?1:0;}
-    if(i>=3&&stable>=3)return labels;
+    if(current===fingerprint)stable+=1;
+    else {fingerprint=current;stable=1;}
+    // Some scratch organizations intentionally configure zero default labels.
+    // Never accept an early zero: require a full observation window and all
+    // polls unchanged. Nonempty inventories need three stable reads.
+    if(labels.length>0&&i>=3&&stable>=3)return labels;
+    if(labels.length===0&&i===MAX_POLLS-1&&stable===MAX_POLLS)return labels;
     if(i<MAX_POLLS-1)await sleep(700);
   }
-  throw refusal('GitHub default labels did not become nonempty and stable during the bounded first-create observation; the repository intent stays uncertain. Never retroactively adopt labels.');
+  throw refusal('GitHub default labels did not stabilize during the bounded first-create observation; the repository intent stays uncertain. Never retroactively adopt labels.');
 }

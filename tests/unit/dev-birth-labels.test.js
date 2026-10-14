@@ -50,16 +50,24 @@ describe('first-create scratch label observation',()=>{
     expect(calls).toBeGreaterThanOrEqual(5);
     expect(pauses).toBe(calls-1);
   });
-  it('refuses permanently empty or continually changing first-create label inventories',async()=>{
-    for(const change of [false,true]){
-      let reads=0;
-      const gh={paginate:{iterator:async function*(){
-        reads+=1;
-        yield {data:change?[{...observed,id:reads}]:[],headers:{}};
-      }}};
-      await expect(captureScratchBirthLabels(gh,{owner,repo,sleep:async()=>{}}))
-        .rejects.toThrow(/stable|nonempty/i);
-      expect(reads).toBe(9);
-    }
+  it('accepts an intentionally empty custom organization only after the entire unchanged observation window',async()=>{
+    let reads=0;
+    const gh={paginate:{iterator:async function*(){
+      reads+=1;
+      yield {data:[],headers:{}};
+    }}};
+    await expect(captureScratchBirthLabels(gh,{owner,repo,sleep:async()=>{}}))
+      .resolves.toEqual([]);
+    expect(reads).toBe(9);
+  });
+  it('refuses repeatedly changing first-create label inventories',async()=>{
+    let reads=0;
+    const gh={paginate:{iterator:async function*(){
+      reads+=1;
+      yield {data:[{...observed,id:reads}],headers:{}};
+    }}};
+    await expect(captureScratchBirthLabels(gh,{owner,repo,sleep:async()=>{}}))
+      .rejects.toThrow(/stabilize/i);
+    expect(reads).toBe(9);
   });
 });
