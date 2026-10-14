@@ -374,6 +374,20 @@ See pr-cards/DEVELOPER-CONNECTION.md. No production provider activation or paid 
 
 # STATUS
 
+## October 14, 2026 — O-1 guided owner admin and verified settings overview source
+
+Added the complete major repository/organization/personal dashboard settings
+family index and four native owner workflow reads: structured paged guides,
+GitHub-backed organization 2FA readback, per-account administration diagnostics
+and bounded security review. Signals distinguish ok, attention, provider
+unreadable and unavailable GitHub plan without optimistic conversions. Existing
+`github_where_is_setting` now supports enrolled-owner repository substitutions.
+Tests cover unique setting pages, operator confirmation limitation, fake provider
+shape, no writes, permission limits and $0 server status. Required full
+exact-head CI, review, merge and later READY deployed-version external acceptance
+remain separate; no GitHub administration setting was changed.
+
+
 ## October 14, 2026 — H-4 security/Actions settings source
 
 New native security-feature and Actions settings read/write tools complete
