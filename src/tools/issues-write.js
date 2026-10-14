@@ -138,7 +138,7 @@ export const issueLock = defineGithubWrite({
   },
   readAfter: ({ args, ctx, target: t }) => getIssue(ctx, t, args.number),
   verify: ({ args, after }) => !!after && !!after.locked === args.locked,
-  inverse: ({ args, target: t }) => ({ tool: 'github_issue_lock', args: { owner: t.owner, repo: t.repo, number: args.number, locked: !args.locked } }),
+  inverse: ({ args, before, target: t }) => before.locked === args.locked ? null : ({ tool: 'github_issue_lock', args: { owner: t.owner, repo: t.repo, number: args.number, locked: !args.locked } }),
   present: ({ args, after }) => ({ number: args.number, locked: !!after.locked, active_lock_reason: after.active_lock_reason ?? null })
 });
 
@@ -180,7 +180,7 @@ export const issueSetLabels = defineGithubWrite({
   name: 'github_issue_set_labels', area: 'issue', audience: ['B', 'Op'],
   description: 'Add, remove or replace issue or PR labels; verify the resulting exact label set.',
   properties: { owner: OWNER, repo: REPO, number: NUMBER, mode: { type: 'string', enum: ['add','remove','replace'] },
-    labels: { type: 'array', minItems: 1, maxItems: 30, items: { type: 'string', minLength: 1, maxLength: 100 } } },
+    labels: { type: 'array', minItems: 0, maxItems: 30, items: { type: 'string', minLength: 1, maxLength: 100 } } },
   required: ['repo', 'number', 'mode', 'labels'],
   declarations: { production: 'never' },
   target,
