@@ -1,3 +1,9 @@
+## October 14, 2026 — H-2 delivery lifecycle controls (PR #190, exact-head CI and merge required)
+
+New genuine webhook-delete, redelivery and ping operations complete the existing webhook delivery/cleanup control family at source: exact hook identification, public HTTPS target validation, service-owned confirmed write journal, independent 404 or unique new-delivery/GUID readback, unconfirmed asynchronous outcomes, confirmation and production classifications. Tests exercise three doors, provider request-shape validation, missing delivery identity, unsafe URL refusal, capped inventory and replay. No live webhook creation, deletion, delivery retry, production account activation or spending performed. No secret values in tools.
+
+The H-2 parent outcome is **still IN_PROGRESS** until webhook save and signing-secret rotation are fully usable with server-generated 32-byte secrets and one-time private owner display. Follow the same owner gates; do not reduce catalog to fit test permissions. The October 14 release includes #187 but not these H-2 commits; all custom H-2 provider acceptance remains queued. H-1 public/blocked private governance acceptance is unchanged.
+
 ## October 14, 2026 — H-2 webhook observability source (PR #189, pending exact-head CI)
 
 Added three real webhook read operations for repository and organization scopes: bounded list, exact detail and delivery history/inspection. Requests remain scoped to the enrolled connection, exact numeric hook/delivery identities are checked and secret-bearing hook configurations, callback path/query, request/response bodies and headers are not surfaced. Tests cover fake GitHub REST shapes, result redaction and refusals. Subsequent H-2 webhook mutations, service-generated signing keys, one-time private display, delivery replay and protected deletion still need separate complete implementation/acceptance. CI and merge cannot be treated as provider pass. Public scratch H-1 reads observed an empty true ruleset inventory and absent classic protection; private-repo HTTP 403 is still **BLOCKED — PROVIDER PLAN**. Owner-approved public fixture `robinson-ai-scratch/rtc-ghaccept-h1-public-oct14` is a separately disposable, non-sensitive test repository; preserve it for H-1 checks following checked release, and do not delete original private quarantine.
@@ -118,6 +124,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: feature source branch H-2; not yet merged or deployed. No read/handler claim against production."
+  },
+  {
+    "id": "GITHUB-H2-WEBHOOK-DELIVERY-CONTROL",
+    "priority": 2,
+    "requiredRevision": "281cce651879623c359fb0b6b26490a36103de5b",
+    "task": "Verify actual custom H-2 webhook deletion and delivery retry/ping denied/write/readback on precisely owned public-scratch hooks, with new delivery GUID/ID readback and run-owned cleanup",
+    "procedure": "docs/pr-cards/H-2.md",
+    "gates": "Requires H-2 source in independently verified READY live ancestry, authorized disposable non-sensitive webhook fixtures, owner-approved production-mode permission for actual production classified writes, no new fee, never existing private quarantine",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: source-only feature in #190; owner production remains OFF, so no real delivery actions, deletion or attempted mutations claimed."
   }
 ]
 ```
