@@ -352,6 +352,21 @@ See pr-cards/DEVELOPER-CONNECTION.md. No production provider activation or paid 
 
 # STATUS
 
+## October 14, 2026 — H-4 security triage and dependency read source staged
+
+The first H-4 source integration now provides read/list of Dependabot, Code
+Scanning and Secret Scanning alerts, repository/global advisories and
+pull-request/commit-based dependency comparison. A guarded security alert status
+change uses kind-specific reasons and independent sanitized readback. Literal
+secret-scanning credential material and metadata must never enter any result
+or durable write journal. The new tests include three-door mutation contracts,
+secret non-disclosure, source-correct fake GitHub requests and plan-limited
+dependency-review 403 mapping. H-4 remains IN_PROGRESS: paid security feature
+controls and Actions settings are next, and no provider/live acceptance is
+claimed before checked READY source deployment. Existing production OFF/$0
+limits and owner approvals remain unchanged.
+
+
 ## October 14, 2026 — H-3 collaborator and deploy-key source under review
 
 Implemented full H-3 source for collaborators, pending invitation management, and
