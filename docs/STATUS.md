@@ -2,6 +2,10 @@
 
 New offline session utility: eight behavioral tests passed, including actual Git ancestry, partial releases, unknown/failed deployments, rollback, dependency gating, invalid queues, PR alignment and bounded output. All repository queues validate. Existing source/status evidence is preserved; no provider acceptance or release was performed. Owner explicitly approved publication on October 14; publish the reviewed maintenance branch, require exact-head CI/reviews, and merge only when those gates pass. No extra production release is authorized by this approval. Full broad application suites on the shared runner were interrupted after resource/time-limit failures; do not claim them passed. Existing exact-head remote CI/review gates must pass before any main merge.
 
+## October 14, 2026 — F-3 Projects v2 organization read workflow (PR #182)
+
+Implemented three native, scoped GitHub REST tools: Projects v2 list, exact project detail with fields and views, and item listing with bounded field values. GitHub App installation reads are limited to enrolled organization owners; user-owned REST Projects v2 explicitly reject App installation/user credentials, so these tools fail closed with the GitHub-authorized classic/GraphQL path guidance rather than silently switching accounts. Project identity is verified before item enumeration and inventory caps are disclosed. Focused fake-provider request-shape/denial tests and full required exact-head CI are merge gates, not provider acceptance. F-3 still needs separately guarded project add/field edits/removals, and all deployed/provider acceptance remains queued.
+
 ## Release acceptance queue — workflow optimization 2026-10-14
 
 Owner-authorized guidance/tooling maintenance: consolidated session procedure, focused
@@ -14,6 +18,29 @@ open obligations, original fixture ownership, approvals and deployment provenanc
 <!-- release-acceptance:start -->
 ```json
 [
+  {
+    "id": "GITHUB-CUSTOM-SCRATCH-READ",
+    "priority": 1,
+    "requiredRevision": "1c6c1f4af8d5aedaf3b3a438c75bd1f6f128ad16",
+    "task": "Confirm custom Chat-mode scratch repository identity, bounded search and run ledger read through service-owned OAuth",
+    "procedure": "docs/pr-cards/NATIVE-MCP-ACCEPTANCE.md",
+    "gates": "Read-only, enrolled scratch account, full PREVIEW profile, production OFF; verified Vercel READY and alias",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-14: custom Robinson GitHub Cloud returned PREVIEW/full and sole enrolled scratch Organization. Genuine github_batch calls returned private rtc-ghaccept-oct13-f1a repo, its existing active run (one journal row), successful project-scoped repository search and exact repo read. Independently Vercel READY dpl_ALZaayEj8fGWPuSSVZNMCyyy71VK matched live SHA and three production aliases. No writes, revocation, Hub route or cleanup executed."
+  },
+  {
+    "id": "GITHUB-SCRATCH-CLEANUP",
+    "priority": 2,
+    "requiredRevision": "1c6c1f4af8d5aedaf3b3a438c75bd1f6f128ad16",
+    "task": "Resolve exact quarantined initial-label scratch fixture through guarded remote preflight, explicit owner authorization, confirmed deletion and absence readback",
+    "procedure": "docs/pr-cards/V-2.md",
+    "gates": "Existing run ghaccept-oct13-f1a only; exact disposal decision and independent owner confirmation are still mandatory",
+    "dependsOn": ["GITHUB-CUSTOM-SCRATCH-READ"],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-14: live custom run inventory returned journal_ready=true but remote_verified=false, and can_execute_without_new_confirmation=false. Historical ten late-appearing default labels remain; no cleanup has been attempted or claimed."
+  },,
+
   {
     "id": "GITHUB-NATIVE",
     "priority": 1,
