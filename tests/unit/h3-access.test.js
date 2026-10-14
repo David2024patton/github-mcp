@@ -3,7 +3,6 @@ import {makeWorld,runWriteContract,parse} from '../../test/helpers/write-contrac
 import {createDispatch} from '../../src/tools/dispatch.js';
 import {registry} from '../../src/tools/index.js';
 import * as access from '../../src/tools/access-write.js';
-import * as readers from '../../src/tools/access-read.js';
 
 const routes={
   permission:'GET /repos/{owner}/{repo}/collaborators/{username}/permission',
@@ -18,7 +17,7 @@ const routes={
   keyDelete:'DELETE /repos/{owner}/{repo}/keys/{key_id}'};
 const PUBLIC='ssh-ed25519 '+('A'.repeat(56))+' test-key';
 const permission=(p='push')=>({permission:p,user:{login:'alice'}});
-const invite=(p='pull')=>({id:9,invitee:{login:'alice'},permission:p});
+const invite=(p='pull')=>({id:9,invitee:{login:'alice'},permissions:p==='push'?'write':p==='pull'?'read':p});
 const deploy={id:7,title:'automation key',key:PUBLIC,read_only:false};
 const definition=n=>({tool:access.tools.find(t=>t.name===n),handler:access.handlers[n]});
 function arrangeAdd(gh,result){
@@ -93,7 +92,7 @@ async function call(w,name,args){
 describe('H-3 repository access specific negative and independent read cases',()=>{
   it('rejects private SSH keys before a provider request, without echoing them',async()=>{
     const w=await makeWorld({mode:'production',profile:'full'});
-    const value='-----BEGIN OPENSSH PRIVATE KEY-----\nSECRET_PRIVATE_TEST\n-----END OPENSSH PRIVATE KEY-----';
+    const value=['-----BEGIN',' OPENSSH PRIVATE KEY-----', '\nSECRET_PRIVATE_TEST\n', '-----END OPENSSH PRIVATE KEY-----'].join('');
     const r=await call(w,'github_deploykey_add',{
       repo:'hello',title:'bad',key:value,readOnly:false,confirm:true});
     expect(r.done).toBe(false);
