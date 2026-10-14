@@ -166,15 +166,15 @@ Card(s): F-1.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_issue_list` | Issues by state, label, assignee, milestone, type (pull requests excluded by query, not by dropping rows) | — | F | I | B,Op | R | F-1 |
-| `github_issue_get` | One issue with sub-issue and dependency summary | — | C | I | B,Op | R | F-1 |
-| `github_issue_create` | New issue (labels, assignees, milestone, type) | P·M | C | I | B,Op | E | F-1 |
-| `github_issue_update` | Title, body, state with reason, milestone, type | P | F | I | B,Op | E | F-1 |
+| `github_issue_list` | Issues by state, label, assignee, milestone, type (pull requests excluded by query, not by dropping rows) | — | F | I | B,Op | R | F-1 built #167 |
+| `github_issue_get` | One issue with sub-issue and dependency summary | — | C | I | B,Op | R | F-1 built #167 |
+| `github_issue_create` | New issue (labels, assignees, milestone, type) | P·M | C | I | B,Op | E | F-1 built #167 |
+| `github_issue_update` | Title, body, state with reason, milestone, type | P | F | I | B,Op | E | F-1 built #167 |
 | `github_issue_lock` | Lock or unlock conversation | P | C | I | Op | E | F-1 |
-| `github_issue_list_comments` | Comments on an issue or PR | — | C | I | B,Op | R | F-1 |
-| `github_issue_comment` | Comment on an issue or PR | P·M | C | I | B,Op | E | F-1 |
+| `github_issue_list_comments` | Comments on an issue or PR | — | C | I | B,Op | R | F-1 built #167 |
+| `github_issue_comment` | Comment on an issue or PR | P·M | C | I | B,Op | E | F-1 built #167 |
 | `github_issue_edit_comment` | Edit a comment | P | C | I | B,Op | E | F-1 |
-| `github_issue_list_timeline` | Everything that happened to an issue (events, references, cross-links) | — | C | I | Op | R | F-1 |
+| `github_issue_list_timeline` | Everything that happened to an issue (events, references, cross-links) | — | C | I | Op | R | F-1 built #167 |
 | `github_issue_set_labels` | Add, remove or replace labels on an issue or PR | P | F | I | B,Op | E | F-1 |
 | `github_issue_set_assignees` | Add or remove assignees | P·M | C | I | Op | E | F-1 |
 | `github_issue_set_sub_issue` | Add, remove or reorder a sub-issue | P | N | I | Op | E | F-1 |
