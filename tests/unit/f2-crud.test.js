@@ -65,7 +65,11 @@ describe('F-2 semantics and safety',()=>{
     const w=await makeWorld();
     w.gh.when(L).reply(404,{message:'Not Found'});
     expect((await call(w,'github_label_save',{repo:'hello',name:'new',description:'Only',confirm:true})).done).toBe(false);
-    expect((await call(w,'github_label_save',{repo:'hello',name:'new',color:'xyz',confirm:true})).done).not.toBe(true);
+    const dispatch=createDispatch({credentials:w.credentials,gates:[],fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep});
+    const rejected=await dispatch({registry,name:'github_label_save',
+      args:{repo:'hello',name:'new',color:'xyz',confirm:true},connection:w.connection,db:w.db});
+    expect(rejected.isError).toBe(true);
+    expect(rejected.content[0].text).toMatch(/color/i);
     expect(writes(w.gh)).toEqual([]);
   });
   it('updates a milestone by number and leaves fields omitted from the patch',async()=>{
