@@ -59,13 +59,34 @@ export async function verifySeedResumeOrigin(github,{owner,repo,runId,existing,r
   return {initial_sha:repoIntent.created_sha,expected_default_sha:expected,verified:true};
 }
 
-// Evidence captured immediately after the successful private repository POST,
-// before any V-1 fixture mutation. This is NOT deletion authority: labels have
-// no creator/time provenance, and an actor could race the first inventory.
-export async function captureScratchBirthLabels(github,{owner,repo}) {
-  const page=await listAll(github,'GET /repos/{owner}/{repo}/labels',
-    {owner,repo,per_page:100},{max:100});
-  if(page.capped||!Array.isArray(page.items))
-    throw refusal('The initial scratch label inventory was incomplete. The repository intent remains uncertain.');
-  return validateScratchBirthLabels(page.items);
+// GitHub can seed organization-default labels asynchronously AFTER responding
+// to POST /orgs/{org}/repos. An immediate empty/partial read is not a usable
+// deletion-time baseline. Poll bounded, independently complete inventories
+// until nonempty metadata agrees across three consecutive reads, or a
+// completely empty inventory stays unchanged for the entire bounded window, including
+// a minimum observation window. Custom org default-label sets are supported:
+// no guessed fixed count or automatic adoption of later labels.
+//
+// The observation still does NOT prove who created any label or grant deletion
+// authority. A later drift always blocks V-2 cleanup.
+export async function captureScratchBirthLabels(github,{owner,repo,sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))}) {
+  const MAX_POLLS=9;
+  let fingerprint=null,stable=0;
+  for(let i=0;i<MAX_POLLS;i+=1){
+    const page=await listAll(github,'GET /repos/{owner}/{repo}/labels',
+      {owner,repo,per_page:100},{max:100});
+    if(page.capped||!Array.isArray(page.items))
+      throw refusal('The initial scratch label inventory was incomplete. The repository intent remains uncertain.');
+    const labels=validateScratchBirthLabels(page.items);
+    const current=JSON.stringify([...labels].sort((a,b)=>a.id-b.id));
+    if(current===fingerprint)stable+=1;
+    else {fingerprint=current;stable=1;}
+    // Some scratch organizations intentionally configure zero default labels.
+    // Never accept an early zero: require a full observation window and all
+    // polls unchanged. Nonempty inventories need three stable reads.
+    if(labels.length>0&&i>=3&&stable>=3)return labels;
+    if(labels.length===0&&i===MAX_POLLS-1&&stable===MAX_POLLS)return labels;
+    if(i<MAX_POLLS-1)await sleep(700);
+  }
+  throw refusal('GitHub default labels did not stabilize during the bounded first-create observation; the repository intent stays uncertain. Never retroactively adopt labels.');
 }
