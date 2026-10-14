@@ -203,6 +203,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: implementation/test source staged; no claimed CI, deployment, provider mutation, HMAC acceptance or cleanup. GitHub masks signer values; require receiver signature verification."
+  },
+  {
+    "id": "GITHUB-H3-ACCESS-LIFECYCLE",
+    "priority": 2,
+    "requiredRevision": "8e5ecfa92cd5eb9a2c17ef9dc74093d5a80c30d0",
+    "task": "Verify through the custom deployed MCP the enrolled scratch repository collaborator, invitation and public deploy-key read/write/denial/readback and exact approved cleanup workflows",
+    "procedure": "docs/pr-cards/H-3.md",
+    "gates": "Checked READY deployment contains merged H-3 source; scratch-only, explicit owner authority and fixture safeguards, no production settings or spend activation without independent approval",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: H-3 source and tests proposed; no merged CI or real provider permission-change acceptance. GitHub account production OFF and spend $0. Retain any rejected external changes as blocked acceptance, not false code passes."
   }
 ]
 ```
@@ -340,6 +351,19 @@ See pr-cards/DEVELOPER-CONNECTION.md. No production provider activation or paid 
 **Owner release timing update — 2026-10-13:** Daily checked main-to-live release now targets 00:01 America/Denver using GitHub native timezone support, so both daylight and standard time remain 12:01 a.m. All exact-head CI, atomic daily-marker, fast-forward, preview/build-cost and independent live/provider approval gates remain unchanged. Owner separately approved one manual release after this setup work completes; schedule syntax/CI, actual deployment and connected acceptance remain distinct evidence. GitHub scheduling can be delayed; no guaranteed start time is claimed.
 
 # STATUS
+
+## October 14, 2026 — H-3 collaborator and deploy-key source under review
+
+Implemented full H-3 source for collaborators, pending invitation management, and
+public-only SSH deploy-key lifecycle. The seven native operations include bounded
+privacy-preserving inventories, permission/invitation readbacks, direct membership
+checks, duplicate key detection, per-operation approval/production/access guards,
+and private-key header refusal without logging inputs. Five mutation contracts
+are under test through the three regular tool doors. No source is a deployed
+provider acceptance pass: wait for exact-head CI/review/merge, checked READY release
+and separately authorized live scratch access/cleanup tests. Production and spend
+remain disabled. Approved parent card H-3 remains IN_PROGRESS until proven.
+
 
 ## October 14, 2026 — H-2 webhook create/update and signing-key rotation implementation
 
