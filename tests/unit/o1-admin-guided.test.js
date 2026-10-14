@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {SETTINGS,findSettings,fill} from '../../src/data/dashboard-map.js';
+import {SETTINGS,fill} from '../../src/data/dashboard-map.js';
 import {makeWorld} from '../../test/helpers/write-contract.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
 import {registry} from '../../src/tools/index.js';
