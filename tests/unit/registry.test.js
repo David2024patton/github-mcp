@@ -14,6 +14,8 @@ describe('tool registry', () => {
       'github_content_put_file', 'github_content_delete_file', 'github_content_push_files', 'github_commit_comment', 'github_git_update_ref',
       'github_branch_list', 'github_branch_get', 'github_tag_list', 'github_branch_create', 'github_branch_rename', 'github_branch_delete', 'github_branch_merge', 'github_tag_create', 'github_tag_delete',
       'github_pr_list', 'github_pr_get', 'github_pr_get_diff', 'github_pr_list_files', 'github_pr_list_commits',
+      'github_issue_list', 'github_issue_get', 'github_issue_list_comments', 'github_issue_list_timeline',
+      'github_issue_create', 'github_issue_update', 'github_issue_comment', 'github_issue_lock', 'github_issue_edit_comment', 'github_issue_set_labels', 'github_issue_set_assignees',
       'github_pr_create', 'github_pr_update', 'github_pr_close', 'github_pr_set_draft', 'github_pr_update_branch',
       'github_pr_merge', 'github_pr_merge_async', 'github_pr_set_auto_merge', 'github_pr_list_stacks', 'github_pr_stack_manage',
       'github_review_list', 'github_review_list_threads', 'github_review_list_comments',
