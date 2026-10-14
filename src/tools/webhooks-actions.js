@@ -13,7 +13,7 @@ const target=(a,c)=>{
   if(a.scope==='org'&&a.repo)throw new TypeError('Organization webhook cannot target a repository.');
   if(a.scope!=='org'&&!a.repo)throw new TypeError('A repository webhook needs a repository.');
   return {owner:ownerOf(a,c),...(a.scope==='org'?{}:{repo:a.repo}),
-    scope:a.scope==='org'?'org':'repo'};
+    scope:a.scope==='org'?'org':'repo',kind:'repo-settings'};
 };
 const args=t=>t.scope==='org'?{org:t.owner}:{owner:t.owner,repo:t.repo};
 const route=(t,suffix='')=>(t.scope==='org'?'/orgs/{org}/hooks':'/repos/{owner}/{repo}/hooks')+suffix;
@@ -76,8 +76,7 @@ export const webhookRedeliver=defineGithubWrite({
     const inventory=await deliveries(ctx,t,a.hookId);
     return {...snapshot,delivery:d,known:inventory.map(v=>v.id)};
   },
-  classify:({ctx,target:t})=>productionReason(ctx,t).then(production=>({production,
-    notifies:['GitHub webhook destination receives an additional event']})),
+  classify:({ctx,target:t})=>productionReason(ctx,t).then(production=>({production})),
   summarize:({args:a,target:t,before:b})=>
     'Redeliver '+b.delivery.event+' from webhook #'+a.hookId+' for '+
     summarizeTarget(t,a)+' to '+b.target_host+'; original delivery #'+a.deliveryId,
@@ -103,8 +102,7 @@ export const webhookPing=defineGithubWrite({
     const snap=await inspect(a,ctx,t),existing=await deliveries(ctx,t,a.hookId);
     return {...snap,known:existing.map(v=>v.id)};
   },
-  classify:({ctx,target:t})=>productionReason(ctx,t).then(production=>({production,
-    notifies:['GitHub webhook destination receives a ping']})),
+  classify:({ctx,target:t})=>productionReason(ctx,t).then(production=>({production})),
   summarize:({args:a,target:t,before:b})=>
     'Ping webhook #'+a.hookId+' in '+summarizeTarget(t,a)+' at '+b.target_host+
     '; delivery receipt is required to confirm success',
