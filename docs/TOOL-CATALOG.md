@@ -357,10 +357,10 @@ Card(s): H-2.
 | `github_webhook_list` | Repository or organization webhooks (URL host, events, active; secrets never shown) | — | C | I | B,O | R | H-2 built #189 |
 | `github_webhook_get` | One webhook's configuration and recent delivery health | — | C | I | B,O | R | H-2 built #189 |
 | `github_webhook_save` | Create or update a webhook; a new signing secret is generated and shown once on the setup page | C·Prod | F | I | B,O | F | H-2 |
-| `github_webhook_delete` | Delete a webhook | C·D·Prod | C | I | O | F | H-2 |
+| `github_webhook_delete` | Delete a webhook | C·D·Prod | C | I | O | F | H-2 built #190 |
 | `github_webhook_list_deliveries` | Recent deliveries (status, event, duration), or one delivery's request/response (payload capped) | — | N | I | B,Op | R | H-2 built #189 |
-| `github_webhook_redeliver` | Redeliver one past delivery | C·Prod* | N | I | B,Op | E | H-2 |
-| `github_webhook_ping` | Send a ping (or a test push event) to a webhook | P | C | I | B | E | H-2 |
+| `github_webhook_redeliver` | Redeliver one past delivery | C·Prod* | N | I | B,Op | E | H-2 built #190 |
+| `github_webhook_ping` | Send a confirmed ping to a public HTTPS webhook, with delivery readback | C·Prod* | C | I | B | E | H-2 built #190 |
 | `github_webhook_rotate_secret` | Replace a webhook's signing secret (new one shown once on the setup page) | C·Prod | N | I | O | F | H-2 |
 
 ## Collaborators and deploy keys (`github_collab_*, github_deploykey_*`) — 7
