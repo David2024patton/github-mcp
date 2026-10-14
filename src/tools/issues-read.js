@@ -13,7 +13,7 @@ const issueBrief = (i) => ({
   state_reason: i.state_reason, body: i.body, author: i.user?.login,
   author_association: i.author_association, labels: (i.labels ?? []).map(l => typeof l === 'string' ? l : l.name),
   assignees: (i.assignees ?? []).map(a => a.login),
-  milestone: i.milestone?.number ?? null, comments: i.comments,
+  milestone: i.milestone?.number ?? null, type: i.type?.name ?? i.type ?? null, comments: i.comments,
   created_at: i.created_at, updated_at: i.updated_at, closed_at: i.closed_at, html_url: i.html_url
 });
 
