@@ -110,14 +110,17 @@ export const projectRemoveItem=defineGithubWrite({
   read:async(a,ctx,t)=>{
     const project=await getProject(ctx,t,a);
     const current=await getItem(ctx,t,a,a.itemId);
-    if(!current||current.id!==a.itemId)throw refusal('Project item not found.');
+    if(current&&current.id!==a.itemId)throw refusal('Project item identity mismatch.');
     return {projectId:project.node_id,current};
   },
   classify:()=>({}),
   summarize:({args:a,target:t})=>`REMOVE organization project #${a.number} item #${a.itemId} from ${t.owner}; stored field values may be lost`,
-  apply:({args:a,ctx,target:t})=>octo(ctx,t.owner).then(gh=>gh.request(
-    'DELETE /orgs/{org}/projectsV2/{project_number}/items/{item_id}',
-    {...p(t,a),item_id:a.itemId})),
+  apply:({args:a,ctx,target:t,before:b})=>{
+    if(!b.current)throw refusal('Project item no longer exists. No deletion was sent.');
+    return octo(ctx,t.owner).then(gh=>gh.request(
+      'DELETE /orgs/{org}/projectsV2/{project_number}/items/{item_id}',
+      {...p(t,a),item_id:a.itemId}));
+  },
   readAfter:({args:a,ctx,target:t})=>getItem(ctx,t,a,a.itemId),
   verify:({after})=>after===null,inverse:()=>null,
   present:({args:a})=>({removed_item_id:a.itemId,field_values_lost:true})

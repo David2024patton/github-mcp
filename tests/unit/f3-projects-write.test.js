@@ -19,13 +19,16 @@ const routes={
   del:'DELETE /orgs/{org}/projectsV2/{project_number}/items/{item_id}'
 };
 function arrange(gh,outcome,kind){
-  let created=false,removed=false,updated=false;
+  let created=false,updated=false;
   gh.when(routes.project).reply(200,p);
   gh.when(routes.source).reply(200,source);
   gh.when(routes.list).reply(200,[]);
   gh.when(routes.fields).reply(200,[{id:3,name:'Status',data_type:'text'}]);
-  gh.when(routes.item).reply(200,()=>{
-    if(kind==='remove'&&removed)return {status:404,body:{message:'Not Found'}};
+  if(kind==='remove')gh.when(routes.item).replySequence([
+    {status:200,body:item()},
+    {status:outcome==='ok'?404:200,body:outcome==='ok'?{message:'Not Found'}:item()}
+  ]);
+  else gh.when(routes.item).reply(200,()=>{
     const v=item();
     if(kind==='set'&&updated)v.fields=[{id:3,value:outcome==='ok'?'Doing':'Wrong'}];
     if(kind==='add'&&created&&outcome!=='ok')v.content={id:999};
@@ -33,7 +36,7 @@ function arrange(gh,outcome,kind){
   });
   gh.when(routes.add).reply(201,()=>{created=true;return {value:item()}});
   gh.when(routes.patch).reply(200,()=>{updated=true;return item()});
-  gh.when(routes.del).reply(204,()=>{removed=true;return null});
+  gh.when(routes.del).reply(204,null);
 }
 runWriteContract({
   label:'github_project_set_item add',definition:def('github_project_set_item'),
