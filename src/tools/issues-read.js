@@ -68,7 +68,7 @@ export const issueGet = defineRead({
       for (const [kind, route] of Object.entries(routes)) {
         try {
           const { items, capped } = await listAll(octokit, route, p, { max: 100 });
-          result.relations[kind] = { items: items.map(x => ({ number: x.number, id: x.id, title: x.title, state: x.state })), ...(capped ? { more_exist: true } : {}) };
+          result.relations[kind] = { items: items.map(x => ({ number: x.number, id: x.id, title: x.title, state: x.state, author_association: x.author_association ?? 'NONE' })), ...(capped ? { more_exist: true } : {}) };
         } catch (error) {
           // Permission/feature uncertainty is not evidence of zero relationships.
           result.relations[kind] = { available: false, reason: error?.status === 404 ? 'not_found_or_unavailable' : 'could_not_read' };
