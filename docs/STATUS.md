@@ -1,3 +1,7 @@
+## October 14, 2026 — F-3 native GitHub Discussions (PR #178)
+
+Adds real GraphQL discussions list/get and guarded create/comment/chosen-answer tools. Creation resolves the exact category and repository node IDs from GitHub with complete category enumeration. A chosen answer verifies the selected comment belongs to the requested discussion before mutation, and each mutation independently reads back the actual discussion/comment GraphQL identity. Outsider notification guard applies to discussion text and authors; preview and durable journal remain standard. Three-door write-contract/GraphQL schema tests cover source, reply, answer and negative foreign identities. Search is already merged in #177; Projects v2 remains incomplete until later PRs. No native hosted OAuth acceptance or production changes are implied by CI.
+
 ## October 14, 2026 — F-3 cross-type GitHub search (PR #177)
 
 Add `github_search_github` with actual GitHub pinned-version code, issue, PR, commit, repository and user search endpoints. Enforce issue/PR query distinction and provider-response filtering, page and 1000-result API bounds, disclose incomplete results and trim returned search fragments/messages. Six real request-shape tests exercise the right route, arguments, and capped projection. F-3 discussions/Projects v2 remain incomplete; no claim of source completion or native deployed connected acceptance. Production/off/spending/$0 policies unchanged.
