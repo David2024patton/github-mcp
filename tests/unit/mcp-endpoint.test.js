@@ -142,6 +142,22 @@ describe('MCP endpoint over HTTP', () => {
     expect(body.result.tools).toEqual([]);
   });
 
+  it('follows standard nextCursor to retrieve every actual catalog tool over HTTP', async () => {
+    const url = await start(builtRegistry);
+    const names = [];
+    let cursor;
+    do {
+      const { status, body } = await rpc(url, 'tools/list', cursor ? { cursor } : {});
+      expect(status).toBe(200);
+      expect(body.result.tools.length).toBeLessThanOrEqual(40);
+      names.push(...body.result.tools.map(t => t.name));
+      cursor = body.result.nextCursor;
+    } while (cursor);
+    const expected = builtRegistry.tools.filter(t => t.writes !== true || t.profiles.includes('everyday')).map(t => t.name);
+    expect(names).toEqual(expected);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
   it('answers any tool call with an error while only the default deny dispatcher exists, even for a registered tool', async () => {
     let ran = false;
     const registry = mergeNamespaces([{ tools: [{ name: 'github_example', description: 'Example', inputSchema: { type: 'object' } }], handlers: { github_example: async () => { ran = true; return {}; } } }]);
