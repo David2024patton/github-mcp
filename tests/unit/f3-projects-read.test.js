@@ -7,7 +7,6 @@ const R={
   list:'GET /orgs/{org}/projectsV2',
   get:'GET /orgs/{org}/projectsV2/{project_number}',
   fields:'GET /orgs/{org}/projectsV2/{project_number}/fields',
-  views:'GET /orgs/{org}/projectsV2/{project_number}/views',
   items:'GET /orgs/{org}/projectsV2/{project_number}/items'
 };
 const project={id:8,node_id:'PVT_test',number:9,title:'Roadmap',public:false,
@@ -33,14 +32,13 @@ describe('F-3 Projects v2 native REST reads',()=>{
     expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);
     expectNoInvalid(w);
   });
-  it('gets a project and enumerates separate bounded fields and views',async()=>{
+  it('gets a project and enumerates bounded custom fields',async()=>{
     const w=await makeWorld();
     w.gh.when(R.get).reply(200,project);
     w.gh.when(R.fields).reply(200,[{id:10,name:'Status',data_type:'single_select',
       options:[{id:'a',name:{raw:'Doing'},color:'BLUE'}]}]);
-    w.gh.when(R.views).reply(200,[{id:4,number:1,name:'Board',layout:'board'}]);
     const r=await call(w,'github_project_get',{number:9});
-    expect(r).toMatchObject({node_id:'PVT_test',fields:{count:1},views:{count:1}});
+    expect(r).toMatchObject({node_id:'PVT_test',fields:{count:1}});
     expect(r.fields.items[0].options[0].name).toBe('Doing');
     expectNoInvalid(w);
   });

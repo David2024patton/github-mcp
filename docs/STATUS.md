@@ -4,7 +4,7 @@ New offline session utility: eight behavioral tests passed, including actual Git
 
 ## October 14, 2026 — F-3 Projects v2 organization read workflow (PR #182)
 
-Implemented three native, scoped GitHub REST tools: Projects v2 list, exact project detail with fields and views, and item listing with bounded field values. GitHub App installation reads are limited to enrolled organization owners; user-owned REST Projects v2 explicitly reject App installation/user credentials, so these tools fail closed with the GitHub-authorized classic/GraphQL path guidance rather than silently switching accounts. Project identity is verified before item enumeration and inventory caps are disclosed. Focused fake-provider request-shape/denial tests and full required exact-head CI are merge gates, not provider acceptance. F-3 still needs separately guarded project add/field edits/removals, and all deployed/provider acceptance remains queued.
+Implemented three native, scoped GitHub REST tools: Projects v2 list, exact project detail with fields, and item listing with bounded field values. GitHub App installation reads are limited to enrolled organization owners; user-owned REST Projects v2 explicitly reject App installation/user credentials, so these tools fail closed with the GitHub-authorized classic/GraphQL path guidance rather than silently switching accounts. Project identity is verified before item enumeration and inventory caps are disclosed. Focused fake-provider request-shape/denial tests and full required exact-head CI are merge gates, not provider acceptance. F-3 still needs separately guarded project add/field edits/removals, and all deployed/provider acceptance remains queued.
 
 ## Release acceptance queue — workflow optimization 2026-10-14
 
@@ -39,8 +39,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": ["GITHUB-CUSTOM-SCRATCH-READ"],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-14: live custom run inventory returned journal_ready=true but remote_verified=false, and can_execute_without_new_confirmation=false. Historical ten late-appearing default labels remain; no cleanup has been attempted or claimed."
-  },,
-
+  },
   {
     "id": "GITHUB-NATIVE",
     "priority": 1,

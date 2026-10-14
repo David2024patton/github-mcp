@@ -55,7 +55,7 @@ export const projectList=defineRead({
 });
 export const projectGet=defineRead({
   name:'github_project_get',area:'project',audience:['Op'],
-  description:'Get one organization Project v2 with bounded fields and saved views.',
+  description:'Get one organization Project v2 and its bounded custom field definitions.',
   properties:{owner:OWNER,number:NUMBER,max:MAX},required:['number'],
   handler:(a,ctx)=>plain(async()=>{
     const {org,octokit}=await projectClient(a,ctx),project_number=a.number;
@@ -63,14 +63,10 @@ export const projectGet=defineRead({
     if(!project||project.number!==project_number||!project.node_id)
       throw new TypeError('GitHub did not verify the requested project identity.');
     const max=a.max??100;
-    const [fields,views]=await Promise.all([
-      list(octokit,'GET /orgs/{org}/projectsV2/{project_number}/fields',{org,project_number},max),
-      list(octokit,'GET /orgs/{org}/projectsV2/{project_number}/views',{org,project_number},max)
-    ]);
+    const fields=await list(octokit,'GET /orgs/{org}/projectsV2/{project_number}/fields',
+      {org,project_number},max);
     return {...projectView(project),owner:org,
-      fields:shapeList(fields.items.map(fieldView),fields.capped),
-      views:shapeList(views.items.map(v=>({id:v.id,number:v.number,name:v.name,
-        layout:v.layout??null,url:v.html_url??null})),views.capped)};
+      fields:shapeList(fields.items.map(fieldView),fields.capped)};
   })
 });
 export const projectListItems=defineRead({

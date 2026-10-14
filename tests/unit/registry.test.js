@@ -17,7 +17,7 @@ describe('tool registry', () => {
       'github_issue_list', 'github_issue_get', 'github_issue_list_comments', 'github_issue_list_timeline',
       'github_issue_create', 'github_issue_update', 'github_issue_comment', 'github_issue_lock', 'github_issue_edit_comment', 'github_issue_set_labels', 'github_issue_set_assignees',
       'github_issue_set_sub_issue', 'github_issue_set_dependency', 'github_issue_react', 'github_issue_transfer',
-      'github_label_list', 'github_label_save', 'github_label_delete', 'github_milestone_list', 'github_milestone_save', 'github_milestone_delete', 'github_label_sync', 'github_search_github', 'github_discussion_list', 'github_discussion_get', 'github_discussion_create', 'github_discussion_comment',
+      'github_label_list', 'github_label_save', 'github_label_delete', 'github_milestone_list', 'github_milestone_save', 'github_milestone_delete', 'github_label_sync', 'github_search_github', 'github_discussion_list', 'github_discussion_get', 'github_discussion_create', 'github_discussion_comment', 'github_project_list', 'github_project_get', 'github_project_list_items',
       'github_pr_create', 'github_pr_update', 'github_pr_close', 'github_pr_set_draft', 'github_pr_update_branch',
       'github_pr_merge', 'github_pr_merge_async', 'github_pr_set_auto_merge', 'github_pr_list_stacks', 'github_pr_stack_manage',
       'github_review_list', 'github_review_list_threads', 'github_review_list_comments',
