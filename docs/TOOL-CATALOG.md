@@ -399,18 +399,18 @@ Card(s): O-2.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_org_get` | Organization profile, plan, seats, settings (default permission, who may create repos/pages/forks, 2FA requirement state) | — | C | I | O | R | O-2 |
-| `github_org_update_settings` | Change organization profile and member privileges (each field previewed; widening privileges is access-widening) | C·Prod·A* | N | I | O | F | O-2 |
-| `github_org_list_members` | Members with role and 2FA state; outside collaborators on request | — | C | I | O | R | O-2 |
-| `github_org_invite_member` | Invite someone by username or email with a role and teams | C·A·M | N | I | O | F | O-2 |
-| `github_org_list_invitations` | Pending and failed invitations | — | N | I | O | R | O-2 |
-| `github_org_cancel_invitation` | Cancel a pending invitation | C·M | N | I | O | F | O-2 |
-| `github_org_set_member_role` | Make a member an owner or a member | C·A* | N | I | O | F | O-2 |
-| `github_org_remove_member` | Remove a member (they lose access to private repositories) | C·D | N | I | O | F | O-2 |
-| `github_org_set_outside_collaborator` | Convert a member to outside collaborator, or remove an outside collaborator | C | N | I | O | F | O-2 |
-| `github_org_set_blocked` | Block or unblock a user for the organization; list blocked users | P | N | I | O | F | O-2 |
-| `github_org_custom_properties` | Read or define the organization's custom properties (schema) | P | N | I | O | F | O-2 |
-| `github_org_set_immutable_releases` | Require immutable releases for all or selected repositories | C·Prod | N | I | O | F | O-2 |
+| `github_org_get` | Organization profile, plan, seats, settings (default permission, who may create repos/pages/forks, 2FA requirement state) | — | C built #199 | I | O | R | O-2 |
+| `github_org_update_settings` | Change organization profile and member privileges (each field previewed; widening privileges is access-widening) | C·Prod·A* | N built #199 | I | O | F | O-2 |
+| `github_org_list_members` | Members with role and 2FA state; outside collaborators on request | — | C built #199 | I | O | R | O-2 |
+| `github_org_invite_member` | Invite someone by username or email with a role and teams | C·A·M | N built #199 | I | O | F | O-2 |
+| `github_org_list_invitations` | Pending and failed invitations | — | N built #199 | I | O | R | O-2 |
+| `github_org_cancel_invitation` | Cancel a pending invitation | C·M | N built #199 | I | O | F | O-2 |
+| `github_org_set_member_role` | Make a member an owner or a member | C·A* | N built #199 | I | O | F | O-2 |
+| `github_org_remove_member` | Remove a member (they lose access to private repositories) | C·D | N built #199 | I | O | F | O-2 |
+| `github_org_set_outside_collaborator` | Convert a member to outside collaborator, or remove an outside collaborator | C | N built #199 | I | O | F | O-2 |
+| `github_org_set_blocked` | Block or unblock a user for the organization; list blocked users | P | N built #199 | I | O | F | O-2 |
+| `github_org_custom_properties` | Read or define the organization's custom properties (schema) | P | N built #199 | I | O | F | O-2 |
+| `github_org_set_immutable_releases` | Require immutable releases for all or selected repositories | C·Prod | N built #199 | I | O | F | O-2 |
 
 ## Owner: teams and roles (`github_team_*, github_role_*`) — 9
 
