@@ -56,7 +56,7 @@ Card(s): A-5, B-2, B-3, B-8, C-1, C-2, R-1, O-1, X-1. Meta-tools, connection and
 | `github_get_result` | Page through a big result kept on the server behind a handle | — | N | — | B,O,Op | R | C-1 built #25; RTC scoped single read #148 |
 | `github_create_pass` | Make a short-lived pass for the HTTPS API and Robinson's Toolkit (shown once on the setup page; preview, read-only, 24 h, $0 by default) | C | N | — | O | F | R-1 |
 | `github_where_is_setting` | Structured steps (link, numbered actions, expected result, read-back check) for any GitHub setting with no API | — | N | — | O | R | B-8 built #24 |
-| `github_admin_overview` | One-call owner review of an account: org/profile, plan, members and 2FA, security features, apps and tokens, usage and budgets, anything needing attention | — | N | I,U | O | R | O-1 |
+| `github_admin_overview` | Bounded owner account and organization security review; explicit unreadable/plan-limited statuses and no invented billing figures | — | N | I,U | O | R | O-1 |
 
 ## Repositories (`github_repo_*`) — 20
 
@@ -498,9 +498,9 @@ Card(s): O-1. Every GitHub settings page is in the dashboard map (`src/data/dash
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_admin_list_guided_settings` | Every setting with no API, by page, with its current value when GitHub lets it be read | — | N | — | O | R | O-1 |
-| `github_admin_check_setting` | Read back one setting after Chris (or a browser agent) changed it; never reports a guided setting done without a read-back or Chris saying so | — | N | I,U | O | R | O-1 |
-| `github_admin_review_security` | Security review of an org or the personal account: 2FA, SSO (plan-dependent), token policies, apps, deploy keys with write, push protection coverage, outside collaborators | — | N | I,U | O | R | O-1 |
+| `github_admin_list_guided_settings` | Paginate structured repository, organization and user dashboard guides with explicit manual or provider verification | — | N | — | O | R | O-1 |
+| `github_admin_check_setting` | Verify supported organization 2FA directly; unsupported settings explicitly require manual confirmation | — | N | I,U | O | R | O-1 |
+| `github_admin_review_security` | Review bounded enrolled organization access and security findings without misclassifying denied reads as passing | — | N | I,U | O | R | O-1 |
 
 ## Project profiles (`github_profile_*`) — 3
 
