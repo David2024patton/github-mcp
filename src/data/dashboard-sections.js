@@ -91,7 +91,7 @@ const pages={
     ['applications','Applications','/applications','Authorized OAuth Apps and installed GitHub Apps','Only approved applications retain access'],
     ['reminders','Scheduled reminders','/reminders','PR/team reminder schedule','Configured reminders have the intended cadence'],
     ['security-log','Security log','/security-log','Login and account security events','Security events list only expected actions'],
-    ['sponsorship-log','Sponsorship log','/sponsors-log','Sponsors and sponsorship billing history','Sponsorship details and billing match the owner's consent'],
+    ['sponsorship-log','Sponsorship log','/sponsors-log','Sponsors and sponsorship billing history','Sponsorship details and billing match the account owner-approved consent'],
     ['developer','Developer settings','/developers','OAuth and GitHub Apps created by this account','App ownership, callbacks and permissions match the intended design']
   ]
 };
