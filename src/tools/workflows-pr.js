@@ -82,10 +82,10 @@ async function openPr(args,ctx){
     return refused('Duplicate or blank label names are not allowed.');
   const head=args.head.includes(':')?args.head:(args.owner??ctx.connection.default_account)+':'+args.head;
   const listed=readBody(await call(ctx,'github_pr_list',{...s,base,head,max:20,detail:'full'}));
-  if(!listed||listed.more_exist)return refused('Open PR inventory is incomplete; cannot verify idempotence.');
+  if(!listed||listed.more_exist||listed.kept_result)return refused('Open PR inventory is incomplete; cannot verify idempotence.');
   const matches=(listed.items??[]).filter(p=>p.head?.ref===args.head.split(':').pop()&&p.base?.ref===base);
   if(matches.length>1)return refused('Several open PRs match that head/base; select one explicitly.');
-  let existing=matches[0]??null;
+  const existing=matches[0]??null;
   if(existing){
     const status=readBody(await call(ctx,'github_pr_get',{...s,number:existing.number}));
     if(!status)return refused('The existing PR cannot be independently read.');
