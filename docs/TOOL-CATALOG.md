@@ -464,19 +464,19 @@ Card(s): O-5. Source built in PR #203 with scoped metadata projections, U-creden
 
 ## Owner: personal account (`github_account_*`) — 9
 
-Card(s): O-6. Needs Chris's user authorization (`U`); installation tokens cannot reach personal settings.
+Card(s): O-6. Source built in PR #204 with verified user-auth principal, real profile/email/public-key/block/invitation operations and full guarded-write lifecycle. Needs a user authorization (`U`); installation tokens cannot reach personal settings. Raw public key material is accepted only for additions but never returned in inventory. Provider acceptance and real email confirmation remain separate.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_account_get` | Chris's profile, plan, organizations, emails (primary/verified/visibility) and two-factor state | — | C | U | O | R | O-6 |
-| `github_account_update_profile` | Name, bio, company, blog, location, hireable, social handle | P | N | U | O | F | O-6 |
-| `github_account_manage_email` | Add or remove an email address, or set primary email visibility | C·M* | N | U | O | F | O-6 |
-| `github_account_list_keys` | SSH authentication keys, SSH signing keys and GPG keys (fingerprints only) | — | N | U | O | R | O-6 |
-| `github_account_add_key` | Add an SSH, signing or GPG public key | C·A | N | U | O | F | O-6 |
-| `github_account_delete_key` | Delete an SSH, signing or GPG key | C | N | U | O | F | O-6 |
-| `github_account_set_blocked` | Block or unblock a user; list blocked users | P | N | U | O | F | O-6 |
-| `github_account_list_invitations` | Repository invitations waiting for Chris | — | N | U | O | R | O-6 |
-| `github_account_respond_invitation` | Accept or decline a repository invitation | C·A* | N | U | O | F | O-6 |
+| `github_account_get` | Chris's profile, plan, organizations, emails (primary/verified/visibility) and two-factor state | — | C | U | O | R | O-6 built #204 |
+| `github_account_update_profile` | Name, bio, company, blog, location, hireable, social handle | C·Prod | N | U | O | F | O-6 built #204 |
+| `github_account_manage_email` | Add or remove an email address, or set primary email visibility | C·Prod·A*·M* | N | U | O | F | O-6 built #204 |
+| `github_account_list_keys` | SSH authentication keys, SSH signing keys and GPG keys (fingerprints only) | — | N | U | O | R | O-6 built #204 |
+| `github_account_add_key` | Add an SSH, signing or GPG public key | C·Prod·A | N | U | O | F | O-6 built #204 |
+| `github_account_delete_key` | Delete an SSH, signing or GPG key | C·Prod | N | U | O | F | O-6 built #204 |
+| `github_account_set_blocked` | Block or unblock a user; list blocked users | C·Prod | N | U | O | F | O-6 built #204 |
+| `github_account_list_invitations` | Repository invitations waiting for Chris | — | N | U | O | R | O-6 built #204 |
+| `github_account_respond_invitation` | Accept or decline a repository invitation | C·Prod·A* | N | U | O | F | O-6 built #204 |
 
 ## Owner: notifications and gists (`github_notify_*, github_gist_*`) — 7
 
