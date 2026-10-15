@@ -121,6 +121,9 @@ describe('P-2 project G1–G20 readiness and safe fix routing',()=>{
   });
   it('confirms exactly one missing ci ruleset via existing safeguarded writer and independent reread',async()=>{
     const w=await makeWorld({mode:'production',profile:'full'});
+    // The positive test authorizes production only for the synthetic account.
+    // Other cases must continue exercising the real production switch refusal.
+    await w.db.setProductionEnabled('example-org',true);
     arrange(w.gh);
     const rules=[
       {type:'required_status_checks',parameters:{
