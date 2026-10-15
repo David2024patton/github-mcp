@@ -1,3 +1,11 @@
+### October 15, 2026 — W-1/W-2 coherent PR conveyor bundle, checked release-acceptance eligibility
+
+**Scope from the approved index:** W-1 (PR status and guarded idempotent open) + W-2 (exact-head green merge and bottom-up stack retarget/merge). The two related whole batch subsections form **one** usable implementation bundle, not four separate feature counts. Files: `src/tools/workflows-pr.js`, `src/tools/workflows-merge.js`, `src/github/ci-state.js`, `scripts/check-writes.mjs`, focused unit tests and W-1/W-2 JIT cards. Only existing E/G wrapped tools execute provider writes, with existing authorization, protected-resource, confirmation, readback, replay and production gates. Stack resumes one operation at a time and refuses old CI after a base change. The work index inside this PR is written **as-if-merged** for the normal reviewed merge; actual counted completion requires exact-head green CI and successful PR merge, not this prose.
+
+**Reconciled predecessor:** PR #209 already merged P-3 at main `2b2778ad5f9219ad2825e3e224effb4f17920fe0`; the previous index still reported P-3 IN_PROGRESS, now corrected to MERGED. Next engineering is W-3 only after this combined W-1/W-2 source and merge is verified. No manual Vercel release is authorized as part of this implementation session; checked daily policy still governs releases.
+
+**Release and acceptance (do not skip while main is ahead):** Independently observed `live=ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904`, Vercel production READY `dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7`. All 17 non-PASSED queue entries' required source SHAs were independently compared against this exact deployed SHA; every compare result was ahead with behind=0. Thus the release/code prerequisite is met for all 17, independent of newer main. Two preexisting queue entries retain genuine PASSED source/provider observations. The custom GitHub MCP connection currently returned `refresh_uncertain`, then `renewal_outcome_unknown_reconnect_required` on actual `github_whoami` and read-only tool search. This is an actual unresolved connection/serialized refresh evidence limitation, **not a reason to defer on revision mismatch**. Preserve source-specific re-entry, original per-operation owner grants, no automatic replay and no false acceptance pass. Investigate protected saved developer checkpoint with the authorized single HTTPS-capable runner; never print secrets. Two private H-1 tests remain legitimately plan-blocked (HTTP 403), even though source is live; scratch fixture cleanup still requires exact independent owner approval, and production-classified writes still require separate authorization. Full 19-item ledger below remains authoritative; all eligible checks must be retried from the live revision once the service-issued principal is restored. No external approval, spending, production activation or destructive cleanup took place.
+
 ### October 15, 2026 — P-2 merged; P-3 setup/draft in progress
 
 P-2 PR #207 merged at `ed095fbd3308f70c933d6d082d35e9c093bf9cdc` with final exact-head ci/release-policy, two unit shards, db, shape, lint/security gates green and all four review threads resolved. This is one full P-2 subsection, not an extra invented feature count. Next P-3 adds idempotent staged new-project setup and draft profile/document output. Parallel PR #208 carries separate approved owner bundle-workload guidance; preserve its changes. Do not conflate merged code with deployment/provider or owner acceptance.
@@ -172,7 +180,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
       "GITHUB-CUSTOM-SCRATCH-READ"
     ],
     "status": "BLOCKED",
-    "lastEvidence": "2026-10-14: live custom run inventory returned journal_ready=true but remote_verified=false, and can_execute_without_new_confirmation=false. Historical ten late-appearing default labels remain; no cleanup has been attempted or claimed. Exact quarantined target identified: private robinson-ai-scratch/rtc-ghaccept-oct13-f1a, owned run ghaccept-oct13-f1a (one recorded repo intent; baseline label provenance unconfirmed). This is NOT deletion approval."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: live custom run inventory returned journal_ready=true but remote_verified=false, and can_execute_without_new_confirmation=false. Historical ten late-appearing default labels remain; no cleanup has been attempted or claimed. Exact quarantined target identified: private robinson-ai-scratch/rtc-ghaccept-oct13-f1a, owned run ghaccept-oct13-f1a (one recorded repo intent; baseline label provenance unconfirmed). This is NOT deletion approval."
   },
   {
     "id": "GITHUB-NATIVE",
@@ -183,7 +191,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Saved developer OAuth; only approved scratch repository and creation-baseline evidence",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "Existing ledger/card remains authoritative; current live/provider acceptance must be reconciled at session start. Seed revision conservatively includes reviewed current main."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. Existing ledger/card remains authoritative; current live/provider acceptance must be reconciled at session start. Seed revision conservatively includes reviewed current main."
   },
   {
     "id": "GITHUB-H1-PRIVATE-PROTECTION",
@@ -194,7 +202,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "BLOCKED — PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
     "dependsOn": [],
     "status": "BLOCKED",
-    "lastEvidence": "2026-10-14: real custom github_protection_get on private robinson-ai-scratch/rtc-ghaccept-oct13-f1a returned provider HTTP 403, with GitHub upgrade-or-public explanation. No grant, mutation or subscription change; remains unverified for private repositories."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: real custom github_protection_get on private robinson-ai-scratch/rtc-ghaccept-oct13-f1a returned provider HTTP 403, with GitHub upgrade-or-public explanation. No grant, mutation or subscription change; remains unverified for private repositories."
   },
   {
     "id": "GITHUB-H1-PRIVATE-RULESETS",
@@ -205,7 +213,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "BLOCKED — PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
     "dependsOn": [],
     "status": "BLOCKED",
-    "lastEvidence": "2026-10-14: real custom github_ruleset_list on private robinson-ai-scratch/rtc-ghaccept-oct13-f1a returned provider HTTP 403 with upgrade-or-public explanation, not a successful private feature result."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: real custom github_ruleset_list on private robinson-ai-scratch/rtc-ghaccept-oct13-f1a returned provider HTTP 403 with upgrade-or-public explanation, not a successful private feature result."
   },
   {
     "id": "GITHUB-H1-PUBLIC-SCRATCH",
@@ -216,7 +224,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Owner approved a separate public disposable scratch; never alter existing private repository; capture exact name/run ownership, approval, profile and source SHA; production writes remain OFF until independently authorized and connected. Public evidence does not prove private acceptance.",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-14: owner authorized separate disposable PUBLIC scratch. Genuine custom MCP created robinson-ai-scratch/rtc-ghaccept-h1-public-oct14 under full PREVIEW connection with explicit public visibility confirmation; exact repo readback shows public, empty and default main. Public github_protection_get succeeded (no classic policy), repository github_ruleset_list succeeded with empty complete inventory. Public write tests remain pending checked #188 deployment/production gates; these reads do NOT establish private H-1 acceptance."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: owner authorized separate disposable PUBLIC scratch. Genuine custom MCP created robinson-ai-scratch/rtc-ghaccept-h1-public-oct14 under full PREVIEW connection with explicit public visibility confirmation; exact repo readback shows public, empty and default main. Public github_protection_get succeeded (no classic policy), repository github_ruleset_list succeeded with empty complete inventory. Public write tests remain pending checked #188 deployment/production gates; these reads do NOT establish private H-1 acceptance."
   },
   {
     "id": "GITHUB-H2-WEBHOOK-READS",
@@ -227,7 +235,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "App permission and only owned/disposable fixture; non-sensitive webhook subscription only after separately approved safe creation; production activation and secret transmission prohibited",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-14: feature source branch H-2; not yet merged or deployed. No read/handler claim against production."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: feature source branch H-2; not yet merged or deployed. No read/handler claim against production."
   },
   {
     "id": "GITHUB-H2-WEBHOOK-DELIVERY-CONTROL",
@@ -238,7 +246,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Requires H-2 source in independently verified READY live ancestry, authorized disposable non-sensitive webhook fixtures, owner-approved production-mode permission for actual production classified writes, no new fee, never existing private quarantine",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-14: source-only feature in #190; owner production remains OFF, so no real delivery actions, deletion or attempted mutations claimed."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: source-only feature in #190; owner production remains OFF, so no real delivery actions, deletion or attempted mutations claimed."
   },
   {
     "id": "GITHUB-H1-PUBLIC-READ",
@@ -262,7 +270,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
       "GITHUB-H1-PUBLIC-SCRATCH"
     ],
     "status": "PENDING",
-    "lastEvidence": "2026-10-14: new public fixture created via github_repo_create; no delete requested or executed. It is not a substitute for quarantined private fixture cleanup."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: new public fixture created via github_repo_create; no delete requested or executed. It is not a substitute for quarantined private fixture cleanup."
   },
   {
     "id": "GITHUB-H1-CLASSIC-WRITE-POSTRELEASE",
@@ -275,7 +283,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
       "GITHUB-H1-PUBLIC-READ"
     ],
     "status": "PENDING",
-    "lastEvidence": "2026-10-14: source #188 exact-head CI passed and merged commit 674fea131e0eb0002f474bb8f529d0f619011286, but live remained b51cda454f01720b3c638f83b9766b30eceaa9fb; no new deployed mutation or approval claimed."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: source #188 exact-head CI passed and merged commit 674fea131e0eb0002f474bb8f529d0f619011286, but live remained b51cda454f01720b3c638f83b9766b30eceaa9fb; no new deployed mutation or approval claimed."
   },
   {
     "id": "GITHUB-H2-SIGNER-LIFECYCLE",
@@ -286,7 +294,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Exact READY live ancestry of implementation; approved isolated scratch owner/run, service OAuth with legitimate provider permissions; preview/production and independent owner write/cleanup approvals preserved",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-14: implementation/test source staged; no claimed CI, deployment, provider mutation, HMAC acceptance or cleanup. GitHub masks signer values; require receiver signature verification."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: implementation/test source staged; no claimed CI, deployment, provider mutation, HMAC acceptance or cleanup. GitHub masks signer values; require receiver signature verification."
   },
   {
     "id": "GITHUB-H3-ACCESS-LIFECYCLE",
@@ -297,7 +305,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Checked READY deployment contains merged H-3 source; scratch-only, explicit owner authority and fixture safeguards, no production settings or spend activation without independent approval",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-14: H-3 source and tests proposed; no merged CI or real provider permission-change acceptance. GitHub account production OFF and spend $0. Retain any rejected external changes as blocked acceptance, not false code passes."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: H-3 source and tests proposed; no merged CI or real provider permission-change acceptance. GitHub account production OFF and spend $0. Retain any rejected external changes as blocked acceptance, not false code passes."
   },
   {
     "id": "GITHUB-H4-ALERT-TRIAGE",
@@ -308,7 +316,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "MCP-issued OAuth to enrolled account; real test alerts and legitimate permission/plan eligibility; production OFF and independent approval for any production-classified change",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-14: H-4 first source implementation staged only. No actual source CI, deployment, security-alert provider writes or fixture cleanup acceptance claimed."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: H-4 first source implementation staged only. No actual source CI, deployment, security-alert provider writes or fixture cleanup acceptance claimed."
   },
   {
     "id": "GITHUB-H4-SETTINGS",
@@ -319,7 +327,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Source and legitimate OAuth permission deployed; safe disposable scratch only, full-profile/production confirmation and owner approval where required, zero spend and private paid feature refusal unchanged",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-14: H-4 settings source staged for required exact-head CI. No production feature switch, paid security activation, live TEST write or independent cleanup acceptance."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: H-4 settings source staged for required exact-head CI. No production feature switch, paid security activation, live TEST write or independent cleanup acceptance."
   },
   {
     "id": "GITHUB-O1-OWNER-OVERVIEW",
@@ -330,7 +338,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Saved service-issued OAuth and enrolled org only; PREVIEW read-only, production OFF, no spend or destructive change; browser-only completion requires independent owner/browser confirmation",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-14: O-1 source under exact-head CI and merge review; no deployed O-1 proof, no human UI audit, no production mutation."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: O-1 source under exact-head CI and merge review; no deployed O-1 proof, no human UI audit, no production mutation."
   },
   {
     "id": "GITHUB-O2-ORG-ADMIN",
@@ -341,7 +349,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Only after reviewed O-2 source is in independently verified READY live ancestry; service-issued owner/admin permissions, production OFF until separately authorized, no access grant, invite, destructive action or paid capability without independent owner approval",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-14: source implementation on PR #199 candidate only, custom production READY b51cda4 is older; no O-2 live tests or changes performed."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: source implementation on PR #199 candidate only, custom production READY b51cda4 is older; no O-2 live tests or changes performed."
   },
   {
     "id": "GITHUB-O3-TEAM-ROLES",
@@ -352,7 +360,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Only after reviewed O-3 source appears in independently verified READY live ancestry with adequate org Members/Administration permissions; no actual access-widening, invitation, team deletion or org role mutation without independent owner confirmation, protected-resource approval and production policy",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-14: PR #200 candidate source only; custom production READY remains behind; no O-3 genuine provider acceptance claimed."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: PR #200 candidate source only; custom production READY remains behind; no O-3 genuine provider acceptance claimed."
   },
   {
     "id": "GITHUB-O4-BILLING-CODESPACES",
@@ -363,7 +371,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Requires deployed READY ancestry containing merged O-4 and verified real owner permissions; zero autonomous spend persists and paid or destructive actions need independent explicit owner approval. Two risky actions remain guided-only pending finite cost/readback capability.",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-14: source PR #201 candidate only, no live O-4 provider acceptance or spending."
+    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: source PR #201 candidate only, no live O-4 provider acceptance or spending."
   }
 ]
 ```
