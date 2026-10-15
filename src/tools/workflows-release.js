@@ -12,6 +12,38 @@ const incomplete=x=>!x||x.more_exist||x.next_page_possible||x.kept_result||x.com
 const key=(a,step,ctx)=>'w6-'+createHash('sha256').update(JSON.stringify([a.requestKey,{owner:a.owner??ctx.connection.default_account,repo:a.repo},step])).digest('hex');
 const budget=(ctx,start)=>ctx.now()-start<46000;
 async function invoke(ctx,name,args){return shape(await ctx.callTool(name,args));}
+async function change(ctx,name,args){
+  const result=await ctx.callTool(name,args);
+  return result?.structuredContent??{status:result?.isError?'refused':'unknown',
+    reason:(result?.content?.find(x=>x.type==='text')?.text??'No verified guarded result.').slice(0,400)};
+}
+// Reader results can be retained even when provider pagination was complete.
+// Consume connection-bound pages; a lost/changed/shortened page never authorizes a write.
+async function readInventory(ctx,tool,args,start){
+  const first=await invoke(ctx,tool,args);
+  if(!first?.kept_result)return first;
+  const handle=first.kept_result.handle;
+  if(!handle)return null;
+  const items=[];let size=100,total=null,pages=null;
+  for(let page=1;page<=25;page++){
+    if(!budget(ctx,start))return null;
+    const part=await invoke(ctx,'github_get_result',{handle,page,pageSize:size,...args.fields?{fields:args.fields}:{}});
+    const info=part?.page_info;
+    if(!part||part.handle!==handle||part.shown!==undefined||part.text_cut||!info||info.page!==page||
+      !Array.isArray(part.items)||!Number.isInteger(info.total)||info.total<0||info.total>500||
+      !Number.isInteger(info.page_size)||info.page_size<1||!Number.isInteger(info.pages)||info.pages<1||info.pages>25)return null;
+    if(page===1){size=info.page_size;total=info.total;pages=info.pages;}
+    else if(info.page_size!==size||info.total!==total||info.pages!==pages)return null;
+    items.push(...part.items);
+    if(page===pages){
+      if(items.length!==total)return null;
+      const {kept_result:retained,...metadata}=first;
+      void retained;
+      return {...metadata,items,count:items.length};
+    }
+  }
+  return null;
+}
 export function nextVersion(tag,bump){
   const match=/^(v?)(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(tag??'');
   if(!match)return null;
@@ -26,7 +58,7 @@ export async function release(a,ctx){
   if(ctx.connection.profile!=='full')return refused('Release workflows require the full profile.');
   const start=ctx.now(),s=scope(a);
   let tag=a.tag,previous=a.from;
-  if(tag.startsWith('next-')){
+  if(['next-patch','next-minor','next-major'].includes(tag)){
     if(a.publish||a.confirm&&!a.dryRun)return refused('Freeze the computed version as an explicit tag before confirming any change.');
     const latest=await invoke(ctx,'github_release_get',{...s,selector:'latest'});
     if(!latest||latest.not_found)return refused('No readable latest published release; provide an explicit initial tag.');
@@ -39,7 +71,7 @@ export async function release(a,ctx){
   let exhausted=false;
   for(let page=1;page<=10;page++){
     if(!budget(ctx,start))return receipt({done:false,status:'pending',next:'Resume release inventory; no change was attempted.'});
-    const list=await invoke(ctx,'github_release_list',{...s,page,max:30,fields:['id','tag_name','draft']});
+    const list=await readInventory(ctx,'github_release_list',{...s,page,max:30,fields:['id','tag_name','draft']},start);
     if(!list||list.kept_result||!Array.isArray(list.items))return refused('Complete release inventory is unavailable; duplicate creation cannot be excluded.');
     inventory.push(...list.items);
     if(!list.next_page_possible){exhausted=true;break;}
@@ -57,7 +89,7 @@ export async function release(a,ctx){
     if(a.releaseId!==current.id)return refused('Publication requires the exact independently observed draft releaseId.');
     if(!a.requestKey)return refused('Publication requires a stable requestKey for safe recovery.');
     if(!budget(ctx,start))return receipt({done:false,status:'pending',next:'Resume before publishing; the workflow budget expired.'});
-    const result=await invoke(ctx,'github_release_update',{...s,releaseId:current.id,expectedTag:tag,draft:false,
+    const result=await change(ctx,'github_release_update',{...s,releaseId:current.id,expectedTag:tag,draft:false,
       dryRun:a.dryRun===true||a.confirm!==true,confirm:a.confirm===true,requestKey:key(a,'publish:'+current.id,ctx)});
     if(result?.status!=='applied')return receipt({done:false,status:'not_published',underlying_status:result?.status??'unknown',result,
       next:'Inspect the guarded result and draft state before retrying with the same requestKey.'});
@@ -69,7 +101,7 @@ export async function release(a,ctx){
   if(a.publish||a.releaseId)return refused('No existing matching draft; publication never creates and publishes in one invocation.');
   if(a.confirm&&!a.dryRun&&!a.requestKey)return refused('Draft creation requires a stable requestKey.');
   if(!budget(ctx,start))return receipt({done:false,status:'pending',next:'Resume draft preparation before changing anything.'});
-  const result=await invoke(ctx,'github_release_create',{...s,tag,draft:true,generateReleaseNotes:true,previewGeneratedNotes:true,
+  const result=await change(ctx,'github_release_create',{...s,tag,draft:true,generateReleaseNotes:true,previewGeneratedNotes:true,
     ...(previous?{previousTag:previous}:{}),...(a.target?{targetCommitish:a.target}:{}),
     dryRun:a.dryRun===true||a.confirm!==true,confirm:a.confirm===true,
     ...(a.requestKey?{requestKey:key(a,'draft:'+tag,ctx)}:{})});
@@ -89,7 +121,7 @@ export async function cleanup(a,ctx){
   if(!repo?.default_branch)return refused('Default branch could not be verified.');
   const p=await policy(ctx,owner,a.repo);
   if(!p)return refused('Project and production policy could not be verified.');
-  const branches=await invoke(ctx,'github_branch_list',{...s,max:500,detail:'full'});
+  const branches=await readInventory(ctx,'github_branch_list',{...s,max:500,detail:'full',fields:['name','protected','commit.sha']},start);
   if(incomplete(branches)||!Array.isArray(branches.items))return refused('Branch inventory is incomplete; no branch deletion attempted.');
   const selected=a.branches??branches.items.map(x=>x.name);
   const unknown=selected.find(name=>!branches.items.some(x=>x.name===name));
@@ -104,7 +136,7 @@ export async function cleanup(a,ctx){
       (p.profile.ownedRefs??[]).some(x=>matchesAny(name,[x.pattern]))){skip('Production or project-owned branch.');continue;}
     const exact=await invoke(ctx,'github_branch_get',{...s,branch:name});
     if(!exact||exact.head!==sha||exact.protected!==false||!Array.isArray(exact.rules)||exact.rules.length){skip('Branch changed, has rules, or effective protection is unreadable.');continue;}
-    const prs=await invoke(ctx,'github_pr_list',{...s,state:'all',head:owner+':'+name,max:200,detail:'full'});
+    const prs=await readInventory(ctx,'github_pr_list',{...s,state:'all',head:owner+':'+name,max:200,detail:'full',fields:['number','state','head.ref','head.sha','head.repo.full_name']},start);
     if(incomplete(prs)||!Array.isArray(prs.items)){skip('PR inventory incomplete; closed state cannot be proven.');continue;}
     const same=prs.items.filter(x=>x.head?.ref===name&&x.head?.repo?.full_name?.toLowerCase()===`${owner}/${a.repo}`.toLowerCase());
     if(same.some(x=>x.state==='open')){skip('An open PR still uses this branch.');continue;}
@@ -113,13 +145,14 @@ export async function cleanup(a,ctx){
     const preview=a.dryRun===true||a.confirm!==true;
     if(!preview&&!a.requestKey)return refused('Cleanup execution requires a stable requestKey.');
     if(!budget(ctx,start))return receipt({done:false,status:'pending',results,next:'Resume before deleting the next branch.'});
-    const result=await invoke(ctx,'github_branch_delete',{...s,branch:name,expectedHeadSha:sha,cleanupPrNumber:closed.number,
+    const result=await change(ctx,'github_branch_delete',{...s,branch:name,expectedHeadSha:sha,cleanupPrNumber:closed.number,
       confirm:a.confirm===true,dryRun:preview,...a.requestKey?{requestKey:key(a,'cleanup:'+name+':'+sha,ctx)}:{}});
     results.push({branch:name,head_sha:sha,pr:closed.number,status:result?.status??'unknown',result});
+    if(preview&&result?.status!=='preview')return receipt({done:false,status:'refused',results,next:'The guarded writer did not validate this preview; resolve its exact refusal before execution.'});
     if(!preview&&result?.status!=='applied')return receipt({done:false,status:'stopped',results,next:'Reconcile this exact guarded deletion result before continuing; untouched branches were not attempted.'});
     if(!preview){
       if(!budget(ctx,start))return receipt({done:false,status:'pending',results,next:'Re-read branch inventory to verify absence before doing any more cleanup.'});
-      const after=await invoke(ctx,'github_branch_list',{...s,max:500,fields:['name']});
+      const after=await readInventory(ctx,'github_branch_list',{...s,max:500,fields:['name']},start);
       if(incomplete(after)||!Array.isArray(after.items)||after.items.some(x=>x.name===name))
         return receipt({done:false,status:'unverified',results,next:'Fresh inventory did not prove absence; inspect possible replay, recreation or permission failure before continuing.'});
       results[results.length-1].absence_confirmed=true;

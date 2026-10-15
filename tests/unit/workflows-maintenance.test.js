@@ -1,5 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {registry} from '../../src/tools/index.js';
+import {createDispatch} from '../../src/tools/dispatch.js';
 import {validateArgs} from '../../src/core/validate.js';
 import {repoHealth,securityReview,accessReview} from '../../src/tools/workflows-health.js';
 import {release,cleanup,nextVersion} from '../../src/tools/workflows-release.js';
@@ -83,6 +84,11 @@ describe('W-6 staged release lifecycle',()=>{
     expect(data(await run(release,{tag:'v2.0.0',from:'v1.0.0',confirm:true,requestKey:'release-intent'},w)).status).toBe('draft_created');
     expect(mutations(w)[0].args).toMatchObject({draft:true,previousTag:'v1.0.0',confirm:true});expect(mutations(w)).toHaveLength(1);
   });
+  it('preserves the exact guarded production refusal in its result',async()=>{
+    const w=world({github_release_create:{isError:true,structuredContent:{status:'refused_by_guard',error:'Production is OFF'}}});
+    const r=data(await run(release,{tag:'v2',confirm:true,requestKey:'release-intent'},w));
+    expect(r.underlying_status).toBe('refused_by_guard');expect(r.result.error).toBe('Production is OFF');
+  });
   it('binds the stable child journal key to the actual default account',async()=>{
     const w=world();await run(release,{tag:'v2',requestKey:'same-intent'},w);const first=mutations(w)[0].args.requestKey;
     w.c.connection.default_account='another-org';await run(release,{tag:'v2',requestKey:'same-intent'},w);
@@ -131,6 +137,19 @@ describe('W-6 branch lifecycle proof',()=>{
       await run(cleanup,{},w);expect(mutations(w),kind).toEqual([]);
     }
   });
+  it('consumes every connection-bound retained branch page before preview',async()=>{
+    const handle='res_'+'x'.repeat(32);
+    const w=world({github_branch_list:{items:[],kept_result:{handle}},github_pr_list:{items:[closed]},github_get_result:a=>({handle,page_info:{page:a.page,page_size:2,pages:2,total:3},items:a.page===1?[{name:'main',protected:true},{name:'protected',protected:true}]:[{name:'feature',protected:false,commit:{sha:A}}]})});
+    const r=data(await run(cleanup,{},w));expect(r.status).toBe('preview');expect(w.calls.filter(x=>x.name==='github_get_result')).toHaveLength(2);expect(mutations(w)).toHaveLength(1);
+  });
+  it('refuses inconsistent retained pagination without sending any writer',async()=>{
+    const handle='res_'+'x'.repeat(32);const w=world({github_branch_list:{items:[],kept_result:{handle}},github_get_result:{handle,page_info:{page:1,page_size:100,pages:1,total:2},items:[]}});
+    expect(data(await run(cleanup,{},w)).status).toBe('refused');expect(mutations(w)).toEqual([]);
+  });
+  it('does not claim a validated preview when the underlying writer refuses it',async()=>{
+    const w=world({github_pr_list:{items:[closed]},github_branch_delete:{status:'refused_by_guard'}});
+    expect(data(await run(cleanup,{},w))).toMatchObject({done:false,status:'refused'});
+  });
   it('reports partial failure and leaves dependent deletions untouched',async()=>{
     const w=world({github_branch_list:{items:[{name:'feature',protected:false,commit:{sha:A}},{name:'other',protected:false,commit:{sha:A}}]},github_pr_list:{items:[closed]},github_branch_delete:{status:'uncertain'}});
     const r=data(await run(cleanup,{confirm:true,requestKey:'cleanup'},w));expect(r.status).toBe('stopped');expect(mutations(w)).toHaveLength(1);
@@ -151,6 +170,22 @@ function cleanupProvider(w){
   w.gh.when('GET /repos/{owner}/{repo}/pulls').reply(200,[]);
 }
 describe('writer boundary request-shape and race regressions',()=>{
+  it('pages the real retained-result dispatcher after two provider branch pages',async()=>{
+    const w=await makeWorld({mode:'preview',profile:'full'});
+    w.gh.when('GET /repos/{owner}/{repo}').reply(200,{full_name:owner+'/'+repo,default_branch:'main'});
+    w.gh.when('GET /repos/{owner}/{repo}/rules/branches/{branch}').reply(200,[]);
+    const all=Array.from({length:150},(_,i)=>({name:'branch-'+i+'x'.repeat(50),protected:true,commit:{sha:A}}));
+    w.gh.when('GET /repos/{owner}/{repo}/branches').replySequence([
+      {status:200,body:all.slice(0,100),headers:{link:'<https://api.github.com/repos/example-org/hello/branches?page=2>; rel="next"'}},
+      {status:200,body:all.slice(100)}]);
+    const dispatch=createDispatch({env:w.ctx.env,credentials:w.credentials,fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep,gates:[]});
+    const result=await dispatch({registry,name:'github_workflow_cleanup_branches',args:{repo,dryRun:true},connection:w.connection,db:w.db});
+    const visible=result.structuredContent;
+    const actual=visible.kept_result?.handle?(await w.db.getResult(visible.kept_result.handle,w.connection.client_id)).body:visible;
+    expect(actual.status).toBe('preview');expect(actual.results).toHaveLength(150);
+    expect(w.gh.calls.filter(x=>x.route==='GET /repos/{owner}/{repo}/branches')).toHaveLength(2);
+    expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);expect(w.gh.invalid).toEqual([]);
+  });
   it('rechecks branch head after confirmation immediately before DELETE',async()=>{
     const w=await makeWorld({mode:'production'});cleanupProvider(w);
     w.gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').replySequence([{status:200,body:{object:{sha:A}}},{status:200,body:{object:{sha:B}}}]);

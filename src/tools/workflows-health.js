@@ -88,13 +88,13 @@ export async function repoHealth(a,c){
   const rulesets=await s.read('rulesets','github_ruleset_list',{repo:a.repo,max:100});
   if(protection?.protected===false)s.finding('default-protection','needs_attention','GitHub reports the default branch is unprotected.',repo.default_branch);
   if(protection?.classic_protection_readable!==true)s.finding('classic-policy','unknown','Classic protection is unreadable; do not infer that effective rulesets are absent.',repo.default_branch);
-  const runs=await s.read('ci-runs','github_actions_list_runs',{repo:a.repo,branch:repo.default_branch,max:100,detail:'full'});
+  const runs=await s.read('ci-runs','github_actions_list_runs',{repo:a.repo,branch:repo.default_branch,max:100,detail:'full',fields:['id','status','conclusion']});
   const completed=rows(runs).filter(x=>x.status==='completed');
   const successes=completed.filter(x=>x.conclusion==='success').length;
   const ci={observed_runs:rows(runs).length,completed:completed.length,successes,
     pass_rate:completed.length?successes/completed.length:null,coverage:runs?(incomplete(runs)?'bounded_sample':'observed_inventory'):'not_readable'};
   if(completed.some(x=>['failure','timed_out','action_required'].includes(x.conclusion)))s.finding('ci-failures','needs_attention','The observed default-branch sample includes failed CI.');
-  const prs=await s.read('open-prs','github_pr_list',{repo:a.repo,state:'open',max:100,detail:'full'});
+  const prs=await s.read('open-prs','github_pr_list',{repo:a.repo,state:'open',max:100,detail:'full',fields:['number','updated_at','html_url']});
   const stale=rows(prs).filter(x=>Number.isFinite(Date.parse(x.updated_at))&&now(c)-Date.parse(x.updated_at)>(a.staleDays??30)*86400000).map(x=>({number:x.number,updated_at:x.updated_at,html_url:x.html_url}));
   if(stale.length)s.finding('stale-prs','needs_attention',`${stale.length} observed PR(s) exceed ${a.staleDays??30} days without an update.`);
   const security=await alerts(a.repo,s),securityFeatures=await features(a.repo,s);
