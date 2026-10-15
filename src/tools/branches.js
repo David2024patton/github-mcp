@@ -7,7 +7,7 @@ import { defineGithubWrite } from './define-github-write.js';
 import { OUTSIDE_PROJECT } from './protect-guard.js';
 import { missing, octo, ownerOf, refusal, slug } from './github-write.js';
 import { plain, readerFor } from './github-read.js';
-import { productionReason } from './production-guard.js';
+import { matchesAny, productionReason } from './production-guard.js';
 
 const OWNER = { type: 'string', maxLength: 39, description: 'GitHub account (default: the connection\'s default account)' };
 const REPO = { type: 'string', minLength: 1, maxLength: 100 };
@@ -81,8 +81,19 @@ const branchCreate = defineGithubWrite({
   declarations: { production: 'never' },
   target: (args, ctx) => branchTarget(args, ctx, checkName(args.branch, 'branch')),
   read: async (args, ctx, target) => {
-    const from = args.from ?? (await getRepo(ctx, target.owner, target.repo)).default_branch;
-    return { from, sha: await commitOf(ctx, target.owner, target.repo, from), exists: (await refSha(ctx, target.owner, target.repo, `heads/${args.branch}`)) !== null };
+    // Non-profiled branches keep the existing general-purpose source behavior.
+    // Only an owned-ref create-from-default exception requires a separate
+    // positive verification of the repository's actual default branch SHA.
+    const profile=await ctx.db?.profileForRepository?.(target.owner,target.repo);
+    const owned=profile?.ownedRefs?.some(o=>matchesAny(args.branch,[o.pattern])&&
+      o.agentMay?.includes('create-from-default'));
+    const defaultBranch=owned?(await getRepo(ctx,target.owner,target.repo)).default_branch:null;
+    const defaultBranchSha=owned&&defaultBranch?
+      await refSha(ctx,target.owner,target.repo,`heads/${defaultBranch}`):null;
+    const from=args.from??(defaultBranch??(await getRepo(ctx,target.owner,target.repo)).default_branch);
+    return {from,sha:await commitOf(ctx,target.owner,target.repo,from),
+      ...(owned?{defaultBranch,defaultBranchSha}:{}),
+      exists:(await refSha(ctx,target.owner,target.repo,`heads/${args.branch}`))!==null};
   },
   classify: () => ({}),
   summarize: ({ args, before, target }) => (before.exists ? `${args.branch} already exists in ${slug(target.owner, target.repo)}, so it cannot be created`

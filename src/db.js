@@ -5,6 +5,7 @@
 import { neon } from '@neondatabase/serverless';
 import { hashToken } from './core/oauth.js';
 import { createDevLedger } from './dev/ledger.js';
+import { DEFAULT_PROJECTS, validateProjectProfile, storedProject } from './data/profile-schema.js';
 
 /** The 13 foundation tables, in BATCH-A §2 order. Later batches add their own tables and their own lists. */
 export const SCHEMA_TABLES = Object.freeze([
@@ -25,6 +26,7 @@ export const SCHEMA_TABLES = Object.freeze([
   'gh_etag_cache',
   'server_settings',
   'protected_resources',
+  'known_projects',
   'result_store',
   'secret_entry_requests',
   'dev_runs',
@@ -125,6 +127,20 @@ export function changeView(row) {
 
 export function createDb(sql = productionSql()) {
   if (typeof sql !== 'function') throw new TypeError('createDb needs a Neon-shaped tagged-template query function.');
+
+  // Keep schema initialization strictly additive/static. Seed lazily after the
+  // migration, never overwriting an owner-edited profile or its revision.
+  let seedsApplied=false;
+  async function seedKnownProjects() {
+    if(seedsApplied)return;
+    for(const initial of DEFAULT_PROJECTS) {
+      const profile=validateProjectProfile(initial);
+      await sql`INSERT INTO known_projects (id,name,status,version,profile)
+        VALUES (${profile.id},${profile.name},${profile.status},1,${JSON.stringify(profile)}::jsonb)
+        ON CONFLICT (id) DO NOTHING`;
+    }
+    seedsApplied=true;
+  }
 
   return {
     ...createDevLedger(sql),
@@ -309,6 +325,16 @@ export function createDb(sql = productionSql()) {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         PRIMARY KEY (kind, target)
       )`;
+      // P-1: versioned optional policy profiles; seed ON CONFLICT DO NOTHING so owner
+      // edits are never silently replaced by a deployment.
+      await sql`CREATE TABLE IF NOT EXISTS known_projects (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('active','draft','retired')),
+        version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
+        profile JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
       // Big results kept behind a handle for 24 hours, readable only by the connection that made them (C-1).
       await sql`CREATE TABLE IF NOT EXISTS result_store (
         handle TEXT PRIMARY KEY,
@@ -398,6 +424,41 @@ export function createDb(sql = productionSql()) {
       return rows[0] ?? null;
     },
 
+    // Project profile reads fail closed on malformed storage, overlapping scopes
+    // or a database error: an absent optional profile is the only neutral state.
+    async listKnownProjects() {
+      await seedKnownProjects();
+      const rows=await sql`SELECT id,name,status,version,profile,updated_at
+        FROM known_projects ORDER BY id`;
+      return rows.map(storedProject);
+    },
+    async getKnownProject(id) {
+      await seedKnownProjects();
+      const rows=await sql`SELECT id,name,status,version,profile,updated_at
+        FROM known_projects WHERE id=${id}`;
+      return storedProject(rows[0]??null);
+    },
+    async profileForRepository(owner,repo) {
+      await seedKnownProjects();
+      const slug=(String(owner)+'/'+String(repo)).toLowerCase();
+      const rows=await sql`SELECT id,name,status,version,profile,updated_at
+        FROM known_projects WHERE status='active'
+          AND profile->'repos' @> ${JSON.stringify([slug])}::jsonb LIMIT 2`;
+      if(rows.length>1)throw new Error('Overlapping project policies cannot be resolved safely.');
+      return rows.length?storedProject(rows[0]).profile:null;
+    },
+    // Controlled, optimistic policy update for owner routes; never silently
+    // downgrade or overwrite an unexpected revision or immutable seed identity.
+    async saveKnownProject(profileRaw, expectedVersion) {
+      const p=validateProjectProfile(profileRaw);
+      if(!Number.isSafeInteger(expectedVersion)||expectedVersion<1)
+        throw new TypeError('A known project update needs its exact current version.');
+      const rows=await sql`UPDATE known_projects SET
+        name=${p.name},status=${p.status},profile=${JSON.stringify(p)}::jsonb,
+        version=version+1,updated_at=now()
+        WHERE id=${p.id} AND version=${expectedVersion} RETURNING id,name,status,version,profile,updated_at`;
+      return storedProject(rows[0]??null);
+    },
     /** Names of the tables in the connection's current schema, sorted. */
     async listTables() {
       const rows = await sql`SELECT table_name FROM information_schema.tables

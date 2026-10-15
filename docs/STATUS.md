@@ -1,3 +1,7 @@
+### October 15, 2026 — O-7 merged; P-1 profiles under implementation
+
+PR #205 merged at 810c06562013d15b811255beb026606ab82e7ea0 with exact-head CI, two unit shards, DB, shape, static/security and release-policy passes. One complete O-7 subsection. P-1 is IN_PROGRESS (not counted) until green and merged. Appliance Desk main re-audited: daily-live.yml replaces release.yml and live exists. No account mutation or deployment inferred.
+
 ### October 14, 2026 — O-6 merged; O-7 notifications and gists implementation underway
 
 O-6 PR #204 merged at `c48934abab9477fa93929c1198d8082799dbc536` with green exact-head CI, release-policy, both unit shards, DB, shapes, security/catalog and write contracts: one completed approved subsection (nine catalog capabilities). O-7 has seven existing catalog operations and remains IN_PROGRESS until CI, full review and merge. Owner IN-11 optional classic notification token is not enrolled or bypassed; U-authorized gist operations can be implemented without that provider acceptance. No deployment or account mutation is inferred from merged source.

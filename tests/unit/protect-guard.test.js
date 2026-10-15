@@ -106,7 +106,11 @@ describe('project ownership', () => {
     expect(v.confirm).toContain('release.yml');
   });
   it('agentMay lets the project\'s own agent steps through, and nothing else on that ref', () => {
-    expect(ownershipVerdict({ profile, name: 'github_branch_create', target: t('transfer/2026-10') })).toBeNull();
+    expect(ownershipVerdict({ profile, name: 'github_branch_create', target: t('transfer/2026-10'),
+      before: {from:'main',sha:SHA,defaultBranch:'main',defaultBranchSha:SHA} })).toBeNull();
+    expect(ownershipVerdict({ profile, name: 'github_branch_create', target: t('transfer/2026-10'),
+      before: {from:'feature',sha:SHA,defaultBranch:'main',defaultBranchSha:SHA} }).refuse)
+      .toContain('sandbox-publish.yml');
     expect(ownershipVerdict({ profile, name: 'github_content_push_files', target: t('transfer/2026-10') })).toBeNull();
     for (const name of ['github_git_update_ref', 'github_branch_delete', 'github_branch_rename', 'github_pr_merge']) {
       expect(ownershipVerdict({ profile, name, target: t('transfer/2026-10') }).refuse).toContain('sandbox-publish.yml');

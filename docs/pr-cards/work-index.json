@@ -1097,7 +1097,7 @@
         "O-6"
       ],
       "card": "docs/pr-cards/O-7.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "none",
       "budget": 300,
       "units": [
@@ -1117,7 +1117,7 @@
         "O-7"
       ],
       "card": "docs/pr-cards/P-1.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "additive",
       "budget": 400,
       "units": [

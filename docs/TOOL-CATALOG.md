@@ -504,12 +504,12 @@ Card(s): O-1. Every GitHub settings page is in the dashboard map (`src/data/dash
 
 ## Project profiles (`github_profile_*`) — 3
 
-Card(s): P-1 … P-3. Optional (`docs/designs/BATCH-P.md`). The readiness and setup workflows are listed under Workflows.
+Card(s): P-1 … P-3. P-1 implementation in PR #206: additive, versioned known_projects persistence, two seeded policies and actual guard integration. These are read-only user tools, not granted GitHub write authority. Optional (docs/designs/BATCH-P.md). The readiness and setup workflows are listed under Workflows.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_profile_list` | Project profiles the server knows (Appliance Desk, the Robinson servers, drafts) | — | N | — | B,O | R | P-1 |
-| `github_profile_get` | One profile: repos, production branches and environments, required checks, workflows with write access, owned settings | — | N | — | B,O | R | P-1 |
+| `github_profile_list` | Project profiles the server knows (Appliance Desk, the Robinson servers, drafts) | — | N | — | B,O | R | P-1 built #206 |
+| `github_profile_get` | One profile: repos, production branches and environments, required checks, workflows with write access, owned settings | — | N | — | B,O | R | P-1 built #206 |
 | `github_profile_draft` | Turn what an agent found in a codebase (workflows, branches, environments, required checks) into a draft profile and APP-NEEDS text | — | N | — | B | R | P-3 |
 
 ## Workflows (`github_workflow_*`) — 17
