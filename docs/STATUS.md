@@ -1,3 +1,17 @@
+## October 15 — W-5/W-6 maintenance workflow bundle
+
+Approved original whole subsections W-5 and W-6 are implemented together, with five new registered workflows: repository health, account security/access review, staged release and PR-evidenced branch cleanup. Exact implementation source `f150500d51be54f2b9026eaabd01e347bcc22256`; frozen pre-code planning commit `05fa8de8a97ad3c87a207f84988bf33f5021cec2` follows inspected main `5929eb2ac5d0b51350c137ff5cb0ed25c459a8d5`. Candidate branch `ai/codex/w5-w6-maintenance-workflows`; bundle counts only after required exact-head CI, self-review, expected-head merge and final-main verification. Work-index MERGED rows are written as-if this candidate merges, not evidence of actual merge or provider acceptance.
+
+NEW source measurement: 371 additions / 9 deletions, excluding tests/docs/generated and check scripts. Actual is below the initial 650-line estimate and normal 400-line guide. Explicit SUBSTANTIAL_EXCEPTION review: two full original subsections integrate five new workflows, real retained-result pagination, per-section coverage and deadlines, writer-boundary closed-PR/head/protection checks, explicit release-version/account intent and separate exact-ID publication. Existing dispatch/client/guard/journal infrastructure is reused as required, never counted as new. No padding or card/helper recount. Full criterion delivery is in W-5/W-6 and the permanent PR handoff.
+
+Acceptance first: main is newer, production independently remains READY `ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904`. Genuine custom whoami succeeds after owner reconnect (PREVIEW/full, scratch org only, App credential, no U credential, production OFF, $0). Per-check actual read/denial observations from #214 comment 6199734878 remain valid on unchanged live/config; refreshed ledger removes the obsolete blanket auth blocker. Old run ownership refuses this new connection, private governance remains provider-plan 403, empty webhook/alert/access fixtures and independently scoped write/disposal approvals remain separate. Preserve original quarantine and optional RTC/Hub/Sandbox distinctions. No release requested while independent engineering remains.
+
+Verification: first assembled tree passed 169 files / 5,466 tests; enum/account refinement tree passed 169 / 5,468. Final focused maintenance, branch, release and registry suite passed 249 checks, including 37 new workflow tests. Final complete unit/check/shapes and exact-head CI are required; local PostgreSQL binaries are absent, so required disposable DB proof must come from CI. No provider credential in tests. New source/acceptance is not live; five source-pinned queue rows are added, all PENDING. Queue now 35 total: 2 historical passes, 33 outstanding.
+
+Self-review: registry-only orchestration, exact delegated arguments and result bounds remain enforced; missing or capped evidence is partial; no implicit repair. Branch cleanup excludes default/protected/rules/production/owned refs, verifies closed unchanged same-repo PR evidence inside the original writer and freshly checks absence after replay. Provider DELETE has no atomic expected-SHA parameter; remaining race is explicit. Release draft and publish stay separate, version is frozen before confirmation, generated notes use previous_tag_name only on generate-notes and retry keys bind the actual account. All underlying production, resource, access/message, spending and replay gates remain. No source changes to credential issuance or permission widening.
+
+Next approved engineering remains W-7, then U/R/X and the separately gated V and provider completion work in existing order. This outcome adds no feature outside approved scope.
+
 ### Release-needed owner escalation — October 15
 
 Owner permits manual-release requests only after every independently eligible
@@ -683,6 +697,61 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Adapter recovery supplies neither scoped RTC pass nor authorized Sandbox route/project. Next: Approved compatible Sandbox runner, scoped service pass and zero-spend cleanup authority. Owner supplies authorized runner/grant; do not provision paid resources.",
     "nextAction": "When exact runner/project, zero-cost boundary and protected service grant are available, execute real Sandbox read/denial/readback and authorized cleanup; do not relabel preview as TEST or infer spending approval."
+  },
+  {
+    "id": "GITHUB-W5-REPO-HEALTH",
+    "priority": 2,
+    "status": "PENDING",
+    "requiredRevision": "f150500d51be54f2b9026eaabd01e347bcc22256",
+    "task": "Read actual isolated repo health, default protection/rules, CI sample, stale PRs, all alert kinds, features and Actions policy; compare independent provider evidence.",
+    "procedure": "docs/pr-cards/W-5.md",
+    "gates": "Reviewed source in READY live and enrolled disposable repository; read-only PREVIEW, preserve plan/permission gaps.",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-15: new original workflow source f150500d51be54f2b9026eaabd01e347bcc22256; 37 focused maintenance tests plus existing writer/registry coverage (249 targeted checks) passed. Fake provider/dispatcher proof only; source absent from independently READY ecf190d7. No real mutation, activation, notification or cleanup claimed."
+  },
+  {
+    "id": "GITHUB-W5-SECURITY-REVIEW",
+    "priority": 2,
+    "status": "PENDING",
+    "requiredRevision": "f150500d51be54f2b9026eaabd01e347bcc22256",
+    "task": "Compare real account-wide security severities, enabled features and open/resolved push-protection bypass inventory, including capped/unreadable sections.",
+    "procedure": "docs/pr-cards/W-5.md",
+    "gates": "Reviewed source in READY live, scoped service OAuth, legitimate non-sensitive alert fixtures; no feature activation or access widening.",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-15: new original workflow source f150500d51be54f2b9026eaabd01e347bcc22256; 37 focused maintenance tests plus existing writer/registry coverage (249 targeted checks) passed. Fake provider/dispatcher proof only; source absent from independently READY ecf190d7. No real mutation, activation, notification or cleanup claimed."
+  },
+  {
+    "id": "GITHUB-W5-ACCESS-REVIEW",
+    "priority": 2,
+    "status": "PENDING",
+    "requiredRevision": "f150500d51be54f2b9026eaabd01e347bcc22256",
+    "task": "Compare real member/outsider/team/app/token and repository collaborator/deploy-key coverage and unusual-access findings without changing access.",
+    "procedure": "docs/pr-cards/W-5.md",
+    "gates": "Reviewed source in READY live, scoped enrolled org/repository and legitimate provider read permission; no grant/invitation or token policy mutation.",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-15: new original workflow source f150500d51be54f2b9026eaabd01e347bcc22256; 37 focused maintenance tests plus existing writer/registry coverage (249 targeted checks) passed. Fake provider/dispatcher proof only; source absent from independently READY ecf190d7. No real mutation, activation, notification or cleanup claimed."
+  },
+  {
+    "id": "GITHUB-W6-RELEASE",
+    "priority": 2,
+    "status": "PENDING",
+    "requiredRevision": "f150500d51be54f2b9026eaabd01e347bcc22256",
+    "task": "Verify genuine version preview, exact-tag draft creation, generated notes since previous tag and separately authorized draft ID publication/readback with replay/uncertainty refusal.",
+    "procedure": "docs/pr-cards/W-6.md",
+    "gates": "Reviewed source in READY live, disposable exact release/tag fixture, separately approved production operation/notifications and disposal; production remains OFF and spend zero.",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-15: new original workflow source f150500d51be54f2b9026eaabd01e347bcc22256; 37 focused maintenance tests plus existing writer/registry coverage (249 targeted checks) passed. Fake provider/dispatcher proof only; source absent from independently READY ecf190d7. No real mutation, activation, notification or cleanup claimed."
+  },
+  {
+    "id": "GITHUB-W6-CLEANUP",
+    "priority": 2,
+    "status": "PENDING",
+    "requiredRevision": "f150500d51be54f2b9026eaabd01e347bcc22256",
+    "task": "Verify genuine complete retained branch/PR inventories, closed-PR exact head exclusions, guarded preview, separately authorized deletion and independent absence/readback.",
+    "procedure": "docs/pr-cards/W-6.md",
+    "gates": "Reviewed source in READY live, approved disposable run-owned branches/PRs, exact deletion confirmation and unchanged ownership baseline; never original quarantined repository cleanup.",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-15: new original workflow source f150500d51be54f2b9026eaabd01e347bcc22256; 37 focused maintenance tests plus existing writer/registry coverage (249 targeted checks) passed. Fake provider/dispatcher proof only; source absent from independently READY ecf190d7. No real mutation, activation, notification or cleanup claimed."
   }
 ]
 ```
