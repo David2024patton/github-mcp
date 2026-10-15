@@ -4,9 +4,9 @@ import {defineGithubWrite} from './define-github-write.js';
 import {ownerOf,octo,missing,refusal} from './github-write.js';
 import {githubFor} from '../github/client.js';
 import {copilotSeats,budgetInventory} from './billing-read.js';
-import {PRICES,CODESPACES_COMPUTE,priceLine,copilotSeatsCents,
-  codespacesComputeCents,codespacesStorageCents} from '../github/prices.js';
-import {accessChange,invitation} from './people-guard.js';
+import {PRICES,priceLine,codespacesComputeCents,
+  codespacesStorageCents} from '../github/prices.js';
+import {accessChange} from './people-guard.js';
 
 const OWNER={type:'string',maxLength:39};
 const ID={type:'string',minLength:8,maxLength:80};
@@ -29,7 +29,6 @@ const getBudget=(c,t,id)=>missing(()=>call(c,t,'GET '+budgetRoute+'/{budget_id}'
   {budget_id:id}));
 const budgetType={type:'string',enum:['BundlePricing','ProductPricing','SkuPricing']};
 const budgetScope={type:'string',enum:['organization','repository','multi_user_customer','user']};
-const money=Number.isFinite;
 const budgetParams={budgetAmount:INT,
   preventFurtherUsage:{type:'boolean'},budgetScope,budgetType,
   budgetProductSku:NAME,budgetEntityName:{type:'string',maxLength:150},
@@ -125,24 +124,6 @@ export const budgetSave=defineGithubWrite({
         .includes(k)?JSON.stringify(x[k])===JSON.stringify(v):true),
   inverse:()=>null,present:({after:x})=>({id:x?.id,amount_dollars:x?.budget_amount,
     prevent_further_usage:x?.prevent_further_usage})
-});
-export const budgetDelete=defineGithubWrite({
-  name:'github_billing_delete_budget',area:'billing',audience:['O'],
-  description:'Delete exact budget with owner confirmation; refuse unbounded removal of spending enforcement.',
-  properties:{owner:OWNER,budgetId:ID},required:['budgetId'],
-  declarations:{production:'always',confirm:'always',spend:true,profiles:['full']},target:origin,
-  read:async(a,c,t)=>({budget:await getBudget(c,t,a.budgetId)}),
-  // Without a provider-enforced replacement ceiling, deleting a budget could
-  // permit unbounded spending. Never portray its former amount as a maximum.
-  price:()=>{throw refusal('Deleting a budget removes an enforceable ceiling; no finite provider-confirmed exposure is available. Use the guided settings and independently verify remaining limits.');},
-  classify:()=>({production:'removes a spending safeguard'}),
-  summarize:({args:a,target:t})=>'DELETE budget '+a.budgetId+
-    ' from '+t.owner+'; spending could become unbounded',
-  apply:({args:a,ctx,target:t})=>call(ctx,t,'DELETE '+budgetRoute+'/{budget_id}',
-    {budget_id:a.budgetId}),
-  readAfter:({args:a,ctx,target:t})=>getBudget(ctx,t,a.budgetId),
-  verify:({after:x})=>x===null,inverse:()=>null,
-  present:({args:a})=>({id:a.budgetId,deleted:true})
 });
 const planPrice=plan=>plan==='business'?PRICES.copilot_business_seat.cents:
   plan==='enterprise'?3900:null;
@@ -332,61 +313,12 @@ export const codespaceDelete=defineGithubWrite({
   verify:({after:x})=>x===null,inverse:()=>null,
   present:({args:a})=>({name:a.name,deleted:true})
 });
-const accessState=async(c,t)=>{
-  const d=await call(c,t,'GET /orgs/{org}/codespaces/access');
-  if(!d?.visibility)throw refusal('Codespaces current organization access is unreadable.');
-  return d;
-};
-export const codespaceAccess=defineGithubWrite({
-  name:'github_codespace_set_org_access',area:'codespace',audience:['O'],
-  description:'Set organization-paid Codespaces access with named members and explicit approval; refuse unbounded billing expansion.',
-  properties:{owner:OWNER,visibility:{type:'string',enum:[
-    'disabled','selected_members','all_members','all_members_and_outside_collaborators']},
-  usernames:USERS},required:['visibility'],
-  declarations:{production:'always',confirm:'always',accessWidening:true,
-    spend:true,profiles:['full']},target:origin,
-  read:async(a,c,t)=>({access:await accessState(c,t)}),
-  // Granting access permits users to start metered compute without a
-  // provider-enforceable ceiling; $0 autonomous policy stays fail-closed.
-  price:({args:a,before:b})=>{
-    if(!b)return NaN;
-    if(a.visibility==='disabled')return 0;
-    if(a.visibility===b.access.visibility&&a.visibility==='selected_members'&&
-      JSON.stringify([...(a.usernames??[])].sort())===
-      JSON.stringify([...(b.access.selected_usernames??[])].sort()))return 0;
-    throw refusal('Expanding organization-paid Codespaces access has no finite verified upper cost. Use guided owner approval with a provider-enforced budget first.');
-  },
-  classify:({args:a,before:b,target:t})=>({
-    production:'organization Codespaces charging eligibility changes',
-    ...(a.visibility!=='disabled'?accessChange({who:a.usernames?.join(',')??'all members',
-      access:'organization-paid Codespaces',where:t.owner,
-      before:b?.access?.visibility??'unknown'}):{})}),
-  summarize:({args:a,before:b,target:t})=>'Set '+t.owner+' Codespaces access '+
-    (b?.access?.visibility??'unknown')+' → '+a.visibility+
-    ' for '+JSON.stringify(a.usernames??[]),
-  apply:async({args:a,ctx,target:t,before:b})=>{
-    if(!b?.access)throw refusal('Codespaces baseline unavailable.');
-    if(a.visibility==='selected_members'&&!a.usernames?.length)
-      throw refusal('Selected mode requires at least one verified member.');
-    return (await enrolled(ctx,t)).request('PUT /orgs/{org}/codespaces/access',
-      {org:t.owner,visibility:a.visibility,
-        ...(a.visibility==='selected_members'?{selected_usernames:a.usernames}:{})});
-  },
-  readAfter:({ctx,target:t})=>accessState(ctx,t),
-  verify:({args:a,after:x})=>x?.visibility===a.visibility&&
-    (a.visibility!=='selected_members'||JSON.stringify([...(a.usernames??[])].sort())===
-      JSON.stringify([...(x.selected_usernames??[])].sort())),
-  inverse:()=>null,present:({after:x})=>({visibility:x?.visibility,
-    selected_usernames:x?.selected_usernames??[]})
-});
-export const tools=[budgetSave.tool,budgetDelete.tool,copilotAdd.tool,
-  copilotRemove.tool,codespaceCreate.tool,codespaceState.tool,
-  codespaceDelete.tool,codespaceAccess.tool];
+export const tools=[budgetSave.tool,copilotAdd.tool,copilotRemove.tool,
+  codespaceCreate.tool,codespaceState.tool,codespaceDelete.tool];
 export const handlers=Object.fromEntries([
-  [budgetSave.tool,budgetSave.handler],[budgetDelete.tool,budgetDelete.handler],
+  [budgetSave.tool,budgetSave.handler],
   [copilotAdd.tool,copilotAdd.handler],[copilotRemove.tool,copilotRemove.handler],
   [codespaceCreate.tool,codespaceCreate.handler],
   [codespaceState.tool,codespaceState.handler],
-  [codespaceDelete.tool,codespaceDelete.handler],
-  [codespaceAccess.tool,codespaceAccess.handler]
+  [codespaceDelete.tool,codespaceDelete.handler]
 ].map(([t,h])=>[t.name,h]));
