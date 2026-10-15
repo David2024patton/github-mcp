@@ -12,7 +12,6 @@ const refuse=(reason,more={})=>reply({status:'refused',done:false,reason,...more
 const scope=a=>({...(a.owner?{owner:a.owner}:{}),repo:a.repo});
 const now=ctx=>ctx.now();
 const shape=r=>!r?.isError?r?.structuredContent??null:null;
-const cut=x=>String(x??'').slice(0,8);
 const stop=(start,ctx)=>now(ctx)-start>=46000;
 async function invoke(ctx,name,args){
   if(typeof ctx.callTool!=='function')throw new Error('Guarded tool dispatch is unavailable.');
@@ -117,7 +116,7 @@ async function mergeStack(a,ctx){
   // branch using the existing guarded retarget writer, then return immediately.
   if(item.base!==r.default_branch){
     if(stop(start,ctx))return reply({status:'pending',done:false,next:'Time budget exhausted before retargeting.'});
-    const x=await invoke(ctx,'github_pr_update',{...s,number:item.number,base:r.default_branch,
+    const x=await invoke(ctx,'github_pr_update',{...s,number:item.number,base:r.default_branch,expectedHeadSha:item.head_sha,
       confirm:a.confirm===true,dryRun:a.dryRun===true,
       ...(a.requestKey?{requestKey:a.requestKey+':retarget:'+item.number}:{})});
     return reply({status:x?.status==='applied'?'retargeted':'not_applied',done:false,
