@@ -1,3 +1,7 @@
+### October 14, 2026 — O-4 reconciled as merged, O-5 Apps/token policy under implementation
+
+O-4 PR #201 merged at 174484de6331d0068b7e7d80c56a1c00b9400be1 after predecessor #202's concrete-design update. Its source subsection is now MERGED in the authoritative work index. The next eligible one whole subsection is O-5: seven App installation and fine-grained token policy capabilities, including three guarded writes and four scoped reads. Its engineering and exact-head CI/review are pending; **zero O-5 subsections count complete** at this checkpoint. No provider changes or production release were made. Provider/account acceptance remains in the existing queue.
+
 ### October 14, 2026 — O-3 merged #200, O-4 billing and paid tools under implementation (#201)
 
 **Completed source batch subsection O-3**: merged PR #200 at `f87eb4b7d35e38bbdd8e6ca588a6389a36e48703`; exact-head CI/release-policy green, nine guarded team/role capabilities. Together with O-2 #199, **2 complete source subsections** this session. Next approved O-4 is one whole subsection of 13 paid/billing/Copilot/Codespaces capabilities. Five current data reads, six guarded real writes, and two actionable manual owner workflows where cost is unbounded or the provider does not publish independent readback. This is not a completed O-4 subsection until exact-head CI/review/merge; no member, billing, spend, Codespace, release or production settings changed. Genuine O-2/O-3/O-4 provider acceptance remains queued until production READY ancestor and separate owner approvals.
