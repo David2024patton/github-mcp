@@ -18,7 +18,6 @@ async function call(ctx,name,args){
   return ctx.callTool(name,args);
 }
 const scope=(a)=>({...(a.owner?{owner:a.owner}:{}),repo:a.repo});
-const short=x=>String(x??'').slice(0,8);
 function nextAction(p){
   if(p.state!=='open')return p.merged?'Already merged.':'Closed; reopen it before continuing.';
   if(p.draft)return 'Mark this draft ready for review.';
@@ -82,7 +81,7 @@ async function openPr(args,ctx){
   if(new Set(requested.map(x=>x.toLowerCase())).size!==requested.length)
     return refused('Duplicate or blank label names are not allowed.');
   const head=args.head.includes(':')?args.head:(args.owner??ctx.connection.default_account)+':'+args.head;
-  const listed=readBody(await call(ctx,'github_pr_list',{...s,base,head,max:20}));
+  const listed=readBody(await call(ctx,'github_pr_list',{...s,base,head,max:20,detail:'full'}));
   if(!listed||listed.more_exist)return refused('Open PR inventory is incomplete; cannot verify idempotence.');
   const matches=(listed.items??[]).filter(p=>p.head?.ref===args.head.split(':').pop()&&p.base?.ref===base);
   if(matches.length>1)return refused('Several open PRs match that head/base; select one explicitly.');
@@ -93,12 +92,12 @@ async function openPr(args,ctx){
     const missing=requested.filter(label=>!(status.labels??[]).some(x=>x.toLowerCase()===label.toLowerCase()));
     if(!missing.length){
       return receipt({done:true,status:'existing',number:status.number,
-        head_sha:status.head_sha,base,status: 'existing',next_action:nextAction(status),
+        head_sha:status.head_sha,base,next_action:nextAction(status),
         html_url:status.html_url,labels:status.labels});
     }
     if(!within(ctx,start))return receipt({done:false,status:'pending',number:status.number,next:'Resume label application after the workflow budget refreshes.'});
     const mutation=await call(ctx,'github_issue_set_labels',{
-      ...s,number:status.number,labels:[...(status.labels??[]),...missing],
+      ...s,number:status.number,mode:'add',labels:missing,
       confirm:args.confirm===true,dryRun:args.dryRun===true,
       ...(args.requestKey?{requestKey:args.requestKey+':labels'}:{})});
     const body=readBody(mutation);
