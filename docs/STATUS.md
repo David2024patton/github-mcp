@@ -1,3 +1,7 @@
+### October 15, 2026 — P-2 merged; P-3 setup/draft in progress
+
+P-2 PR #207 merged at `ed095fbd3308f70c933d6d082d35e9c093bf9cdc` with final exact-head ci/release-policy, two unit shards, db, shape, lint/security gates green and all four review threads resolved. This is one full P-2 subsection, not an extra invented feature count. Next P-3 adds idempotent staged new-project setup and draft profile/document output. Parallel PR #208 carries separate approved owner bundle-workload guidance; preserve its changes. Do not conflate merged code with deployment/provider or owner acceptance.
+
 ### October 15, 2026 — P-2 no-shell CI polling stall corrected in active PR #207
 
 Diagnosis: head `e40846b059b369b0809af183d2da8487b6093cc2` already had all required checks green, but repeated no-op status reads delayed disposition of four known review threads and merging. Added binding CI decision/transition procedure to AGENTS, SESSION-START and PLAYBOOK inside substantive PR #207; next action is exact-head checks on the new documentation-inclusive head, address four verified review threads, merge with expected SHA when CI and release-policy are green. This is not provider deployment or custom MCP acceptance. P-2 must not be counted until merged.

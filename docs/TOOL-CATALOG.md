@@ -510,7 +510,7 @@ Card(s): P-1 … P-3. P-1 implementation in PR #206: additive, versioned known_p
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_profile_list` | Project profiles the server knows (Appliance Desk, the Robinson servers, drafts) | — | N | — | B,O | R | P-1 built #206 |
 | `github_profile_get` | One profile: repos, production branches and environments, required checks, workflows with write access, owned settings | — | N | — | B,O | R | P-1 built #206 |
-| `github_profile_draft` | Turn what an agent found in a codebase (workflows, branches, environments, required checks) into a draft profile and APP-NEEDS text | — | N | — | B | R | P-3 |
+| `github_profile_draft` | Turn what an agent found in a codebase (workflows, branches, environments, required checks) into a draft profile and APP-NEEDS text | — | N | — | B,O | R | P-3 implementation |
 
 ## Workflows (`github_workflow_*`) — 17
 
@@ -534,7 +534,7 @@ Card(s): P-2, P-3, W-1 … W-7. P-2 built in PR #207 as a non-read-only composed
 | `github_workflow_find` | Find anything from plain words: repo, PR, issue, run, release, commit | — | N | I | Op | R | W-7 |
 | `github_workflow_weekly_digest` | Last 7 days across accounts: merged PRs, CI failure rate, open alerts, Actions/Copilot spend, pending invitations | — | N | I,U | O,Op | R | W-7 |
 | `github_workflow_app_readiness` | Is GitHub set up for a profiled project (or an inline spec)? Each row done / fixed with confirm / needs you (steps) / needs a decision | P | N | I | B,O | R | P-2 built #207 |
-| `github_workflow_project_setup` | Set up GitHub for a new project from a short description: repo, rules, environments, labels, security features; idempotent | C·A* | N | I | B,O | F | P-3 |
+| `github_workflow_project_setup` | Set up GitHub for a new project from a short description: repo, rules, environments, labels, security features; idempotent | C·A* | N | I | B,O | F | P-3 implementation |
 
 ## Everything else on GitHub: the universal tools (`github_api_*, github_graphql_*`) — 6
 
