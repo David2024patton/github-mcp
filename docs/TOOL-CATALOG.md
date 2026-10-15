@@ -58,7 +58,7 @@ Card(s): A-5, B-2, B-3, B-8, C-1, C-2, R-1, O-1, X-1. Meta-tools, connection and
 | `github_where_is_setting` | Structured steps (link, numbered actions, expected result, read-back check) for any GitHub setting with no API | — | N | — | O | R | B-8 built #24 |
 | `github_admin_overview` | Bounded owner account and organization security review; explicit unreadable/plan-limited statuses and no invented billing figures | — | N | I,U | O | R | O-1 |
 
-## Repositories (`github_repo_*`) — 20
+## Repositories (`github_repo_*`) — 22
 
 Card(s): D-1.
 
@@ -66,6 +66,8 @@ Card(s): D-1.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_repo_list` | Repositories of an org or user (type, visibility, sort, archived filter) | — | C | I | B,Op | R | D-1 built #27 |
 | `github_repo_get` | One repo: visibility, default branch, merge settings, protection summary, security features, custom properties | — | C | I | B,O,Op | R | D-1 built #27 |
+| `github_repo_get_vulnerability_alerts` | Independently read Dependabot vulnerability-alert enabled state, not alert count | — | N | I | B,O | R | W-7 prerequisite |
+| `github_repo_set_vulnerability_alerts` | Enable or disable free Dependabot alerts with identity and independent readback | C·Prod | N | I | B,O | F | W-7 prerequisite |
 | `github_repo_find` | Plain-words search across Chris's accounts (name, topic, description) | — | N | I | Op | R | D-1 built #27 |
 | `github_repo_create` | New repository in an org or user account (private by default; public is access-widening) | P·A* | F | I | B | E | D-1 built #29 |
 | `github_repo_create_from_template` | New repository from a template repository | P·A* | C | I | B | E | D-1 built #29 |
@@ -530,9 +532,9 @@ Card(s): P-2, P-3, W-1 … W-7. P-2 built in PR #207 as a non-read-only composed
 | `github_workflow_access_review` | Who can reach what: members, outside collaborators, teams, deploy keys, apps, fine-grained tokens; flags anything unusual | — | N | I | O | R | W-5 implementation |
 | `github_workflow_release` | Cut a release from a tag or branch head with generated notes; draft first, publish with confirm | C·Prod·M | F | I | B | F | W-6 implementation |
 | `github_workflow_cleanup_branches` | Branches whose PR merged or closed (merge-commit and squash both detected), never default/protected/profile branches; preview then confirm | C | F | I | B,Op | E | W-6 implementation |
-| `github_workflow_new_repo` | Create a repository the standard way: default branch, ruleset requiring `ci`, secret scanning and push protection, merge commits only, delete branch on merge | C·A* | N | I | B,O | F | W-7 |
-| `github_workflow_find` | Find anything from plain words: repo, PR, issue, run, release, commit | — | N | I | Op | R | W-7 |
-| `github_workflow_weekly_digest` | Last 7 days across accounts: merged PRs, CI failure rate, open alerts, Actions/Copilot spend, pending invitations | — | N | I,U | O,Op | R | W-7 |
+| `github_workflow_new_repo` | Create a repository the standard way: default branch, ruleset requiring `ci`, secret scanning and push protection, merge commits only, delete branch on merge | C·A* | N | I | B,O | F | W-7 implementation |
+| `github_workflow_find` | Find anything from plain words: repo, PR, issue, run, release, commit | — | N | I | Op | R | W-7 implementation |
+| `github_workflow_weekly_digest` | Last 7 days across accounts: merged PRs, CI failure rate, open alerts, Actions/Copilot spend, pending invitations | — | N | I,U | O,Op | R | W-7 implementation |
 | `github_workflow_app_readiness` | Is GitHub set up for a profiled project (or an inline spec)? Each row done / fixed with confirm / needs you (steps) / needs a decision | P | N | I | B,O | R | P-2 built #207 |
 | `github_workflow_project_setup` | Set up GitHub for a new project from a short description: repo, rules, environments, labels, security features; idempotent | C·A* | N | I | B,O | F | P-3 implementation |
 
@@ -577,16 +579,16 @@ an organization; scheduled reminders; interaction limits beyond 6 months. The fu
 
 ## Totals
 
-**Totals:** 308 tools: 302 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
-dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 133, everyday adds 81
-(everyday lists 214), full adds 94 (full lists 308). In compact mode (`docs/designs/BATCH-C.md`) an agent
+**Totals:** 310 tools: 304 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 134, everyday adds 81
+(everyday lists 215), full adds 95 (full lists 310). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
 `github_search_tools` / `github_call`.
 
 | Section | Tools |
 | --- | --- |
 | Server about itself | 21 |
-| Repositories | 20 |
+| Repositories | 22 |
 | Files, commits and git data | 15 |
 | Branches and tags | 9 |
 | Pull requests | 15 |
@@ -615,7 +617,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Project profiles | 3 |
 | Workflows | 17 |
 | Everything else on GitHub: the universal tools | 6 |
-| **Total** | **308** |
+| **Total** | **310** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 

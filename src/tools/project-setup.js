@@ -147,7 +147,7 @@ export async function planProjectSetup(ctx,draft,stored){
     if(setting!=='disabled')return state('not_readable',
       'Cannot independently determine '+feature+' status.');
     if(remote.private)return state('needs_owner_review',
-      'Private-repository '+feature+' may incur metered or premium costs. Owner must verify pricing and approve independently; autonomous spending remains $0.');
+      'Private-repository '+feature+' may incur metered or premium costs. Owner must verify pricing and approve independently; autonomous spending remains $0.',{conditional_feature:feature});
     return state('change','Enable required public security feature '+feature,
       {tool:'github_security_set_feature',args:{owner,repo,feature,enabled:true}});
   }
@@ -186,7 +186,8 @@ async function setup(args,ctx){
   catch{return refuse('Project setup inspection failed; no mutation attempted.');}
   const base={project:profile.id,repository:draft.repository,draft:profile,
     appNeedsText:draft.doc,ownerReview:draft.review,
-    stage:plan.status,step:plan.detail,version:stored?.version??null};
+    stage:plan.status,step:plan.detail,version:stored?.version??null,
+    ...(plan.conditional_feature?{conditional_feature:plan.conditional_feature}:{})};
   if(!['save_draft','change'].includes(plan.status))
     return reply({...base,done:plan.status==='complete',
       ...(plan.next?{next:plan.next}:{}),
