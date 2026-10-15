@@ -418,15 +418,15 @@ Card(s): O-3.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_team_list` | Teams with privacy, parent and member counts | — | C | I | O | R | O-3 |
-| `github_team_get` | One team: members and roles, repositories and permissions | — | C | I | O | R | O-3 |
-| `github_team_save` | Create or update a team (name, description, privacy, parent) | P | C | I | O | F | O-3 |
-| `github_team_delete` | Delete a team | C·D | C | I | O | F | O-3 |
-| `github_team_set_member` | Add a member, change member/maintainer role, or remove | C·A*·M | C | I | O | F | O-3 |
-| `github_team_set_repo_access` | Give, change or remove a team's access to a repository | C·A* | C | I | O | F | O-3 |
-| `github_role_list` | Organization roles and custom repository roles (where the plan has them), with who holds each | — | N | I | O | R | O-3 |
-| `github_role_assign` | Give a user or team an organization role | C·A | N | I | O | F | O-3 |
-| `github_role_remove` | Take an organization role away from a user or team | C | N | I | O | F | O-3 |
+| `github_team_list` | Teams with privacy, parent and member counts | — | C built #200 | I | O | R | O-3 |
+| `github_team_get` | One team: members and roles, repositories and permissions | — | C built #200 | I | O | R | O-3 |
+| `github_team_save` | Create or update a team (name, description, privacy, parent) | P | C built #200 | I | O | F | O-3 |
+| `github_team_delete` | Delete a team | C·D | C built #200 | I | O | F | O-3 |
+| `github_team_set_member` | Add a member, change member/maintainer role, or remove | C·A*·M | C built #200 | I | O | F | O-3 |
+| `github_team_set_repo_access` | Give, change or remove a team's access to a repository | C·A* | C built #200 | I | O | F | O-3 |
+| `github_role_list` | Organization roles and custom repository roles (where the plan has them), with who holds each | — | N built #200 | I | O | R | O-3 |
+| `github_role_assign` | Give a user or team an organization role | C·A | N built #200 | I | O | F | O-3 |
+| `github_role_remove` | Take an organization role away from a user or team | C | N built #200 | I | O | F | O-3 |
 
 ## Owner: billing, budgets, Copilot and Codespaces (`github_billing_*, github_copilot_*, github_codespace_*`) — 13
 
