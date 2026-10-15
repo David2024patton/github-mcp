@@ -54,7 +54,7 @@ function arrange(gh,{ruleList=[],repoState={},security={},work='read',fork='all_
   gh.when(WF).reply(200,workflowText?{
     encoding:'base64',size:workflowText.length,
     content:Buffer.from(workflowText).toString('base64')}:
-    {encoding:'base64',size:38,content:Buffer.from('on: [push]\\npermissions:\\n  contents: read').toString('base64')});
+    {encoding:'base64',size:38,content:Buffer.from('on: [push]\npermissions:\n  contents: read').toString('base64')});
 }
 const invoke=async(w,args)=>{
   const dispatch=createDispatch({env:w.ctx.env,credentials:w.credentials,
@@ -157,14 +157,14 @@ describe('P-2 project G1–G20 readiness and safe fix routing',()=>{
   });
   it('detects flow-style forbidden workflow triggers even with apparently safe permissions',async()=>{
     const w=await makeWorld({profile:'full'});
-    arrange(w.gh,{workflowText:'on: [pull_request_target]\\npermissions:\\n  contents: read'});
+    arrange(w.gh,{workflowText:'on: [pull_request_target]\npermissions:\n  contents: read'});
     const x=parse(await invoke(w,{spec}));
     expect(x.rows.find(r=>r.id==='G11').status).toBe('needs_attention');
     expect(x.rows.find(r=>r.id==='G12').status).toBe('needs_attention');
   });
   it('accepts profile-declared read-level checks permission on a daily release workflow',async()=>{
     const w=await makeWorld({profile:'full'});
-    arrange(w.gh,{workflowText:'on:\\n  schedule: []\\npermissions:\\n  contents: write\\n  checks: read'});
+    arrange(w.gh,{workflowText:'on:\n  schedule: []\npermissions:\n  contents: write\n  checks: read'});
     const x=parse(await invoke(w,{spec}));
     expect(x.rows.find(r=>r.id==='G12').status).toBe('done');
   });

@@ -153,10 +153,10 @@ export async function inspectReadiness(ctx,owner,repo,profile){
   if(hasLive)add(out,labels,'G8','done','live exists and profile names its checked release workflow.');
   else if(!ok(live)&&live.status!==404)unknown('G8',live);
   else need('G8','live or its workflow ownership is missing; do not directly update live.');
-  for(const [id,files,writeNames] of [
-    ['G11',[ciFile,perfFile],[]],
-    ['G12',[dailyFile],['contents','checks']],
-    ['G13',[transferFile],['contents','actions']]
+  for(const [id,files] of [
+    ['G11',[ciFile,perfFile]],
+    ['G12',[dailyFile]],
+    ['G13',[transferFile]]
   ]){
     if(files.some(x=>!ok(x))){unknown(id,files.find(x=>!ok(x)));continue;}
     const texts=files.map(x=>workflowContent(x.data));
