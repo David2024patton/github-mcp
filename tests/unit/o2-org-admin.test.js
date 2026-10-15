@@ -119,7 +119,8 @@ async function call(w,name,args={}){
   const dispatch=createDispatch({env:w.ctx.env,credentials:w.credentials,
     fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep,gates:[]});
   const result=await dispatch({registry,name,args,connection:w.connection,db:w.db});
-  return result.isError?{error:result.content?.[0]?.text??'Unknown error'}:parse(result);
+  return result.structuredContent??(result.isError?
+    {done:false,error:result.content?.[0]?.text??'Unknown error'}:parse(result));
 }
 describe('O-2 live-request contract and scope regressions',()=>{
   it('organization reads use exact enrolled identity and never write',async()=>{
