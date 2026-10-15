@@ -4,7 +4,6 @@ import {createDispatch} from '../../src/tools/dispatch.js';
 import {registry} from '../../src/tools/index.js';
 import * as defs from '../../src/tools/billing-write.js';
 
-const org='example-org';
 const B='GET /organizations/{org}/settings/billing/budgets';
 const BG='GET /organizations/{org}/settings/billing/budgets/{budget_id}';
 const BC='POST /organizations/{org}/settings/billing/budgets';
@@ -168,6 +167,7 @@ describe('O-4 real prices, budget safety, marketplace, Copilot and Codespaces',(
   });
   it('refuses paid Codespace access expansion without finite verified cap',async()=>{
     const w=await makeWorld({mode:'production',profile:'full'});
+    w.gh.when('GET /orgs/{org}').reply(200,{login:'example-org'});
     const result=await invoke(w,'github_codespace_set_org_access',{
       visibility:'all_members'});
     expect(result).toMatchObject({status:'guided',completed:false,
