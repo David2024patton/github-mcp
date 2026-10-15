@@ -34,16 +34,25 @@ function blockers(p,expected,defaultBranch){
     missing.push('Review decision blocks merge.');
   return missing;
 }
-function freshAfterRetarget(p){
-  // A check at the unchanged head from the old base must never authorize a new-base merge.
-  // Unknown check timing is not proof. GitHub's own merge checks remain an additional guard.
-  const t=Date.parse(p.updated_at??'');
-  if(!Number.isFinite(t)||!p.checks?.items?.length)return false;
-  return p.checks.items.every(x=>{
+async function freshAfterRetarget(p,ctx,s){
+  // Review comments can change PR.updated_at without changing its base, so
+  // compare CI to the last real base_ref_changed event instead.
+  // The timeline is a registry read; an inaccessible/capped history fails closed.
+  const timeline=await invoke(ctx,'github_issue_list_timeline',{...s,number:p.number,max:300});
+  if(!timeline||timeline.more_exist||timeline.kept_result||!Array.isArray(timeline.items))
+    return {ready:false,reason:'PR base-change history is unreadable or incomplete.'};
+  const changed=timeline.items.filter(x=>x.event==='base_ref_changed');
+  if(!changed.length)return {ready:true,reason:'No retarget recorded in complete history.'};
+  const last=Math.max(...changed.map(x=>Date.parse(x.created_at??'')));
+  if(!Number.isFinite(last)||!p.checks?.items?.length)
+    return {ready:false,reason:'Cannot establish complete CI timing after the last retarget.'};
+  const ready=p.checks.items.every(x=>{
     const stamp=x.started_at??x.updated_at??x.completed_at;
     return x.state==='success'&&Number.isFinite(Date.parse(stamp??''))&&
-      Date.parse(stamp)>t;
+      Date.parse(stamp)>last;
   });
+  return {ready,reason:ready?'Every required check ran after the last actual retarget.':
+    'Required CI has not been independently observed after the latest actual retarget.'};
 }
 function authorize(ctx){
   return ['everyday','full'].includes(ctx.connection?.profile);
@@ -128,9 +137,13 @@ async function mergeStack(a,ctx){
     blockers:why,next:'Resolve the listed conditions without merging into the parent branch.'});
   // A stacked PR originally based on a parent must be rechecked after retarget.
   // For a later member require post-retarget timestamp proof on the current base.
-  if(!freshAfterRetarget(item))
+  if(stop(start,ctx))return reply({status:'pending',done:false,
+    next:'Workflow budget expired before checking base-change history; no merge attempted.'});
+  const fresh=await freshAfterRetarget(item,ctx,s);
+  if(!fresh.ready)
     return reply({status:'pending_fresh_ci',done:false,number:item.number,
-      head_sha:item.head_sha,next:'No merge: wait for check runs created after the retarget, then inspect again.'});
+      head_sha:item.head_sha,reason:fresh.reason,
+      next:'No merge: check the source base-change event and run CI after that event.'});
   if(stop(start,ctx))return reply({status:'pending',done:false,next:'Time budget ended; no merge attempted.'});
   const x=await invoke(ctx,'github_pr_merge',{...s,number:item.number,
     expectedHeadSha:item.head_sha,method:'merge',

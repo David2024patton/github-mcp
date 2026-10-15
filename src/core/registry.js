@@ -21,7 +21,13 @@ export function mergeNamespaces(modules) {
 }
 
 /** Write tools are available only to the profiles they list; read-only tools to every profile. */
-export const isToolVisible = (tool, profile) => !(tool.writes === true) || (Array.isArray(tool.profiles) && tool.profiles.includes(profile));
+export const isToolVisible = (tool, profile) => {
+  // Composed registry runners with explicit profiles are changes, even though
+  // their mutation is performed by an underlying audited writer.
+  if (tool.writes === true || (tool.passthrough === true && tool.usesRegistry === true && Array.isArray(tool.profiles)))
+    return Array.isArray(tool.profiles) && tool.profiles.includes(profile);
+  return true;
+};
 
 /** The tools a connection with this profile may see and call. */
 export const toolsForProfile = (registry, profile) => registry.tools.filter((tool) => isToolVisible(tool, profile));

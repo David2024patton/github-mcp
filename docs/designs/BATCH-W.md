@@ -89,3 +89,7 @@ fork-PR approval for all outside contributors, standard labels. Idempotent.
 ## Amendments
 
 (Dated entries only.)
+
+### 2026-10-15 W-2 implementation amendment — true retarget evidence
+
+Do not equate `PR.updated_at` with a base retarget; ordinary comments/reviews update it. The reviewed W-2 implementation calls the existing guarded `github_issue_list_timeline` reader, requires its complete bounded event history, finds the most recent `base_ref_changed`, and checks that every required check run/status has a later timestamp. No history read or an unreadable/capped history fails closed. An unchanged-base PR with no recorded retarget may use CI already green at the exact head. This clarifies W4 without widening permission or authorizing an extra write.

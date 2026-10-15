@@ -18,6 +18,7 @@ function fixture({prs={4:ready()},mode='preview',profile='full',time=Date.parse(
     github_repo_get:{default_branch:'main'},
     github_pr_list:{items:[],count:0},
     github_pr_list_stacks:{items:[],count:0},
+    github_issue_list_timeline:{items:[],count:0},
     ...extra
   };
   const response=x=>({structuredContent:x,content:[{type:'text',text:JSON.stringify(x)}]});
@@ -146,8 +147,13 @@ describe('W-2 exact-head and one-step stack conveyor',()=>{
       prs[a.number]={...prs[a.number],state:'closed',merged:true};
       return {status:'applied'};
     },github_pr_update:(a,prs)=>{
-      prs[a.number]={...prs[a.number],base:a.base,updated_at:'2026-10-15T02:59:00Z'};
+      prs[a.number]={...prs[a.number],base:a.base,updated_at:'2026-10-15T02:59:00Z',
+        baseChangedAt:'2026-10-15T02:59:00Z'};
       return {status:'applied'};
+    },github_issue_list_timeline:(a,prs)=>{
+      const changed=prs[a.number].baseChangedAt;
+      const items=changed?[{event:'base_ref_changed',created_at:changed}]:[];
+      return {items,count:items.length};
     }}});
     const input={repo:'app',prs:[4,5],expectedHeadShas:[A,B],confirm:true,requestKey:'stack'};
     let x=body(await mergeWorkflows.github_workflow_merge_stack(input,f.ctx));
@@ -166,6 +172,28 @@ describe('W-2 exact-head and one-step stack conveyor',()=>{
       'github_pr_merge','github_pr_update','github_pr_merge']);
     x=body(await mergeWorkflows.github_workflow_merge_stack(input,f.ctx));
     expect(x.status).toBe('complete');
+  });
+  it('does not mistake a later review edit for a base retarget in a root PR',async()=>{
+    const f=fixture({prs:{
+      4:ready(4,{updated_at:'2026-10-15T03:00:00Z'}),
+      5:ready(5,{head:'feature-b',head_sha:B,base:'feature-a'})
+    },extra:{github_issue_list_timeline:{items:[],count:0},
+      github_pr_merge:(a,prs)=>{
+        prs[a.number]={...prs[a.number],state:'closed',merged:true};
+        return {status:'applied'};
+      }}});
+    const result=body(await mergeWorkflows.github_workflow_merge_stack({
+      repo:'app',prs:[4,5],confirm:true},f.ctx));
+    expect(result.status).toBe('merged_one');
+    expect(writes(f).map(x=>x.name)).toEqual(['github_pr_merge']);
+  });
+  it('refuses unreadable base-change history despite green checks',async()=>{
+    const f=fixture({prs:{4:ready(),5:ready(5,{head:'feature-b',head_sha:B,base:'feature-a'})},
+      extra:{github_issue_list_timeline:null}});
+    const x=body(await mergeWorkflows.github_workflow_merge_stack({
+      repo:'app',prs:[4,5],confirm:true},f.ctx));
+    expect(x.status).toBe('pending_fresh_ci');
+    expect(writes(f)).toHaveLength(0);
   });
   it('rejects out-of-order chain, changed expected SHAs and missing timed check evidence',async()=>{
     const f=fixture({prs:{4:ready(4),5:ready(5,{head:'feature-b',head_sha:B,base:'other'})}});

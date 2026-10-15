@@ -147,14 +147,14 @@ describe('over the MCP endpoint', () => {
       return JSON.parse(text.split('\n').find((l) => l.startsWith('data:'))?.slice(5) ?? text);
     };
     const listed = await rpc('tools/list', {});
-    // the connection is read_only (no write tool, B-6) and compact (only the meta-tools, whoami and the result reader, C-2)
-    expect(listed.result.tools.map((x) => x.name)).toEqual(['github_search_tools', 'github_describe_tool', 'github_call', 'github_batch', 'github_whoami', 'github_get_result']);
+    // the connection is read_only (no write workflow, B-6) and compact (meta tools, whoami, result reader, and W-1 read-only PR status)
+    expect(listed.result.tools.map((x) => x.name)).toEqual(['github_search_tools', 'github_describe_tool', 'github_call', 'github_batch', 'github_whoami', 'github_get_result', 'github_workflow_pr_status']);
     expect(listed.result.tools.every((x) => x.annotations && x.description && x.inputSchema)).toBe(true);
     // the connection can ask for the other listing on the endpoint address; an invalid value is ignored
     const catalog = await rpc('tools/list', {}, '?listing=catalog');
     expect(catalog.result.tools.map((x) => x.name)).toContain('github_list_accounts');
     expect(catalog.result.tools.map((x) => x.name)).not.toContain('github_revoke_connection');
-    expect((await rpc('tools/list', {}, '?listing=everything')).result.tools).toHaveLength(6);
+    expect((await rpc('tools/list', {}, '?listing=everything')).result.tools).toHaveLength(7);
     const called = await rpc('tools/call', { name: 'github_list_accounts', arguments: {} });
     const out = JSON.parse(called.result.content[0].text);
     expect(out.accounts.map((a) => a.login)).toEqual(['example-org']);

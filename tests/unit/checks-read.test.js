@@ -28,7 +28,8 @@ describe('check, artifact and cache read tools (G-2)', () => {
       statuses: [{ context: 'legacy', state: 'success' }] });
     const { body } = await run(w, 'github_check_get_ci_state', R);
     expect(body).toMatchObject({ head_sha: A, base_branch: 'main', overall: 'red', basis: 'required' });
-    expect(body.checks).toEqual(expect.arrayContaining([{ context: 'ci', state: 'success', source: 'check run' }, { context: 'legacy', state: 'success', source: 'status' }, { context: 'deploy', state: 'missing', source: 'none' }]));
+    expect(body.checks).toEqual(expect.arrayContaining([expect.objectContaining({ context: 'ci', state: 'success', source: 'check run' }), expect.objectContaining({ context: 'legacy', state: 'success', source: 'status' }), expect.objectContaining({ context: 'deploy', state: 'missing', source: 'none' })]));
+    expect(body.checks[0].started_at).toBe('2026-10-11T00:00:00Z');
     expect(w.gh.invalid).toEqual([]);
   });
 
