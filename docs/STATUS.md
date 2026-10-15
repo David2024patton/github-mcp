@@ -1,5 +1,20 @@
 ### October 15, 2026 — W-3/W-4 review and CI recovery bundle
 
+**PR #214 closeout reconciliation:** #213 merged as d713486 while #214's first
+exact head 6477abc passed all seven application/release gates (CI run 38776205986;
+release-policy run 38776206005). Git's merge preserved both status records cleanly;
+product src/tests remain byte-identical to the frozen 5,431-pass tree. Reconciled
+#213's already-started-work exception honestly: cards preserve actual original
+scope and criterion-level delivery, no synthetic pre-code commit or small-remainder
+count. Remaining NEW engineering is empty; combined-head CI/review/merge remain
+required before one W-3/W-4 bundle counts. No remote failure/cancellation; one
+additional CI cycle is solely the required concurrent-main reconciliation.
+Owner was given the exact custom adapter reconnect action in the active chat:
+https://robinson-github-cloud.chris-tcr-2012.chatgpt.site/ . Responsible party: owner
+for adapter consent; implementing runner rechecks whoami afterward. No underlying
+App reset or shared rotating-checkpoint takeover. All scenario-specific approvals
+and fixtures remain independent; no eligible read is deferred merely for main/live lag.
+
 **Selected whole subsections:** W-3 and W-4, one coherent recovery stage of the
 approved PR conveyor. Current source commit `dd0c9abf5cf443c2749f37fe0b418ef35db21691`; delivery only counts after
 required exact-head checks, review and expected-head merge. W-3 verifies original
@@ -63,6 +78,19 @@ remote implementation `dd0c9abf5cf443c2749f37fe0b418ef35db21691`. Required remot
 CI/db/review/merge evidence remains a pre-count gate.
 
 ### October 15, 2026 — W-1/W-2 coherent PR conveyor bundle, checked release-acceptance eligibility
+
+## Owner-requested bundle scope accounting correction — October 15
+
+Operational maintenance, zero product bundles/subsections: preserve an inspected
+pre-code plan in the existing execution card, compare all original criteria with
+actual new engineering, retain undersized completions as contributions, and require
+explicit review of substantial-work exceptions. `session:bundle` checks frozen Git
+plans and delivery accounting; `check:session` includes behavioral regressions.
+Existing CI/review/merge gates remain required. No provider/deployed acceptance,
+release, activation or spending is claimed. Existing work and acceptance queues
+remain authoritative; their obligations are unchanged. See SESSION-START and
+SESSION-WORKFLOW maintenance card for procedure, proof and publication boundary.
+
 
 ## Acceptance-first session tooling — October 15, 2026
 
