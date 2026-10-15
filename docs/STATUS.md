@@ -1,3 +1,20 @@
+### October 15, 2026 — owner-requested bundle/card/PR guidance alignment
+
+Reviewed main ecf190d (#206); concurrent P-2 PR #207 remains separate and its
+branch is untouched. The owner requested removing contradictory small-PR rules.
+AGENTS, SESSION-START, PLAYBOOK, card template, throughput guide and G-4 example
+now agree: cards define approved scope; related whole subsections form a bundle;
+PR splits require concrete migration/dependency/safety/reviewability evidence.
+Removed stale 500/800-line ceilings, blanket one-migration/one-risk-area rules
+and the one-card-as-one-PR framing. Keep the existing 2–5 subsection / 400–800
+production-line averages, no padding, and every independent safety/approval/test
+boundary. Related additive migrations require ordering and upgrade/restore proof.
+This explicitly requested documentation alignment completes no product subsection
+or bundle and changes no application, CI, release, provider or activation behavior.
+Required exact-head checks and applicable review disposition govern merge. Resume
+actual main and the active implementing agent's current outcome, not this
+maintenance checkpoint or a new five-PR quota. No provider acceptance claimed.
+
 ### October 15, 2026 — O-7 merged; P-1 profiles under implementation
 
 PR #205 merged at 810c06562013d15b811255beb026606ab82e7ea0 with exact-head CI, two unit shards, DB, shape, static/security and release-policy passes. One complete O-7 subsection. P-1 is IN_PROGRESS (not counted) until green and merged. Appliance Desk main re-audited: daily-live.yml replaces release.yml and live exists. No account mutation or deployment inferred.

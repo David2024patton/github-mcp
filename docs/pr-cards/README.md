@@ -1,14 +1,14 @@
 # Execution cards — just in time
 
-Same system as the Stripe MCP and Appliance Desk. The implementing agent writes a short card for the current unit and,
+Same system as the Stripe MCP and Appliance Desk. The implementing agent writes short cards for the related approved units selected for the current bundle and,
 when useful, its immediate successor. Sol 5.6 at light/medium effort is the intended routine use. Avoid writing distant
 cards whose prerequisites are hypothetical; `work-index.json` preserves all later scope. A missing card is work, not a
-reason to stop. Designs govern behavior; cards cannot silently override them.
+reason to stop. Designs govern behavior; cards cannot silently override them. A card preserves an existing subsection ID and full acceptance, not a mandatory separate PR. Group related cards under AGENTS' bundle/card/PR boundary rule; do not invent or subdivide IDs to inflate completion.
 
 ## Minimum card (usually 40–100 lines)
 
 - ID, title, design section, prerequisites, "Baseline inspected" SHA.
-- One risk area, migration ownership (if any), realistic budget (≤500 production lines).
+- Risk/permission boundaries and migration ownership/order (if any), plus an honest workload estimate. No per-card line ceiling. Name the bundle's selected subsection IDs, complete connected outcome and any concrete reason to split delivery; related migrations and risk areas may share a PR while retaining every independent guard/test.
 - **Read only these:** a bounded list of design headings and files (with line ranges when long).
 - Literal `## Drift check A` heading with an actual comparison table (or "first card: no prior code"). The index validator requires the words `Drift check`; do not paraphrase that heading.
 - Build contract: files, exported signatures, which tools (by TOOL-CATALOG name) with their safety marks (production,

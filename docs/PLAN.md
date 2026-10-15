@@ -10,7 +10,7 @@ next bounded implementation. Every line below maps to evidence named in its desi
   (handler; `github_call` after C-2; HTTPS after R-2).
 - Every GitHub request shape passes against the fake GitHub, which validates it against the vendored OpenAPI description
   (REST) or GraphQL schema at the pinned version `2026-03-10` (`npm run test:shapes`).
-- Database code passes on throwaway Postgres; schema changes are additive and idempotent; at most one migration per PR.
+- Database code passes on throwaway Postgres; schema changes are additive and idempotent; related additive migrations may share a coherent PR with explicit ordering and upgrade/restore proof; split only for a concrete dependency, safety or reviewability reason.
 - `npm run check` green: secret scan, docs check, index validation, catalog count (`scripts/count-catalog.py`), lint,
   write-safety, token budgets, core imports.
 - No secret in code, docs, tests, logs, PR text or tool results (key-scan test). No tool takes or returns a credential or
