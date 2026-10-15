@@ -88,7 +88,7 @@ const getMembership=(ctx,t,username)=>missing(async()=>await scoped(ctx,t,
   'GET /orgs/{org}/memberships/{username}',{username}));
 const getInvitations=(ctx,t)=>all(ctx,t,'GET /orgs/{org}/invitations');
 const getOutside=(ctx,t)=>all(ctx,t,'GET /orgs/{org}/outside_collaborators');
-const normalizeInvite=x=>({id:x.id,login:x.invitee?.login??null,
+const normalizeInvite=x=>({id:x.id??null,login:x.invitee?.login??x.login??null,
   email:x.email??null,role:x.role??null,team_ids:x.team_ids??[]});
 const inviteTarget=(a,c)=>{
   if((!!a.username)===(!!a.email))
@@ -107,7 +107,7 @@ export const orgInvite=defineGithubWrite({
   read:async(a,ctx,t)=>{
     const pending=await getInvitations(ctx,t);
     const match=pending.find(x=>a.username?
-      x.invitee?.login?.toLowerCase()===a.username.toLowerCase():
+      (x.invitee?.login??x.login)?.toLowerCase()===a.username.toLowerCase():
       x.email?.toLowerCase()===a.email.toLowerCase());
     if(match)throw refusal('This recipient already has a pending organization invitation.');
     const teams=a.teamIds??[];
@@ -117,7 +117,7 @@ export const orgInvite=defineGithubWrite({
         throw refusal('One or more requested teams are not verified in this organization.');
     }
     if(a.username){
-      const user=await scoped(ctx,t,'GET /users/{username}',{username:a.username});
+      const user=(await (await client(ctx,t)).request('GET /users/{username}',{username:a.username})).data;
       if(!Number.isInteger(user?.id)||user.login?.toLowerCase()!==a.username.toLowerCase())
         throw refusal('Cannot verify the exact invitee login and numeric GitHub identity.');
       return {pending,inviteeId:user.id};
@@ -286,8 +286,8 @@ export const orgSetBlocked=defineGithubWrite({
 });
 const props=async(c,t)=>all(c,t,'GET /orgs/{org}/properties/schema');
 const propName={type:'string',minLength:1,maxLength:75,pattern:'^[A-Za-z0-9][A-Za-z0-9_-]*$'};
-const valueType={type:'string',enum:['string','single_select','multi_select','true_false']};
-const propertyFields=['value_type','required','description','default_value','allowed_values','values_editable_by'];
+const valueType={type:'string',enum:['string','single_select','multi_select','true_false','url']};
+const propertyFields=['value_type','required','description','default_value','allowed_values','values_editable_by','require_explicit_values'];
 const cleanProperty=x=>Object.fromEntries(propertyFields.filter(k=>x?.[k]!==undefined)
   .map(k=>[k,x[k]]));
 export const orgCustomProperties=defineGithubWrite({
@@ -295,11 +295,10 @@ export const orgCustomProperties=defineGithubWrite({
   description:'Create, update or delete a named organization custom property schema with exact preflight/readback.',
   properties:{owner:OWNER,name:propName,action:{type:'string',enum:['save','delete']},
     spec:{type:'object',properties:{value_type:valueType,required:BOOL,
-      description:{type:'string',maxLength:255},
+      description:{type:'string',maxLength:255},require_explicit_values:BOOL,
       values_editable_by:{type:'string',enum:['org_actors','org_and_repo_actors']},
-      allowed_values:{type:'array',maxItems:100,items:{
-        type:'object',properties:{value:{type:'string',maxLength:75},
-          description:{type:'string',maxLength:255}},required:['value'],additionalProperties:false}}},
+      allowed_values:{type:'array',maxItems:200,uniqueItems:true,
+        items:{type:'string',maxLength:75}}},
       required:['value_type'],additionalProperties:false}},
   required:['name','action'],
   declarations:{production:'never',profiles:['full']},target,
@@ -318,15 +317,17 @@ export const orgCustomProperties=defineGithubWrite({
     '; existing schema '+JSON.stringify(cleanProperty(b?.existing)),
   apply:async({args:a,ctx,target:t,before:b})=>{
     if(!b)throw refusal('Property baseline is absent.');
+    const merged=a.action==='save'?{...cleanProperty(b.existing),...a.spec}:{};
     return (await client(ctx,t)).request(
       (a.action==='save'?'PUT ':'DELETE ')+
         '/orgs/{org}/properties/schema/{custom_property_name}',
-      {...params(t),custom_property_name:a.name,...(a.action==='save'?a.spec:{})});
+      {...params(t),custom_property_name:a.name,...merged});
   },
   readAfter:async({args:a,ctx,target:t})=>
     (await props(ctx,t)).find(x=>x.property_name===a.name)??null,
-  verify:({args:a,after:x})=>a.action==='delete'?x===null:
-    !!x&&Object.keys(a.spec).every(k=>same(x[k],a.spec[k])),
+  verify:({args:a,before:b,after:x})=>a.action==='delete'?x===null:
+    !!x&&Object.entries({...cleanProperty(b?.existing),...a.spec})
+      .every(([k,v])=>same(x[k],v)),
   inverse:()=>null,present:({args:a,after:x})=>({
     property:a.name,deleted:a.action==='delete',schema:x?cleanProperty(x):null})
 });
