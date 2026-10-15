@@ -155,6 +155,7 @@ describe('W-2 exact-head and one-step stack conveyor',()=>{
     x=body(await mergeWorkflows.github_workflow_merge_stack(input,f.ctx));
     expect(x).toMatchObject({status:'retargeted',number:5});
     expect(f.prs[5].base).toBe('main');
+    expect(writes(f)[1].args.expectedHeadSha).toBe(B);
     x=body(await mergeWorkflows.github_workflow_merge_stack(input,f.ctx));
     expect(x).toMatchObject({status:'pending_fresh_ci',number:5});
     expect(writes(f).map(c=>c.name)).toEqual(['github_pr_merge','github_pr_update']);
