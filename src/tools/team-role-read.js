@@ -80,19 +80,13 @@ export const teamGet=defineRead({
 const safeRole=x=>({id:x.id,name:x.name??null,description:x.description??null,
   type:x.type??null,permissions:x.permissions??null});
 export async function rolesFor(gh,org,max=500){
-  // Role endpoint varies by GitHub plan and responds with {roles,total_count}.
-  const roles=[],size=100;
-  for(let page=1;page<=5;page++){
-    const d=(await gh.request('GET /orgs/{org}/organization-roles',
-      {org,per_page:size,page})).data;
-    const rows=Array.isArray(d)?d: d?.roles;
-    if(!Array.isArray(rows))throw new TypeError('GitHub role inventory was malformed.');
-    roles.push(...rows);
-    if(roles.length>max||Number.isInteger(d?.total_count)&&d.total_count>max)
-      return {roles:roles.slice(0,max),complete:false};
-    if(rows.length<size)return {roles,complete:true};
-  }
-  return {roles:roles.slice(0,max),complete:false};
+  // GitHub's organization roles list accepts only org; it is not a paginated route.
+  const d=(await gh.request('GET /orgs/{org}/organization-roles',{org})).data;
+  const rows=Array.isArray(d)?d:d?.roles;
+  if(!Array.isArray(rows))throw new TypeError('GitHub role inventory was malformed.');
+  const total=Array.isArray(d)?rows.length:d.total_count;
+  return {roles:rows.slice(0,max),complete:
+    rows.length<=max&&(!Number.isInteger(total)||total===rows.length)};
 }
 export const roleList=defineRead({
   name:'github_role_list',area:'role',audience:['O'],

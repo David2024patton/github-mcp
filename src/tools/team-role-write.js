@@ -3,7 +3,7 @@
 import {listAll} from '../github/client.js';
 import {defineGithubWrite} from './define-github-write.js';
 import {octo,ownerOf,missing,refusal} from './github-write.js';
-import {accessChange,invitation} from './people-guard.js';
+import {accessChange} from './people-guard.js';
 import {rolesFor} from './team-role-read.js';
 
 const OWNER={type:'string',maxLength:39};
@@ -37,7 +37,6 @@ const getOrgMember=(c,t,username)=>missing(async()=>call(c,t,
   'GET /orgs/{org}/memberships/{username}',{username}));
 const nameOf=x=>String(x?.name??'');
 const teamParams=(t,slug)=>({org:t.owner,team_slug:slug});
-const policyFields=['name','description','privacy','notification_setting','parent_team_id'];
 const teamShape=x=>({
   id:x.id,slug:x.slug,name:x.name,description:x.description??null,
   privacy:x.privacy??null,notification_setting:x.notification_setting??null,
