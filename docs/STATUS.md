@@ -1,3 +1,7 @@
+### W source batch closeout — October 15
+
+DRIFT-PROTOCOL C: all W-1..W-7 handlers implemented; code, automated, live/service OAuth, Hub/RTC, revocation and cleanup remain distinct. Owner guidance/architecture/roadmap and IN-06 evidence are reconciled without changing authority. U-1 successor card is prepared, not implemented: pinned version/description verified (1,232 operations; all categorized; 24 notifying rather than historical 25), official version/changelog checked; client validation remains green. No API/vendor upgrade. Existing A-3/A-4 changes-since-design entries remain required by future U/R work, so no live guidance is retired. DECISIONS records the interval and count choices. This required batch closeout is folded into the substantive W-7 PR; source is byte-identical to the 5,526-pass tree.
+
 ## October 15 — additional approved W-7 engineering
 
 The same owner request also authorized other ready approved work. W-7 now implements standard new-repository desired state, scoped mixed discovery (including repositories from the original catalog), and seven-day activity/billed-usage digest. Two missing curated repository vulnerability-alert tools provide actual enabled-state read/toggle with independent identity/readback; empty alert inventory is never used as the setting. P-3 exposes a typed conditional private-security step so unrelated defaults can finish without activating paid features or claiming plan entitlement.

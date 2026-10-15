@@ -11,6 +11,10 @@ settings, access or spending always shows you a preview and waits for your OK.
 | "Merge it when it's green." | Merges only if every required check passed on exactly the latest commit and no review thread is open; otherwise says what is missing | E/W |
 | "Merge the stack." | Merges stacked PRs from the bottom up, waiting for fresh CI on each one after it is retargeted to `main` | W |
 | "Rerun the failed jobs once." | Pins the failed workflow/head, delegates existing guards, refuses a second automatic retry; pending runs are checkpoints | W-4 |
+| "Review this repository's health, security and access." | Bounded observations with missing/plan-limited coverage kept explicit; no automatic fixes or grants | W-5 |
+| "Prepare a release." / "Preview finished branch cleanup." | Draft first; separate exact-release publication. Cleanup needs closed same-repo PR/head proof and preserves protected/owned refs; every write remains independently guarded | W-6 |
+| "Set up a standard repository." | Private by default, standard policies, one confirmed step at a time; paid private features remain owner review | W-7 |
+| "Find this work." / "Give me a weekly digest." | Scoped mixed-object search; seven complete billing days of activity and observed usage, Denver dates, unknown costs never treated as zero | W-7 |
 | "Why did CI fail?" | The failing job and step, the error lines, and whether `main` fails the same way — no giant log | G/W |
 | "Answer and resolve the review comments." | Checks each fix on the latest commit, replies, resolves — one preview, one OK | E/W |
 | "Cut a release." | Draft release with generated notes; publishes only after you say yes | G/W |
@@ -18,7 +22,7 @@ settings, access or spending always shows you a preview and waits for your OK.
 | "Set up a new repo for my project the standard way." | Private repo, `main` protected by a rule requiring `ci`, merge commits, secret scanning, labels — previewed first | W/P |
 | "Is GitHub set up right for Appliance Desk?" | Every row of the Appliance Desk list: ok, fixed with your OK, or exactly what to click | P |
 | "Set the STRIPE_KEY secret for this repo." | Gives you a link to type the value on your setup page — the value never goes through chat | G |
-| "Give me a throwaway repo to test this workflow." / "Clean up that test run." | Planned full workflow: scratch repo with run-owned objects and exact cleanup. **Not yet available end-to-end:** V-1 seeds implemented, V-2 cleanup unbuilt and custom OAuth connection absent as of 2026-10-12. Do not run a live seed without verified cleanup. | V |
+| "Give me a throwaway repo to test this workflow." / "Clean up that test run." | Developer scenarios and remote preflight exist; full run-owned write/cleanup acceptance remains open. Restored scratch OAuth can read, but the original quarantined run belongs to its prior connection. No live seed or deletion without verified cleanup baseline and exact authority. | V |
 | "Send my app a test GitHub webhook." | Replays a real delivery into the app you are building, correctly signed | V |
 | "Review my GitHub organization." | Members and two-factor, security features, apps and tokens, spending, anything needing attention | O |
 | "Who has access to my repos?" | Members, outside collaborators, teams, deploy keys, apps and tokens; anything unusual flagged | O/W |
@@ -52,3 +56,5 @@ resumes. OS credential managers remain the desktop default. Neither option place
 in chats, prompts, Git or shared artifacts. Initial provider consent or an expired/revoked
 underlying authorization can still require a new owner sign-in. Source/tests are not
 proof that the new deployed workflow has been exercised against the real provider.
+
+**October 15 source/deployment distinction:** W-5/W-6 source merged in #217; W-7 is implemented in #218 subject to its required merge gates. These new tools require the normal checked release before they are live. The restored custom OAuth can perform approved scratch reads; the original run journal belongs to the old connection and remains quarantined pending its exact preflight/owner disposal gate. No production activation, spending or disposal is implied.

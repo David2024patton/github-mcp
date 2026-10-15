@@ -89,3 +89,7 @@ Tests: invalid document refused with GraphQL's message; a mutation in `github_gr
 ## Amendments
 
 (Dated entries only.)
+
+### 2026-10-15 batch-entry verification
+
+At W source closeout the pinned description still contains 1,232 operations and all have x-github.category. The current triggersNotification count is 24; the U3 research reference to 25 is historical, not an assertion to copy into code. SOURCE commit `58b1e0c00b39b9e46c24dc4a0ba6a2669c90e9c1`, hash and client API version remain pinned. Official API versions and the March 12 release notice corroborate 2026-03-10 support: https://docs.github.com/en/rest/about-the-rest-api/api-versions and https://github.blog/changelog/2026-03-12-rest-api-version-2026-03-10-is-now-available/ . No U tool is implemented or accepted merely by this verification; see U-1's prepared card.
