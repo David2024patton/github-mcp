@@ -92,7 +92,7 @@ export const budgetSave=defineGithubWrite({
       throw refusal('Unenforced new budgets cannot serve as safe spend limits.');
     return couldSpend*100;
   },
-  classify:({args:a,before:b})=>({
+  classify:({args:a})=>({
     production:'affects organization-wide spending controls',
     accessWidening:a.action==='create'&&a.budgetScope==='user'?
       'A new individual spending authorization may be created':null,

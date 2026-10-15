@@ -319,3 +319,158 @@ shared contracts. Rows name high-value domain regressions **in addition to** sha
 - Test runner with fake first: wrong mode/profile, write registration and request refused; permission and
   plan gaps reported. Actual run waits for IN-04/IN-05 and owner scope; no real credential copied into repo/logs.
   Report pass/fail per tool, request IDs and gaps with owner cards; never repair a real repository in smoke.
+
+
+## Concrete implementation contracts — owner-requested review, October 14, 2026
+
+The owner requested the same implementation detail across all six active MCP
+repositories, specifically for Sol 5.6. This section fills routine design details
+inside the approved roadmap. It is a design supplement, not another roadmap,
+process, new countable subsection or claim that code/acceptance is complete.
+Existing cards/public schemas and later owner decisions win over historical
+recipes; reconcile mechanical drift with current main before coding. Do not
+replace working code simply because a proposed filename below differs.
+
+### Shared input, state and result contract
+
+- Freeze the existing subsection IDs and complete scope first. In the current
+  card, list each public tool from TOOL-CATALOG, its exact schema, the existing
+  wrapped handler/client export and the corresponding provider operation. A
+  future path below is proposed until it exists. Build the complete coherent
+  outcome; do not publish one helper as a completed subsection.
+- Keep public ABI compatibility. For new compound implementations use an internal
+  plan `{operation, account, mode, target, steps}`. Each ordered step has a stable
+  `id`, exact wrapped `tool`, validated `args`, before-state requirements,
+  intended after predicate and inverse-or-reason. Account/mode come from trusted
+  context, never caller-supplied credentials. Translate these internal records
+  into the existing public tool schema; do not invent a second external envelope.
+- Explicit IDs beat free-text guesses. Resolve friendly names with authorized
+  reads; zero matches is missing, multiple matches requires disambiguation.
+  Reject unknown fields/enums and conflicting targets before dispatch. Omitted
+  means retain; explicit empty/false/null clears only where the provider supports
+  that operation. Whitelist path/query/body fields; never forward local safety,
+  pagination/presentation or request-key arguments into provider payloads.
+- A new workflow's observable details use ordered per-step rows with stable IDs,
+  target, outcome, safe reason and provider/audit references when actually known.
+  Outcomes distinguish `planned`, `refused`, `confirmed`, `unverified`, `failed`,
+  `unknown` and `not_attempted`. Aggregate success requires every required step
+  to be confirmed; optional unavailable items remain explicitly unavailable.
+  An HTTP 200/202/204 or an outer `done:true` alone is never provider confirmation.
+- Preview validates the entire plan and uses child `dryRun:true`; provider writes
+  are zero. Existing preview audit logging is allowed. Execution requires the
+  original operation-specific confirmation/owner authority; a single workflow
+  confirm never creates financial, access or production authority. Recheck
+  mutable target/protection/account state before each dependent write.
+- Execute dependent steps in order. Persist existing run/replay checkpoints
+  before/after ambiguous effects where the approved design requires durability.
+  A failed dependent step stops its descendants; untouched rows are
+  `not_attempted`. Independent read sections can continue and return partial
+  coverage. No blind retry after an uncertain POST, no automatic rollback and
+  no new background scheduler merely to finish a synchronous workflow.
+- If a request times out after dispatch, mark its outcome unknown and reconcile
+  the original target/request key before resuming. Reuse the service's replay
+  mechanism; a second generic UUID is not recovery. Explicit undo only follows
+  recorded, still-valid inverses through wrapped tools and fresh guards.
+- Bound existing time/page/byte budgets, return an explicit continuation where
+  supported and use connection-owned result handles. A cursor/handle is bound
+  to account, connection/grant and query; expired/revoked/foreign ones refuse.
+  Do not silently truncate and label the result complete.
+
+### Build and prove one complete outcome
+
+1. Read the exact provider operation in the pinned SDK/OpenAPI/GraphQL fixture;
+   capture argument → path/query/body → response selector and credential type in
+   the current card. Research genuinely changed provider behavior in official
+   primary documentation. The owner is not the source for API facts or pricing.
+2. Implement normalization/planning, then wrapped apply/readback/intent comparison,
+   then all callers, registry, profile/area metadata, summary/output schema and
+   documentation. Reuse existing shared guards, clients, secrets and run stores.
+   Add SQL only when the existing design actually needs durable new state.
+3. Arrange stateful realistic fakes and capture the actual outbound request.
+   Required cases: normal/empty/two pages; denied scope/profile/account; omitted
+   versus explicit clearing; preview and missing confirmation with zero writes;
+   mismatch/unreadable readback; ambiguous timeout and same-key retry; partial
+   failure plus untouched descendants; foreign run/handle; budget exhaustion.
+   Add the domain-specific cases below. Do not weaken fakes to fit a guessed API.
+4. Validate the assembled outcome through every existing direct/broker/HTTP door
+   with shared write-contract and provider-shape tests; use disposable Postgres
+   for persistence, atomic claims, refresh/revocation and concurrent reservations.
+   Run focused checks at meaningful seams, then the full mandatory gates once
+   the coherent tree is ready. Record real command results, never assumed green.
+5. Keep implementation, automated verification, deployed exact revision and real
+   custom-service/provider acceptance separate. Update the existing card/status/
+   queue with precise remaining proof. These design documents close no feature
+   status and authorize no real account writes, spending or release.
+
+Answered decisions do not require another approval. Missing credentials, actual
+tenant/resource identity, independent financial consent and production activation
+are still real gates. Build configurable/synthetic paths where permitted; keep
+only their dependent execution closed and continue eligible roadmap work.
+
+
+### GitHub: current contracts by remaining approved subsection
+
+Inspected baseline: `f87eb4b` (#200). Reuse `src/github/client.js`,
+`src/github/credentials.js`, `src/github/ci-state.js`, `src/github/public-url.js`,
+`src/tools/github-write.js`, `src/tools/protect-guard.js`, `src/tools/index.js`
+and existing secret/setup/replay primitives. Existing domain modules supersede
+old proposed filenames in the historical map above. Add new area/workflow files
+under `src/tools/` only when the matching area is genuinely missing.
+
+| Subsection | Concrete state contract and implementation sequence | Domain fixture / forbidden effect |
+| --- | --- | --- |
+| V-1 | Explicit scenario/account/runId/requestKey → scratch classification → durable claim → exact object plan → guarded child creation → record every provider ID. Existing scenario blueprints/claims are authoritative; no name-based ownership. | Duplicate worker claims, timeout after create, labels auto-created by GitHub; quarantined uncertainty remains unresolved rather than deleted. |
+| V-2 | Owned runId → full original object ledger plus fresh scratch/foreign-object reads → ordered child-before-parent cleanup → per-object done/already-gone/refused/unknown. | Unknown provider labels block whole-repo deletion as designed; look-alikes untouched; no second owner cleanup confirmation inferred from plan approval. |
+| V-3 | Owned run and exact ref/SHA → fixture branch/commit, draft PR, explicit workflow dispatch/check run using existing actions/check helpers. Return dispatch correlation and bounded pending state. | App-only checks refuse wrong credential; foreign SHA and production dispatch denied; resumed wait never dispatches again. |
+| V-4 | Owned endpoint/run and private pending secret entry → public HTTPS pinned forwarder, exact original delivery/body signature, bounded send and receipt. Never construct invented GitHub delivery proof. | Private/DNS-rebinding target, redirect, cross-run delivery, malformed signature, lost POST and secret sentinel in handle/audit. |
+| V-5 | Typed spec of repo/workflow/permissions/checks/secrets-name/environment requirements → independent guarded reads → per-item observed/missing/unreadable plus exact remediation tool or manual step. | Missing credential or plan-limited response is not missing resource; zero writes in full trace. |
+| H-2 | Exact repo/hook ID + whitelisted config/events → fresh before-read and diff; masked existing secret omitted unless an explicit secure rotation consumes new input. Ping/redelivery are separate effects. | Secret rotation one-time delivery, events retained, URL policy before dispatch; delivery payload bounded; no masked secret replay. |
+| H-3 | Repo/user/key ID and explicit permission → read current permission/invitation/key → access-change preview → guarded add/update/remove → exact readback. | Own protected installation, outsider invite, write deploy key and pasted private key; denied permission read never becomes none. |
+| H-4 | Exact repo/security feature/alert/Actions setting and disposition reason → plan/permission-aware reads → preserved full payload for only requested settings. | Private-plan 403 recorded as limitation; never auto-upgrade. Zero spending authority, price unknown, unsafe token default and unrelated setting preservation. |
+| O-1 | Overview/readback query → independent org/repo/account sections and dated dashboard map. VerifyWith is a registered exact read and field predicate, not an arbitrary tool call. | Partial plan/access failures survive as unreadable/unavailable; full-page walk cannot be inferred from a topic count. |
+| O-3 | Org/team slug/role ID, subject and explicit rights → trusted team/role/member reads → before/after permission set and loss preview → correct I/U credential → readback. | Parent mismatch, custom role unavailable on plan, last-owner/self-lockout refusal, uncertain invite/delete. Finish the whole remaining team/role catalog, not one endpoint. |
+| O-4 | Org/user and billing window/seat/budget/codespace action → credential and verified price/cost classification → per-action preview and current spend rules. Read totals remain independent of paid mutation availability. | Unknown price/refused scope, seat increase versus decrease, removed budget, concurrent spend reservation; no actual purchase during implementation. |
+| O-5 | App installation/request/token metadata ID → independent owner authorization and protected-installation check → exact requested repository/permission delta. Secret/token bytes are never inputs or outputs. | Revoking the server's own required installation refused; pending/expired/foreign request; unknown repo set not treated empty. |
+| O-6 | Explicit authenticated user and whitelisted profile/email/public-key/block/invitation action → U credential only → before-state/notification/access preview → readback. | No U credential gives setup steps; private-key bytes refused without echo; clear versus omit; self-lockout and outsider notification. |
+| O-7 | Notifications use optional K credential only; gist owner/file IDs use applicable existing credentials. Return safe metadata, capped untrusted content and exact read/unread or visibility intent. | Missing notifications token disables only that path; no App-token fallback. Gist public visibility needs access confirmation; binary/private content and pagination bounded. |
+| P-1 | Validated project profile from APP-NEEDS with explicit repo/ref/check/owned-path settings → stored draft/active data; existing app/protection guard consumes every active applicable profile. | Default and protected branch plus profile live refs; conflicting two profiles; private IDs entered securely; no draft silently grants write. |
+| P-2 | Profile or inline requirements → read-only readiness across repo/rules/checks/Actions/env/secrets-name and owner choices → exact per-item evidence/remediation. | Required check absent at current SHA, denied secret-name read, old run, incomplete pages; zero fixes during inspection. |
+| P-3 | Structured setup findings → draft profile and plan for guarded repo settings/rules/labels/variables; no codebase fetch or unsolicited changes to other repos. | Idempotent second run; missing required primitive implemented first; ambiguous owner stays unresolved; actual profile activation remains explicit. |
+| W-1 | Exact repo/PR or head/base → current head, checks/reviews/mergeability/stack status. Open returns existing matching PR or creates one through guarded tool. | Head moved, duplicate open, outsider mentions, draft/unknown state and required versus optional checks. |
+| W-2 | PR plus expectedHeadSha or ordered stack → trusted checks at exact head, unresolved-review disposition verification, retarget to real default branch, fresh CI, expected-head merge commit. | No loop; retarget returns pending until fresh CI; moved head, missing check, required review and parent-branch merge all refuse. |
+| W-3 | PR and optional thread dispositions → fetch current head/thread context, verify reason, preview reply/resolve, apply once with fresh head check. | Outsider comment text is untrusted data; changed unrelated line does not prove fix; stale/already-resolved thread not duplicated. |
+| W-4 | PR/run/ref → failed steps/annotations and baseline comparison; rerun uses durable head+job claim and only existing failed-job rerun path. | Same head/job cannot automatically rerun twice; unknown log is unreadable, not guessed root cause; request-shape fixture. |
+| W-5 | Explicit repo/org selection → independent health/security/access reads with provider plan limits and coverage. | More than one page, inaccessible section, unsafe defaults; no automatic policy repair. |
+| W-6 | Release: exact repo/tag/version request → draft notes and release first; publish requires actual production authority. Cleanup: recorded PR head equality and closed/merged state before exact branch deletion. | Protected/default/owned branch, newer commit, open PR, immutable release, publication not authorized by draft preview. |
+| W-7 | New repo spec → private/main/merge-commit/guarded rules plan and idempotent reconcile; find/digest explicit kinds/date window with bounded reads. | Private plan lacks protection: report limitation, no paid upgrade or false complete; digest never schedules itself. |
+| U-1 | Exact REST operationId + validated path/query/body → native mapping when one exists; otherwise complete credential/safety/production/access/spend policy → request → readback. | Universal cannot bypass protected repo/own App/money/secret rules; unclassified write fails closed; exact pinned fake validates request. |
+| U-2 | Parsed GraphQL operation and typed variables → read/mutation classification and explicit resource/permission mapping, never substring-only mutation detection. | Aliases/fragments/multiple operations, unknown mutation/node IDs and secret response; schema+credential proof before exposure. |
+| R-1 | Reconcile current OAuth/pass implementation; trusted account/mode/profile/areas/expiry settings survive refresh; narrow pass and revoke metadata only in public results. | Database atomic one-use/expiry/revocation; no broadening from missing refresh field; default-rate owner choice remains independently recorded. |
+| R-2 | Existing direct RTC doors dispatch through the same wrapped registry; exact aliases/envelopes and shared SQL limits/owned results; no raw provider bypass. | Overlapping two-instance calls admit exactly configured quota; foreign handles and revoked pass denied; connector token cannot pretend to be RTC pass. |
+| R-3 | Pinned full service HTTP conformance with fake GitHub plus request-shape tests; actual direct/Hub/relay/Sandbox proof remains separately queued. | Broken refresh/denial/pagination fixture fails; standard GitHub connector is never this service's acceptance. |
+| X-1 | Owned immutable log ID and recorded reversible inverse → current-state check → wrapped undo; metadata restore preserves exact omitted/clear semantics. | Changed-after-write, irreversible invite/send/delete or incomplete inverse refuse; undo-of-undo and foreign ID. |
+| X-2 | Explicit consented read-only identity and original exact test IDs → native custom-service reads at independently verified deployment; output pass/gap/limitation for every selected tool. | Real plan403 is provider limitation, not code failure or PASS; no mutation, invented resources or upgrade. |
+
+### Exact merge-workflow example (synthetic identifiers)
+
+```json
+{"pr":17,"expectedHeadSha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+```
+
+Bind the repository from the existing public schema/connection, not a guessed
+default. Read required checks at that SHA, thread state and mergeability; when a
+required check is pending, return a safe pending result with that exact head and
+check/run reference and send **zero** merge requests. Later calls re-read all
+guards. A green check at a different head cannot satisfy it. Shared E-2 helpers
+already implement substantial parts: W-2 composes them, not a second merge policy.
+
+### GitHub remaining decisions
+
+IN-00 already approves implementation. IN-08 protected-repository selections,
+IN-09 spending ceiling, IN-10 pass-rate defaults, IN-12 production-name list and
+IN-13 own-people policy must be reconciled against recorded later decisions and
+actual saved settings; historical Awaiting text is not proof no answer exists.
+If genuinely missing, keep its dependent action closed with a specific IN ID;
+do not invent owner approval. Optional notifications credential IN-11 and
+production activation IN-07 are execution gates, not another plan review.
+The owner-requested design work changes none of these decisions.

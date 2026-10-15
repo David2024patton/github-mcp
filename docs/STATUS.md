@@ -2,6 +2,17 @@
 
 **Completed source batch subsection O-3**: merged PR #200 at `f87eb4b7d35e38bbdd8e6ca588a6389a36e48703`; exact-head CI/release-policy green, nine guarded team/role capabilities. Together with O-2 #199, **2 complete source subsections** this session. Next approved O-4 is one whole subsection of 13 paid/billing/Copilot/Codespaces capabilities. Five current data reads, six guarded real writes, and two actionable manual owner workflows where cost is unbounded or the provider does not publish independent readback. This is not a completed O-4 subsection until exact-head CI/review/merge; no member, billing, spend, Codespace, release or production settings changed. Genuine O-2/O-3/O-4 provider acceptance remains queued until production READY ancestor and separate owner approvals.
 
+## Owner-requested design detail — October 14, 2026
+
+Completed a code-grounded remaining-design review in `docs/implementation-contracts/REMAINING-WORK.md` and linked
+it from AGENTS. Concrete per-subsection state, input/output, failure/recovery,
+file integration and test contracts supplement existing approved designs. No
+runtime code, roadmap status/dependencies, acceptance queue, credentials,
+resources, production switch or release changed. No completed product batch
+subsection is claimed. Implementing sessions resume the authoritative roadmap
+order, reconciling current main/concurrent cards and actual owner inputs first.
+This dated design note is not a new implementation priority or replacement handoff.
+
 ### October 14, 2026 — O-2 merged #199, O-3 team and role source underway (#200)
 
 **Completed batch subsection (source + merge gates): O-2**, merged at `2f2f99e7912c993a4396b4d32e2a191d9ca032d1` after green `ci` and `release-policy`; this is **one subsection** (not 12 separate tools). O-2's custom-provider/deployment acceptance remains separately queued. Next approved **whole subsection O-3** includes nine team/role owner tools, six write contracts plus three reads, with complete scope, provider readback and plan-limited denials. This PR is source work in progress, not a completed O-3 subsection before exact-head green and merge. No real account access changes, settings or spending occurred. Live READY ancestry remains behind these source changes; acceptance queue retains release and independent approval conditions.

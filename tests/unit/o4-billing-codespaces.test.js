@@ -161,7 +161,7 @@ describe('O-4 real prices, budget safety, marketplace, Copilot and Codespaces',(
     const w=await makeWorld({mode:'production',profile:'full'});
     w.gh.when(BG).reply(200,b);
     const result=await invoke(w,'github_billing_delete_budget',{
-      budgetId:b.id,confirm:true});
+      budgetId:b.id});
     expect(result).toMatchObject({status:'guided',completed:false,
       enforces_limit:true});
     expect(w.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
@@ -169,7 +169,7 @@ describe('O-4 real prices, budget safety, marketplace, Copilot and Codespaces',(
   it('refuses paid Codespace access expansion without finite verified cap',async()=>{
     const w=await makeWorld({mode:'production',profile:'full'});
     const result=await invoke(w,'github_codespace_set_org_access',{
-      visibility:'all_members',confirm:true});
+      visibility:'all_members'});
     expect(result).toMatchObject({status:'guided',completed:false,
       visibility:'all_members'});
     expect(w.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
