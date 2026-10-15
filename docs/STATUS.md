@@ -1,3 +1,7 @@
+### October 14, 2026 — O-2 merged #199, O-3 team and role source underway (#200)
+
+**Completed batch subsection (source + merge gates): O-2**, merged at `2f2f99e7912c993a4396b4d32e2a191d9ca032d1` after green `ci` and `release-policy`; this is **one subsection** (not 12 separate tools). O-2's custom-provider/deployment acceptance remains separately queued. Next approved **whole subsection O-3** includes nine team/role owner tools, six write contracts plus three reads, with complete scope, provider readback and plan-limited denials. This PR is source work in progress, not a completed O-3 subsection before exact-head green and merge. No real account access changes, settings or spending occurred. Live READY ancestry remains behind these source changes; acceptance queue retains release and independent approval conditions.
+
 ### October 14, 2026 — O-2 organization and membership implementation (PR #199)
 
 The approved O-2 **whole batch subsection** is being assembled as a single coherent source outcome, not counted by handler count. Twelve tool contracts provide bounded organization, membership and invitation reads plus confirmed/journalled owner settings, invitations, role changes, removals, outside collaborators, user blocks, custom property schemas and immutable-release rules. Tests exercise nine write tools through all existing dispatch doors, independent provider readback, negative ownership and exact request shapes. Pre-merge full checks and source review remain required, so O-2 is IN_PROGRESS, not yet a counted completed subsection. No real provider settings, access, billing, production activation or quarantined fixture changed. Live READY remains b51cda4 and does not contain these O-2 source changes. After a green exact-head merge, O-3 teams/roles is the next approved implementation subsection; external acceptance stays separately queued.
@@ -275,6 +279,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: source implementation on PR #199 candidate only, custom production READY b51cda4 is older; no O-2 live tests or changes performed."
+  },
+  {
+    "id": "GITHUB-O3-TEAM-ROLES",
+    "priority": 2,
+    "requiredRevision": "f579f7f2b98bb07de69a78b7b833e72d353a917b",
+    "task": "Check O-3 team/role read-only inventory and representative safely owner-approved exact team grants and role assignment readback against deployed custom GitHub MCP",
+    "procedure": "docs/pr-cards/O-3.md",
+    "gates": "Only after reviewed O-3 source appears in independently verified READY live ancestry with adequate org Members/Administration permissions; no actual access-widening, invitation, team deletion or org role mutation without independent owner confirmation, protected-resource approval and production policy",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: PR #200 candidate source only; custom production READY remains behind; no O-3 genuine provider acceptance claimed."
   }
 ]
 ```
