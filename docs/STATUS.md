@@ -1,3 +1,7 @@
+### October 14, 2026 — O-5 merged; O-6 personal-account implementation underway
+
+**Source completion O-5**: PR #203 merged at `15cf2614938b62c7ae1dadbfdb0a0c0c4250f371` after full exact-head CI, both unit shards, shape, DB, catalog/write safety, and release-policy checks. It is one completed predefined subsection, with seven verified-source catalog capabilities. No provider/account mutation or released-version acceptance is inferred. **O-6** is the next existing subsection and is IN_PROGRESS only, with nine connected personal-account capabilities; no O-6 completion is claimed pending checks and merge.
+
 ### October 14, 2026 — O-4 reconciled as merged, O-5 Apps/token policy under implementation
 
 O-4 PR #201 merged at 174484de6331d0068b7e7d80c56a1c00b9400be1 after predecessor #202's concrete-design update. Its source subsection is now MERGED in the authoritative work index. The next eligible one whole subsection is O-5: seven App installation and fine-grained token policy capabilities, including three guarded writes and four scoped reads. Its engineering and exact-head CI/review are pending; **zero O-5 subsections count complete** at this checkpoint. No provider changes or production release were made. Provider/account acceptance remains in the existing queue.
