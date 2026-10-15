@@ -23,12 +23,13 @@
       "source": "deployment_provider",
       "service": "robinson-github-mcp",
       "origin": "https://github-mcp-chris-projects-de6cd1bf.vercel.app",
-      "commit": "5a0ca5d2992bc576c5fdcc88525fb1eb95943fc9",
+      "commit": "ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904",
       "transport": "deployment_api",
       "observations": [
         "vercel_ready",
-        "deployment:dpl_E2jb8VqWJyyxYnnfBGPsyTtsYdfL",
-        "main_live_exact_commit_verified_2026_10_13"
+        "production_alias_and_live_receipt_match_2026_10_15",
+        "independent_provider_metadata",
+        "source_newer_than_live_acceptance_per_check"
       ]
     },
     {
@@ -43,7 +44,8 @@
         "authenticated_initialize",
         "tools_list",
         "github_whoami",
-        "mobile_cloud_connection_callable_2026_10_13"
+        "mobile_cloud_connection_callable_2026_10_13",
+        "2026_10_15_current_adapter_refresh_uncertain_prior_verified_transport_is_historical"
       ]
     },
     {
@@ -59,11 +61,22 @@
     },
     {
       "layer": "hub",
-      "status": "unverified"
+      "status": "unverified",
+      "observations": [
+        "2026_10_15_hub_test_whoami_succeeded",
+        "foundation_ready_federation_not_configured",
+        "provider_calls_disabled_contract_0_upstreams_0",
+        "hub_namespaces_not_granted",
+        "no_upstream_direct_relay_sandbox_acceptance"
+      ]
     },
     {
       "layer": "revocation",
-      "status": "unverified"
+      "status": "unverified",
+      "observations": [
+        "requires_disposable_grant_and_explicit_exact_revocation_authority",
+        "do_not_revoke_shared_uncertain_refresh_checkpoint"
+      ]
     },
     {
       "layer": "cleanup",

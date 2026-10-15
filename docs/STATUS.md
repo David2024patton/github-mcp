@@ -43,6 +43,25 @@ Production source measurement: 459 additions / 28 deletions after final review;
 exclude tests/docs/check scripts/generated files. Final PR/handoff carries final counts
 and CI evidence. Rolling latest five source deliveries (this bundle, #210, #209, #207, #206): 367.8 added / 10.2 deleted production-source lines per PR; 7 complete subsections / 5 PRs = 1.4, below the planning average due to prior single-subsection deliveries. No padding or retrospective recount. Next approved engineering after merged bundle: W-5.
 
+**Final backlog reconciliation:** four older obligations from the RTC adoption audit
+and developer evidence are now explicit queue rows: native disposable-grant revocation,
+direct restricted RTC CLI, encrypted relay and genuine Sandbox routes. Required source
+`5a0ca5d2992bc576c5fdcc88525fb1eb95943fc9` is already in live ancestry: these are
+NOT deferred because main is newer. A scoped service RTC pass is absent. Actual custom
+Hub whoami succeeded in TEST/full/gateway with allowWrites=false; Hub health returned
+foundation ready, federation not_configured, providerCallsEnabled=false, contractVersion=0,
+accessibleUpstreams=0; hub_namespaces denied `RTC tool not granted to caller`.
+Thus Hub foundation availability is verified, not any upstream route. Full RTC1 remains
+unfinished R engineering. No account widening, shared grant revocation or paid runner.
+Final queue: 30 total, 2 historical passes retained, 28 outstanding, each with exact
+prerequisite and next action. The frozen source tree passed **168 files / 5,431 tests**;
+shapes 15 passed; npm check passed. Earlier local run mixed an older loaded module with
+a newly written deadline regression; freeze-first rerun passed without weakening it.
+Git push had no terminal credential; connected Git Data API published verified blobs,
+and fetched src/tests/scripts exactly match the tested tree. Source pin reconciled to
+remote implementation `dd0c9abf5cf443c2749f37fe0b418ef35db21691`. Required remote
+CI/db/review/merge evidence remains a pre-count gate.
+
 ### October 15, 2026 — W-1/W-2 coherent PR conveyor bundle, checked release-acceptance eligibility
 
 ## Acceptance-first session tooling — October 15, 2026
@@ -541,6 +560,54 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "status": "PENDING",
     "lastEvidence": "Source and fake-provider verification only; not in observed READY ecf190d7. No real notification, rerun, mutation, owner approval, production activation or cleanup claimed.",
     "nextAction": "After the next checked daily release includes requiredRevision, verify alias/READY SHA, restore the service principal and execute this exact scenario; obtain only the notification/production/fixture approvals named in gates."
+  },
+  {
+    "id": "GITHUB-NATIVE-REVOCATION",
+    "priority": 3,
+    "task": "Verify disposable native service OAuth grant revocation and subsequent actual custom denial, independently of provider permissions and existing useful grants.",
+    "requiredRevision": "5a0ca5d2992bc576c5fdcc88525fb1eb95943fc9",
+    "procedure": "docs/audits/RTC-HUB-ADOPTION.md; docs/pr-cards/DEVELOPER-CONNECTION.md",
+    "gates": "Source already deployed; requires a separately disposable service-issued OAuth grant, explicit authority to revoke that exact grant, and a functioning native runner. Existing uncertain shared grant must not be revoked as a test.",
+    "dependsOn": [],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-15: public custom contract reports rtc=0 at independently READY ecf190d7. Genuine Hub whoami TEST/full gateway allowWrites=false; Hub health federation not_configured, providerCallsEnabled=false, contractVersion=0, accessibleUpstreams=0. namespaces denied RTC tool not granted to caller. No service RTC pass, revocation, upstream read, relay or Sandbox execution claimed.",
+    "nextAction": "Restore or obtain the authorized disposable grant through the protected existing flow, identify it, perform approved revocation and record subsequent custom denial. Never revoke the coordinating runner grant."
+  },
+  {
+    "id": "GITHUB-RTC-DIRECT",
+    "priority": 3,
+    "task": "Run the approved direct CLI HTTPS restricted server/meta read and denial scenario using a short-lived service-owned RTC pass; do not claim full RTC1.",
+    "requiredRevision": "5a0ca5d2992bc576c5fdcc88525fb1eb95943fc9",
+    "procedure": "docs/audits/RTC-HUB-ADOPTION.md; docs/pr-cards/DEVELOPER-CONNECTION.md",
+    "gates": "Source already deployed. Need exact-origin short-lived read_only nonproduction service-issued RTC pass through protected owner setup/saved authorized runner. OAuth adapter token is not an RTC pass; RTC remains 0.",
+    "dependsOn": [],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-15: public custom contract reports rtc=0 at independently READY ecf190d7. Genuine Hub whoami TEST/full gateway allowWrites=false; Hub health federation not_configured, providerCallsEnabled=false, contractVersion=0, accessibleUpstreams=0. namespaces denied RTC tool not granted to caller. No service RTC pass, revocation, upstream read, relay or Sandbox execution claimed.",
+    "nextAction": "Coordinate the protected pass with its single owning runner, execute direct restricted read/denial and readback, then separately authorized revocation. Full RTC1 remains roadmap R engineering."
+  },
+  {
+    "id": "GITHUB-RTC-RELAY",
+    "priority": 3,
+    "task": "Verify the approved encrypted Hub relay route to this exact service, independently of direct transport and Hub foundation readiness.",
+    "requiredRevision": "5a0ca5d2992bc576c5fdcc88525fb1eb95943fc9",
+    "procedure": "docs/audits/RTC-HUB-ADOPTION.md; docs/pr-cards/DEVELOPER-CONNECTION.md",
+    "gates": "Service read-only subset is live; actual Hub health is foundation ready, federation not_configured, providerCallsEnabled=false, contractVersion=0, accessibleUpstreams=0. Hub namespaces denied RTC tool not granted to caller. Need configured authorized service grant/relay and compatible deployed Hub route.",
+    "dependsOn": [],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-15: public custom contract reports rtc=0 at independently READY ecf190d7. Genuine Hub whoami TEST/full gateway allowWrites=false; Hub health federation not_configured, providerCallsEnabled=false, contractVersion=0, accessibleUpstreams=0. namespaces denied RTC tool not granted to caller. No service RTC pass, revocation, upstream read, relay or Sandbox execution claimed.",
+    "nextAction": "Finish the existing authorized Hub federation/relay prerequisites in its owning repository, then obtain the scoped service pass and run the actual relay read/denial/readback. Never widen this connection or substitute foundation health for relay proof."
+  },
+  {
+    "id": "GITHUB-RTC-SANDBOX",
+    "priority": 3,
+    "task": "Verify the separately approved genuine Sandbox route to the restricted service, independently of direct CLI and encrypted relay.",
+    "requiredRevision": "5a0ca5d2992bc576c5fdcc88525fb1eb95943fc9",
+    "procedure": "docs/audits/RTC-HUB-ADOPTION.md; docs/pr-cards/DEVELOPER-CONNECTION.md",
+    "gates": "Live subset present; need authorized compatible Sandbox runner/project and short-lived scoped service RTC pass, provider-enforced zero spending, genuine direct route and cleanup/revocation authority. Hub federation currently not configured where route depends on Hub.",
+    "dependsOn": [],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-15: public custom contract reports rtc=0 at independently READY ecf190d7. Genuine Hub whoami TEST/full gateway allowWrites=false; Hub health federation not_configured, providerCallsEnabled=false, contractVersion=0, accessibleUpstreams=0. namespaces denied RTC tool not granted to caller. No service RTC pass, revocation, upstream read, relay or Sandbox execution claimed.",
+    "nextAction": "When exact runner/project, zero-cost boundary and protected service grant are available, execute real Sandbox read/denial/readback and authorized cleanup; do not relabel preview as TEST or infer spending approval."
   }
 ]
 ```
