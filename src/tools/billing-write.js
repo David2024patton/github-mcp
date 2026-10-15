@@ -126,7 +126,7 @@ export const budgetSave=defineGithubWrite({
     prevent_further_usage:x?.prevent_further_usage})
 });
 const planPrice=plan=>plan==='business'?PRICES.copilot_business_seat.cents:
-  plan==='enterprise'?3900:null;
+  plan==='enterprise'?PRICES.copilot_enterprise_seat.cents:null;
 const seats=async(c,t)=>{
   const gh=await enrolled(c,t);
   const [bill,list]=await Promise.all([
@@ -166,7 +166,7 @@ function copilotWrite(action){
     summarize:({args:a,before:b,target:t})=>(add?'PURCHASE':'CANCEL')+
       ' Copilot seats for '+a.usernames.join(',')+' in '+t.owner+
       '; '+(add?priceLine((seatChanges(a,b??{seats:[]}).length)*(
-        planPrice(b?.bill?.plan_type)??0),'copilot_business_seat'):
+        planPrice(b?.bill?.plan_type)??0),(b?.bill?.plan_type==='enterprise'?'copilot_enterprise_seat':'copilot_business_seat')):
         'cancellation effective at end of GitHub billing cycle'),
     apply:async({args:a,ctx,target:t,before:b})=>{
       if(!b)throw refusal('Missing verified Copilot baseline.');
@@ -296,9 +296,9 @@ export const codespaceDelete=defineGithubWrite({
   name:'github_codespace_delete',area:'codespace',audience:['O','B'],
   description:'Delete an exact user Codespace after warning about unpushed and uncommitted work; confirm absence.',
   properties:{owner:OWNER,name:codespaceName},required:['name'],
-  declarations:{production:'never',confirm:'always',cred:'U',profiles:['full']},
+  declarations:{production:'always',confirm:'always',cred:'U',profiles:['full']},
   target:stateTarget,read:(a,c,t)=>codespace(c,t,a.name),
-  classify:()=>({}),
+  classify:()=>({production:'deletes an active development environment and its files'}),
   summarize:({args:a,before:b})=>'DELETE Codespace '+a.name+
     '; '+(b?.git_status?.has_unpushed_changes||b?.git_status?.has_uncommitted_changes?
       'WARNING: unpushed or uncommitted changes WILL BE LOST':

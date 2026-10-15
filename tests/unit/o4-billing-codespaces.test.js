@@ -100,7 +100,7 @@ const contracts=[
     args:{name:'test-code',action:'start',estimatedHours:1},
     arrange:startCode,spendCents:18,production:true},
   {name:'github_codespace_delete',args:{name:'test-code'},
-    arrange:deleteCode}
+    arrange:deleteCode,production:true}
 ];
 for(const c of contracts)
   runWriteContract({label:c.name,definition:writeDef(c.name),args:c.args,

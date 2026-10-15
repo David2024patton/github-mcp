@@ -149,7 +149,7 @@ export const copilotBilling=defineRead({
     return {owner,plan_type:data?.plan_type??null,
       approximate_monthly_seat_price_dollars:data?.plan_type==='business'?
         PRICES.copilot_business_seat.cents/100:
-        data?.plan_type==='enterprise'?39:null,
+        data?.plan_type==='enterprise'?PRICES.copilot_enterprise_seat.cents/100:null,
       price_verified_on:'2026-10-14',
       count:data?.seat_breakdown?.total??null,
       breakdown:data?.seat_breakdown??null,
