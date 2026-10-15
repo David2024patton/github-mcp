@@ -236,6 +236,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: H-4 settings source staged for required exact-head CI. No production feature switch, paid security activation, live TEST write or independent cleanup acceptance."
+  },
+  {
+    "id": "GITHUB-O1-OWNER-OVERVIEW",
+    "priority": 2,
+    "requiredRevision": "5a34577e3890b33a5f49347ad67692c7f3c40ca8",
+    "task": "After checked READY release of merged O-1 source, run real custom GitHub MCP organization/personal dashboard guidance, verification of exact org 2FA and bounded owner/security status; distinguish provider 403/plan and validate relevant UI links with actual owner/browser readback",
+    "procedure": "docs/pr-cards/O-1.md",
+    "gates": "Saved service-issued OAuth and enrolled org only; PREVIEW read-only, production OFF, no spend or destructive change; browser-only completion requires independent owner/browser confirmation",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: O-1 source under exact-head CI and merge review; no deployed O-1 proof, no human UI audit, no production mutation."
   }
 ]
 ```
@@ -373,6 +384,20 @@ See pr-cards/DEVELOPER-CONNECTION.md. No production provider activation or paid 
 **Owner release timing update — 2026-10-13:** Daily checked main-to-live release now targets 00:01 America/Denver using GitHub native timezone support, so both daylight and standard time remain 12:01 a.m. All exact-head CI, atomic daily-marker, fast-forward, preview/build-cost and independent live/provider approval gates remain unchanged. Owner separately approved one manual release after this setup work completes; schedule syntax/CI, actual deployment and connected acceptance remain distinct evidence. GitHub scheduling can be delayed; no guaranteed start time is claimed.
 
 # STATUS
+
+## October 14, 2026 — O-1 guided owner admin and verified settings overview source
+
+Added the complete major repository/organization/personal dashboard settings
+family index and four native owner workflow reads: structured paged guides,
+GitHub-backed organization 2FA readback, per-account administration diagnostics
+and bounded security review. Signals distinguish ok, attention, provider
+unreadable and unavailable GitHub plan without optimistic conversions. Existing
+`github_where_is_setting` now supports enrolled-owner repository substitutions.
+Tests cover unique setting pages, operator confirmation limitation, fake provider
+shape, no writes, permission limits and $0 server status. Required full
+exact-head CI, review, merge and later READY deployed-version external acceptance
+remain separate; no GitHub administration setting was changed.
+
 
 ## October 14, 2026 — H-4 security/Actions settings source
 

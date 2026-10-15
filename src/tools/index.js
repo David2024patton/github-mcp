@@ -53,6 +53,8 @@ import * as securityRead from './security-read.js';
 import * as securityAlertsWrite from './security-alerts-write.js';
 import * as securitySettingsRead from './security-settings-read.js';
 import * as securitySettingsWrite from './security-settings-write.js';
+import * as adminGuided from './admin-guided.js';
+import * as adminOverview from './admin-overview.js';
 import * as devRunsRead from './dev-runs-read.js';
 import * as devScratchWrite from './dev-scratch-write.js';
 import * as devSeedWrite from './dev-seed-write.js';
@@ -62,4 +64,4 @@ import * as pullsMerge from './pulls-merge.js';
 import * as pullsStacks from './pulls-stacks.js';
 
 // Tool modules are added here as their cards land.
-export const registry = mergeNamespaces([meta, server, diagnostics, devRunsRead, devScratchWrite, devSeedWrite, devCleanupWrite, repos, reposWrite, codeRead, codeWrite, branches, pullsRead, issuesRead, issuesWrite, issuesRelationsWrite, issuesReactionsWrite, issuesTransferWrite, labels, milestones, labelsSync, searchGitHub, discussions, projectsRead, projectsWrite, governanceRead, governanceWrite, protectionWrite, webhooksRead, webhooksActions, webhooksSave, accessRead, accessWrite, securityRead, securityAlertsWrite, securitySettingsRead, securitySettingsWrite, pullsWrite, pullsMerge, pullsStacks, reviews, reviewsWrite, actionsRead, actionsWrite, checksRead, checksWrite, variables, secrets, environmentsRead, environmentsWrite, environmentsPolicies, deploymentsRead, deploymentsWrite, releasesRead, releasesWrite, releasesAssets, pagesRead, packagesRead, pagesWrite, packagesWrite, packagesRestore]);
+export const registry = mergeNamespaces([meta, server, diagnostics, devRunsRead, devScratchWrite, devSeedWrite, devCleanupWrite, repos, reposWrite, codeRead, codeWrite, branches, pullsRead, issuesRead, issuesWrite, issuesRelationsWrite, issuesReactionsWrite, issuesTransferWrite, labels, milestones, labelsSync, searchGitHub, discussions, projectsRead, projectsWrite, governanceRead, governanceWrite, protectionWrite, webhooksRead, webhooksActions, webhooksSave, accessRead, accessWrite, securityRead, securityAlertsWrite, securitySettingsRead, securitySettingsWrite, adminGuided, adminOverview, pullsWrite, pullsMerge, pullsStacks, reviews, reviewsWrite, actionsRead, actionsWrite, checksRead, checksWrite, variables, secrets, environmentsRead, environmentsWrite, environmentsPolicies, deploymentsRead, deploymentsWrite, releasesRead, releasesWrite, releasesAssets, pagesRead, packagesRead, pagesWrite, packagesWrite, packagesRestore]);

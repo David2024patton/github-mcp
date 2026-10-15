@@ -92,6 +92,7 @@ async function whereIsSetting(args, ctx) {
   if (typeof args.query !== 'string' || !args.query.trim()) throw new TypeError('Say which setting you are looking for, in plain words (for example "require two-factor").');
   const names = new Set(ctx.connection.accounts.map((l) => l.toLowerCase()));
   const org = args.org && names.has(String(args.org).toLowerCase()) ? args.org : null;
+  if(args.repo&&!/^[A-Za-z0-9._-]{1,100}$/.test(args.repo))throw new TypeError('Repository name is not valid.');
   if (args.org && !org) throw new TypeError(`"${args.org}" is not one of the GitHub accounts this connection may use (${ctx.connection.accounts.join(', ')}).`);
   const matches = findSettings(args.query, { max: args.detail === 'full' ? 5 : 2 });
   if (!matches.length) return { found: 0, map: MAP_STATUS, note: 'Nothing in the map matches. If GitHub has an API for it, one of the other tools does it; otherwise it has not been mapped yet.', try_words: SETTINGS.map((s) => s.title).slice(0, 8) };
@@ -101,7 +102,8 @@ async function whereIsSetting(args, ctx) {
       setting: s.title, where: s.page, url: s.url, scope: s.scope,
       steps: s.steps.map((step, i) => ({ n: i + 1, ...step })), expected: s.expected,
       ...(s.verifyWith ? { verifyWith: s.verifyWith } : { verifyWith: null, check: 'GitHub gives no way to read this back; tell me when it is done and I will note it.' })
-    }, { org: org ?? (s.scope === 'org' ? ctx.connection.default_account : null), user: s.scope === 'user' ? ctx.connection.default_account : null }))
+    }, { org: org ?? (s.scope === 'org' ? ctx.connection.default_account : null), user: s.scope === 'user' ? ctx.connection.default_account : null,
+      repo: args.repo ?? null }))
   };
 }
 
@@ -124,7 +126,7 @@ export const tools = [
     name: 'github_where_is_setting',
     area: 'server', audience: ['O'],
     description: 'Step-by-step directions (link, numbered actions, what you should see, read-back check) for a GitHub setting that has no API.',
-    inputSchema: { type: 'object', properties: { query: { type: 'string', minLength: 2, maxLength: 120, description: 'Plain words, e.g. "require two-factor"' }, org: { type: 'string', maxLength: 39 }, detail: DETAIL }, required: ['query'], additionalProperties: false },
+    inputSchema: { type: 'object', properties: { query: { type: 'string', minLength: 2, maxLength: 120, description: 'Plain words, e.g. "require two-factor"' }, org: { type: 'string', maxLength: 39 }, repo: { type: 'string', maxLength: 100 }, detail: DETAIL }, required: ['query'], additionalProperties: false },
     annotations: readOnly
   }
 ];
