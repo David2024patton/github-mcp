@@ -1,3 +1,7 @@
+### October 14, 2026 — O-2 organization and membership implementation (PR #199)
+
+The approved O-2 **whole batch subsection** is being assembled as a single coherent source outcome, not counted by handler count. Twelve tool contracts provide bounded organization, membership and invitation reads plus confirmed/journalled owner settings, invitations, role changes, removals, outside collaborators, user blocks, custom property schemas and immutable-release rules. Tests exercise nine write tools through all existing dispatch doors, independent provider readback, negative ownership and exact request shapes. Pre-merge full checks and source review remain required, so O-2 is IN_PROGRESS, not yet a counted completed subsection. No real provider settings, access, billing, production activation or quarantined fixture changed. Live READY remains b51cda4 and does not contain these O-2 source changes. After a green exact-head merge, O-3 teams/roles is the next approved implementation subsection; external acceptance stays separately queued.
+
 ### Owner workflow clarification — October 14, 2026
 
 PR workload is counted in whole predefined batch subsections from the approved
@@ -260,6 +264,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: O-1 source under exact-head CI and merge review; no deployed O-1 proof, no human UI audit, no production mutation."
+  },
+  {
+    "id": "GITHUB-O2-ORG-ADMIN",
+    "priority": 2,
+    "requiredRevision": "1c446eb49f3be52d06f2dd2c1d2f892c13cedbce",
+    "task": "Verify new O-2 organization/member and invitation reads, owner settings preview/denial and safely authorized exact write/readback using genuine custom GitHub MCP",
+    "procedure": "docs/pr-cards/O-2.md",
+    "gates": "Only after reviewed O-2 source is in independently verified READY live ancestry; service-issued owner/admin permissions, production OFF until separately authorized, no access grant, invite, destructive action or paid capability without independent owner approval",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: source implementation on PR #199 candidate only, custom production READY b51cda4 is older; no O-2 live tests or changes performed."
   }
 ]
 ```
