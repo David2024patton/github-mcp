@@ -90,6 +90,18 @@ export function checkWrites(tools, catalog) {
           failures.push(tool.name+': composed workflow must delegate to guarded writers and match its exact catalog safety.');
         continue;
       }
+      if(tool.passthrough===true&&tool.usesRegistry===true&&
+        ['github_workflow_release','github_workflow_cleanup_branches'].includes(tool.name)){
+        const release=tool.name==='github_workflow_release',p=tool.inputSchema?.properties;
+        if(!sameSet(tool.delegatedWrites??[],release?['github_release_create','github_release_update']:['github_branch_delete'])||
+          tool.delegatedWrites.some(name=>known.get(name)?.writeContract!=='defineWrite-v1')||
+          !p?.confirm||!p?.dryRun||!p?.requestKey||tool.boundsResult!==true||
+          tool.annotations?.readOnlyHint!==false||tool.annotations?.destructiveHint!==true||
+          !sameSet(tool.profiles??[],release?['full']:['everyday','full'])||
+          row.profile!==(release?'F':'E')||!safety?.confirmAlways||safety?.prod!==(release?'always':'never')||
+          (release&&!safety?.notifies))failures.push(tool.name+': maintenance workflow must retain guarded delegates, approval and exact catalog safety.');
+        continue;
+      }
       if (safety && !safety.read) failures.push(`${tool.name}: the catalog says it changes things (${row.safety}) but the tool is read-only`);
       continue;
     }
