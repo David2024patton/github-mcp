@@ -480,17 +480,17 @@ Card(s): O-6. Source built in PR #204 with verified user-auth principal, real pr
 
 ## Owner: notifications and gists (`github_notify_*, github_gist_*`) — 7
 
-Card(s): O-7. Notifications need the optional classic token (`K`, `notifications` scope only — GitHub offers no other token for them; IN-11).
+Card(s): O-7. Source built in PR #205. Notifications require optional classic token (`K`, notifications scope); owner input IN-11 is **not** auto-approved or token-enrolled. Without K, return setup guidance only. All inbox/subscription writes are production-confirmed, user-scoped and journaled. Gists use user authorization (`U`), independently verified owner and bounded file contents. Provider/real-use acceptance awaits separate release and permissions.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_notify_list` | Unread (or all) notifications, by repository and reason | — | C | K | Op | R | O-7 |
-| `github_notify_mark` | Mark one thread, a repository or everything as read or done | P | C | K | Op | E | O-7 |
-| `github_notify_set_subscription` | Watch, ignore or unsubscribe from a thread or repository | P | C | K | Op | E | O-7 |
-| `github_gist_list` | Chris's gists | — | C | U | B | R | O-7 |
-| `github_gist_get` | One gist's files (size-capped) | — | C | U | B | R | O-7 |
-| `github_gist_save` | Create or update a gist (public gists are access-widening) | P·A* | C | U | B | E | O-7 |
-| `github_gist_delete` | Delete a gist | C·D | C | U | B | F | O-7 |
+| `github_notify_list` | Unread (or all) notifications, by repository and reason | — | C | K | Op | R | O-7 built #205 |
+| `github_notify_mark` | Mark one thread, a repository or everything as read or done | C·Prod | C | K | Op | E | O-7 built #205 |
+| `github_notify_set_subscription` | Watch, ignore or unsubscribe from a thread or repository | C·Prod | C | K | Op | E | O-7 built #205 |
+| `github_gist_list` | Chris's gists | — | C | U | B | R | O-7 built #205 |
+| `github_gist_get` | One gist's files (size-capped) | — | C | U | B | R | O-7 built #205 |
+| `github_gist_save` | Create or update a gist (public gists are access-widening) | C·Prod·A* | C | U | B | E | O-7 built #205 |
+| `github_gist_delete` | Delete a gist | C·Prod | C | U | B | F | O-7 built #205 |
 
 ## Owner and administration: guided settings (`github_admin_*`) — 3
 
