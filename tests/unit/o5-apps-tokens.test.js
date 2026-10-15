@@ -99,6 +99,23 @@ describe('O-5 safe inventory and authorization boundaries',()=>{
     expect(out.done).toBe(false);
     expect(w.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
   });
+  it('refuses a new approval after a pending request has disappeared',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    w.gh.when(reqs).reply(200,[]);
+    w.gh.when(approved).reply(200,[]);
+    const out=await call(w,'github_tokenpolicy_review_request',
+      {requestId:7,action:'approve',confirm:true,requestKey:'different-intent'});
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
+  });
+  it('refuses a new revocation for a token already missing',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    w.gh.when(approved).reply(200,[]);
+    const out=await call(w,'github_tokenpolicy_revoke_access',
+      {tokenId:9,confirm:true,requestKey:'different-intent'});
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
+  });
   it('registers exactly the seven O-5 catalog capabilities',()=>{
     expect(defs.tools).toHaveLength(7);
     for(const x of defs.tools)expect(registry.tools.some(t=>t.name===x.name)).toBe(true);

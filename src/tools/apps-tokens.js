@@ -22,7 +22,8 @@ const orgAccount=async(c,t)=>{
 };
 const request=async(c,t,route,args={},cred='I')=>{
   const gh=await octo(c,t.owner,cred);
-  return (await gh.request(route,{org:t.owner,...args})).data;
+  const scoped=route.includes('/orgs/{org}/');
+  return (await gh.request(route,{...(scoped?{org:t.owner}:{}),...args})).data;
 };
 const capped=async(c,t,route,key,params={},cred='I',max=100)=>{
   const rows=[];let total=null,complete=false;
@@ -209,7 +210,10 @@ const reviewRequest=defineGithubWrite({
   target:root,
   read:async(a,c,t)=>{
     const found=await exact(()=>requests(c,t),a.requestId);
-    if(!found.value)throw refusal('Pending token request not found.');
+    // The replay path still needs a readable baseline after GitHub removes the
+    // approved/denied request from pending inventory. The journal, not a
+    // guessed provider outcome, decides whether it is a replay.
+    if(!found.value)return {request:null,repositories:[]};
     const repos=await requestRepoRows(c,t,a.requestId);
     return {request:requestRow(found.value),repositories:repos};
   },
@@ -257,7 +261,9 @@ const revoke=defineGithubWrite({
   target:root,
   read:async(a,c,t)=>{
     const found=await exact(()=>tokens(c,t),a.tokenId);
-    if(!found.value)throw refusal('Approved token ID was not found.');
+    // An already revoked token disappears from the inventory. Preserve readable
+    // absence so an identical request can reach the change journal for replay.
+    if(!found.value)return {token:null,repositories:[]};
     return {token:token(found.value),repositories:
       await existingTokenRepos(c,t,a.tokenId)};
   },
