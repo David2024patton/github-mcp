@@ -26,8 +26,9 @@ At G-4 start, merge current main, inspect that predecessor, then write the JIT c
 | `tests/shapes/environments-deployments.test.js` (new) | Exact params/body, nested reviewer/policy validation |
 
 No migration planned. No real credentials or deployment needed; all GitHub calls use validated fakes.
-If the complete card exceeds one risk area or the size limit, split environments from deployments and record
-the split at G-4 start. Both remain owned by G-4; do not mark the whole unit complete after one half.
+If a concrete dependency, migration, safety or reviewability reason requires separate delivery, record that
+reason and the remaining integration at G-4 start. Size or multiple risk areas alone do not require a split;
+follow AGENTS' bundle/card/PR rule. Both halves remain owned by G-4; do not mark the whole unit complete after one half.
 
 ## Verified route and field map
 

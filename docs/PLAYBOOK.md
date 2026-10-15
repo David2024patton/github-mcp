@@ -1,8 +1,8 @@
-# PLAYBOOK — how to deliver one PR card, step by step
+# PLAYBOOK — how to deliver a coherent implementation bundle
 
 Session startup, cadence and release-dependent proof follow `docs/SESSION-START.md`. These recipes preserve all existing security, review and validation gates. Run focused checks at coherent seams and full required gates before publishing, rather than the whole suite after each small local edit.
 
-The rules are in `AGENTS.md`; the short start is `docs/SESSION-START.md`; the work is the card in `docs/pr-cards/`.
+The rules are in `AGENTS.md`; the short start is `docs/SESSION-START.md`; the approved scope is in the selected cards in `docs/pr-cards/`. Cards do not automatically define PR boundaries.
 Same procedure as the Stripe MCP's PLAYBOOK, adapted to this repo (no official GitHub mock: request shapes are validated
 against GitHub's own published description instead).
 
@@ -10,7 +10,7 @@ against GitHub's own published description instead).
 
 1. `git fetch origin && git status -sb`. Resume the branch/PR in `docs/STATUS.md` (and the card's resume note) before
    starting anything new. Never discard local work.
-2. Read the card. If the roadmap row says JIT, write the card first from the design and current code
+2. Select the related whole subsections for the bundle and read their cards. For JIT rows, write the selected short cards from the design and current code
    (`docs/pr-cards/README.md`). A missing card is work, not a reason to stop.
 3. Run `npm run task:brief -- <card-id>` for a bounded automatic index/card digest; read only its relevant paths and the card's instructions.
 4. Check `docs/OWNER-INPUTS.md` only for inputs this card needs. Build what doesn't depend on a missing answer; keep
@@ -50,7 +50,17 @@ While implementing:
 
 ### Step 3a — PR size
 
-Target 450–800 production lines when cohesive and justified (tests/docs not counted); ~800 remains the hard stop, not a quota. Group related same-API, same-safety operations with one reusable helper and fixtures; smaller complete PRs are valid. Separate destructive/auth/financial risk for independent review where appropriate. At most one migration and one risk area per PR. The authoritative grouping examples and measurement checklist are in `docs/implementation-contracts/THROUGHPUT.md`. Measure before opening the PR:
+Follow AGENTS' bundle/card/PR boundary rule and retain the rolling per-substantive-PR
+averages of 2–5 whole predefined subsections and 400–800 meaningful production lines, with no hard numeric ceiling
+and no padding. Group connected behavior, callers, persistence and tests into a
+usable outcome; API/module/card boundaries alone do not require separate PRs.
+Prefer one substantial PR per bundle. If migration ordering, dependencies, safety
+or reviewability require multiple PRs, explain the concrete reason and count the
+bundle once after the full outcome is implemented, verified and merged. Related
+additive migrations may share a PR with explicit ordering and upgrade/restore
+proof. Keep destructive/auth/financial risks, approvals and denial paths separately
+reviewed/tested within the assembled change. An incidental small repair does not
+end a bundle. See `docs/implementation-contracts/THROUGHPUT.md`. Measure before publication:
 
 ```bash
 git diff --shortstat origin/<base>...HEAD -- api src packages scripts ':!**/*.test.*'
