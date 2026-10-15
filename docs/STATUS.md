@@ -4,7 +4,7 @@
 
 **Reconciled predecessor:** PR #209 already merged P-3 at main `2b2778ad5f9219ad2825e3e224effb4f17920fe0`; the previous index still reported P-3 IN_PROGRESS, now corrected to MERGED. Next engineering is W-3 only after this combined W-1/W-2 source and merge is verified. No manual Vercel release is authorized as part of this implementation session; checked daily policy still governs releases.
 
-**Release and acceptance (do not skip while main is ahead):** Independently observed `live=ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904`, Vercel production READY `dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7`. All 17 non-PASSED queue entries' required source SHAs were independently compared against this exact deployed SHA; every compare result was ahead with behind=0. Thus the release/code prerequisite is met for all 17, independent of newer main. Two preexisting queue entries retain genuine PASSED source/provider observations. The custom GitHub MCP connection currently returned `refresh_uncertain`, then `renewal_outcome_unknown_reconnect_required` on actual `github_whoami` and read-only tool search. This is an actual unresolved connection/serialized refresh evidence limitation, **not a reason to defer on revision mismatch**. Preserve source-specific re-entry, original per-operation owner grants, no automatic replay and no false acceptance pass. Investigate protected saved developer checkpoint with the authorized single HTTPS-capable runner; never print secrets. Two private H-1 tests remain legitimately plan-blocked (HTTP 403), even though source is live; scratch fixture cleanup still requires exact independent owner approval, and production-classified writes still require separate authorization. Full 19-item ledger below remains authoritative; all eligible checks must be retried from the live revision once the service-issued principal is restored. No external approval, spending, production activation or destructive cleanup took place.
+**Release and acceptance (do not skip while main is ahead):** Independently observed `live=ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904`, Vercel production READY `dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7`. All 17 non-PASSED queue entries' required source SHAs were independently compared against this exact deployed SHA; every compare result was ahead with behind=0. Thus the release/code prerequisite is met for all 17, independent of newer main. Two preexisting queue entries retain genuine PASSED source/provider observations. The custom GitHub MCP connection currently returned `refresh_uncertain`, then `renewal_outcome_unknown_reconnect_required` on actual `github_whoami` and read-only tool search. This is an actual unresolved connection/serialized refresh evidence limitation, **not a reason to defer on revision mismatch**. Preserve source-specific re-entry, original per-operation owner grants, no automatic replay and no false acceptance pass. Investigate protected saved developer checkpoint with the authorized single HTTPS-capable runner; never print secrets. Two private H-1 tests remain legitimately plan-blocked (HTTP 403), even though source is live; scratch fixture cleanup still requires exact independent owner approval, and production-classified writes still require separate authorization. The permanent ledger below retains the original 19 items and appends four new W-1/W-2 future-release acceptance checks;  all eligible checks must be retried from the live revision once the service-issued principal is restored. No external approval, spending, production activation or destructive cleanup took place.
 
 ### October 15, 2026 — P-2 merged; P-3 setup/draft in progress
 
@@ -372,6 +372,57 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: source PR #201 candidate only, no live O-4 provider acceptance or spending."
+  },
+  {
+    "id": "GITHUB-W1-PR-STATUS",
+    "priority": 2,
+    "requiredRevision": "69017a50e9522dd15bc6b5bd432ad70239a96e20",
+    "task": "Use a genuine service-issued custom GitHub MCP read-only principal to inspect a disposable PR's exact head, CI requirements and review/stack information; independently compare with provider state and confirm no writes.",
+    "procedure": "docs/pr-cards/W-1.md",
+    "gates": "Reviewed and merged W-1 source must be present in checked READY live ancestry; authorized account/scratch PR and working custom connection (reconnect currently required). PREVIEW read-only; no production or money action.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-15: candidate implementation PR #210; source SHA 69017a50 passed exact-head ci and release-policy, but not deployed. Real custom service refresh reports renewal_outcome_unknown_reconnect_required; no new authenticated acceptance."
+  },
+  {
+    "id": "GITHUB-W1-OPEN-PR",
+    "priority": 2,
+    "requiredRevision": "69017a50e9522dd15bc6b5bd432ad70239a96e20",
+    "task": "Verify the genuine custom workflow's idempotent open of an existing disposable scratch branch, independent readback, no duplicate PR, and safely approved separate missing-label application; capture notification/outsider denial and cleanup requirements.",
+    "procedure": "docs/pr-cards/W-1.md",
+    "gates": "W-1 code in checked READY live, restored service-issued authenticated connection and independently owner-authorized disposable scratch branch/PR. No outside notifications or actual mutation without specific owner approval; request keys, profile guard and cleanup permission remain independent.",
+    "dependsOn": [
+      "GITHUB-W1-PR-STATUS"
+    ],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-15: #210 candidate source verified by CI only; no genuine owner-authorized PR creation, labels, send or cleanup conducted."
+  },
+  {
+    "id": "GITHUB-W2-EXACT-MERGE",
+    "priority": 2,
+    "requiredRevision": "69017a50e9522dd15bc6b5bd432ad70239a96e20",
+    "task": "Run the genuine MCP's green-head review/CI/expected-SHA refusal and dry-run checks, then perform a disposable scratch merge and readback only when owner independently authorizes the exact production-classified operation.",
+    "procedure": "docs/pr-cards/W-2.md",
+    "gates": "Reviewed W-2 commit included in checked READY live and genuine authenticated connection; producer currently production OFF. Explicit owner authorization and all real required checks for any actual production-classified scratch merge. Never bypass threads, CI or protected refs.",
+    "dependsOn": [
+      "GITHUB-W1-PR-STATUS"
+    ],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-15: candidate source PR #210, no deployment and no live custom merge/production activation attempted. Code/fixture gates are not external acceptance."
+  },
+  {
+    "id": "GITHUB-W2-STACK",
+    "priority": 2,
+    "requiredRevision": "69017a50e9522dd15bc6b5bd432ad70239a96e20",
+    "task": "Test genuine ordered scratch stack read, branch chain refusal, one-at-a-time retarget, complete provider timeline, fresh CI after base_ref_changed, replay, merge stop/readback, with no writes until independently owner approved.",
+    "procedure": "docs/pr-cards/W-2.md",
+    "gates": "W-2 code in independently checked READY live ancestry, real service-issued connection and owner-authorized disposable multi-PR fixture. Retarget notifications, production-classified merges and cleanup require their own separate approvals; production OFF and $0 spending remain.",
+    "dependsOn": [
+      "GITHUB-W1-PR-STATUS",
+      "GITHUB-W2-EXACT-MERGE"
+    ],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-15: CI-only synthetic stack tests committed in #210; no authorized real custom MCP stack fixture, provider retarget or production merge. Retain external acceptance pending next deployed revision."
   }
 ]
 ```
