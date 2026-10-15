@@ -64,7 +64,120 @@ const prCreate = defineGithubWrite({
 const prUpdate = defineGithubWrite({
   name: 'github_pr_update', area: 'pr', audience: ['B'],
   description: 'Change a pull request\'s title, body, base branch (retarget) or state (open/closed). A retarget previews the commits it will then contain.',
-  properties: { owner: OWNER, repo: REPO, number: PR, title: TITLE, body: BODY, base: BRANCH, state: { type: 'string', enum: ['open', 'closed'] } },
+  properties: { owner: OWNER, repo: REPO, number: PR, title: TITLE, body: BODY, base: BRANCH, expectedHeadSha: { type: 'string', pattern: '^[0-9a-fA-F]{40}
+  required: ['repo', 'number'],
+  declarations: { production: 'never', notifies: true },
+  target: (args, ctx) => {
+    if (['title', 'body', 'base', 'state'].every((k) => args[k] === undefined)) throw new TypeError('Say what to change: title, body, base or state.');
+    return target(args, ctx);
+  },
+  read: async (args, ctx, t) => {
+    const pr = await getPr(ctx, t, args.number);
+    if(args.expectedHeadSha&&pr?.head?.sha!==args.expectedHeadSha)
+      throw refusal('The PR head changed before the retarget could be planned. Read and confirm its new head.',409);
+    let carries = null;
+    if (pr && args.base && args.base !== pr.base?.ref) {
+      const cmp = await missing(async () => (await (await octo(ctx, t.owner)).request('GET /repos/{owner}/{repo}/compare/{basehead}', { owner: t.owner, repo: t.repo, basehead: `${args.base}...${pr.head.sha}` })).data);
+      carries = cmp ? { commits: cmp.ahead_by, behind: cmp.behind_by } : { unknown: `${args.base} was not found` };
+    }
+    return { pr: brief(pr), raw: pr ? { title: pr.title, body: pr.body ?? '', base: pr.base?.ref, state: pr.state } : null, carries };
+  },
+  classify: ({ args, ctx, target: t }) => notifyOutsiders(ctx, { text: `${args.title ?? ''}\n${args.body ?? ''}`, repoOwner: t.owner }),
+  summarize: ({ args, before, target: t }) => {
+    if (!before.pr) return `There is no pull request #${args.number} in ${slug(t.owner, t.repo)}`;
+    const parts = [args.title !== undefined && 'title', args.body !== undefined && 'description', args.base && `base ${before.pr.base} -> ${args.base}${before.carries?.commits !== undefined ? ` (it will then carry ${before.carries.commits} commit${before.carries.commits === 1 ? '' : 's'})` : ''}`,
+      args.state && `state -> ${args.state}`].filter(Boolean);
+    return `Update ${prLabel(t, args.number)}: ${parts.join(', ')}`;
+  },
+  apply: async ({ args, ctx, before, target: t }) => {
+    if (!before.pr) throw refusal(`There is no pull request #${args.number}.`, 404);
+    if (before.pr.merged) throw refusal(`Pull request #${args.number} is already merged and can no longer be changed.`);
+    if (before.carries?.unknown) throw refusal(`The branch ${args.base} does not exist, so the pull request cannot be retargeted to it.`, 404);
+    return (await octo(ctx, t.owner)).request('PATCH /repos/{owner}/{repo}/pulls/{pull_number}', { owner: t.owner, repo: t.repo, pull_number: args.number,
+      ...(args.title !== undefined ? { title: args.title } : {}), ...(args.body !== undefined ? { body: args.body } : {}), ...(args.base ? { base: args.base } : {}), ...(args.state ? { state: args.state } : {}) });
+  },
+  readAfter: ({ args, ctx, target: t }) => getPr(ctx, t, args.number),
+  verify: ({ args, after }) => !!after && (args.title === undefined || after.title === args.title) && (args.body === undefined || (after.body ?? '') === args.body)
+    && (!args.base || after.base?.ref === args.base) && (!args.state || after.state === args.state)
+    && (!args.expectedHeadSha || after.head?.sha === args.expectedHeadSha),
+  inverse: ({ args, before, target: t }) => (before.raw ? { tool: 'github_pr_update', args: { owner: t.owner, repo: t.repo, number: args.number,
+    ...(args.title !== undefined ? { title: before.raw.title } : {}), ...(args.body !== undefined ? { body: before.raw.body } : {}), ...(args.base ? { base: before.raw.base } : {}), ...(args.state ? { state: before.raw.state } : {}) } } : null),
+  present: ({ after }) => brief(after)
+});
+
+const prClose = defineGithubWrite({
+  name: 'github_pr_close', area: 'pr', audience: ['B'],
+  description: 'Close a pull request without merging it. The branch is kept.',
+  properties: { owner: OWNER, repo: REPO, number: PR },
+  required: ['repo', 'number'],
+  declarations: { production: 'never', confirm: 'always' },
+  target,
+  read: async (args, ctx, t) => brief(await getPr(ctx, t, args.number)),
+  classify: () => ({}),
+  summarize: ({ args, before, target: t }) => (before ? `Close ${prLabel(t, args.number)} ("${String(before.title).slice(0, 60)}") without merging; the branch ${before.head} is kept` : `There is no pull request #${args.number} in ${slug(t.owner, t.repo)}`),
+  apply: async ({ args, ctx, before, target: t }) => {
+    needOpen(before ? { ...before, state: before.state } : null, args.number);
+    return (await octo(ctx, t.owner)).request('PATCH /repos/{owner}/{repo}/pulls/{pull_number}', { owner: t.owner, repo: t.repo, pull_number: args.number, state: 'closed' });
+  },
+  readAfter: ({ args, ctx, target: t }) => getPr(ctx, t, args.number),
+  verify: ({ after }) => after?.state === 'closed' && !after.merged,
+  inverse: ({ args, target: t }) => ({ tool: 'github_pr_update', args: { owner: t.owner, repo: t.repo, number: args.number, state: 'open' } }),
+  present: ({ after }) => brief(after)
+});
+
+const TO_DRAFT = 'mutation($id: ID!) { convertPullRequestToDraft(input: { pullRequestId: $id }) { pullRequest { isDraft } } }';
+const TO_READY = 'mutation($id: ID!) { markPullRequestReadyForReview(input: { pullRequestId: $id }) { pullRequest { isDraft } } }';
+
+const prSetDraft = defineGithubWrite({
+  name: 'github_pr_set_draft', area: 'pr', audience: ['B'],
+  description: 'Turn a pull request into a draft, or mark it ready for review.',
+  properties: { owner: OWNER, repo: REPO, number: PR, draft: { type: 'boolean', description: 'true = draft, false = ready for review' } },
+  required: ['repo', 'number', 'draft'],
+  declarations: { production: 'never' },
+  target,
+  read: async (args, ctx, t) => { const pr = await getPr(ctx, t, args.number); return pr ? { ...brief(pr), node_id: pr.node_id } : null; },
+  classify: () => ({}),
+  summarize: ({ args, before, target: t }) => (!before ? `There is no pull request #${args.number} in ${slug(t.owner, t.repo)}` : before.draft === args.draft
+    ? `${prLabel(t, args.number)} is already ${args.draft ? 'a draft' : 'ready for review'}; nothing to change` : `Mark ${prLabel(t, args.number)} as ${args.draft ? 'a draft' : 'ready for review'}`),
+  apply: async ({ args, ctx, before, target: t }) => {
+    needOpen(before, args.number);
+    if (before.draft === args.draft) return { data: { unchanged: true } };
+    return { data: await graphql(await octo(ctx, t.owner), args.draft ? TO_DRAFT : TO_READY, { id: before.node_id }) };
+  },
+  readAfter: ({ args, ctx, target: t }) => getPr(ctx, t, args.number),
+  verify: ({ args, after }) => !!after && !!after.draft === args.draft,
+  inverse: ({ args, before, target: t }) => (before.draft === args.draft ? null : { tool: 'github_pr_set_draft', args: { owner: t.owner, repo: t.repo, number: args.number, draft: before.draft } }),
+  present: ({ after }) => brief(after)
+});
+
+const prUpdateBranch = defineGithubWrite({
+  name: 'github_pr_update_branch', area: 'pr', audience: ['B'],
+  description: 'Bring a pull request\'s branch up to date with its base (merges the base into it). Needs the head commit you last read.',
+  properties: { owner: OWNER, repo: REPO, number: PR, expectedHeadSha: { type: 'string', minLength: 40, maxLength: 40, description: 'The pull request head you last read' } },
+  required: ['repo', 'number', 'expectedHeadSha'],
+  declarations: { production: 'never' },
+  target,
+  read: async (args, ctx, t) => brief(await getPr(ctx, t, args.number)),
+  classify: () => ({}),
+  summarize: ({ args, before, target: t }) => (!before ? `There is no pull request #${args.number} in ${slug(t.owner, t.repo)}` : before.head_sha !== args.expectedHeadSha
+    ? `${prLabel(t, args.number)} has moved to ${short(before.head_sha)} (you expected ${short(args.expectedHeadSha)}); read it again first`
+    : `Merge ${before.base} into ${before.head} so ${prLabel(t, args.number)} is up to date (head now ${short(before.head_sha)})`),
+  apply: async ({ args, ctx, before, target: t }) => {
+    needOpen(before, args.number);
+    if (before.head_sha !== args.expectedHeadSha) throw refusal(`New commits arrived: the head is ${short(before.head_sha)}, not ${short(args.expectedHeadSha)}. Read the pull request again.`, 409);
+    return (await octo(ctx, t.owner)).request('PUT /repos/{owner}/{repo}/pulls/{pull_number}/update-branch', { owner: t.owner, repo: t.repo, pull_number: args.number, expected_head_sha: args.expectedHeadSha });
+  },
+  readAfter: ({ args, ctx, target: t }) => getPr(ctx, t, args.number),
+  // GitHub does the merge in the background and answers 202; the new head shows up shortly, so acceptance is what is confirmed here.
+  verify: ({ response, after }) => !!after && response?.status === 202,
+  inverse: () => null,
+  present: ({ before, after }) => ({ ...brief(after), accepted: true, head_before: before.head_sha, note: 'GitHub is merging the base into the branch; read the pull request again for the new head.' })
+});
+
+const all = [prCreate, prUpdate, prClose, prSetDraft, prUpdateBranch];
+export const tools = all.map((d) => d.tool);
+export const handlers = Object.fromEntries(all.map((d) => [d.tool.name, d.handler]));
+ }, state: { type: 'string', enum: ['open', 'closed'] } },
   required: ['repo', 'number'],
   declarations: { production: 'never', notifies: true },
   target: (args, ctx) => {
