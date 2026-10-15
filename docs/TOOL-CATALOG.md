@@ -434,19 +434,19 @@ Card(s): O-4. Spend guard (`docs/designs/BATCH-B.md` B-4): `$` tools show a doll
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_billing_get_usage` | Usage and cost for an org or user by product (Actions, Packages, Codespaces, Copilot, LFS) and period, in dollars; premium requests on request | — | N | I,U | O | R | O-4 |
-| `github_billing_list_budgets` | Organization budgets with amount, spent so far and whether usage stops at the limit | — | N | I | O | R | O-4 |
-| `github_billing_save_budget` | Create or change a budget (raising or removing a limit raises spend) | C·$* | N | I | O | F | O-4 |
-| `github_billing_delete_budget` | Delete a budget (removes a spending cap) | C·$ | N | I | O | F | O-4 |
-| `github_billing_list_marketplace` | Marketplace apps Chris pays for (plan, price, next billing date); buying is guided only | — | N | U | O | R | O-4 |
-| `github_copilot_get_billing` | Copilot plan, seat counts and seat assignments with last activity | — | C | I | O | R | O-4 |
-| `github_copilot_add_seats` | Give users or teams Copilot seats (about $19 per seat per month, prorated) | C·$·A | F | I | O | F | O-4 |
-| `github_copilot_remove_seats` | Remove Copilot seats (effective at the end of the billing cycle) | C | C | I | O | F | O-4 |
-| `github_codespace_list` | Codespaces of the user or org with machine, state and who pays | — | C | I,U | O,B | R | O-4 |
-| `github_codespace_create` | Create a codespace for a repo and branch (hourly compute plus storage) | C·$ | C | U | B | F | O-4 |
-| `github_codespace_set_state` | Start (billed) or stop (saves money) a codespace | P·$* | C | U | B | E | O-4 |
-| `github_codespace_delete` | Delete a codespace (unpushed work is lost) | C·D | C | U | B | F | O-4 |
-| `github_codespace_set_org_access` | Choose who may use codespaces at the organization's expense | C·$·A | N | I | O | F | O-4 |
+| `github_billing_get_usage` | Usage and cost for an org or user by product (Actions, Packages, Codespaces, Copilot, LFS) and period, in dollars; premium requests on request | — | N built #201 | I,U | O | R | O-4 |
+| `github_billing_list_budgets` | Organization budgets with amount, spent so far and whether usage stops at the limit | — | N built #201 | I | O | R | O-4 |
+| `github_billing_save_budget` | Create or change a budget (raising or removing a limit raises spend) | C·$*·Prod | N built #201 | I | O | F | O-4 |
+| `github_billing_delete_budget` | Guide exact budget deletion after identifying an enforceable replacement spending limit; no automated budget deletion | — | N built #201 | I | O | R | O-4 |
+| `github_billing_list_marketplace` | Marketplace apps Chris pays for (plan, price, next billing date); buying is guided only | — | N built #201 | U | O | R | O-4 |
+| `github_copilot_get_billing` | Copilot plan, seat counts and seat assignments with last activity | — | C built #201 | I | O | R | O-4 |
+| `github_copilot_add_seats` | Give users or teams Copilot seats (about $19 per seat per month, prorated) | C·$·A·M·Prod | F built #201 | I | O | F | O-4 |
+| `github_copilot_remove_seats` | Remove Copilot seats (effective at the end of the billing cycle) | C·Prod | C built #201 | I | O | F | O-4 |
+| `github_codespace_list` | Codespaces of the user or org with machine, state and who pays | — | C built #201 | I,U | O,B | R | O-4 |
+| `github_codespace_create` | Create a codespace for a repo and branch (hourly compute plus storage) | C·$·Prod | C built #201 | U | O,B | F | O-4 |
+| `github_codespace_set_state` | Start (billed) or stop (saves money) a codespace | C·$*·Prod* | C built #201 | U | O,B | F | O-4 |
+| `github_codespace_delete` | Delete a codespace (unpushed work is lost) | C·D·Prod | C built #201 | U | O,B | F | O-4 |
+| `github_codespace_set_org_access` | Guide organization-paid Codespaces access changes with explicit owner UI readback; no API policy GET or automated write | — | N built #201 | I | O | R | O-4 |
 
 ## Owner: apps and fine-grained tokens (`github_app_*, github_tokenpolicy_*`) — 7
 

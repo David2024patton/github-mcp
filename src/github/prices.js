@@ -6,6 +6,8 @@ const DAY = '2026-10-10';
 export const PRICES = Object.freeze({
   copilot_business_seat: Object.freeze({ cents: 1900, unit: 'seat per month', source: 'https://docs.github.com/en/billing/concepts/product-billing/github-copilot-licenses', readOn: DAY,
     note: 'billed monthly; seats added mid-cycle are charged immediately, prorated for the rest of the cycle (the full price is used as the estimate)' }),
+  copilot_enterprise_seat: Object.freeze({ cents: 3900, unit: 'seat per month', source: 'https://docs.github.com/en/copilot/get-started/plans', readOn: '2026-10-14',
+    note: 'full monthly estimate; confirm actual enterprise plan and proration on GitHub bill' }),
   codespaces_storage: Object.freeze({ cents: 7, unit: 'GB per month', source: 'https://docs.github.com/en/billing/concepts/product-billing/github-codespaces', readOn: DAY }),
   secret_protection_committer: Object.freeze({ cents: 1900, unit: 'active committer per month', source: 'https://github.com/security/plans', readOn: DAY,
     note: 'an active committer pushed in the last 90 days to a repository with the feature on; bots are ignored' }),
