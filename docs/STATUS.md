@@ -1,3 +1,7 @@
+### October 15, 2026 — P-2 no-shell CI polling stall corrected in active PR #207
+
+Diagnosis: head `e40846b059b369b0809af183d2da8487b6093cc2` already had all required checks green, but repeated no-op status reads delayed disposition of four known review threads and merging. Added binding CI decision/transition procedure to AGENTS, SESSION-START and PLAYBOOK inside substantive PR #207; next action is exact-head checks on the new documentation-inclusive head, address four verified review threads, merge with expected SHA when CI and release-policy are green. This is not provider deployment or custom MCP acceptance. P-2 must not be counted until merged.
+
 ### October 15, 2026 — P-1 merged and P-2 readiness in implementation
 
 P-1 PR #206 merged at ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904 with green full exact-head CI and independent review-thread closure, completing one P-1 subsection. P-2 is now IN_PROGRESS: all G1–G20 readiness results and single-action guarded corrections; source is not yet deployed or provider-accepted. Personal/production privileges and spending remain unchanged.

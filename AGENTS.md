@@ -227,6 +227,30 @@ sections below when a step names them.
     No check may be inferred green from its earlier successful siblings. If the chat must stop, leave
     the exact PR, head SHA, failing job, route/field, fix and next command in the card and STATUS.
 
+### CI/review action state machine — no-status-loop rule (2026-10-15 incident)
+
+When a GitHub connector exposes only REST/PR APIs (no local shell), operate on one
+immutable `(PR number, head SHA)` pair at a time. One check-run snapshot is a
+**decision**, not a request to keep polling. Classify and act:
+
+| Exact-head state | Mandatory next action |
+|---|---|
+| Any job concluded failure | Fetch all failed-job logs **once**, batch a root-cause fix + tests, push one corrected commit; prior success is invalidated |
+| Some required jobs queued/running | Inspect/reply to reviews and reconcile card/acceptance, or advance independently eligible successor work **without pushing over running CI** |
+| Same pending snapshot twice | **Stop polling**. Leave an exact recoverable note with head, pending job IDs, review thread IDs and the next single query; never issue another identical read in a busy loop |
+| `ci` and `release-policy` both successful at the **same exact head** | Immediately inspect unresolved review threads and fresh mergeability; resolve verified comments; if authorized, **merge with expected head**. Do not keep checking successful CI |
+| Head changed, conflict, or ambiguous mutation | Re-fetch remote head and PR state; reconcile before retrying; never infer merge/push success from a timeout |
+
+**Prior incident/root cause:** PR #207 had complete passing exact-head CI, but the
+agent repeatedly fetched unchanged check-run status while four review threads
+remained to be addressed. The wait was not a provider blocker; it was missing
+**state-to-action transition**. The remedy is this finite decision table plus
+a review-first action when CI is green. In a no-shell session, do not emulate
+`sleep 60` with dozens of API polls. If all independent work is exhausted
+while CI genuinely remains pending, record the exact checkpoint and report
+pending CI separately from engineering completion. A green CI result must lead
+to review resolution and the authorized merge, not another status query.
+
 ### Blocker remediation before deferral (mandatory; owner direction 2026-10-12)
 
 A blocker on one **operation, external acceptance gate or candidate PR** is not a
