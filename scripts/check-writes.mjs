@@ -102,6 +102,15 @@ export function checkWrites(tools, catalog) {
           (release&&!safety?.notifies))failures.push(tool.name+': maintenance workflow must retain guarded delegates, approval and exact catalog safety.');
         continue;
       }
+      if(tool.name==='github_workflow_new_repo'&&tool.usesRegistry===true&&tool.passthrough===true){
+        const p=tool.inputSchema?.properties;
+        const expected=['github_repo_create','github_repo_update_settings','github_ruleset_save','github_label_save','github_env_save','github_security_set_feature','github_branch_create','github_repo_set_default_branch','github_repo_set_vulnerability_alerts','github_actions_set_settings'];
+        if(!sameSet(tool.delegatedWrites??[],expected)||tool.delegatedWrites.some(n=>known.get(n)?.writeContract!=='defineWrite-v1')||
+          !p?.confirm||!p?.dryRun||!p?.requestKey||tool.boundsResult!==true||tool.annotations?.readOnlyHint!==false||
+          !sameSet(tool.profiles??[],['full'])||row.profile!=='F'||!safety?.confirmAlways||!safety?.access||safety.prod!=='never')
+          failures.push(tool.name+': new repository composition must preserve exact guarded writers, full profile, bounded results and explicit approval.');
+        continue;
+      }
       if (safety && !safety.read) failures.push(`${tool.name}: the catalog says it changes things (${row.safety}) but the tool is read-only`);
       continue;
     }

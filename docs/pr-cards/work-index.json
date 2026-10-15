@@ -1288,13 +1288,13 @@
         "W-6"
       ],
       "card": "docs/pr-cards/W-7.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
         "W-7"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": []
     },
     {
