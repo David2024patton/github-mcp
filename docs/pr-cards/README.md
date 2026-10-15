@@ -7,6 +7,12 @@ reason to stop. Designs govern behavior; cards cannot silently override them. A 
 
 ## Minimum card (usually 40–100 lines)
 
+Keep one finite consumer/fixture checklist for the selected outcome: actual symbol
+and caller, required input/result shape, persistence/provider boundary, role/scope,
+full synthetic fixture and refusal/recovery proof. Reuse existing recipes/decisions;
+check the real adapter/form control early. This is detail inside the current card,
+not another planning document, invented subsection or separate approval ceremony.
+
 - ID, title, design section, prerequisites, "Baseline inspected" SHA.
 - Risk/permission boundaries and migration ownership/order (if any), plus an honest workload estimate. No per-card line ceiling. Name the bundle's selected subsection IDs, complete connected outcome and any concrete reason to split delivery; related migrations and risk areas may share a PR while retaining every independent guard/test.
 - **Read only these:** a bounded list of design headings and files (with line ranges when long).

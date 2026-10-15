@@ -1,5 +1,18 @@
 ### October 15, 2026 — W-3/W-4 review and CI recovery bundle
 
+## Owner-requested execution efficiency / parallel CI maintenance — October 15
+
+Preserve substantial outcome scope and complete acceptance. Consolidated local
+capability/publication diagnosis and early real-boundary fixture preparation reduce
+avoidable retries. Independent verification families run in parallel with original
+required aggregate names; new topology/timeout regressions and measured 180-second
+root phase budgets preserve fast feedback as coverage grows. No tests/assertions,
+provider gates, immutable pins, releases or production behavior are waived.
+Existing session/CI checks and final-main verification remain mandatory. This is
+maintenance, zero product bundles or genuine deployed/provider acceptance. See
+SESSION-START and the existing SESSION-WORKFLOW card for evidence and procedure.
+
+
 **PR #214 closeout reconciliation:** #213 merged as d713486 while #214's first
 exact head 6477abc passed all seven application/release gates (CI run 38776205986;
 release-policy run 38776206005). Git's merge preserved both status records cleanly;
