@@ -70,18 +70,23 @@ export function checkWrites(tools, catalog) {
         continue;
       }
       if(tool.passthrough===true&&tool.usesRegistry===true&&
-        ['github_workflow_open_pr','github_workflow_merge_when_green',
+        ['github_workflow_rerun_failed_ci','github_workflow_review_threads','github_workflow_open_pr','github_workflow_merge_when_green',
           'github_workflow_merge_stack'].includes(tool.name)){
         const delegates=tool.delegatedWrites;
         const p=tool.inputSchema?.properties;
         const isOpen=tool.name==='github_workflow_open_pr';
+        const isReview=tool.name==='github_workflow_review_threads';
+        const isRetry=tool.name==='github_workflow_rerun_failed_ci';
+        if((isReview&&(!sameSet(delegates??[],['github_review_reply','github_review_resolve_thread'])||!p?.planKey||!p?.expectedHeadSha||tool.boundsResult!==true))||
+          (isRetry&&(!sameSet(delegates??[],['github_actions_rerun'])||!p?.expectedHeadSha||tool.boundsResult!==true)))
+          failures.push(tool.name+': workflow must retain its exact delegates, pinned head and bounded result contract.');
         if(!Array.isArray(delegates)||!delegates.length||
           delegates.some(name=>known.get(name)?.writeContract!=='defineWrite-v1')||
           !p?.confirm||!p?.dryRun||tool.annotations?.readOnlyHint!==false||
           tool.annotations?.destructiveHint!==true||
-          !sameSet(tool.profiles??[],['everyday','full'])||
-          row.profile!=='E'||!(isOpen?(safety?.preview&&safety?.notifies&&
-            safety?.prod==='never'):(safety?.confirmAlways&&safety?.prod==='when-target')))
+          !sameSet(tool.profiles??[],isReview?['read_only','everyday','full']:['everyday','full'])||
+          row.profile!=='E'||!((isOpen||isReview)?(safety?.preview&&safety?.notifies&&
+            safety?.prod==='never'):((isRetry?safety?.preview:safety?.confirmAlways)&&safety?.prod===(isRetry?'never':'when-target'))))
           failures.push(tool.name+': composed workflow must delegate to guarded writers and match its exact catalog safety.');
         continue;
       }

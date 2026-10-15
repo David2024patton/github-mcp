@@ -88,7 +88,12 @@ export function createDispatch({ env = process.env, now = Date.now, fetch = glob
     const mode = connection?.mode;
     let shaped;
     if (isRunner) {
-      shaped = result; // already shaped, kept or refused by the dispatch of the tool it ran
+      // Composite workflows can produce a new aggregate; cap/redact/retain it just like a read.
+      // Simple passthrough meta tools retain their delegate's already bounded envelope.
+      shaped = tool.boundsResult === true && result?.structuredContent
+        ? { ...(await readReply({ tool, args, raw: result.structuredContent, connection, db, mode })),
+          ...(result.isError ? { isError: true } : {}) }
+        : result;
     } else if (isWrite) {
       const body = result?.structuredContent ?? null;
       const clean = body ? shapeResult(body, { mode }) : null;

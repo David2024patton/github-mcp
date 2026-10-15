@@ -158,3 +158,19 @@ describe('commit and git reads (D-2)', () => {
     expect(result.content[0].text).toMatch(/Next:/);
   });
 });
+
+describe('W-3 bounded exact-head file context',()=>{
+  it('returns the requested lines without sending local range arguments to GitHub',async()=>{
+    const w=await world(),ref='a'.repeat(40),text='one\ntwo\nthree\nfour';
+    w.gh.when('GET /repos/{owner}/{repo}/contents/{path}').reply(200,fileBody({content:b64(text),size:text.length}));
+    const {body}=await run(w,'github_content_get',{...R,path:'docs/a.md',ref,startLine:2,endLine:3});
+    expect(body).toMatchObject({content:'two\nthree',start_line:2,end_line:3,total_lines:4});
+    expect(w.gh.calls[0].query).toEqual({ref});expect(w.gh.invalid).toEqual([]);
+  });
+  it('refuses half, reversed or oversized ranges before calling GitHub',async()=>{
+    const w=await world();
+    for(const range of [{startLine:2},{startLine:3,endLine:2},{startLine:1,endLine:101}])
+      expect((await run(w,'github_content_get',{...R,path:'a.js',...range})).result.isError).toBe(true);
+    expect(w.gh.calls).toEqual([]);
+  });
+});

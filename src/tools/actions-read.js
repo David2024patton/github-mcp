@@ -12,16 +12,19 @@ const MAX_ARCHIVE_BYTES = 50 * 1024 * 1024;
 /** Pages a GitHub list that wraps its items in an object (`{ total_count, workflow_runs: [...] }`) by page number, up to `max` items. */
 async function listWrapped(octokit, route, params, key, max) {
   const items = [];
+  let total = null;
   for (let page = 1; items.length < max; page += 1) {
     const data = (await octokit.request(route, { ...params, per_page: 100, page })).data;
+    total = data.total_count ?? total;
     const batch = data?.[key] ?? [];
     items.push(...batch);
     if (batch.length < 100 || items.length >= (data.total_count ?? Infinity)) break;
   }
-  return { items: items.slice(0, max), capped: items.length > max };
+  return { items: items.slice(0, max), capped: items.length > max || (total !== null && total > items.length) };
 }
 const jobBrief = (j) => ({ id: j.id, name: j.name, status: j.status, conclusion: j.conclusion, started_at: j.started_at, completed_at: j.completed_at, runner: j.runner_name,
-  failed_steps: (j.steps ?? []).filter((s) => s.conclusion === 'failure').map((s) => ({ number: s.number, name: s.name })), html_url: j.html_url });
+  failed_steps: (j.steps ?? []).filter((s) => s.conclusion === 'failure').map((s) => ({ number: s.number, name: s.name })), html_url: j.html_url,
+  check_run_id: /\/check-runs\/(\d+)$/.test(j.check_run_url ?? '') ? Number(j.check_run_url.match(/\/check-runs\/(\d+)$/)[1]) : null });
 
 export const actionsListWorkflows = defineRead({
   name: 'github_actions_list_workflows', area: 'actions', audience: ['B', 'Op'], summaryType: 'workflow',
@@ -59,8 +62,8 @@ export const actionsGetRun = defineRead({
     const { owner, octokit } = await readerFor(args, ctx);
     const p = { owner, repo: args.repo, run_id: args.runId };
     const run = (await octokit.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', p)).data;
-    const { items: jobs } = await listWrapped(octokit, 'GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', { ...p, filter: 'latest' }, 'jobs', 100);
-    return { id: run.id, name: run.name, title: run.display_title, event: run.event, status: run.status, conclusion: run.conclusion, branch: run.head_branch, head_sha: run.head_sha,
+    const { items: jobs, capped } = await listWrapped(octokit, 'GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs', { ...p, filter: 'latest' }, 'jobs', 100);
+    return { id: run.id, workflow_id: run.workflow_id, path: run.path, jobs_complete: !capped, name: run.name, title: run.display_title, event: run.event, status: run.status, conclusion: run.conclusion, branch: run.head_branch, head_sha: run.head_sha,
       run_number: run.run_number, run_attempt: run.run_attempt, actor: run.actor?.login, created_at: run.created_at, updated_at: run.updated_at, html_url: run.html_url, jobs: jobs.map(jobBrief) };
   })
 });

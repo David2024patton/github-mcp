@@ -10,6 +10,7 @@ settings, access or spending always shows you a preview and waits for your OK.
 | "What's the state of PR 42?" | CI at the latest commit (which checks are required), mergeable or not, reviews, open review threads, and the next step in one sentence | W |
 | "Merge it when it's green." | Merges only if every required check passed on exactly the latest commit and no review thread is open; otherwise says what is missing | E/W |
 | "Merge the stack." | Merges stacked PRs from the bottom up, waiting for fresh CI on each one after it is retargeted to `main` | W |
+| "Rerun the failed jobs once." | Pins the failed workflow/head, delegates existing guards, refuses a second automatic retry; pending runs are checkpoints | W-4 |
 | "Why did CI fail?" | The failing job and step, the error lines, and whether `main` fails the same way — no giant log | G/W |
 | "Answer and resolve the review comments." | Checks each fix on the latest commit, replies, resolves — one preview, one OK | E/W |
 | "Cut a release." | Draft release with generated notes; publishes only after you say yes | G/W |

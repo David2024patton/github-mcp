@@ -1,6 +1,8 @@
 // GitHub Actions, change side (G-1 part 2): enable/disable a workflow, start one, rerun, cancel, delete a run, approve or reject a
 // waiting deployment. A workflow is production when its file deploys to a production environment (read from the file at the ref
 // being run), or when the ref itself is production; anything that cannot be read for certain counts as production.
+import { createHash } from 'node:crypto';
+import { requestKey as githubRequestKey } from '../github/client.js';
 import { environmentsIn } from '../github/workflow-env.js';
 import { defineGithubWrite } from './define-github-write.js';
 import { OUTSIDE_PROJECT } from './protect-guard.js';
@@ -17,11 +19,11 @@ const getWorkflow = (ctx, target, workflow) => missing(async () => (await (await
 const getRun = (ctx, target, runId) => missing(async () => (await (await octo(ctx, target.owner)).request('GET /repos/{owner}/{repo}/actions/runs/{run_id}', { ...p(target), run_id: runId })).data);
 
 /** The reason a workflow run is production, or null: its file deploys to a production environment, or its ref is production. */
-export async function workflowProduction(ctx, target, { path, ref }) {
+export async function workflowProduction(ctx, target, { path, ref, contentRef }) {
   const octokit = await octo(ctx, target.owner);
   let text;
   try {
-    const file = (await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', { ...p(target), path, ref })).data;
+    const file = (await octokit.request('GET /repos/{owner}/{repo}/contents/{path}', { ...p(target), path, ref: contentRef ?? ref })).data;
     text = Buffer.from(file.content ?? '', file.encoding === 'base64' ? 'base64' : 'utf8').toString('utf8');
   } catch { return `the workflow file ${path} could not be read at ${ref}, so it is treated as production`; }
   const { names, unknown } = environmentsIn(text);
@@ -78,23 +80,46 @@ const dispatch = defineGithubWrite({
 });
 
 const rerun = defineGithubWrite({
-  name: 'github_actions_rerun', area: 'actions', audience: ['B', 'Op'],
+  name: 'github_actions_rerun',
+  requestKey: (ctx,args) => args.expectedHeadSha && args.expectedWorkflowId
+    ? 'rmcp_github_actions_rerun_' + createHash('sha256').update(JSON.stringify([
+      ctx.connection.client_id ?? ctx.connection.pass_id,
+      String(args.owner ?? ctx.connection.default_account).toLowerCase(),args.repo.toLowerCase(),
+      args.expectedHeadSha,args.expectedWorkflowId])).digest('hex')
+    : githubRequestKey(ctx,'github_actions_rerun',args),
+  area: 'actions', audience: ['B', 'Op'],
   description: 'Rerun a workflow or failed jobs; production deployment reruns need approval.',
   properties: { owner: OWNER, repo: REPO, runId: RUN, mode: { type: 'string', enum: ['all', 'failed', 'job'], description: 'Default failed' }, jobId: { type: 'integer', minimum: 1, description: 'For mode job' },
-    debugLogging: { type: 'boolean', description: 'Turn on step debug logs for this attempt' }, ...OUTSIDE_PROJECT },
+    debugLogging: { type: 'boolean', description: 'Turn on step debug logs for this attempt' },
+    expectedHeadSha: { type: 'string', pattern: '^[a-fA-F0-9]{40}$' },
+    expectedWorkflowId: { type: 'integer', minimum: 1, description: 'Together with expectedHeadSha: one durable failed-job retry for this workflow/head' }, ...OUTSIDE_PROJECT },
   required: ['repo', 'runId'],
   declarations: { production: 'when-target' },
   target: (args, ctx) => {
+    if ((args.expectedHeadSha === undefined) !== (args.expectedWorkflowId === undefined) ||
+        (args.expectedHeadSha && args.mode !== 'failed'))
+      throw new TypeError('Pinned once-only reruns require both expectedHeadSha and expectedWorkflowId and mode failed.');
     if ((args.mode === 'job') !== (args.jobId !== undefined)) throw new TypeError('Give jobId with mode "job", and only then.');
     return repoTarget(args, ctx);
   },
-  read: async (args, ctx, target) => ({ run: await getRun(ctx, target, args.runId) }),
-  classify: async ({ ctx, target, before }) => ({ production: before.run ? await workflowProduction(ctx, target, { path: before.run.path, ref: before.run.head_branch }) : null }),
+  read: async (args, ctx, target) => {
+    const run = await getRun(ctx,target,args.runId);
+    if(args.expectedHeadSha && (run?.head_sha !== args.expectedHeadSha || run?.workflow_id !== args.expectedWorkflowId))
+      throw refusal('The workflow run identity changed; no retry is authorized by this preview.');
+    return {run};
+  },
+  classify: async ({ args, ctx, target, before }) => ({ production: before.run ? await workflowProduction(ctx, target, { path: before.run.path, ref: before.run.head_branch, contentRef: args.expectedHeadSha }) : null }),
   summarize: ({ args, before, target }) => (before.run ? `Run ${args.mode === 'all' ? 'all jobs of' : args.mode === 'job' ? `job ${args.jobId} of` : 'the failed jobs of'} run ${args.runId} (${before.run.name}, attempt ${before.run.run_attempt}, ${before.run.conclusion ?? before.run.status}) in ${slug(target.owner, target.repo)}`
     : `There is no run ${args.runId} in ${slug(target.owner, target.repo)}`),
   apply: async ({ args, ctx, target, before }) => {
     if (!before.run) throw refusal(`There is no run ${args.runId}.`, 404);
     if (before.run.status !== 'completed') throw refusal(`Run ${args.runId} is still ${before.run.status}. Wait for it to finish, or cancel it, before running it again.`);
+    if(args.expectedHeadSha){
+      const fresh = await getRun(ctx,target,args.runId);
+      if(fresh?.head_sha !== args.expectedHeadSha || fresh?.workflow_id !== args.expectedWorkflowId ||
+          fresh?.status !== 'completed' || fresh?.conclusion !== 'failure' || fresh?.run_attempt !== before.run.run_attempt)
+        throw refusal('The failed run changed or advanced since preview; no automatic retry was sent.');
+    }
     const octokit = await octo(ctx, target.owner);
     const debug = args.debugLogging ? { enable_debug_logging: true } : {};
     if (args.mode === 'job') return octokit.request('POST /repos/{owner}/{repo}/actions/jobs/{job_id}/rerun', { ...p(target), job_id: args.jobId, ...debug });

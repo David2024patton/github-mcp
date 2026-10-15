@@ -1,3 +1,82 @@
+### October 15, 2026 — W-3/W-4 review and CI recovery bundle
+
+**PR #214 closeout reconciliation:** #213 merged as d713486 while #214's first
+exact head 6477abc passed all seven application/release gates (CI run 38776205986;
+release-policy run 38776206005). Git's merge preserved both status records cleanly;
+product src/tests remain byte-identical to the frozen 5,431-pass tree. Reconciled
+#213's already-started-work exception honestly: cards preserve actual original
+scope and criterion-level delivery, no synthetic pre-code commit or small-remainder
+count. Remaining NEW engineering is empty; combined-head CI/review/merge remain
+required before one W-3/W-4 bundle counts. No remote failure/cancellation; one
+additional CI cycle is solely the required concurrent-main reconciliation.
+Owner was given the exact custom adapter reconnect action in the active chat:
+https://robinson-github-cloud.chris-tcr-2012.chatgpt.site/ . Responsible party: owner
+for adapter consent; implementing runner rechecks whoami afterward. No underlying
+App reset or shared rotating-checkpoint takeover. All scenario-specific approvals
+and fixtures remain independent; no eligible read is deferred merely for main/live lag.
+
+**Selected whole subsections:** W-3 and W-4, one coherent recovery stage of the
+approved PR conveyor. Current source commit `dd0c9abf5cf443c2749f37fe0b418ef35db21691`; delivery only counts after
+required exact-head checks, review and expected-head merge. W-3 verifies original
+commented-line changes, binds a combined preview to current head/discussion, and
+resumes guarded reply/resolve through durable per-intent child journals. W-4 reports
+failed jobs/steps/errors/annotations and same-workflow default-branch comparisons;
+one guarded automatic retry per workflow/head persists across run IDs and time windows.
+Compact discovery/call reaches composed workflows while recursive meta calls stay refused.
+No new DB schema, credential, permission, spending, account activation or manual release.
+
+**Reconciliation:** baseline main `258d9773f832ef84bf2c41b56dc8eea22d995fca`;
+#210 W-1/W-2 merged as `2507da78a072805dbef9281f513f290f4ba9c9f1`;
+#211/#212 workflow maintenance preserved; no open PR at startup. Main/live differ:
+Vercel production alias independently READY at `ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904`,
+deployment `dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7`. Scheduled daily-policy run
+38762810771 (2026-10-15 15:43 UTC) completed successfully; this is not proof of
+new deployed source. No batch-boundary promotion permitted or performed.
+
+**Acceptance accounting:** all original 23 rows were evaluated, including hidden
+rows: 2 prior genuine passes reused, 16 deployed candidates/external-gate rechecks,
+4 W-1/W-2 checks await source release and one public cleanup awaits its acceptance
+dependency plus independent exact deletion approval. Main being ahead never deferred
+the 16 included checks. Actual custom whoami failed `renewal_outcome_unknown_reconnect_required`;
+connection status `refresh_uncertain`, upstream reachable and issuer matching. The
+saved native checkpoint belongs to its single coordinating runner; this runner has
+no local grant. Do not race that runner's rotating tokens or infer revoked consent.
+Next: reconcile uncertain refresh with the owning runner, then execute each scenario
+under its existing permissions. Private governance remains plan-blocked by prior 403;
+production-classified writes/notifications/access changes and exact quarantined
+cleanup keep separate owner gates. Added 3 W-3/W-4 checks pinned to reviewed source.
+The complete sanitized temporary acceptance accounting passed before implementation;
+revalidate it against final queue/deployment before closeout. No provider pass invented.
+
+**Verification:** focused workflow/reader/writer fixtures passed, including nine-check
+E-3/G-1 contracts through existing doors, pinned-head races and durable replay beyond
+ten minutes. Full checks/unit/shapes and exact-head Actions are required. Local DB
+execution unavailable (`initdb` missing): require actual disposable-Postgres CI db
+proof. Initial broad local run exposed registry/compact-list expectations; retained
+compact listing and updated exact registry coverage, without loosening assertions.
+Production source measurement: 459 additions / 28 deletions after final review;
+exclude tests/docs/check scripts/generated files. Final PR/handoff carries final counts
+and CI evidence. Rolling latest five source deliveries (this bundle, #210, #209, #207, #206): 367.8 added / 10.2 deleted production-source lines per PR; 7 complete subsections / 5 PRs = 1.4, below the planning average due to prior single-subsection deliveries. No padding or retrospective recount. Next approved engineering after merged bundle: W-5.
+
+**Final backlog reconciliation:** four older obligations from the RTC adoption audit
+and developer evidence are now explicit queue rows: native disposable-grant revocation,
+direct restricted RTC CLI, encrypted relay and genuine Sandbox routes. Required source
+`5a0ca5d2992bc576c5fdcc88525fb1eb95943fc9` is already in live ancestry: these are
+NOT deferred because main is newer. A scoped service RTC pass is absent. Actual custom
+Hub whoami succeeded in TEST/full/gateway with allowWrites=false; Hub health returned
+foundation ready, federation not_configured, providerCallsEnabled=false, contractVersion=0,
+accessibleUpstreams=0; hub_namespaces denied `RTC tool not granted to caller`.
+Thus Hub foundation availability is verified, not any upstream route. Full RTC1 remains
+unfinished R engineering. No account widening, shared grant revocation or paid runner.
+Final queue: 30 total, 2 historical passes retained, 28 outstanding, each with exact
+prerequisite and next action. The frozen source tree passed **168 files / 5,431 tests**;
+shapes 15 passed; npm check passed. Earlier local run mixed an older loaded module with
+a newly written deadline regression; freeze-first rerun passed without weakening it.
+Git push had no terminal credential; connected Git Data API published verified blobs,
+and fetched src/tests/scripts exactly match the tested tree. Source pin reconciled to
+remote implementation `dd0c9abf5cf443c2749f37fe0b418ef35db21691`. Required remote
+CI/db/review/merge evidence remains a pre-count gate.
+
 ### October 15, 2026 — W-1/W-2 coherent PR conveyor bundle, checked release-acceptance eligibility
 
 ## Owner-requested bundle scope accounting correction — October 15
@@ -209,7 +288,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
       "GITHUB-CUSTOM-SCRATCH-READ"
     ],
     "status": "BLOCKED",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: live custom run inventory returned journal_ready=true but remote_verified=false, and can_execute_without_new_confirmation=false. Historical ten late-appearing default labels remain; no cleanup has been attempted or claimed. Exact quarantined target identified: private robinson-ai-scratch/rtc-ghaccept-oct13-f1a, owned run ghaccept-oct13-f1a (one recorded repo intent; baseline label provenance unconfirmed). This is NOT deletion approval."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: Existing run ghaccept-oct13-f1a only; exact disposal decision and independent owner confirmation are still mandatory Previous: 026-10-14: live custom run inventory returned journal_ready=true but remote_verified=false, and can_execute_without_new_confirmation=false. Historical ten late-appearing default labels remain; no cleanup has been attempted or claimed. Exact quarantined target identified: private robinson-ai-scratch/rtc-ghaccept-oct13-f1a, owned run ghaccept-oct13-f1a (one recorded repo intent; baseline label provenance unconfirmed). This is NOT deletion approval.",
+    "nextAction": "First finish prerequisite acceptance, identify the exact run-owned fixture and obtain its independent deletion confirmation; then custom cleanup and remote absence readback. Preserve original private quarantine."
   },
   {
     "id": "GITHUB-NATIVE",
@@ -220,7 +300,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Saved developer OAuth; only approved scratch repository and creation-baseline evidence",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. Existing ledger/card remains authoritative; current live/provider acceptance must be reconciled at session start. Seed revision conservatively includes reviewed current main."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: Saved developer OAuth; only approved scratch repository and creation-baseline evidence Previous: mpare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. Existing ledger/card remains authoritative; current live/provider acceptance must be reconciled at session start. Seed revision conservatively includes reviewed current main.",
+    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
   },
   {
     "id": "GITHUB-H1-PRIVATE-PROTECTION",
@@ -228,10 +309,11 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
     "task": "Re-run exact classic branch protection read against an eligible private scratch repository, without modifying visibility or paying for an upgrade",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "BLOCKED — PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
+    "gates": "BLOCKED \u2014 PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
     "dependsOn": [],
     "status": "BLOCKED",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: real custom github_protection_get on private robinson-ai-scratch/rtc-ghaccept-oct13-f1a returned provider HTTP 403, with GitHub upgrade-or-public explanation. No grant, mutation or subscription change; remains unverified for private repositories."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: BLOCKED \u2014 PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0 Previous: e custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: real custom github_protection_get on private robinson-ai-scratch/rtc-ghaccept-oct13-f1a returned provider HTTP 403, with GitHub upgrade-or-public explanation. No grant, mutation or subscription change; remains unverified for private repositories.",
+    "nextAction": "When provider plan eligibility legitimately changes, restore custom OAuth and repeat this exact private read. Do not upgrade a plan or change visibility to bypass the current 403."
   },
   {
     "id": "GITHUB-H1-PRIVATE-RULESETS",
@@ -239,10 +321,11 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
     "task": "Re-run scoped private-repository ruleset inventory when GitHub plan legitimately permits it",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "BLOCKED — PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
+    "gates": "BLOCKED \u2014 PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
     "dependsOn": [],
     "status": "BLOCKED",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: real custom github_ruleset_list on private robinson-ai-scratch/rtc-ghaccept-oct13-f1a returned provider HTTP 403 with upgrade-or-public explanation, not a successful private feature result."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: BLOCKED \u2014 PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved Previous:  verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: real custom github_ruleset_list on private robinson-ai-scratch/rtc-ghaccept-oct13-f1a returned provider HTTP 403 with upgrade-or-public explanation, not a successful private feature result.",
+    "nextAction": "When provider plan eligibility legitimately changes, restore custom OAuth and repeat this exact private read. Do not upgrade a plan or change visibility to bypass the current 403."
   },
   {
     "id": "GITHUB-H1-PUBLIC-SCRATCH",
@@ -253,7 +336,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Owner approved a separate public disposable scratch; never alter existing private repository; capture exact name/run ownership, approval, profile and source SHA; production writes remain OFF until independently authorized and connected. Public evidence does not prove private acceptance.",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: owner authorized separate disposable PUBLIC scratch. Genuine custom MCP created robinson-ai-scratch/rtc-ghaccept-h1-public-oct14 under full PREVIEW connection with explicit public visibility confirmation; exact repo readback shows public, empty and default main. Public github_protection_get succeeded (no classic policy), repository github_ruleset_list succeeded with empty complete inventory. Public write tests remain pending checked #188 deployment/production gates; these reads do NOT establish private H-1 acceptance."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: Owner approved a separate public disposable scratch; never alter existing private repository; capture exact name/run ownership, approval, profile and source SHA; production writes remain OFF until independently authorized and connected. Public evidence does not prove private acceptance. Previous: reated robinson-ai-scratch/rtc-ghaccept-h1-public-oct14 under full PREVIEW connection with explicit public visibility confirmation; exact repo readback shows public, empty and default main. Public github_protection_get succeeded (no classic policy), repository github_ruleset_list succeeded with empty complete inventory. Public write tests remain pending checked #188 deployment/production gates; these reads do NOT establish private H-1 acceptance.",
+    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
   },
   {
     "id": "GITHUB-H2-WEBHOOK-READS",
@@ -264,7 +348,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "App permission and only owned/disposable fixture; non-sensitive webhook subscription only after separately approved safe creation; production activation and secret transmission prohibited",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: feature source branch H-2; not yet merged or deployed. No read/handler claim against production."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: App permission and only owned/disposable fixture; non-sensitive webhook subscription only after separately approved safe creation; production activation and secret transmission prohibited Previous: SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: feature source branch H-2; not yet merged or deployed. No read/handler claim against production.",
+    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
   },
   {
     "id": "GITHUB-H2-WEBHOOK-DELIVERY-CONTROL",
@@ -275,7 +360,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Requires H-2 source in independently verified READY live ancestry, authorized disposable non-sensitive webhook fixtures, owner-approved production-mode permission for actual production classified writes, no new fee, never existing private quarantine",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: source-only feature in #190; owner production remains OFF, so no real delivery actions, deletion or attempted mutations claimed."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: Requires H-2 source in independently verified READY live ancestry, authorized disposable non-sensitive webhook fixtures, owner-approved production-mode permission for actual production classified writes, no new fee, never existing private quarantine Previous: ADY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: source-only feature in #190; owner production remains OFF, so no real delivery actions, deletion or attempted mutations claimed.",
+    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
   },
   {
     "id": "GITHUB-H1-PUBLIC-READ",
@@ -299,7 +385,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
       "GITHUB-H1-PUBLIC-SCRATCH"
     ],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: new public fixture created via github_repo_create; no delete requested or executed. It is not a substitute for quarantined private fixture cleanup."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: Only exact named public fixture, confirmed no foreign changes; require exact owner confirmation of deletion, do not touch original private quarantined run ghaccept-oct13-f1a Previous: 90d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: new public fixture created via github_repo_create; no delete requested or executed. It is not a substitute for quarantined private fixture cleanup.",
+    "nextAction": "First finish prerequisite acceptance, identify the exact run-owned fixture and obtain its independent deletion confirmation; then custom cleanup and remote absence readback. Preserve original private quarantine."
   },
   {
     "id": "GITHUB-H1-CLASSIC-WRITE-POSTRELEASE",
@@ -307,12 +394,13 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "674fea131e0eb0002f474bb8f529d0f619011286",
     "task": "Independently exercise new H-1 classic complete-object set and remove using isolated public scratch, including preserve-other-controls, readback and exact cleanup",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "Source #188 merged; requires reviewed source in READY live, explicit production-enabled test credential and independent per-operation confirmation. Current live PREVIEW/production OFF: no mutation authorized. Private H-1 403 remains BLOCKED — PROVIDER PLAN.",
+    "gates": "Source #188 merged; requires reviewed source in READY live, explicit production-enabled test credential and independent per-operation confirmation. Current live PREVIEW/production OFF: no mutation authorized. Private H-1 403 remains BLOCKED \u2014 PROVIDER PLAN.",
     "dependsOn": [
       "GITHUB-H1-PUBLIC-READ"
     ],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: source #188 exact-head CI passed and merged commit 674fea131e0eb0002f474bb8f529d0f619011286, but live remained b51cda454f01720b3c638f83b9766b30eceaa9fb; no new deployed mutation or approval claimed."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: Source #188 merged; requires reviewed source in READY live, explicit production-enabled test credential and independent per-operation confirmation. Current live PREVIEW/production OFF: no mutation authorized. Private H-1 403 remains BLOCKED \u2014 PROVIDER PLAN. Previous:  Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: source #188 exact-head CI passed and merged commit 674fea131e0eb0002f474bb8f529d0f619011286, but live remained b51cda454f01720b3c638f83b9766b30eceaa9fb; no new deployed mutation or approval claimed.",
+    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
   },
   {
     "id": "GITHUB-H2-SIGNER-LIFECYCLE",
@@ -323,7 +411,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Exact READY live ancestry of implementation; approved isolated scratch owner/run, service OAuth with legitimate provider permissions; preview/production and independent owner write/cleanup approvals preserved",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: implementation/test source staged; no claimed CI, deployment, provider mutation, HMAC acceptance or cleanup. GitHub masks signer values; require receiver signature verification."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: Exact READY live ancestry of implementation; approved isolated scratch owner/run, service OAuth with legitimate provider permissions; preview/production and independent owner write/cleanup approvals preserved Previous: h behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: implementation/test source staged; no claimed CI, deployment, provider mutation, HMAC acceptance or cleanup. GitHub masks signer values; require receiver signature verification.",
+    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
   },
   {
     "id": "GITHUB-H3-ACCESS-LIFECYCLE",
@@ -334,7 +423,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Checked READY deployment contains merged H-3 source; scratch-only, explicit owner authority and fixture safeguards, no production settings or spend activation without independent approval",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: H-3 source and tests proposed; no merged CI or real provider permission-change acceptance. GitHub account production OFF and spend $0. Retain any rejected external changes as blocked acceptance, not false code passes."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: Checked READY deployment contains merged H-3 source; scratch-only, explicit owner authority and fixture safeguards, no production settings or spend activation without independent approval Previous: QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: H-3 source and tests proposed; no merged CI or real provider permission-change acceptance. GitHub account production OFF and spend $0. Retain any rejected external changes as blocked acceptance, not false code passes.",
+    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
   },
   {
     "id": "GITHUB-H4-ALERT-TRIAGE",
@@ -345,7 +435,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "MCP-issued OAuth to enrolled account; real test alerts and legitimate permission/plan eligibility; production OFF and independent approval for any production-classified change",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: H-4 first source implementation staged only. No actual source CI, deployment, security-alert provider writes or fixture cleanup acceptance claimed."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: MCP-issued OAuth to enrolled account; real test alerts and legitimate permission/plan eligibility; production OFF and independent approval for any production-classified change Previous: 90d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: H-4 first source implementation staged only. No actual source CI, deployment, security-alert provider writes or fixture cleanup acceptance claimed.",
+    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
   },
   {
     "id": "GITHUB-H4-SETTINGS",
@@ -356,7 +447,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Source and legitimate OAuth permission deployed; safe disposable scratch only, full-profile/production confirmation and owner approval where required, zero spend and private paid feature refusal unchanged",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: H-4 settings source staged for required exact-head CI. No production feature switch, paid security activation, live TEST write or independent cleanup acceptance."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: Source and legitimate OAuth permission deployed; safe disposable scratch only, full-profile/production confirmation and owner approval where required, zero spend and private paid feature refusal unchanged Previous: ompare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: H-4 settings source staged for required exact-head CI. No production feature switch, paid security activation, live TEST write or independent cleanup acceptance.",
+    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
   },
   {
     "id": "GITHUB-O1-OWNER-OVERVIEW",
@@ -367,7 +459,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Saved service-issued OAuth and enrolled org only; PREVIEW read-only, production OFF, no spend or destructive change; browser-only completion requires independent owner/browser confirmation",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: O-1 source under exact-head CI and merge review; no deployed O-1 proof, no human UI audit, no production mutation."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: Saved service-issued OAuth and enrolled org only; PREVIEW read-only, production OFF, no spend or destructive change; browser-only completion requires independent owner/browser confirmation Previous: ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: O-1 source under exact-head CI and merge review; no deployed O-1 proof, no human UI audit, no production mutation.",
+    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
   },
   {
     "id": "GITHUB-O2-ORG-ADMIN",
@@ -378,7 +471,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Only after reviewed O-2 source is in independently verified READY live ancestry; service-issued owner/admin permissions, production OFF until separately authorized, no access grant, invite, destructive action or paid capability without independent owner approval",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: source implementation on PR #199 candidate only, custom production READY b51cda4 is older; no O-2 live tests or changes performed."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: Only after reviewed O-2 source is in independently verified READY live ancestry; service-issued owner/admin permissions, production OFF until separately authorized, no access grant, invite, destructive action or paid capability without independent owner approval Previous: Y production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: source implementation on PR #199 candidate only, custom production READY b51cda4 is older; no O-2 live tests or changes performed.",
+    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
   },
   {
     "id": "GITHUB-O3-TEAM-ROLES",
@@ -389,7 +483,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Only after reviewed O-3 source appears in independently verified READY live ancestry with adequate org Members/Administration permissions; no actual access-widening, invitation, team deletion or org role mutation without independent owner confirmation, protected-resource approval and production policy",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: PR #200 candidate source only; custom production READY remains behind; no O-3 genuine provider acceptance claimed."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: Only after reviewed O-3 source appears in independently verified READY live ancestry with adequate org Members/Administration permissions; no actual access-widening, invitation, team deletion or org role mutation without independent owner confirmation, protected-resource approval and production policy Previous: ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: PR #200 candidate source only; custom production READY remains behind; no O-3 genuine provider acceptance claimed.",
+    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
   },
   {
     "id": "GITHUB-O4-BILLING-CODESPACES",
@@ -400,7 +495,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Requires deployed READY ancestry containing merged O-4 and verified real owner permissions; zero autonomous spend persists and paid or destructive actions need independent explicit owner approval. Two risky actions remain guided-only pending finite cost/readback capability.",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 eligibility recheck: the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: source PR #201 candidate only, no live O-4 provider acceptance or spending."
+    "lastEvidence": "2026-10-15 W-3/W-4 session: independently verified READY ecf190d7 and alias via Vercel; source ancestry checked. Custom whoami returned renewal_outcome_unknown_reconnect_required; status refresh_uncertain with reachable exact upstream/issuer. No local saved vault; coordinating checkpoint has one owning runner. Specific gates retained: Requires deployed READY ancestry containing merged O-4 and verified real owner permissions; zero autonomous spend persists and paid or destructive actions need independent explicit owner approval. Two risky actions remain guided-only pending finite cost/readback capability. Previous:  the required source SHA was proven an ancestor of READY production ecf190d7 (GitHub compare ahead with behind=0); verified Vercel dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7. Genuine custom GitHub Cloud whoami/search could not complete because the saved connection reports renewal_outcome_unknown_reconnect_required. No new authenticated provider pass or write is claimed. 2026-10-14: source PR #201 candidate only, no live O-4 provider acceptance or spending.",
+    "nextAction": "Restore the custom principal; run permitted billing reads and denial checks. Paid or destructive fixture tests require separate explicit finite-cost owner approval; guided-only actions remain guided."
   },
   {
     "id": "GITHUB-W1-PR-STATUS",
@@ -411,7 +507,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Reviewed and merged W-1 source must be present in checked READY live ancestry; authorized account/scratch PR and working custom connection (reconnect currently required). PREVIEW read-only; no production or money action.",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15: candidate implementation PR #210; source SHA 69017a50 passed exact-head ci and release-policy, but not deployed. Real custom service refresh reports renewal_outcome_unknown_reconnect_required; no new authenticated acceptance."
+    "lastEvidence": "2026-10-15: source still absent from independently READY ecf190d7; checked daily release is required. Custom principal also remains refresh_uncertain; no real calls, writes, activation or cleanup. 2026-10-15: candidate implementation PR #210; source SHA 69017a50 passed exact-head ci and release-policy, but not deployed. Real custom service refresh reports renewal_outcome_unknown_reconnect_required; no new authenticated acceptance.",
+    "nextAction": "After the next checked daily release includes requiredRevision, verify alias/READY SHA, restore the service principal and execute this exact scenario; obtain only the notification/production/fixture approvals named in gates."
   },
   {
     "id": "GITHUB-W1-OPEN-PR",
@@ -424,7 +521,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
       "GITHUB-W1-PR-STATUS"
     ],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15: #210 candidate source verified by CI only; no genuine owner-authorized PR creation, labels, send or cleanup conducted."
+    "lastEvidence": "2026-10-15: source still absent from independently READY ecf190d7; checked daily release is required. Custom principal also remains refresh_uncertain; no real calls, writes, activation or cleanup. 2026-10-15: #210 candidate source verified by CI only; no genuine owner-authorized PR creation, labels, send or cleanup conducted.",
+    "nextAction": "After the next checked daily release includes requiredRevision, verify alias/READY SHA, restore the service principal and execute this exact scenario; obtain only the notification/production/fixture approvals named in gates."
   },
   {
     "id": "GITHUB-W2-EXACT-MERGE",
@@ -437,7 +535,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
       "GITHUB-W1-PR-STATUS"
     ],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15: candidate source PR #210, no deployment and no live custom merge/production activation attempted. Code/fixture gates are not external acceptance."
+    "lastEvidence": "2026-10-15: source still absent from independently READY ecf190d7; checked daily release is required. Custom principal also remains refresh_uncertain; no real calls, writes, activation or cleanup. 2026-10-15: candidate source PR #210, no deployment and no live custom merge/production activation attempted. Code/fixture gates are not external acceptance.",
+    "nextAction": "After the next checked daily release includes requiredRevision, verify alias/READY SHA, restore the service principal and execute this exact scenario; obtain only the notification/production/fixture approvals named in gates."
   },
   {
     "id": "GITHUB-W2-STACK",
@@ -451,7 +550,92 @@ open obligations, original fixture ownership, approvals and deployment provenanc
       "GITHUB-W2-EXACT-MERGE"
     ],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15: CI-only synthetic stack tests committed in #210; no authorized real custom MCP stack fixture, provider retarget or production merge. Retain external acceptance pending next deployed revision."
+    "lastEvidence": "2026-10-15: source still absent from independently READY ecf190d7; checked daily release is required. Custom principal also remains refresh_uncertain; no real calls, writes, activation or cleanup. 2026-10-15: CI-only synthetic stack tests committed in #210; no authorized real custom MCP stack fixture, provider retarget or production merge. Retain external acceptance pending next deployed revision.",
+    "nextAction": "After the next checked daily release includes requiredRevision, verify alias/READY SHA, restore the service principal and execute this exact scenario; obtain only the notification/production/fixture approvals named in gates."
+  },
+  {
+    "id": "GITHUB-W3-THREADS",
+    "priority": 2,
+    "task": "Verify actual custom review context, fixed/answered/superseded disposition preview, stale-head/discussion denial, guarded reply/resolve, readback and partial recovery on an approved disposable scratch PR.",
+    "requiredRevision": "dd0c9abf5cf443c2749f37fe0b418ef35db21691",
+    "procedure": "docs/pr-cards/W-3.md",
+    "gates": "Reviewed W-3 source in READY live; restored service OAuth, isolated exact scratch PR/thread, independent owner permission for notifications and cleanup; production OFF and spend zero preserved.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Source and fake-provider verification only; not in observed READY ecf190d7. No real notification, rerun, mutation, owner approval, production activation or cleanup claimed.",
+    "nextAction": "After the next checked daily release includes requiredRevision, verify alias/READY SHA, restore the service principal and execute this exact scenario; obtain only the notification/production/fixture approvals named in gates."
+  },
+  {
+    "id": "GITHUB-W4-CI-SUMMARY",
+    "priority": 2,
+    "task": "Compare actual custom failed-job/step/log/annotation evidence with the same workflow default-branch baseline, including absent/log-limited and pending cases.",
+    "requiredRevision": "dd0c9abf5cf443c2749f37fe0b418ef35db21691",
+    "procedure": "docs/pr-cards/W-4.md",
+    "gates": "Reviewed W-4 source in READY live; restored service-issued connection and owned isolated workflow fixture; PREVIEW read-only, no actual retry or spend.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Source and fake-provider verification only; not in observed READY ecf190d7. No real notification, rerun, mutation, owner approval, production activation or cleanup claimed.",
+    "nextAction": "After the next checked daily release includes requiredRevision, verify alias/READY SHA, restore the service principal and execute this exact scenario; obtain only the notification/production/fixture approvals named in gates."
+  },
+  {
+    "id": "GITHUB-W4-CI-RETRY",
+    "priority": 2,
+    "task": "Verify a single guarded failed-job retry and durable second-attempt/run-ID denial for the same workflow/head, including pending and production denial.",
+    "requiredRevision": "dd0c9abf5cf443c2749f37fe0b418ef35db21691",
+    "procedure": "docs/pr-cards/W-4.md",
+    "gates": "Reviewed source in READY live; legitimate service OAuth, explicitly approved scratch Actions run, nonproduction workflow or independent production approval, complete failed jobs and exact head; no paid runner or spend authorization inferred.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Source and fake-provider verification only; not in observed READY ecf190d7. No real notification, rerun, mutation, owner approval, production activation or cleanup claimed.",
+    "nextAction": "After the next checked daily release includes requiredRevision, verify alias/READY SHA, restore the service principal and execute this exact scenario; obtain only the notification/production/fixture approvals named in gates."
+  },
+  {
+    "id": "GITHUB-NATIVE-REVOCATION",
+    "priority": 3,
+    "task": "Verify disposable native service OAuth grant revocation and subsequent actual custom denial, independently of provider permissions and existing useful grants.",
+    "requiredRevision": "5a0ca5d2992bc576c5fdcc88525fb1eb95943fc9",
+    "procedure": "docs/audits/RTC-HUB-ADOPTION.md; docs/pr-cards/DEVELOPER-CONNECTION.md",
+    "gates": "Source already deployed; requires a separately disposable service-issued OAuth grant, explicit authority to revoke that exact grant, and a functioning native runner. Existing uncertain shared grant must not be revoked as a test.",
+    "dependsOn": [],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-15: public custom contract reports rtc=0 at independently READY ecf190d7. Genuine Hub whoami TEST/full gateway allowWrites=false; Hub health federation not_configured, providerCallsEnabled=false, contractVersion=0, accessibleUpstreams=0. namespaces denied RTC tool not granted to caller. No service RTC pass, revocation, upstream read, relay or Sandbox execution claimed.",
+    "nextAction": "Restore or obtain the authorized disposable grant through the protected existing flow, identify it, perform approved revocation and record subsequent custom denial. Never revoke the coordinating runner grant."
+  },
+  {
+    "id": "GITHUB-RTC-DIRECT",
+    "priority": 3,
+    "task": "Run the approved direct CLI HTTPS restricted server/meta read and denial scenario using a short-lived service-owned RTC pass; do not claim full RTC1.",
+    "requiredRevision": "5a0ca5d2992bc576c5fdcc88525fb1eb95943fc9",
+    "procedure": "docs/audits/RTC-HUB-ADOPTION.md; docs/pr-cards/DEVELOPER-CONNECTION.md",
+    "gates": "Source already deployed. Need exact-origin short-lived read_only nonproduction service-issued RTC pass through protected owner setup/saved authorized runner. OAuth adapter token is not an RTC pass; RTC remains 0.",
+    "dependsOn": [],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-15: public custom contract reports rtc=0 at independently READY ecf190d7. Genuine Hub whoami TEST/full gateway allowWrites=false; Hub health federation not_configured, providerCallsEnabled=false, contractVersion=0, accessibleUpstreams=0. namespaces denied RTC tool not granted to caller. No service RTC pass, revocation, upstream read, relay or Sandbox execution claimed.",
+    "nextAction": "Coordinate the protected pass with its single owning runner, execute direct restricted read/denial and readback, then separately authorized revocation. Full RTC1 remains roadmap R engineering."
+  },
+  {
+    "id": "GITHUB-RTC-RELAY",
+    "priority": 3,
+    "task": "Verify the approved encrypted Hub relay route to this exact service, independently of direct transport and Hub foundation readiness.",
+    "requiredRevision": "5a0ca5d2992bc576c5fdcc88525fb1eb95943fc9",
+    "procedure": "docs/audits/RTC-HUB-ADOPTION.md; docs/pr-cards/DEVELOPER-CONNECTION.md",
+    "gates": "Service read-only subset is live; actual Hub health is foundation ready, federation not_configured, providerCallsEnabled=false, contractVersion=0, accessibleUpstreams=0. Hub namespaces denied RTC tool not granted to caller. Need configured authorized service grant/relay and compatible deployed Hub route.",
+    "dependsOn": [],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-15: public custom contract reports rtc=0 at independently READY ecf190d7. Genuine Hub whoami TEST/full gateway allowWrites=false; Hub health federation not_configured, providerCallsEnabled=false, contractVersion=0, accessibleUpstreams=0. namespaces denied RTC tool not granted to caller. No service RTC pass, revocation, upstream read, relay or Sandbox execution claimed.",
+    "nextAction": "Finish the existing authorized Hub federation/relay prerequisites in its owning repository, then obtain the scoped service pass and run the actual relay read/denial/readback. Never widen this connection or substitute foundation health for relay proof."
+  },
+  {
+    "id": "GITHUB-RTC-SANDBOX",
+    "priority": 3,
+    "task": "Verify the separately approved genuine Sandbox route to the restricted service, independently of direct CLI and encrypted relay.",
+    "requiredRevision": "5a0ca5d2992bc576c5fdcc88525fb1eb95943fc9",
+    "procedure": "docs/audits/RTC-HUB-ADOPTION.md; docs/pr-cards/DEVELOPER-CONNECTION.md",
+    "gates": "Live subset present; need authorized compatible Sandbox runner/project and short-lived scoped service RTC pass, provider-enforced zero spending, genuine direct route and cleanup/revocation authority. Hub federation currently not configured where route depends on Hub.",
+    "dependsOn": [],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-15: public custom contract reports rtc=0 at independently READY ecf190d7. Genuine Hub whoami TEST/full gateway allowWrites=false; Hub health federation not_configured, providerCallsEnabled=false, contractVersion=0, accessibleUpstreams=0. namespaces denied RTC tool not granted to caller. No service RTC pass, revocation, upstream read, relay or Sandbox execution claimed.",
+    "nextAction": "When exact runner/project, zero-cost boundary and protected service grant are available, execute real Sandbox read/denial/readback and authorized cleanup; do not relabel preview as TEST or infer spending approval."
   }
 ]
 ```
