@@ -2,6 +2,26 @@
 
 P-2 PR #207 merged at `ed095fbd3308f70c933d6d082d35e9c093bf9cdc` with final exact-head ci/release-policy, two unit shards, db, shape, lint/security gates green and all four review threads resolved. This is one full P-2 subsection, not an extra invented feature count. Next P-3 adds idempotent staged new-project setup and draft profile/document output. Parallel PR #208 carries separate approved owner bundle-workload guidance; preserve its changes. Do not conflate merged code with deployment/provider or owner acceptance.
 
+### October 15, 2026 — owner-requested bundle/card/PR guidance alignment
+
+Reviewed main ecf190d (#206); concurrent P-2 PR #207 remains separate and its
+branch is untouched. The owner requested removing contradictory small-PR rules.
+AGENTS, SESSION-START, PLAYBOOK, card template, throughput guide and G-4 example
+now agree: cards define approved scope; related whole subsections form a bundle;
+PR splits require concrete migration/dependency/safety/reviewability evidence.
+Removed stale 500/800-line ceilings, blanket one-migration/one-risk-area rules
+and the one-card-as-one-PR framing. Keep the existing 2–5 subsection / 400–800
+production-line averages, no padding, and every independent safety/approval/test
+boundary. Related additive migrations require ordering and upgrade/restore proof.
+This explicitly requested documentation alignment completes no product subsection
+or bundle and changes no application, CI, release, provider or activation behavior.
+Required exact-head checks and applicable review disposition govern merge. Resume
+actual main and the active implementing agent's current outcome, not this
+maintenance checkpoint or a new five-PR quota. No provider acceptance claimed.
+
+Reconciled the concurrent implementation merge without changing its source,
+roadmap state, evidence or active agent branch.
+
 ### October 15, 2026 — P-2 no-shell CI polling stall corrected in active PR #207
 
 Diagnosis: head `e40846b059b369b0809af183d2da8487b6093cc2` already had all required checks green, but repeated no-op status reads delayed disposition of four known review threads and merging. Added binding CI decision/transition procedure to AGENTS, SESSION-START and PLAYBOOK inside substantive PR #207; next action is exact-head checks on the new documentation-inclusive head, address four verified review threads, merge with expected SHA when CI and release-policy are green. This is not provider deployment or custom MCP acceptance. P-2 must not be counted until merged.
