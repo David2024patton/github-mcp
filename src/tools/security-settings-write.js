@@ -71,7 +71,7 @@ const PATCH_SCHEMAS={
   github_owned_allowed:{type:'boolean'},verified_allowed:{type:'boolean'},
   patterns_allowed:{type:'array',maxItems:50,uniqueItems:true,
     items:{type:'string',minLength:1,maxLength:250}},
-  approval_policy:{type:'integer',minimum:0,maximum:2},
+  approval_policy:{type:['string','integer']},
   days:{type:'integer',minimum:1,maximum:400}
 };
 const ROUTE={
@@ -93,6 +93,17 @@ const targetChanges=(a,b)=>{
   if(keys.some(k=>previous[k]===undefined||previous[k]===null))
     throw refusal('A named Actions policy field was not readable; no policy may be overwritten.');
   const merged={...previous,...changes};
+  if(a.section==='fork'&&'approval_policy' in changes){
+    const allowed=['first_time_contributors_new_to_github',
+      'first_time_contributors','all_external_contributors'];
+    const input=changes.approval_policy;
+    if(typeof input==='number'){
+      if(!Number.isInteger(input)||input<0||input>2)
+        throw refusal('Fork approval policy must be one of the three provider-supported values.');
+      merged.approval_policy=allowed[input];
+    }else if(!allowed.includes(input))
+      throw refusal('Fork approval policy must be an explicit GitHub-approved value.');
+  }
   if(a.section==='selected'&&b.actions.allowed_actions!=='selected')
     throw refusal('First explicitly enable selected-actions policy; do not modify a dormant or unreadable allowlist.');
   if(a.section==='selected'&&!Array.isArray(merged.patterns_allowed))
@@ -143,7 +154,10 @@ export const actionsSetSettings=defineGithubWrite({
       return Object.keys(prior).every(k=>s!==a.section||
         !(k in a.changes)?
           JSON.stringify(prior[k])===JSON.stringify(next[k]):
-          JSON.stringify(a.changes[k])===JSON.stringify(next[k]));
+          JSON.stringify(s==='fork'&&k==='approval_policy'?
+            ['first_time_contributors_new_to_github','first_time_contributors',
+              'all_external_contributors'][a.changes[k]]??a.changes[k]:a.changes[k])===
+            JSON.stringify(next[k]));
     }),
   inverse:()=>null,present:({args:a,after:x})=>({
     section:a.section,updated:x?.[a.section]??null,

@@ -161,6 +161,9 @@ head. After the lower PR merges, sync the successor once onto final `main`.
   `https://github.com/<owner>/<repo>/actions/runs/<run_id>`, from
   `gh api 'repos/<owner>/<repo>/actions/runs?head_sha=<sha>' --jq '.workflow_runs[] | [.id, .event, .conclusion] | @tsv'`.
   On red, read every failed job's log once (`gh api repos/<owner>/<repo>/actions/jobs/<job_id>/logs | tail -80`).
+- **Terminal transition:** if both required `ci` and `release-policy` succeeded at the PR's **current exact head**, end waiting **immediately**. Check unresolved PR threads and mergeability, reply with evidence/resolve genuinely fixed threads, then use expected-head merge. Do **not** re-query unchanged green checks.
+- **No-shell CI anti-stall:** key every decision by `PR# + head SHA + check conclusion set`. A failed job means logs/fix; pending means review/independent work; a second identical pending snapshot means checkpoint, **not a third poll**. If new work requires a push, wait for and inspect completed jobs so that the next run evaluates the assembled fix. Review threads are parallel work, not a reason to leave green PRs idle. An unchanged green snapshot is never a meaningful next step.
+- **Recovery note required when no work can advance:** exact PR URL, current head, completed/pending/failed named checks and job IDs, open review thread IDs, tested corrective action, and the single next action. Do not label CI latency as a blocker or declare a bundle complete before merge.
 - Before ending a turn: commit, update the resume note and STATUS (exact head, pending gates, next action), and tell
   Chris in plain English.
 

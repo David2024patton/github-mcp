@@ -86,6 +86,7 @@ Batch known CI/review fixes; inspect all failed jobs before the next correction 
 While CI waits, advance the approved immediate successor; at most two unmerged PRs.
 Follow existing REST/Sandbox fallbacks if local execution is unavailable; report actual
 Actions evidence honestly. Merge only exact-head green checks plus required reviews.
+**CI action transition:** once both required exact-head checks are green, stop checking them and finish review-thread disposition plus expected-head merge immediately. Two identical pending snapshots require independent work or an exact checkpoint, not repeated queries (PLAYBOOK Step 10 / AGENTS anti-stall table).
 
 ### First-pass validation and review
 
