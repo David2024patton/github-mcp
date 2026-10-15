@@ -74,16 +74,15 @@ export const teamSave=defineGithubWrite({
   declarations:{production:'never',profiles:['full']},target:teamSaveTarget,
   read:async(a,c,t)=>{
     const old=a.action==='update'?await getTeam(c,t,a.teamSlug):null;
-    if(a.action==='update'&&!old)throw refusal('Original team does not exist.');
-    if(a.action==='create'&&await getTeamNameAvailable(c,t,a.name))
-      throw refusal('An organization team already has the requested name.');
+    const alreadyExists=a.action==='create'&&!!(await getTeamNameAvailable(c,t,a.name));
     if(a.parentTeamId!==undefined){
       const parent=(await limited(c,t,'GET /orgs/{org}/teams'))
         .find(x=>x.id===a.parentTeamId);
       if(!parent||parent.slug===a.teamSlug)
         throw refusal('The named parent team is not verified or creates a cycle.');
     }
-    return old?{team:ensureTeam(old,t,a.teamSlug)}:{team:null};
+    return old?{team:ensureTeam(old,t,a.teamSlug),alreadyExists:false}:
+      {team:null,alreadyExists};
   },
   classify:()=>({production:'organization team permissions and member inheritance can change'}),
   summarize:({args:a,target:t,before:b})=>
@@ -92,7 +91,8 @@ export const teamSave=defineGithubWrite({
     '; nested team/visibility settings require owner review',
   apply:async({args:a,ctx,target:t,before:b})=>{
     if(a.action==='update'&&!b?.team)throw refusal('Existing team baseline absent.');
-    if(a.action==='create'&&b?.team)throw refusal('New team already exists.');
+    if(a.action==='create'&&(b?.team||b?.alreadyExists))
+      throw refusal('New team already exists.');
     const body={org:t.owner,name:a.name,...(a.description!==undefined?{description:a.description}:{}),
       ...(a.privacy!==undefined?{privacy:a.privacy}:{}),
       ...(a.notificationSetting!==undefined?{notification_setting:a.notificationSetting}:{}),
@@ -186,6 +186,8 @@ export const teamSetMember=defineGithubWrite({
     role:x?.role??null})
 });
 const repoRole=x=>{
+  if(['pull','triage','push','maintain','admin'].includes(x?.role_name))
+    return x.role_name;
   const p=x?.permissions;
   if(!p)return null;
   for(const k of ['admin','maintain','push','triage','pull'])if(p[k]===true)return k;
@@ -205,7 +207,8 @@ export const teamRepoAccess=defineGithubWrite({
   target:(a,c)=>({...teamTarget(a,c),repo:a.repo,scope:'repo',kind:'repo-settings'}),
   read:async(a,c,t)=>{
     const team=ensureTeam(await getTeam(c,t,a.teamSlug),t,a.teamSlug);
-    const repo=await call(c,t,'GET /repos/{owner}/{repo}',{owner:t.owner,repo:a.repo});
+    const repo=(await (await context(c,t)).request('GET /repos/{owner}/{repo}',
+      {owner:t.owner,repo:a.repo})).data;
     if(repo?.full_name?.toLowerCase()!==repoKey(t,a.repo).toLowerCase())
       throw refusal('Repository identity did not match enrolled team organization.');
     const all=await getTeamRepos(c,t,a.teamSlug);
@@ -237,16 +240,15 @@ export const teamRepoAccess=defineGithubWrite({
   readAfter:async({args:a,ctx,target:t})=>({
     grants:(await getTeamRepos(ctx,t,a.teamSlug)).map(x=>({
       name:x.full_name,role:repoRole(x)}))}),
-  verify:({args:a,before:b,after:x})=>{
+  verify:({args:a,before:b,after:x,target:t})=>{
     if(!x?.grants)return false;
-    const key=repoKey(b?.team?.owner?{owner:b.team.owner}:{
-      owner:a.owner??b?.grants?.find(x=>x.name)?.name?.split('/')[0]??'example-org'},a.repo);
+    const key=repoKey(t,a.repo).toLowerCase();
     const prev=new Map((b.grants??[]).map(x=>[x.name?.toLowerCase(),x.role]));
     const next=new Map(x.grants.map(q=>[q.name?.toLowerCase(),q.role]));
-    if(!boolEq(next.get(key.toLowerCase())??null,
+    if(!boolEq(next.get(key)??null,
       a.action==='set'?a.permission:null))return false;
-    for(const [name,role] of prev)if(name!==key.toLowerCase()&&next.get(name)!==role)return false;
-    for(const name of next.keys())if(name!==key.toLowerCase()&&!prev.has(name))return false;
+    for(const [name,role] of prev)if(name!==key&&next.get(name)!==role)return false;
+    for(const name of next.keys())if(name!==key&&!prev.has(name))return false;
     return true;
   },
   inverse:()=>null,present:({args:a,after:x})=>({
