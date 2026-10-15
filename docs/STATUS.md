@@ -1,3 +1,7 @@
+### October 14, 2026 — O-3 merged #200, O-4 billing and paid tools under implementation (#201)
+
+**Completed source batch subsection O-3**: merged PR #200 at `f87eb4b7d35e38bbdd8e6ca588a6389a36e48703`; exact-head CI/release-policy green, nine guarded team/role capabilities. Together with O-2 #199, **2 complete source subsections** this session. Next approved O-4 is one whole subsection of 13 paid/billing/Copilot/Codespaces capabilities. Five current data reads, six guarded real writes, and two actionable manual owner workflows where cost is unbounded or the provider does not publish independent readback. This is not a completed O-4 subsection until exact-head CI/review/merge; no member, billing, spend, Codespace, release or production settings changed. Genuine O-2/O-3/O-4 provider acceptance remains queued until production READY ancestor and separate owner approvals.
+
 ### October 14, 2026 — O-2 merged #199, O-3 team and role source underway (#200)
 
 **Completed batch subsection (source + merge gates): O-2**, merged at `2f2f99e7912c993a4396b4d32e2a191d9ca032d1` after green `ci` and `release-policy`; this is **one subsection** (not 12 separate tools). O-2's custom-provider/deployment acceptance remains separately queued. Next approved **whole subsection O-3** includes nine team/role owner tools, six write contracts plus three reads, with complete scope, provider readback and plan-limited denials. This PR is source work in progress, not a completed O-3 subsection before exact-head green and merge. No real account access changes, settings or spending occurred. Live READY ancestry remains behind these source changes; acceptance queue retains release and independent approval conditions.
@@ -290,6 +294,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-14: PR #200 candidate source only; custom production READY remains behind; no O-3 genuine provider acceptance claimed."
+  },
+  {
+    "id": "GITHUB-O4-BILLING-CODESPACES",
+    "priority": 2,
+    "requiredRevision": "a2c5c77e29fdc8a3a1fd8c756c4d72730613f28c",
+    "task": "Read actual O-4 billed usage, budgets, Marketplace purchase state, Copilot seats and Codespaces through live custom GitHub MCP; separately verify any exact owner-approved U-credential or budget control",
+    "procedure": "docs/pr-cards/O-4.md",
+    "gates": "Requires deployed READY ancestry containing merged O-4 and verified real owner permissions; zero autonomous spend persists and paid or destructive actions need independent explicit owner approval. Two risky actions remain guided-only pending finite cost/readback capability.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-14: source PR #201 candidate only, no live O-4 provider acceptance or spending."
   }
 ]
 ```
