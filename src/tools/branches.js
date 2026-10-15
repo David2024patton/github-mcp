@@ -130,20 +130,50 @@ const branchRename = defineGithubWrite({
   present: ({ args, after }) => ({ branch: args.new_name, sha: after })
 });
 
+// Cleanup carries its evidence to the writer boundary and repeats it immediately
+// before DELETE. GitHub has no atomic compare-and-delete operation for references.
+async function cleanupEvidence(args,ctx,target,sha){
+  if(args.expectedHeadSha===undefined&&args.cleanupPrNumber===undefined)return;
+  if(!args.expectedHeadSha||!args.cleanupPrNumber)throw refusal('Cleanup requires both exact head and closed PR evidence.');
+  if(sha!==args.expectedHeadSha)throw refusal('Branch advanced since the cleanup plan; nothing deleted.');
+  if(typeof ctx.db?.profileForRepository!=='function')throw refusal('Project ownership policy is unavailable.');
+  await ctx.db.getSetting('production_names');
+  const profile=await ctx.db.profileForRepository(target.owner,target.repo);
+  if(profile?.ownedRefs?.some(x=>matchesAny(args.branch,[x.pattern])))throw refusal('Project-owned refs are never workflow cleanup targets.');
+  if(await productionReason(ctx,target))throw refusal('Production, default, protected or unreadable refs are never cleanup targets.');
+  const gh=await octo(ctx,target.owner),p={owner:target.owner,repo:target.repo};
+  const pr=(await gh.request('GET /repos/{owner}/{repo}/pulls/{pull_number}',{...p,pull_number:args.cleanupPrNumber})).data;
+  if(pr.state!=='closed'||pr.head?.ref!==args.branch||pr.head?.sha!==sha||
+    pr.head?.repo?.full_name?.toLowerCase()!==`${target.owner}/${target.repo}`.toLowerCase())
+    throw refusal('Closed PR does not prove ownership of this exact branch head.');
+  const open=await listAll(gh,'GET /repos/{owner}/{repo}/pulls',{...p,state:'open',head:target.owner+':'+args.branch},{max:200});
+  if(open.capped||open.items.length)throw refusal('Open PR inventory is incomplete or still uses the cleanup branch.');
+}
+
 const branchDelete = defineGithubWrite({
   name: 'github_branch_delete', area: 'branch', audience: ['B'],
   description: 'Delete a nondefault branch; protected branches require production approval.',
-  properties: { owner: OWNER, repo: REPO, branch: NAME, ...OUTSIDE_PROJECT },
+  properties: { owner: OWNER, repo: REPO, branch: NAME, expectedHeadSha: {type:'string',pattern:'^[a-f0-9]{40}$'}, cleanupPrNumber: {type:'integer',minimum:1}, ...OUTSIDE_PROJECT },
   required: ['repo', 'branch'],
   declarations: { production: 'when-target', confirm: 'always' },
   target: (args, ctx) => branchTarget(args, ctx, args.branch),
-  read: async (args, ctx, target) => ({ sha: await refSha(ctx, target.owner, target.repo, `heads/${args.branch}`), isDefault: (await getRepo(ctx, target.owner, target.repo)).default_branch === args.branch }),
+  read: async (args,ctx,target) => {
+    const sha=await refSha(ctx,target.owner,target.repo,`heads/${args.branch}`);
+    await cleanupEvidence(args,ctx,target,sha);
+    return {sha,isDefault:(await getRepo(ctx,target.owner,target.repo)).default_branch===args.branch};
+  },
   classify: ({ ctx, target }) => productionOf(ctx, target),
   summarize: ({ args, before, target }) => (before.isDefault ? `${args.branch} is the default branch of ${slug(target.owner, target.repo)}; it can never be deleted` : before.sha
     ? `Delete branch ${args.branch} (at ${short(before.sha)}) from ${slug(target.owner, target.repo)}; it can be recreated from that commit` : `There is no branch ${args.branch} in ${slug(target.owner, target.repo)}`),
   apply: async ({ args, ctx, before, target }) => {
     if (before.isDefault) throw refusal(`${args.branch} is the default branch. Change the default branch first; this tool never deletes it.`);
     if (!before.sha) throw refusal(`There is no branch ${args.branch}.`, 404);
+    if(args.expectedHeadSha){
+      const fresh=await refSha(ctx,target.owner,target.repo,`heads/${args.branch}`);
+      await cleanupEvidence(args,ctx,target,fresh);
+      if(await refSha(ctx,target.owner,target.repo,`heads/${args.branch}`)!==args.expectedHeadSha)
+        throw refusal('Branch advanced immediately before deletion.');
+    }
     return (await octo(ctx, target.owner)).request('DELETE /repos/{owner}/{repo}/git/refs/{ref}', { owner: target.owner, repo: target.repo, ref: `heads/${args.branch}` });
   },
   readAfter: async ({ args, ctx, target }) => ((await refSha(ctx, target.owner, target.repo, `heads/${args.branch}`)) === null ? 'gone' : 'still there'),

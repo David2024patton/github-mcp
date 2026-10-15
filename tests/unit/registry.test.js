@@ -23,7 +23,7 @@ describe('tool registry', () => {
       'github_account_get', 'github_account_list_keys', 'github_account_list_invitations', 'github_account_update_profile', 'github_account_manage_email', 'github_account_add_key', 'github_account_delete_key', 'github_account_set_blocked', 'github_account_respond_invitation',
       'github_notify_list', 'github_gist_list', 'github_gist_get', 'github_notify_mark', 'github_notify_set_subscription', 'github_gist_save', 'github_gist_delete',
       'github_profile_list', 'github_profile_get', 'github_workflow_app_readiness', 'github_profile_draft', 'github_workflow_project_setup',
-      'github_workflow_pr_status', 'github_workflow_open_pr', 'github_workflow_merge_when_green', 'github_workflow_merge_stack', 'github_workflow_review_threads', 'github_workflow_ci_failure_summary', 'github_workflow_rerun_failed_ci',
+      'github_workflow_repo_health', 'github_workflow_security_review', 'github_workflow_access_review', 'github_workflow_release', 'github_workflow_cleanup_branches', 'github_workflow_pr_status', 'github_workflow_open_pr', 'github_workflow_merge_when_green', 'github_workflow_merge_stack', 'github_workflow_review_threads', 'github_workflow_ci_failure_summary', 'github_workflow_rerun_failed_ci',
       'github_pr_create', 'github_pr_update', 'github_pr_close', 'github_pr_set_draft', 'github_pr_update_branch',
       'github_pr_merge', 'github_pr_merge_async', 'github_pr_set_auto_merge', 'github_pr_list_stacks', 'github_pr_stack_manage',
       'github_review_list', 'github_review_list_threads', 'github_review_list_comments',

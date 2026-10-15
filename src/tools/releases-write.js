@@ -38,7 +38,7 @@ const create = defineGithubWrite({
   name: 'github_release_create', area: 'release', audience: ['B'],
   description: 'Create a draft release by default; publishing notifies watchers and needs production approval.',
   properties: { owner: OWNER, repo: REPO, tag: TAG,
-    name: { type: 'string', maxLength: 250 }, body: TEXT,
+    name: { type: 'string', maxLength: 250 }, body: TEXT, previousTag: TAG,
     targetCommitish: { type: 'string', minLength: 1, maxLength: 250 },
     draft: { type: 'boolean' }, prerelease: { type: 'boolean' },
     generateReleaseNotes: { type: 'boolean', description: 'Defaults to true.' },
@@ -48,13 +48,14 @@ const create = defineGithubWrite({
     const client = await octo(ctx, t.owner);
     const existing = await missing(async () => (await client.request(
       ROUTES.byTag, { ...path(t), tag: args.tag })).data);
-    if (!args.previewGeneratedNotes || existing) return { existing };
+    if ((!args.previewGeneratedNotes && !args.previousTag) || existing) return { existing };
     if (args.body !== undefined || args.generateReleaseNotes === false) {
       throw refusal('Generated-notes preview requires GitHub-generated notes, not an explicit body or disabled generation.');
     }
     // GitHub's generate-notes POST is a computation only: it does not create a release or tag.
     const { data } = await client.request(ROUTES.notes, {
       ...path(t), tag_name: args.tag,
+      ...(args.previousTag ? { previous_tag_name: args.previousTag } : {}),
       ...(args.targetCommitish ? { target_commitish: args.targetCommitish } : {})
     });
     if (typeof data?.body !== 'string' || typeof data?.name !== 'string') {
@@ -70,7 +71,8 @@ const create = defineGithubWrite({
     if (before.existing) throw refusal(`Release "${args.tag}" already exists.`);
     return (await octo(ctx, t.owner)).request(ROUTES.create, {
       ...path(t), tag_name: args.tag, draft: args.draft ?? true,
-      prerelease: args.prerelease ?? false, generate_release_notes: args.generateReleaseNotes ?? true,
+      prerelease: args.prerelease ?? false, generate_release_notes: args.previousTag ? false : args.generateReleaseNotes ?? true,
+      ...(args.previousTag ? { name: before.generated.name, body: before.generated.body } : {}),
       ...(args.name !== undefined ? { name: args.name } : {}),
       ...(args.body !== undefined ? { body: args.body } : {}),
       ...(args.targetCommitish ? { target_commitish: args.targetCommitish } : {})
@@ -78,7 +80,7 @@ const create = defineGithubWrite({
   },
   readAfter: async ({ ctx, target: t, response }) =>
     response.status === 201 && Number.isInteger(response.data?.id) ? get(ctx, t, response.data.id) : null,
-  verify: ({ args, after }) => !!after && Number.isInteger(after.id) &&
+  verify: ({ args, before, after }) => !!after && (!args.previousTag || after.body===before.generated?.body) && Number.isInteger(after.id) &&
     after.tag_name === args.tag && after.draft === (args.draft ?? true) &&
     after.prerelease === (args.prerelease ?? false) &&
     (args.name === undefined || after.name === args.name) &&
@@ -91,7 +93,7 @@ const create = defineGithubWrite({
 const update = defineGithubWrite({
   name: 'github_release_update', area: 'release', audience: ['B'],
   description: 'Update releases or publish drafts with confirmation; immutable releases refused.',
-  properties: { owner: OWNER, repo: REPO, releaseId: ID,
+  properties: { owner: OWNER, repo: REPO, releaseId: ID, expectedTag: TAG,
     name: { type: 'string', maxLength: 250 }, body: TEXT,
     draft: { type: 'boolean' }, prerelease: { type: 'boolean' } },
   required: ['repo', 'releaseId'], declarations: { ...declarations, notifies: true }, target,
@@ -102,6 +104,10 @@ const update = defineGithubWrite({
     : `Release ${args.releaseId} does not exist in ${describe(t)}.`,
   apply: async ({ args, before, ctx, target: t }) => {
     assertMutable(before.current);
+    if(args.expectedTag){
+      const current=await get(ctx,t,args.releaseId);
+      if(current?.tag_name!==args.expectedTag||current.draft!==true)throw refusal('Expected draft/tag changed before publication.');
+    }
     const patch = Object.fromEntries(['name', 'body', 'draft', 'prerelease']
       .filter((k) => Object.hasOwn(args, k)).map((k) => [k, args[k]]));
     if (!Object.keys(patch).length) throw refusal('Specify at least one release field to update.');

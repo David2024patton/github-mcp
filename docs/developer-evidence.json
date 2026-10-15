@@ -38,25 +38,27 @@
       "source": "custom_service",
       "service": "robinson-github-mcp",
       "origin": "https://github-mcp-chris-projects-de6cd1bf.vercel.app",
-      "commit": "5a0ca5d2992bc576c5fdcc88525fb1eb95943fc9",
+      "commit": "ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904",
       "transport": "native_mcp",
       "observations": [
         "authenticated_initialize",
         "tools_list",
         "github_whoami",
         "mobile_cloud_connection_callable_2026_10_13",
-        "2026_10_15_current_adapter_refresh_uncertain_prior_verified_transport_is_historical"
+        "2026_10_15_reconnected_actual_custom_whoami_preview_full_scratch_only"
       ]
     },
     {
       "layer": "provider",
       "status": "unverified",
       "observations": [
-        "partial:github_repo_list_scratch_zero_repositories",
-        "partial:github_dev_list_runs_zero",
-        "partial:foreign_account_denied_before_provider",
-        "permitted_write_not_tested",
-        "provider_readback_not_tested"
+        "partial:2026_10_15_real_custom_repo_hook_collaborator_deploykey_security_org_team_role_billing_reads",
+        "partial:foreign_account_refused_before_provider",
+        "partial:retained_result_second_page_retrieved",
+        "private_governance_provider_plan_403",
+        "old_run_ownership_refused_for_new_connection_identity",
+        "personal_reads_require_optional_user_authorization",
+        "permitted_write_and_cleanup_not_accepted"
       ]
     },
     {

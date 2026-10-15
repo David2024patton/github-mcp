@@ -38,7 +38,8 @@ const alert=(a,kind)=>({
     start_line:a.most_recent_instance?.location?.start_line??null}:undefined,
   html_url:a.html_url??null,
   // Secret strings, raw metadata, response headers and arbitrary payloads are never included.
-  secret_material_hidden:kind==='secret'?true:undefined
+  secret_material_hidden:kind==='secret'?true:undefined,
+  ...(kind==='secret'?{push_protection_bypassed:typeof a.push_protection_bypassed==='boolean'?a.push_protection_bypassed:null}:{})
 });
 const safeAlert=(a,kind,number)=>{
   if(!Number.isSafeInteger(a?.number)||a.number<1||number!==undefined&&a.number!==number)
