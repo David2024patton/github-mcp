@@ -88,7 +88,8 @@ async function openPr(args,ctx){
   const existing=matches[0]??null;
   if(existing){
     const status=readBody(await call(ctx,'github_pr_get',{...s,number:existing.number}));
-    if(!status)return refused('The existing PR cannot be independently read.');
+    if(!status||status.state!=='open'||status.merged||status.head!==args.head.split(':').pop()||status.base!==base)
+      return refused('The matching PR changed since inventory; no label mutation was attempted.');
     const missing=requested.filter(label=>!(status.labels??[]).some(x=>x.toLowerCase()===label.toLowerCase()));
     if(!missing.length){
       return receipt({done:true,status:'existing',number:status.number,
