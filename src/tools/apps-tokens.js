@@ -284,6 +284,6 @@ const revoke=defineGithubWrite({
   inverse:()=>null,present:({args:a,before:b})=>({
     token_id:a.tokenId,owner:b.token.owner,organization_access_revoked:true})
 });
-const all=[...readSpecs.map(defineRead),selectRepos,reviewRequest,revoke];
+const all=[...readSpecs.map(x=>defineRead({...x,area:x.name.startsWith('github_app_')?'app':'tokenpolicy',audience:['O']})),selectRepos,reviewRequest,revoke];
 export const tools=all.map(x=>x.tool);
 export const handlers=Object.fromEntries(all.map(x=>[x.tool.name,x.handler]));
