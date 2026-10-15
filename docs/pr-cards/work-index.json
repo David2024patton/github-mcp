@@ -994,15 +994,18 @@
         "O-1"
       ],
       "card": "docs/pr-cards/O-2.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 450,
       "units": [
         "O-2"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [
         "IN-13"
+      ],
+      "pr": [
+        199
       ]
     },
     {
