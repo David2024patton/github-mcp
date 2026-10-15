@@ -1,5 +1,7 @@
 // Reviews and review threads, change side (E-3 part 2). Reviews and replies are messages: anything that mentions or reaches people
 // outside Chris's own accounts needs confirm. Nothing here touches a branch, so none of it is production.
+import { createHash } from 'node:crypto';
+import { requestKey as githubRequestKey } from '../github/client.js';
 import { graphql } from '../github/client.js';
 import { defineGithubWrite } from './define-github-write.js';
 import { missing, octo, ownerOf, refusal, slug } from './github-write.js';
@@ -12,6 +14,7 @@ const BODY = { type: 'string', maxLength: 20000 };
 const EVENT = { type: 'string', enum: ['COMMENT', 'APPROVE', 'REQUEST_CHANGES'] };
 const REVIEW_ID = { type: 'integer', minimum: 1, description: 'Review id (from github_review_list)' };
 const THREAD_ID = { type: 'string', minLength: 1, maxLength: 100, description: 'Review thread id (from github_review_list_threads)' };
+const EXPECTED_HEAD = { type: 'string', pattern: '^[a-fA-F0-9]{40}$', description: 'Refuse if this PR head changed' };
 const STATE_OF = { COMMENT: 'COMMENTED', APPROVE: 'APPROVED', REQUEST_CHANGES: 'CHANGES_REQUESTED' };
 const prTarget = (args, ctx) => ({ owner: ownerOf(args, ctx), repo: args.repo, scope: 'repo' });
 const p = (target, args) => ({ owner: target.owner, repo: target.repo, pull_number: args.number });
@@ -30,6 +33,19 @@ async function readThread(ctx, target, args) {
   if (!node?.id) return null;
   const mine = String(node.pullRequest?.repository?.nameWithOwner ?? '').toLowerCase() === slug(target.owner, target.repo).toLowerCase() && (args.number === undefined || node.pullRequest?.number === args.number);
   return { id: node.id, resolved: node.isResolved, path: node.path, pr: node.pullRequest?.number, mine };
+}
+function reviewRequestKey(name) {
+  return (ctx,args) => {
+    if (!args.expectedHeadSha) return githubRequestKey(ctx,name,args);
+    const intent = [ctx.connection.client_id ?? ctx.connection.pass_id,
+      String(args.owner ?? ctx.connection.default_account).toLowerCase(),args.repo,args.number,
+      args.threadId,args.expectedHeadSha,args.body ?? null,args.resolved !== false];
+    return 'rmcp_' + name + '_' + createHash('sha256').update(JSON.stringify(intent)).digest('hex');
+  };
+}
+async function verifyHead(ctx, target, args) {
+  if (args.expectedHeadSha && (await getPr(ctx, target, args)).head?.sha !== args.expectedHeadSha)
+    throw refusal('The PR head changed; re-read the review disposition before changing its thread.');
 }
 const needThread = (before, target) => {
   if (!before) throw refusal('There is no review thread with that id.', 404);
@@ -108,17 +124,21 @@ const reviewDismiss = defineGithubWrite({
 });
 
 const reviewReply = defineGithubWrite({
-  name: 'github_review_reply', area: 'review', audience: ['B'],
+  name: 'github_review_reply', requestKey: reviewRequestKey('github_review_reply'), area: 'review', audience: ['B'],
   description: 'Reply in a review thread.',
-  properties: { owner: OWNER, repo: REPO, number: NUMBER, threadId: THREAD_ID, body: { type: 'string', minLength: 1, maxLength: 20000 } },
+  properties: { owner: OWNER, repo: REPO, number: NUMBER, threadId: THREAD_ID, body: { type: 'string', minLength: 1, maxLength: 20000 }, expectedHeadSha: EXPECTED_HEAD },
   required: ['repo', 'number', 'threadId', 'body'],
   declarations: { production: 'never', notifies: true },
   target: prTarget,
-  read: (args, ctx, target) => readThread(ctx, target, args),
+  read: async (args, ctx, target) => {
+    await verifyHead(ctx, target, args);
+    return readThread(ctx, target, args);
+  },
   classify: ({ args, ctx, target }) => notifyOutsiders(ctx, { text: args.body, repoOwner: target.owner }),
   summarize: ({ args, before, target }) => (before?.mine ? `Reply in the review thread on ${before.path} of pull request #${args.number} in ${slug(target.owner, target.repo)}: "${args.body.slice(0, 80)}"` : 'That review thread was not found on this pull request'),
   apply: async ({ args, ctx, target, before }) => {
     needThread(before, target);
+    await verifyHead(ctx, target, args);
     return graphql(await octo(ctx, target.owner), REPLY, { input: { pullRequestReviewThreadId: args.threadId, body: args.body } });
   },
   readAfter: ({ response }) => response?.addPullRequestReviewThreadReply?.comment ?? null,
@@ -127,13 +147,16 @@ const reviewReply = defineGithubWrite({
 });
 
 const reviewResolve = defineGithubWrite({
-  name: 'github_review_resolve_thread', area: 'review', audience: ['B'],
+  name: 'github_review_resolve_thread', requestKey: reviewRequestKey('github_review_resolve_thread'), area: 'review', audience: ['B'],
   description: 'Resolve or reopen a review thread without changing an already matching state.',
-  properties: { owner: OWNER, repo: REPO, number: NUMBER, threadId: THREAD_ID, resolved: { type: 'boolean', description: 'Default true; false reopens the thread' } },
+  properties: { owner: OWNER, repo: REPO, number: NUMBER, threadId: THREAD_ID, resolved: { type: 'boolean', description: 'Default true; false reopens the thread' }, expectedHeadSha: EXPECTED_HEAD },
   required: ['repo', 'number', 'threadId'],
   declarations: { production: 'never' },
   target: prTarget,
-  read: (args, ctx, target) => readThread(ctx, target, args),
+  read: async (args, ctx, target) => {
+    await verifyHead(ctx, target, args);
+    return readThread(ctx, target, args);
+  },
   classify: () => ({}),
   summarize: ({ args, before, target }) => {
     const want = args.resolved !== false;
@@ -142,6 +165,7 @@ const reviewResolve = defineGithubWrite({
   },
   apply: async ({ args, ctx, target, before }) => {
     needThread(before, target);
+    await verifyHead(ctx, target, args);
     const want = args.resolved !== false;
     if (before.resolved === want) return { unchanged: true };
     return graphql(await octo(ctx, target.owner), want ? RESOLVE : UNRESOLVE, { input: { threadId: args.threadId } });

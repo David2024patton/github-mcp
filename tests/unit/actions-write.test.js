@@ -160,3 +160,27 @@ describe('Actions change rules', () => {
     expect(w.gh.calls.every((c) => /ghu_FAKE/.test(c.headers?.authorization ?? 'ghu_FAKE'))).toBe(true);
   });
 });
+
+describe('W-4 pinned durable automatic rerun',()=>{
+  const A='a'.repeat(40);
+  it('reuses the claim across new run IDs and time windows for the same head/workflow',async()=>{
+    const w=await makeWorld({});workflow(w.gh,null);
+    const done={id:9,workflow_id:3,head_sha:A,name:'ci',path:'.github/workflows/ci.yml',head_branch:'feature',status:'completed',conclusion:'failure',run_attempt:1};
+    seq(w.gh,RUN,[[200,done],[200,done],[200,{...done,status:'queued',run_attempt:2}],[200,{...done,id:10}]]);
+    w.gh.when('POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs').reply(201,{});
+    const input={...R,runId:9,mode:'failed',expectedHeadSha:A,expectedWorkflowId:3,confirm:true};
+    const first=parse(await actions.handlers.github_actions_rerun(input,w.ctx));
+    expect(first).toMatchObject({status:'applied',confirmed:true});
+    const prior=w.ctx.now;w.ctx.now=()=>prior()+20*60*1000;
+    const again=parse(await actions.handlers.github_actions_rerun({...input,runId:10},w.ctx));
+    expect(again).toMatchObject({status:'replayed',confirmed:true,requestKey:first.requestKey});
+    expect(w.gh.calls.filter(c=>c.method==='POST')).toHaveLength(1);expect(w.gh.invalid).toEqual([]);
+  });
+  it('refuses an advanced attempt immediately before applying the retry',async()=>{
+    const w=await makeWorld({});workflow(w.gh,null);
+    const done={id:9,workflow_id:3,head_sha:A,name:'ci',path:'.github/workflows/ci.yml',head_branch:'feature',status:'completed',conclusion:'failure',run_attempt:1};
+    seq(w.gh,RUN,[[200,done],[200,{...done,run_attempt:2}]]);
+    const r=parse(await actions.handlers.github_actions_rerun({...R,runId:9,mode:'failed',expectedHeadSha:A,expectedWorkflowId:3,confirm:true},w.ctx));
+    expect(r.done).toBe(false);expect(w.gh.calls.filter(c=>c.method==='POST')).toEqual([]);
+  });
+});

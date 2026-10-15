@@ -30,9 +30,13 @@ export function looksBinary(buffer) {
 export const contentGet = defineRead({
   name: 'github_content_get', area: 'content', audience: ['B', 'Op'],
   description: 'Read a file\'s text (long text is cut and kept behind a handle) or list a directory, at any branch, tag or commit.',
-  properties: { owner: OWNER, repo: REPO, path: { type: 'string', maxLength: 1000, description: 'File or directory path; empty or / for the top level' }, ref: { ...REF, description: 'Branch, tag or commit (default: the default branch)' } },
+  properties: { owner: OWNER, repo: REPO, path: { type: 'string', maxLength: 1000, description: 'File or directory path; empty or / for the top level' }, ref: { ...REF, description: 'Branch, tag or commit (default: the default branch)' },
+    startLine: { type: 'integer', minimum: 1 }, endLine: { type: 'integer', minimum: 1 } },
   required: ['repo'],
   handler: (args, ctx) => plain(async () => {
+    if ((args.startLine === undefined) !== (args.endLine === undefined) ||
+        (args.startLine !== undefined && (args.endLine < args.startLine || args.endLine - args.startLine >= 100)))
+      throw new TypeError('Supply both startLine and endLine, covering at most 100 lines.');
     const { owner, octokit } = await readerFor(args, ctx);
     const path = String(args.path ?? '').replace(/^\/+|\/+$/g, '');
     const query = { owner, repo: args.repo, path, ...(args.ref ? { ref: args.ref } : {}) };
@@ -45,7 +49,13 @@ export const contentGet = defineRead({
     }
     const buffer = Buffer.from(data.content, 'base64');
     if (looksBinary(buffer)) return { ...base, binary: true, content: null, note: 'This is a binary file, so its content is not shown.', download_url: data.download_url };
-    return { ...base, content: buffer.toString('utf8') };
+    const text = buffer.toString('utf8');
+    if (args.startLine !== undefined) {
+      const lines = text.split('\n');
+      return { ...base, start_line: args.startLine, end_line: Math.min(args.endLine, lines.length),
+        total_lines: lines.length, content: lines.slice(args.startLine - 1, args.endLine).join('\n') };
+    }
+    return { ...base, content: text };
   })
 });
 

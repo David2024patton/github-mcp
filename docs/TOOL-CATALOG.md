@@ -514,7 +514,7 @@ Card(s): P-1 … P-3. P-1 implementation in PR #206: additive, versioned known_p
 
 ## Workflows (`github_workflow_*`) — 17
 
-Card(s): P-2, P-3, W-1 … W-7. P-2 built in PR #207 as a non-read-only composed workflow: inspection is read-only, but a single explicitly named repair invokes an existing independently guarded write. Never claim unverified process rows or unreadable provider settings are healthy. Whole jobs in one call, answered in plain English with `structuredContent` (`docs/designs/BATCH-W.md`). W-1 and W-2 were implemented together in PR #210; status is read-only, while open/merge workflows delegate to the existing journaled and independently guarded writers. A staged PR open or stack progresses one write at a time and requires a fresh call for the next step.
+Card(s): P-2, P-3, W-1 … W-7. P-2 built in PR #207 as a non-read-only composed workflow: inspection is read-only, but a single explicitly named repair invokes an existing independently guarded write. Never claim unverified process rows or unreadable provider settings are healthy. Whole jobs in one call, answered in plain English with `structuredContent` (`docs/designs/BATCH-W.md`). W-3/W-4 add verified review disposition and CI recovery workflows; their genuine deployed acceptance remains queued. W-1 and W-2 were implemented together in PR #210; status is read-only, while open/merge workflows delegate to the existing journaled and independently guarded writers. A staged PR open or stack progresses one write at a time and requires a fresh call for the next step.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |

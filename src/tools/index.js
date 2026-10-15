@@ -70,6 +70,8 @@ import * as appReadiness from './app-readiness.js';
 import * as projectSetup from './project-setup.js';
 import * as workflowPr from './workflows-pr.js';
 import * as workflowMerge from './workflows-merge.js';
+import * as workflowReview from './workflows-review.js';
+import * as workflowCi from './workflows-ci.js';
 import * as devRunsRead from './dev-runs-read.js';
 import * as devScratchWrite from './dev-scratch-write.js';
 import * as devSeedWrite from './dev-seed-write.js';
@@ -79,4 +81,4 @@ import * as pullsMerge from './pulls-merge.js';
 import * as pullsStacks from './pulls-stacks.js';
 
 // Tool modules are added here as their cards land.
-export const registry = mergeNamespaces([meta, server, diagnostics, devRunsRead, devScratchWrite, devSeedWrite, devCleanupWrite, repos, reposWrite, codeRead, codeWrite, branches, pullsRead, issuesRead, issuesWrite, issuesRelationsWrite, issuesReactionsWrite, issuesTransferWrite, labels, milestones, labelsSync, searchGitHub, discussions, projectsRead, projectsWrite, governanceRead, governanceWrite, protectionWrite, webhooksRead, webhooksActions, webhooksSave, accessRead, accessWrite, securityRead, securityAlertsWrite, securitySettingsRead, securitySettingsWrite, adminGuided, adminOverview, orgRead, orgWrite, teamRoleRead, teamRoleWrite, billingRead, billingGuided, billingWrite, appsTokens, userAccount, notificationsGists, profiles, appReadiness, projectSetup, workflowPr, workflowMerge, pullsWrite, pullsMerge, pullsStacks, reviews, reviewsWrite, actionsRead, actionsWrite, checksRead, checksWrite, variables, secrets, environmentsRead, environmentsWrite, environmentsPolicies, deploymentsRead, deploymentsWrite, releasesRead, releasesWrite, releasesAssets, pagesRead, packagesRead, pagesWrite, packagesWrite, packagesRestore]);
+export const registry = mergeNamespaces([meta, server, diagnostics, devRunsRead, devScratchWrite, devSeedWrite, devCleanupWrite, repos, reposWrite, codeRead, codeWrite, branches, pullsRead, issuesRead, issuesWrite, issuesRelationsWrite, issuesReactionsWrite, issuesTransferWrite, labels, milestones, labelsSync, searchGitHub, discussions, projectsRead, projectsWrite, governanceRead, governanceWrite, protectionWrite, webhooksRead, webhooksActions, webhooksSave, accessRead, accessWrite, securityRead, securityAlertsWrite, securitySettingsRead, securitySettingsWrite, adminGuided, adminOverview, orgRead, orgWrite, teamRoleRead, teamRoleWrite, billingRead, billingGuided, billingWrite, appsTokens, userAccount, notificationsGists, profiles, appReadiness, projectSetup, workflowPr, workflowMerge, workflowReview, workflowCi, pullsWrite, pullsMerge, pullsStacks, reviews, reviewsWrite, actionsRead, actionsWrite, checksRead, checksWrite, variables, secrets, environmentsRead, environmentsWrite, environmentsPolicies, deploymentsRead, deploymentsWrite, releasesRead, releasesWrite, releasesAssets, pagesRead, packagesRead, pagesWrite, packagesWrite, packagesRestore]);

@@ -232,3 +232,15 @@ design-maintenance exception to routine no-docs-only implementation work, not a
 feature PR or completed subsection. Existing owner-specific missing inputs,
 spending/production/credential/cleanup authority remain gated; this entry does
 not mark them answered. The original Toolkit stays reference-only.
+
+### 2026-10-15 — W-3/W-4 verified recovery intent
+
+The existing approved review/CI recovery outcome composes guarded E-3/G-1 tools.
+Pinned review intents and automatic failed-workflow retry claims reuse the durable
+change journal beyond the ordinary ten-minute window, scoped to the principal and
+exact target/head. Automatic CI retries conservatively claim the whole workflow/head
+across run IDs. No new table or permission. Workflow confirmation binds the original
+comment and current discussion; changed lines are evidence for caller judgment,
+not a claim of semantic correctness. Thread mutation APIs have no atomic head CAS;
+nearest fresh reads plus post-observation detect races without claiming provider
+atomicity. Source proof and future custom-service acceptance stay separate.

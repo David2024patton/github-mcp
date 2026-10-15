@@ -24,7 +24,7 @@ async function describeHandler(args, ctx) {
   return describeTool(tool);
 }
 
-const callable = (ctx, name) => { const t = find(ctx, name); return t && !t.usesRegistry ? t : null; };
+const callable = (ctx, name) => { const t = find(ctx, name); return t && (!t.usesRegistry || (t.area === 'workflow' && (Array.isArray(t.delegatedWrites) || t.annotations?.readOnlyHint === true))) ? t : null; };
 
 async function callHandler(args, ctx) {
   if (!callable(ctx, args.name)) {

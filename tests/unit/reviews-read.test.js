@@ -43,3 +43,15 @@ describe('review read tools (E-3)', () => {
     expect(w.gh.invalid).toEqual([]);
   });
 });
+
+describe('W-3 review origin and cursor evidence',()=>{
+  it('validates root commit, original range and explicit cursor against the pinned GraphQL schema',async()=>{
+    const w=await makeWorld({profile:'read_only'});
+    w.gh.when('POST /graphql').reply(200,{data:{repository:{pullRequest:{reviewThreads:{totalCount:2,pageInfo:{hasNextPage:true,endCursor:'cursor-next'},nodes:[thread('T1',false,{originalLine:7,originalStartLine:5,diffSide:'RIGHT',root:{nodes:[{id:'ROOT',body:'original comment',authorAssociation:'NONE',originalCommit:{oid:'a'.repeat(40)}}]}})]}}}}});
+    const {body}=await run(w,'github_review_list_threads',{...R,pageSize:1,after:'cursor-first'});
+    expect(body).toMatchObject({more_exist:true,next_cursor:'cursor-next'});
+    expect(body.items[0]).toMatchObject({original_line:7,original_start_line:5,side:'RIGHT',root_comment:{id:'ROOT',commit_sha:'a'.repeat(40),untrusted:true}});
+    expect(w.gh.calls.find(c=>c.method==='POST').body.variables).toMatchObject({first:1,after:'cursor-first'});
+    expect(w.gh.invalid).toEqual([]);
+  });
+});

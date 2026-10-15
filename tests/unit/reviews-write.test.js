@@ -130,3 +130,31 @@ describe('review change rules', () => {
     expect(w.gh.invalid).toEqual([]);
   });
 });
+
+describe('W-3 pinned head and durable review intent',()=>{
+  for(const name of ['github_review_reply','github_review_resolve_thread']){
+    it(name+' refuses an old head before mutation and rechecks immediately at apply',async()=>{
+      for(const race of [false,true]){
+        const w=await makeWorld({});members(w.gh);
+        seq(w.gh,PR,race?[[200,{head:{sha:A}}],[200,{head:{sha:'b'.repeat(40)}}]]:[[200,{head:{sha:'b'.repeat(40)}}]]);
+        gql(w.gh,[threadNode(false)]);
+        const r=await call(name,w,{...R,threadId:'T1',expectedHeadSha:A,confirm:true,...(name==='github_review_reply'?{body:'Verified answer'}:{})});
+        expect(r.done).toBe(false);
+        expect(w.gh.calls.filter(c=>c.method==='POST'&&/mutation/.test(c.body?.query??''))).toEqual([]);
+      }
+    });
+  }
+  it('reuses the durable reply claim across ten-minute windows and caller retry keys',async()=>{
+    const w=await makeWorld({});members(w.gh);
+    w.gh.when(PR).reply(200,{head:{sha:A}});
+    gql(w.gh,[threadNode(false),{data:{addPullRequestReviewThreadReply:{comment:{id:'C1',url:'u',body:'Verified answer'}}}},threadNode(false)]);
+    const input={...R,threadId:'T1',expectedHeadSha:A,body:'Verified answer',confirm:true};
+    const first=await call('github_review_reply',w,{...input,requestKey:'first-attempt'});
+    expect(first).toMatchObject({status:'applied',confirmed:true});
+    const before=w.ctx.now;w.ctx.now=()=>before()+20*60*1000;
+    const second=await call('github_review_reply',w,{...input,requestKey:'different-retry'});
+    expect(second).toMatchObject({status:'replayed',confirmed:true,requestKey:first.requestKey});
+    expect(w.gh.calls.filter(c=>c.method==='POST'&&/mutation/.test(c.body?.query??''))).toHaveLength(1);
+    expect(w.gh.invalid).toEqual([]);
+  });
+});

@@ -93,3 +93,27 @@ fork-PR approval for all outside contributors, standard labels. Idempotent.
 ### 2026-10-15 W-2 implementation amendment — true retarget evidence
 
 Do not equate `PR.updated_at` with a base retarget; ordinary comments/reviews update it. The reviewed W-2 implementation calls the existing guarded `github_issue_list_timeline` reader, requires its complete bounded event history, finds the most recent `base_ref_changed`, and checks that every required check run/status has a later timestamp. No history read or an unreadable/capped history fails closed. An unchanged-base PR with no recorded retarget may use CI already green at the exact head. This clarifies W4 without widening permission or authorizing an extra write.
+
+### 2026-10-15 W-3/W-4 integration details
+
+W-3 binds one combined preview to the current head, original comment, latest discussion
+and explicit caller explanations. Fixed/already-fixed require an ancestor comparison
+with an actual changed original RIGHT-side line; diff context or additions alone are
+not fix evidence. Superseded requires provider-outdated state; answered records the
+caller's substantive explanation. Change evidence does not assert semantic correctness.
+Unknown/LEFT/deleted context stays explicit and may be answered, never auto-declared fixed.
+Thread pagination checks stable totals, cursor progress and uniqueness. Long comments
+carry bounded excerpts plus full-text hashes so edited discussions invalidate previews.
+Replies/resolutions use existing guarded writers with fresh head reads and durable,
+principal-bound intent keys when pinned; this intentionally extends deduplication past
+the ordinary ten-minute window. Partial/uncertain results stop and require fresh reads.
+GitHub's thread mutations have no atomic expected-head field: nearest preceding reads
+and post-write observation detect races; no stronger provider atomicity is claimed.
+
+W-4's once-only failed-job retry pins the real workflow ID and exact run head in the
+existing durable change journal. It conservatively permits at most one automatic retry
+for that workflow/head across run IDs/attempts/time windows; manual low-level reruns
+remain explicit separate operations. Classify production using the original run ref and
+read the workflow contents at its immutable pinned SHA. The summary compares observed
+step/error signatures with the latest same-workflow default-branch run; missing logs,
+annotations or baseline remain unknown. All delegated production/confirmation gates stay.
