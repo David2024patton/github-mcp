@@ -53,12 +53,19 @@ export async function productionReason(ctx, target, { profile = {}, names } = {}
   if (target.kind === 'tag') return 'it creates, moves or deletes a tag';
   if (target.kind === 'release') return 'it creates, changes or deletes a release';
   if (target.kind === 'repo-settings') return 'it changes repository settings that decide who can reach the code or how it ships';
+  // Project profiles are read from the same durable store as the protection gate.
+  // A failed lookup cannot make a branch less protected.
+  let effectiveProfile=profile;
+  if(target.repo && ctx.db?.profileForRepository && !Object.keys(profile).length){
+    try{effectiveProfile=(await ctx.db.profileForRepository(target.owner,target.repo))??{};}
+    catch{return 'the project policy could not be read, so this change is treated as production';}
+  }
   const effective = names ?? await productionNames(ctx.db);
   const slug = `${target.owner}/${target.repo}`;
 
   if (target.environment) {
     const env = target.environment;
-    if (effective.environments.some((n) => same(n, env)) || (profile.productionEnvironments ?? []).some((n) => same(n, env))) return `"${env}" is a production environment`;
+    if (effective.environments.some((n) => same(n, env)) || (effectiveProfile.productionEnvironments ?? []).some((n) => same(n, env))) return `"${env}" is a production environment`;
     try {
       const octokit = await githubFor(ctx, { owner: target.owner });
       const found = (await octokit.request('GET /repos/{owner}/{repo}/environments/{environment_name}', { owner: target.owner, repo: target.repo, environment_name: env })).data;
@@ -71,7 +78,7 @@ export async function productionReason(ctx, target, { profile = {}, names } = {}
 
   if (target.ref) {
     const ref = target.ref;
-    if (matchesAny(ref, [...effective.branches, ...(profile.productionBranches ?? [])])) return `"${ref}" is a branch named as production`;
+    if (matchesAny(ref, [...effective.branches, ...(effectiveProfile.productionBranches ?? [])])) return `"${ref}" is a branch named as production`;
     let octokit;
     try { octokit = await githubFor(ctx, { owner: target.owner }); } catch { return `${slug} could not be checked, so it is treated as production`; }
     try {

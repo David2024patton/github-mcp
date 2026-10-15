@@ -5,6 +5,7 @@
 import { RESULT_HANDLE, SCHEMA_TABLES, SETUP_PURPOSES, ETAG_BODY_LIMIT_BYTES, PROTECTED_SEEDED_KEY, checkConnection, checkProtected, connectionSettings, normalizeChange } from '../../src/db.js';
 import { hashToken } from '../../src/core/oauth.js';
 import { createFakeDevLedger } from './dev-ledger-fake.js';
+import { DEFAULT_PROJECTS, validateProjectProfile, storedProject, containsRepo } from '../../src/data/profile-schema.js';
 
 function changeViewOf(r) {
   return structuredClone({ id: r.id, at: r.at, summary: r.summary, confirmed: r.confirmed, after: r.after ?? null, githubRequestId: r.githubRequestId ?? null,
@@ -32,6 +33,7 @@ export function createFakeDb({ clock = Date.now } = {}) {
   const changes = [];
   const settings = new Map();
   const protectedRows = new Map();
+  const knownProjects = new Map();
   const results = new Map();
   let changeId = 0;
   const DAY_MS = 24 * 60 * 60 * 1000;
@@ -41,8 +43,33 @@ export function createFakeDb({ clock = Date.now } = {}) {
 
   return {
     ...createFakeDevLedger({ clock }),
-    async initSchema() { for (const name of SCHEMA_TABLES) tables.add(name); },
+    async initSchema() {
+      for(const name of SCHEMA_TABLES)tables.add(name);
+      for(const p of DEFAULT_PROJECTS)
+        if(!knownProjects.has(p.id))knownProjects.set(p.id,{
+          id:p.id,name:p.name,status:p.status,version:1,profile:structuredClone(p),
+          updated_at:new Date(clock()).toISOString()});
+    },
     async listTables() { return [...tables].sort(); },
+    async listKnownProjects() {
+      return [...knownProjects.values()].sort((a,b)=>a.id.localeCompare(b.id)).map(storedProject);
+    },
+    async getKnownProject(id) {
+      return storedProject(knownProjects.get(id)??null);
+    },
+    async profileForRepository(owner,repo) {
+      const matches=[...knownProjects.values()].filter(r=>r.status==='active'&&containsRepo(r.profile,owner,repo));
+      if(matches.length>1)throw new Error('Overlapping project policies cannot be resolved safely.');
+      return matches.length?storedProject(matches[0]).profile:null;
+    },
+    async saveKnownProject(raw,expectedVersion) {
+      const p=validateProjectProfile(raw),old=knownProjects.get(p.id);
+      if(!old||old.version!==expectedVersion)return null;
+      const next={id:p.id,name:p.name,status:p.status,version:old.version+1,
+        profile:structuredClone(p),updated_at:new Date(clock()).toISOString()};
+      knownProjects.set(p.id,next);
+      return storedProject(next);
+    },
     async putResult({ handle, connection, summary = null, body, ttlSeconds = 86400 }) {
       if (!RESULT_HANDLE.test(handle ?? '')) throw new TypeError('A result handle looks like res_ followed by letters and digits.');
       if (typeof connection !== 'string' || !connection) throw new TypeError('A result belongs to a connection.');

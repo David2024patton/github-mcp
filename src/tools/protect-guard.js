@@ -105,7 +105,18 @@ export function protectedResourceGate() {
     const refused = protectionVerdict({ entries, ownInstallationIds, name, args, target, classification });
     if (refused) return refused;
     const repo = repoKey(target);
-    const profile = repo && typeof ctx.profileFor === 'function' ? await ctx.profileFor(target.owner, target.repo) : null;
+    const profile=repo
+      ? (typeof ctx.profileFor==='function'
+        ? await ctx.profileFor(target.owner,target.repo)
+        : (typeof ctx.db.profileForRepository==='function'
+          ? await ctx.db.profileForRepository(target.owner,target.repo)
+          : null))
+      : null;
+    // A missing store is not a neutral absence of profile: a production
+    // service must not skip safeguards due to an unavailable DB contract.
+    if(repo && typeof ctx.profileFor!=='function' &&
+      typeof ctx.db.profileForRepository!=='function')
+      return {refuse:'Project policy store unavailable; no repository write may proceed.',by:'project ownership'};
     return ownershipVerdict({ profile, name, args, target });
   };
 }
