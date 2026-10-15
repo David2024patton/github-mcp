@@ -162,15 +162,16 @@ describe('O-4 real prices, budget safety, marketplace, Copilot and Codespaces',(
     w.gh.when(BG).reply(200,b);
     const result=await invoke(w,'github_billing_delete_budget',{
       budgetId:b.id,confirm:true});
-    expect(result).toMatchObject({done:false,status:'refused_by_guard',
-      refusedBy:'spend'});
+    expect(result).toMatchObject({status:'guided',completed:false,
+      enforces_limit:true});
     expect(w.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
   });
   it('refuses paid Codespace access expansion without finite verified cap',async()=>{
     const w=await makeWorld({mode:'production',profile:'full'});
     const result=await invoke(w,'github_codespace_set_org_access',{
       visibility:'all_members',confirm:true});
-    expect(result.done).toBe(false);
+    expect(result).toMatchObject({status:'guided',completed:false,
+      visibility:'all_members'});
     expect(w.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
   });
   it('rejects unknown Copilot plan prices at zero exposure rather than guessing',async()=>{
