@@ -85,8 +85,13 @@ describe('P-1 live production / project ownership integration',()=>{
     const gate=protectedResourceGate();
     const context={args:{},ctx:w.ctx,target:{...appliance,ref:'transfer/123'},
       classification:{}};
-    for(const name of ['github_branch_create','github_content_push_files'])
-      expect(await gate({...context,name})).toBeNull();
+    expect(await gate({...context,name:'github_branch_create',
+      before:{from:'main',sha:'a'.repeat(40),defaultBranch:'main',
+        defaultBranchSha:'a'.repeat(40)}})).toBeNull();
+    expect((await gate({...context,name:'github_branch_create',
+      before:{from:'feature',sha:'a'.repeat(40),defaultBranch:'main',
+        defaultBranchSha:'b'.repeat(40)}})).refuse).toContain('sandbox-publish.yml');
+    expect(await gate({...context,name:'github_content_push_files'})).toBeNull();
     for(const name of ['github_branch_delete','github_git_update_ref'])
       expect((await gate({...context,name})).refuse).toContain('sandbox-publish.yml');
   });

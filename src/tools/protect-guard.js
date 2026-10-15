@@ -83,13 +83,20 @@ export function protectionVerdict({ entries, ownInstallationIds = [], name, args
 }
 
 /** Project ownership for one change: null, `{ refuse, by }`, or `{ confirm }` when the caller said `outsideProject`. */
-export function ownershipVerdict({ profile, name, args = {}, target }) {
+export function ownershipVerdict({ profile, name, args = {}, target, before=null }) {
   const ref = target?.ref;
   if (!profile || typeof ref !== 'string' || !Array.isArray(profile.ownedRefs)) return null;
   const owned = profile.ownedRefs.find((o) => o && typeof o.pattern === 'string' && matchesAny(ref, [o.pattern]));
   if (!owned) return null;
   const operation = AGENT_OPERATION[name];
-  if (operation && Array.isArray(owned.agentMay) && owned.agentMay.includes(operation)) return null;
+  if (operation && Array.isArray(owned.agentMay) && owned.agentMay.includes(operation)) {
+    // P-1: "create-from-default" is not permission to branch from an
+    // arbitrary tag, SHA, or another ref. The write's independently read
+    // before state must prove the exact default branch and source SHA.
+    if(operation !== 'create-from-default' ||
+       (before?.defaultBranch && before.from === before.defaultBranch &&
+        before.sha && before.sha === before.defaultBranchSha))return null;
+  }
   const who = `"${ref}" is managed by ${owned.managedBy}${owned.note ? ` (${owned.note})` : ''}`;
   if (args.outsideProject === true) return { confirm: `${who}. You said this change is outside the project's own routine, so it needs your confirmation.` };
   return { refuse: `${who}. Changes there belong to that workflow. If you really mean to do this outside the project's routine, send outsideProject: true (it will still ask first).`, by: OWNED_BY };
@@ -97,7 +104,7 @@ export function ownershipVerdict({ profile, name, args = {}, target }) {
 
 /** The gate for `src/tools/gates.js`. A list or profile that cannot be read refuses the change (the layer turns a throw into a refusal). */
 export function protectedResourceGate() {
-  return async ({ name, args, ctx, target, classification }) => {
+  return async ({ name, args, ctx, target, classification, before }) => {
     const entries = await protectedList(ctx.db);
     const ownInstallationIds = entries.some((e) => e.kind === 'installation' && e.target === '*')
       ? (await ctx.db.listAccounts()).filter((a) => a.credential_kind === 'app' && a.installation_id != null).map((a) => a.installation_id)
@@ -117,6 +124,6 @@ export function protectedResourceGate() {
     if(repo && typeof ctx.profileFor!=='function' &&
       typeof ctx.db.profileForRepository!=='function')
       return {refuse:'Project policy store unavailable; no repository write may proceed.',by:'project ownership'};
-    return ownershipVerdict({ profile, name, args, target });
+    return ownershipVerdict({ profile, name, args, target, before });
   };
 }

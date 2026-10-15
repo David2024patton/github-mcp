@@ -81,8 +81,14 @@ const branchCreate = defineGithubWrite({
   declarations: { production: 'never' },
   target: (args, ctx) => branchTarget(args, ctx, checkName(args.branch, 'branch')),
   read: async (args, ctx, target) => {
-    const from = args.from ?? (await getRepo(ctx, target.owner, target.repo)).default_branch;
-    return { from, sha: await commitOf(ctx, target.owner, target.repo, from), exists: (await refSha(ctx, target.owner, target.repo, `heads/${args.branch}`)) !== null };
+    const defaultBranch = (await getRepo(ctx, target.owner, target.repo)).default_branch;
+    if(!defaultBranch) throw refusal('Default branch cannot be independently verified.');
+    const defaultBranchSha=await refSha(ctx,target.owner,target.repo,`heads/${defaultBranch}`);
+    if(!defaultBranchSha) throw refusal('Default branch ref is not readable.');
+    const from=args.from??defaultBranch;
+    return {from,sha:await commitOf(ctx,target.owner,target.repo,from),
+      defaultBranch,defaultBranchSha,
+      exists:(await refSha(ctx,target.owner,target.repo,`heads/${args.branch}`))!==null};
   },
   classify: () => ({}),
   summarize: ({ args, before, target }) => (before.exists ? `${args.branch} already exists in ${slug(target.owner, target.repo)}, so it cannot be created`
