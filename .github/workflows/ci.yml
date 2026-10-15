@@ -44,7 +44,7 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
-      - run: npm test -- --shard=${{ matrix.shard }}/2
+      - run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm test -- --shard=${{ matrix.shard }}/2
 
   db:
     runs-on: ubuntu-latest
@@ -70,7 +70,7 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
-      - run: npm run test:db
+      - run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:db
         env:
           TEST_DATABASE_URL: postgresql://postgres:ci-only-not-a-secret@127.0.0.1:5432/postgres
 
@@ -83,14 +83,24 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
-      - run: npm run test:shapes
+      - run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:shapes
+
+  rtc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm ci
       # Upstream Hub RTC 1 runner pinned and executed against reference + our restricted HTTP adapter.
       # A deliberately non-certified manifest remains an explicit failed probe, never a pass.
-      - run: npm run test:rtc
+      - run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:rtc
 
   ci:
     if: always()
-    needs: [check, unit, db, shapes]
+    needs: [check, unit, db, shapes, rtc]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -100,9 +110,10 @@ jobs:
           UNIT: ${{ needs.unit.result }}
           DB: ${{ needs.db.result }}
           SHAPES: ${{ needs.shapes.result }}
+          RTC: ${{ needs.rtc.result }}
         run: |
           status=0
-          for job in CHECK UNIT DB SHAPES; do
+          for job in CHECK UNIT DB SHAPES RTC; do
             result="${!job}"
             echo "$job: $result"
             [ "$result" = success ] || status=1
