@@ -129,7 +129,7 @@ async function mergeStack(a,ctx){
     blockers:why,next:'Resolve the listed conditions without merging into the parent branch.'});
   // A stacked PR originally based on a parent must be rechecked after retarget.
   // For a later member require post-retarget timestamp proof on the current base.
-  if(active>0&&!freshAfterRetarget(item))
+  if(!freshAfterRetarget(item))
     return reply({status:'pending_fresh_ci',done:false,number:item.number,
       head_sha:item.head_sha,next:'No merge: wait for check runs created after the retarget, then inspect again.'});
   if(stop(start,ctx))return reply({status:'pending',done:false,next:'Time budget ended; no merge attempted.'});
