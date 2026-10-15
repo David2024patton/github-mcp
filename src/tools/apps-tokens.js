@@ -271,9 +271,13 @@ const revoke=defineGithubWrite({
   summarize:({args:a,before:b,target:t})=>
     'REVOKE token '+a.tokenId+' owned by '+b?.token?.owner+
     ' from '+t.owner+'; existing repos '+b?.repositories.map(x=>x.full_name).join(', '),
-  apply:({args:a,ctx:c,target:t})=>octo(c,t.owner).then(gh=>gh.request(
-    'POST /orgs/{org}/personal-access-tokens/{pat_id}',
-    {org:t.owner,pat_id:a.tokenId,action:'revoke'})),
+  apply:({args:a,ctx:c,target:t,before:b})=>{
+    if(!b?.token?.id||!b?.token?.owner)
+      throw refusal('Approved token identity or owner not verified; no new revocation attempted.');
+    return octo(c,t.owner).then(gh=>gh.request(
+      'POST /orgs/{org}/personal-access-tokens/{pat_id}',
+      {org:t.owner,pat_id:a.tokenId,action:'revoke'}));
+  },
   readAfter:({ctx:c,target:t})=>tokens(c,t),
   verify:({args:a,after:x})=>x?.complete===true&&
     !x.items.some(row=>row.id===a.tokenId),
