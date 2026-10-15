@@ -130,7 +130,6 @@ const specs=[
         complete:x.complete&&x.items.length<=(a.max??100)};
     })})
 ];
-const presentSelf=({before:b})=>({principal:b.user});
 const profileFields=['name','bio','company','blog','location','hireable','twitter_username'];
 const profileProps={name:{type:'string',maxLength:255},bio:{type:'string',maxLength:512},
   company:{type:'string',maxLength:255},blog:{type:'string',maxLength:255},
