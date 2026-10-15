@@ -120,6 +120,26 @@ describe('P-3 resumed desired-state setup and guarded actions',()=>{
       auto_init:false,visibility:'private'});
     expect(w.gh.calls.filter(q=>q.method!=='GET')).toHaveLength(0);
   });
+  it('executes exactly one authorized repository creation through the real guarded dispatcher',async()=>{
+    const w=await makeWorld({mode:'preview',profile:'full'});
+    await w.db.createKnownProject(profile().profile);
+    w.gh.when(REPO).replySequence([
+      {status:404,body:{message:'Not Found'}},
+      {status:404,body:{message:'Not Found'}},
+      {status:200,body:state({name:'new-product'})}
+    ]);
+    w.gh.when('POST /orgs/{org}/repos').reply(201,state({name:'new-product'}));
+    const x=await call(w,{...input,confirm:true});
+    expect(x.status).toBe('step_applied');
+    expect(x.tool).toBe('github_repo_create');
+    const writes=w.gh.calls.filter(c=>!['GET','HEAD'].includes(c.method));
+    expect(writes).toHaveLength(1);
+    expect(writes[0].route).toBe('POST /orgs/{org}/repos');
+    expect(writes[0].body.auto_init).toBe(false);
+    expect(w.gh.invalid).toEqual([]);
+    // The draft stays draft even after one successful guarded provider write.
+    expect((await w.db.getKnownProject('new-product')).status).toBe('draft');
+  });
   it('plans merge fix and an exact, no-bypass required-checks ruleset',async()=>{
     const w=await makeWorld({profile:'full'});
     await w.db.createKnownProject(profile().profile);
