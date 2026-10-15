@@ -232,7 +232,10 @@ const subscription=defineGithubWrite({
     const desired={subscribed:a.action==='watch',ignored:a.action==='ignore'};
     if(b.prior?.subscribed===desired.subscribed&&b.prior?.ignored===desired.ignored)
       throw refusal('Subscription already equals desired state.');
-    return gh.request('PUT '+endpoint,{...p,...desired});
+    // The thread endpoint accepts "ignored" only; the repository endpoint
+    // additionally accepts "subscribed". Do not send an unsupported body field.
+    return gh.request('PUT '+endpoint,a.scope==='thread'?
+      {...p,ignored:desired.ignored}:{...p,...desired});
   },
   readAfter:async({args:a,ctx:c,target:t})=>{
     const {gh,principal}=await auth(c,t,'K');
