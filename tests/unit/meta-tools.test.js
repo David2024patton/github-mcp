@@ -129,9 +129,14 @@ describe('github_batch', () => {
 describe('listing', () => {
   it('compact lists only the tools marked compact; catalog lists everything the profile may see', () => {
     const compact = toolsForListing(registry, 'full', 'compact').map((t) => t.name);
-    expect(compact).toEqual(['github_search_tools', 'github_describe_tool', 'github_call', 'github_batch', 'github_whoami', 'github_get_result']);
+    expect(compact).toEqual(['github_search_tools', 'github_describe_tool', 'github_call', 'github_batch', 'github_whoami', 'github_get_result', 'github_workflow_pr_status', 'github_workflow_open_pr', 'github_workflow_merge_when_green', 'github_workflow_merge_stack']);
     expect(toolsForListing(registry, 'full', 'catalog')).toHaveLength(registry.tools.length);
     expect(toolsForListing(registry, 'read_only', 'catalog')).toEqual(toolsForProfile(registry, 'read_only'));
+    const low=toolsForListing(registry,'read_only','compact').map(x=>x.name);
+    expect(low).toContain('github_workflow_pr_status');
+    expect(low).not.toContain('github_workflow_open_pr');
+    expect(low).not.toContain('github_workflow_merge_when_green');
+    expect(low).not.toContain('github_workflow_merge_stack');
     expect(toolsForListing(registry, 'read_only', 'whatever')).toEqual(toolsForProfile(registry, 'read_only'));
   });
   it('puts PRODUCTION and SPENDS MONEY first in the description of a tool that is, and sends annotations', () => {

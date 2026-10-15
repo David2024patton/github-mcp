@@ -514,12 +514,12 @@ Card(s): P-1 … P-3. P-1 implementation in PR #206: additive, versioned known_p
 
 ## Workflows (`github_workflow_*`) — 17
 
-Card(s): P-2, P-3, W-1 … W-7. P-2 built in PR #207 as a non-read-only composed workflow: inspection is read-only, but a single explicitly named repair invokes an existing independently guarded write. Never claim unverified process rows or unreadable provider settings are healthy. Whole jobs in one call, answered in plain English with `structuredContent` (`docs/designs/BATCH-W.md`).
+Card(s): P-2, P-3, W-1 … W-7. P-2 built in PR #207 as a non-read-only composed workflow: inspection is read-only, but a single explicitly named repair invokes an existing independently guarded write. Never claim unverified process rows or unreadable provider settings are healthy. Whole jobs in one call, answered in plain English with `structuredContent` (`docs/designs/BATCH-W.md`). W-1 and W-2 were implemented together in PR #210; status is read-only, while open/merge workflows delegate to the existing journaled and independently guarded writers. A staged PR open or stack progresses one write at a time and requires a fresh call for the next step.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_workflow_pr_status` | Everything about a PR in one answer: CI at head (required vs optional), mergeable, review decision, unresolved threads, stack position, next action | — | N | I | B,Op | R | W-1 |
-| `github_workflow_open_pr` | Push nothing; open a PR from an existing branch with a plain description, labels and draft choice; returns the CI state so far | P·M | N | I | B | E | W-1 |
+| `github_workflow_open_pr` | Push nothing; stage an idempotent PR open from an existing branch, then separately apply requested missing labels and recheck its status | P·M | N | I | B | E | W-1 |
 | `github_workflow_merge_when_green` | Merge at the exact head SHA only when required checks are green there and no review thread is unresolved; otherwise says what is missing | C·Prod* | F | I | B | E | W-2 |
 | `github_workflow_merge_stack` | Merge a stack bottom-up: retarget each PR to the default branch, require fresh green CI at its head, merge; stops at the first PR that is not ready | C·Prod* | N | I | B | E | W-2 |
 | `github_workflow_review_threads` | Unresolved review threads with file context; after fixes, reply and resolve each one verified at the current head | P·M | N | I | B | E | W-3 |

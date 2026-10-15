@@ -66,9 +66,9 @@ export async function ciState(octokit, { owner, repo, baseBranch, headSha }) {
   const evaluate = ({ context, appId }) => {
     const matching = runs.filter((r) => r.name === context && (appId == null || r.app?.id === appId));
     const run = latestRun(matching);
-    if (run) return { context, state: runState(run), source: 'check run' };
+    if (run) return { context, state: runState(run), source: 'check run', started_at: run.started_at ?? null, completed_at: run.completed_at ?? null };
     const status = (statuses ?? []).find((s) => s.context === context);
-    return status ? { context, state: statusState(status.state), source: 'status' } : { context, state: 'missing', source: 'none' };
+    return status ? { context, state: statusState(status.state), source: 'status', updated_at: status.updated_at ?? null } : { context, state: 'missing', source: 'none' };
   };
 
   let checks; let basis;

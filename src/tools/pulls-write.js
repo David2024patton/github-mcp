@@ -64,7 +64,7 @@ const prCreate = defineGithubWrite({
 const prUpdate = defineGithubWrite({
   name: 'github_pr_update', area: 'pr', audience: ['B'],
   description: 'Change a pull request\'s title, body, base branch (retarget) or state (open/closed). A retarget previews the commits it will then contain.',
-  properties: { owner: OWNER, repo: REPO, number: PR, title: TITLE, body: BODY, base: BRANCH, state: { type: 'string', enum: ['open', 'closed'] } },
+  properties: { owner: OWNER, repo: REPO, number: PR, title: TITLE, body: BODY, base: BRANCH, expectedHeadSha: { type: 'string', pattern: '^[0-9a-fA-F]{40}$' }, state: { type: 'string', enum: ['open', 'closed'] } },
   required: ['repo', 'number'],
   declarations: { production: 'never', notifies: true },
   target: (args, ctx) => {
@@ -73,6 +73,8 @@ const prUpdate = defineGithubWrite({
   },
   read: async (args, ctx, t) => {
     const pr = await getPr(ctx, t, args.number);
+    if(args.expectedHeadSha&&pr?.head?.sha!==args.expectedHeadSha)
+      throw refusal('The PR head changed before the retarget could be planned. Read and confirm its new head.',409);
     let carries = null;
     if (pr && args.base && args.base !== pr.base?.ref) {
       const cmp = await missing(async () => (await (await octo(ctx, t.owner)).request('GET /repos/{owner}/{repo}/compare/{basehead}', { owner: t.owner, repo: t.repo, basehead: `${args.base}...${pr.head.sha}` })).data);
@@ -96,7 +98,8 @@ const prUpdate = defineGithubWrite({
   },
   readAfter: ({ args, ctx, target: t }) => getPr(ctx, t, args.number),
   verify: ({ args, after }) => !!after && (args.title === undefined || after.title === args.title) && (args.body === undefined || (after.body ?? '') === args.body)
-    && (!args.base || after.base?.ref === args.base) && (!args.state || after.state === args.state),
+    && (!args.base || after.base?.ref === args.base) && (!args.state || after.state === args.state)
+    && (!args.expectedHeadSha || after.head?.sha === args.expectedHeadSha),
   inverse: ({ args, before, target: t }) => (before.raw ? { tool: 'github_pr_update', args: { owner: t.owner, repo: t.repo, number: args.number,
     ...(args.title !== undefined ? { title: before.raw.title } : {}), ...(args.body !== undefined ? { body: before.raw.body } : {}), ...(args.base ? { base: before.raw.base } : {}), ...(args.state ? { state: before.raw.state } : {}) } } : null),
   present: ({ after }) => brief(after)

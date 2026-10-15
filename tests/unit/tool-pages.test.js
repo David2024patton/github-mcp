@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeNamespaces } from '../../src/core/registry.js';
+import { mergeNamespaces, isToolVisible } from '../../src/core/registry.js';
 import { pageToolsForListing, toolListingPages, TOOLS_PER_PAGE } from '../../src/core/tool-pages.js';
 import { registry } from '../../src/tools/index.js';
 import { checkBudgets, listingTokens, EVERYDAY_CATALOG_TOKEN_LIMIT } from '../../scripts/check-budgets.mjs';
@@ -18,9 +18,9 @@ describe('MCP complete bounded catalog pagination', () => {
   });
   it('has one complete compact list and preserves every everyday tool through the cursor chain', () => {
     const compact = [...toolListingPages(registry, 'everyday', 'compact')];
-    expect(compact.flatMap(p => p.tools.map(t => t.name))).toEqual(registry.tools.filter(t => t.compact && (!t.writes || t.profiles.includes('everyday'))).map(t => t.name));
+    expect(compact.flatMap(p => p.tools.map(t => t.name))).toEqual(registry.tools.filter(t => t.compact && isToolVisible(t,'everyday')).map(t => t.name));
     const everyday = [...toolListingPages(registry, 'everyday', 'catalog')];
-    expect(everyday.flatMap(p => p.tools.map(t => t.name))).toEqual(registry.tools.filter(t => !t.writes || t.profiles.includes('everyday')).map(t => t.name));
+    expect(everyday.flatMap(p => p.tools.map(t => t.name))).toEqual(registry.tools.filter(t => isToolVisible(t,'everyday')).map(t => t.name));
     expect(checkBudgets(registry.tools)).toEqual([]);
     expect(listingTokens(registry.tools).everyday).toBeLessThan(EVERYDAY_CATALOG_TOKEN_LIMIT);
   });

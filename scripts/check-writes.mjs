@@ -69,6 +69,22 @@ export function checkWrites(tools, catalog) {
           failures.push(tool.name+': composed tool needs declared guarded delegates, explicit approval fields and matching catalog safety');
         continue;
       }
+      if(tool.passthrough===true&&tool.usesRegistry===true&&
+        ['github_workflow_open_pr','github_workflow_merge_when_green',
+          'github_workflow_merge_stack'].includes(tool.name)){
+        const delegates=tool.delegatedWrites;
+        const p=tool.inputSchema?.properties;
+        const isOpen=tool.name==='github_workflow_open_pr';
+        if(!Array.isArray(delegates)||!delegates.length||
+          delegates.some(name=>known.get(name)?.writeContract!=='defineWrite-v1')||
+          !p?.confirm||!p?.dryRun||tool.annotations?.readOnlyHint!==false||
+          tool.annotations?.destructiveHint!==true||
+          !sameSet(tool.profiles??[],['everyday','full'])||
+          row.profile!=='E'||!(isOpen?(safety?.preview&&safety?.notifies&&
+            safety?.prod==='never'):(safety?.confirmAlways&&safety?.prod==='when-target')))
+          failures.push(tool.name+': composed workflow must delegate to guarded writers and match its exact catalog safety.');
+        continue;
+      }
       if (safety && !safety.read) failures.push(`${tool.name}: the catalog says it changes things (${row.safety}) but the tool is read-only`);
       continue;
     }
