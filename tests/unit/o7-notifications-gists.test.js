@@ -64,7 +64,11 @@ for(const s of specs)runWriteContract({
   label:s.name,definition:{tool:o7.tools.find(x=>x.name===s.name),
     handler:o7.handlers[s.name]},args:s.args,arrange:s.arrange,
   needsConfirm:true,production:true,profile:s.name==='github_gist_delete'?'full':'everyday',
-  accessWidening:s.accessWidening??false
+  accessWidening:s.accessWidening??false,
+  ...(s.name.startsWith('github_notify_')?{
+    prepare:async(w)=>w.credentials.storeClassic(
+      'example-org','ghp_FAKE0123456789abcdefghij',['notifications'])
+  }:{})
 });
 async function call(w,name,args={}){
   const run=createDispatch({env:w.ctx.env,credentials:w.credentials,
@@ -83,8 +87,12 @@ describe('O-7 notification and gist owner boundaries',()=>{
   });
   it('refuses to invent a classic notification credential when K is absent',async()=>{
     const w=await makeWorld({profile:'read_only'});
-    const x=await call(w,'github_notify_list',{max:10});
-    expect(JSON.stringify(x)).toMatch(/classic|setup page|authorization|credential/i);
+    const run=createDispatch({env:w.ctx.env,credentials:w.credentials,
+      fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep,gates:[]});
+    const result=await run({registry,name:'github_notify_list',
+      args:{max:10},connection:w.connection,db:w.db});
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/notifications token|classic|setup page/i);
     expect(w.gh.calls.filter(y=>y.method!=='GET')).toHaveLength(0);
   });
   it('lists authorized gist metadata without content or secrets',async()=>{

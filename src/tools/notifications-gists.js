@@ -16,7 +16,7 @@ const DATE={type:'string',maxLength:35};
 const FILE={type:'object',properties:{
   name:{type:'string',minLength:1,maxLength:200,
     pattern:'^[^/\\x00-\\x1f]+$'},
-  content:{anyOf:[{type:'string',maxLength:65536},{type:'null'}]}},
+  content:{type:['string','null'],maxLength:65536}},
   required:['name'],additionalProperties:false};
 const ownerTarget=(a,c)=>({owner:ownerOf(a,c),scope:'user',kind:'user-settings'});
 const repoTarget=(a,c)=>({...ownerTarget(a,c),repo:a.repo,
