@@ -21,7 +21,8 @@
     "mcp:native-evidence": "node scripts/native-mcp-evidence.mjs",
     "mcp:run-inventory": "node scripts/native-mcp-run-inventory.mjs",
     "session:status": "node scripts/session-status.mjs",
-    "check:session": "node --test scripts/session-status.test.mjs && node scripts/session-status.mjs"
+    "check:session": "node --test scripts/bundle-plan.test.mjs scripts/session-status.test.mjs && node scripts/session-status.mjs",
+    "session:bundle": "node scripts/bundle-plan.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
