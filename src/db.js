@@ -449,6 +449,15 @@ export function createDb(sql = productionSql()) {
     },
     // Controlled, optimistic policy update for owner routes; never silently
     // downgrade or overwrite an unexpected revision or immutable seed identity.
+    async createKnownProject(profileRaw) {
+      await seedKnownProjects();
+      const p=validateProjectProfile(profileRaw);
+      if(p.status!=='draft')throw new TypeError('New project policies start as drafts; owner activation is separate.');
+      const rows=await sql`INSERT INTO known_projects(id,name,status,version,profile)
+        VALUES (${p.id},${p.name},'draft',1,${JSON.stringify(p)}::jsonb)
+        ON CONFLICT(id) DO NOTHING RETURNING id,name,status,version,profile,updated_at`;
+      return storedProject(rows[0]??null);
+    },
     async saveKnownProject(profileRaw, expectedVersion) {
       const p=validateProjectProfile(profileRaw);
       if(!Number.isSafeInteger(expectedVersion)||expectedVersion<1)

@@ -50,18 +50,23 @@ export function checkWrites(tools, catalog) {
     else if (row && !sameSet(tool.audience, row.audience.split(',').map((a) => a.trim()))) failures.push(`${tool.name}: audience is ${tool.audience.join(',')} but the catalog says ${row.audience}`);
     if (!tool.writes) {
       if(tool.passthrough===true&&tool.usesRegistry===true&&
-        tool.name==='github_workflow_app_readiness'){
+        ['github_workflow_app_readiness','github_workflow_project_setup'].includes(tool.name)){
         const delegates=tool.delegatedWrites;
         if(!Array.isArray(delegates)||!delegates.length||
           delegates.some(name=>known.get(name)?.writeContract!=='defineWrite-v1'))
           failures.push(tool.name+': composed mutation lacks verified guarded delegates');
-        if(!tool.inputSchema?.properties?.fixRow||
-          !tool.inputSchema?.properties?.confirm||
-          !tool.inputSchema?.properties?.dryRun||
+        const readiness=tool.name==='github_workflow_app_readiness';
+        const schema=tool.inputSchema?.properties;
+        if(!(readiness?schema?.fixRow:schema?.id)||
+          !schema?.confirm||!schema?.dryRun||
           tool.annotations?.readOnlyHint!==false||
           tool.annotations?.destructiveHint!==true||
-          !safety?.preview||safety.prod!=='never')
-          failures.push(tool.name+': composed tool must be explicitly interactive and preview-classified');
+          safety?.prod!=='never'||
+          !(readiness?safety?.preview:(
+            safety?.confirmAlways&&safety.access&&
+            row.profile==='F'&&
+            tool.profiles?.length===1&&tool.profiles[0]==='full')))
+          failures.push(tool.name+': composed tool needs declared guarded delegates, explicit approval fields and matching catalog safety');
         continue;
       }
       if (safety && !safety.read) failures.push(`${tool.name}: the catalog says it changes things (${row.safety}) but the tool is read-only`);

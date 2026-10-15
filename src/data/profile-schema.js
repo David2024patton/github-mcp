@@ -66,7 +66,8 @@ export function validateProjectProfile(raw){
   check(/^[a-z][a-z0-9-]{2,63}$/.test(raw.id),'invalid ID');
   check(typeof raw.name==='string'&&raw.name.length>=3&&raw.name.length<=100,'invalid name');
   check(['active','draft','retired'].includes(raw.status),'invalid status');
-  check(raw.source&&SLUG.test(raw.source.repository)&&/^[a-f0-9]{40}$/.test(raw.source.verifiedMainSha)
+  check(raw.source&&SLUG.test(raw.source.repository)&&(raw.status==='draft'&&raw.source.verifiedMainSha===null||
+      /^[a-f0-9]{40}$/.test(raw.source.verifiedMainSha))
     &&/^\d{4}-\d{2}-\d{2}$/.test(raw.source.checkedOn),'source requires repository, SHA, date');
   check(typeof raw.source.documentation==='string'&&raw.source.documentation.length<240,'missing documentation');
   const repos=distinct(raw.repos,50,'repos').map(x=>x.toLowerCase());

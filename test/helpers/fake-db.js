@@ -62,6 +62,15 @@ export function createFakeDb({ clock = Date.now } = {}) {
       if(matches.length>1)throw new Error('Overlapping project policies cannot be resolved safely.');
       return matches.length?storedProject(matches[0]).profile:null;
     },
+    async createKnownProject(raw) {
+      const p=validateProjectProfile(raw);
+      if(p.status!=='draft')throw new TypeError('New project policies must start as draft.');
+      if(knownProjects.has(p.id))return null;
+      const row={id:p.id,name:p.name,status:p.status,version:1,
+        profile:structuredClone(p),updated_at:new Date(clock()).toISOString()};
+      knownProjects.set(p.id,row);
+      return storedProject(row);
+    },
     async saveKnownProject(raw,expectedVersion) {
       const p=validateProjectProfile(raw),old=knownProjects.get(p.id);
       if(!old||old.version!==expectedVersion)return null;

@@ -1,3 +1,7 @@
+### October 15, 2026 — P-2 merged; P-3 setup/draft in progress
+
+P-2 PR #207 merged at `ed095fbd3308f70c933d6d082d35e9c093bf9cdc` with final exact-head ci/release-policy, two unit shards, db, shape, lint/security gates green and all four review threads resolved. This is one full P-2 subsection, not an extra invented feature count. Next P-3 adds idempotent staged new-project setup and draft profile/document output. Parallel PR #208 carries separate approved owner bundle-workload guidance; preserve its changes. Do not conflate merged code with deployment/provider or owner acceptance.
+
 ### October 15, 2026 — owner-requested bundle/card/PR guidance alignment
 
 Reviewed main ecf190d (#206); concurrent P-2 PR #207 remains separate and its
