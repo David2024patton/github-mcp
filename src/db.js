@@ -128,6 +128,20 @@ export function changeView(row) {
 export function createDb(sql = productionSql()) {
   if (typeof sql !== 'function') throw new TypeError('createDb needs a Neon-shaped tagged-template query function.');
 
+  // Keep schema initialization strictly additive/static. Seed lazily after the
+  // migration, never overwriting an owner-edited profile or its revision.
+  let seedsApplied=false;
+  async function seedKnownProjects() {
+    if(seedsApplied)return;
+    for(const initial of DEFAULT_PROJECTS) {
+      const profile=validateProjectProfile(initial);
+      await sql`INSERT INTO known_projects (id,name,status,version,profile)
+        VALUES (${profile.id},${profile.name},${profile.status},1,${JSON.stringify(profile)}::jsonb)
+        ON CONFLICT (id) DO NOTHING`;
+    }
+    seedsApplied=true;
+  }
+
   return {
     ...createDevLedger(sql),
     /** Creates the foundation tables and index if they are missing. One statement per call (Neon's HTTP driver). */
@@ -321,12 +335,6 @@ export function createDb(sql = productionSql()) {
         profile JSONB NOT NULL,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
-      for (const seed of DEFAULT_PROJECTS) {
-        const profile=validateProjectProfile(seed);
-        await sql`INSERT INTO known_projects (id,name,status,version,profile)
-          VALUES (${profile.id},${profile.name},${profile.status},1,${JSON.stringify(profile)}::jsonb)
-          ON CONFLICT (id) DO NOTHING`;
-      }
       // Big results kept behind a handle for 24 hours, readable only by the connection that made them (C-1).
       await sql`CREATE TABLE IF NOT EXISTS result_store (
         handle TEXT PRIMARY KEY,
@@ -419,16 +427,19 @@ export function createDb(sql = productionSql()) {
     // Project profile reads fail closed on malformed storage, overlapping scopes
     // or a database error: an absent optional profile is the only neutral state.
     async listKnownProjects() {
+      await seedKnownProjects();
       const rows=await sql`SELECT id,name,status,version,profile,updated_at
         FROM known_projects ORDER BY id`;
       return rows.map(storedProject);
     },
     async getKnownProject(id) {
+      await seedKnownProjects();
       const rows=await sql`SELECT id,name,status,version,profile,updated_at
         FROM known_projects WHERE id=${id}`;
       return storedProject(rows[0]??null);
     },
     async profileForRepository(owner,repo) {
+      await seedKnownProjects();
       const slug=(String(owner)+'/'+String(repo)).toLowerCase();
       const rows=await sql`SELECT id,name,status,version,profile,updated_at
         FROM known_projects WHERE status='active'
