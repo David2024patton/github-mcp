@@ -1,3 +1,19 @@
+## October 15 — additional approved W-7 engineering
+
+The same owner request also authorized other ready approved work. W-7 now implements standard new-repository desired state, scoped mixed discovery (including repositories from the original catalog), and seven-day activity/billed-usage digest. Two missing curated repository vulnerability-alert tools provide actual enabled-state read/toggle with independent identity/readback; empty alert inventory is never used as the setting. P-3 exposes a typed conditional private-security step so unrelated defaults can finish without activating paid features or claiming plan entitlement.
+
+Exact source `59e81e0ae9f27ae01ce31ff74891a4e6579f5274`. Genuine local pre-code plan `a9902d475bb27c92ff5e859f45db83a00b481a5c` was committed before implementation; terminal push lacks credentials, so the identical planning card/tree is published as `75a3661f86399ea1072e26afa37d23a023ee9471`. Git Data publication changes commit metadata/time; the original raw local commit is retained in the PR, not misrepresented as a later-created pre-code timestamp. Its inspected baseline is `a7343f606b743b84e312237c9ce3d98efe47feb7`; actual merged #217 main `2b75ef19bfc00da5e0f8b5262a495fbf6ef186be` is preserved as an additional source parent.
+
+Source measurement for W-7 alone: 236 additions / 3 deletions (src only, not tests/docs/generated/check scripts). It is additional approved engineering, not an automatically counted second bundle from one card. The session has three whole original subsections (W-5/W-6/W-7), 607 source additions / 12 deletions, one counted primary bundle plus the additional W-7 work. Preserve actual per-PR rolling measurements; no padding or old-code/helper recount. No claim that remaining U/R/X/V or provider acceptance is finished.
+
+W-5/W-6 #217 already merged as `2b75ef19bfc00da5e0f8b5262a495fbf6ef186be`, exact-head and final-main ci/release-policy green, full local 169 files / 5,473 tests plus shapes/check passed. Permanent handoff: https://github.com/Robinson-AI-Systems/github-mcp/pull/217#issuecomment-6203325469 . That source remains absent from READY live `ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904`; no release requested while independently approved engineering remains.
+
+W-7 focused proof: 63 passes across discovery, vulnerability-alert nine-contract, P-3 and registry suites. Full final source check/unit/shapes, exact-head CI (including disposable DB and RTC), review/merge and final-main proof remain mandatory. No real credential in tests; local PostgreSQL binaries absent, existing CI supplies isolated DB execution. Work-index merged row is as-if candidate merges, not proof of actual merge/live acceptance. Three new source-pinned queue rows remain PENDING. Queue 38 total, 2 historical passes retained, 36 outstanding. Current provider-specific observations and independent fixture/operation/plan/grant gates are preserved.
+
+Self-review: find/digest call only registered readers, postfilter scope, retain denied/capped/timeout coverage, and never imply exhaustive absence from a bounded sample. Activity and date-verified integer-cent usage share seven complete UTC days; Denver display honors DST. Null/unreadable/wrong-date costs stay unknown; Actions SKUs mentioning Copilot are not double counted. Fixed invoices absent from usage are not estimated as charges. Standard setup reuses the durable draft checkpoint and whitelisted guarded writers, private by default, one confirmed child at a time with stable owner/repo intent keys. Unknown policies refuse, private paid security stays conditional owner review, and no profile is activated. Every existing production/access/message/spend/protected-resource gate remains; no privilege or secret path added.
+
+Next original implementation scope is U-1/U-2, with the separately gated original V work and later R/X remaining. No new phase or general roadmap approval is required.
+
 ## October 15 — W-5/W-6 maintenance workflow bundle
 
 Approved original whole subsections W-5 and W-6 are implemented together, with five new registered workflows: repository health, account security/access review, staged release and PR-evidenced branch cleanup. Exact implementation source `f150500d51be54f2b9026eaabd01e347bcc22256`; frozen pre-code planning commit `05fa8de8a97ad3c87a207f84988bf33f5021cec2` follows inspected main `5929eb2ac5d0b51350c137ff5cb0ed25c459a8d5`. Candidate branch `ai/codex/w5-w6-maintenance-workflows`; bundle counts only after required exact-head CI, self-review, expected-head merge and final-main verification. Work-index MERGED rows are written as-if this candidate merges, not evidence of actual merge or provider acceptance.
@@ -752,6 +768,39 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Reviewed source in READY live, approved disposable run-owned branches/PRs, exact deletion confirmation and unchanged ownership baseline; never original quarantined repository cleanup.",
     "dependsOn": [],
     "lastEvidence": "2026-10-15: new original workflow source f150500d51be54f2b9026eaabd01e347bcc22256; 37 focused maintenance tests plus existing writer/registry coverage (249 targeted checks) passed. Fake provider/dispatcher proof only; source absent from independently READY ecf190d7. No real mutation, activation, notification or cleanup claimed."
+  },
+  {
+    "id": "GITHUB-W7-NEW-REPO",
+    "priority": 2,
+    "status": "PENDING",
+    "requiredRevision": "59e81e0ae9f27ae01ce31ff74891a4e6579f5274",
+    "task": "Exercise genuine standard repository planning and approved creation/configuration, including scoped durable recovery, main/rules/merge policy, free eligible security, Dependabot and Actions/fork defaults, idempotence, independent readbacks and exact disposal.",
+    "procedure": "docs/pr-cards/W-7.md",
+    "gates": "Reviewed source in READY live, exact disposable repository and independent production/access/notification/cleanup authority; private paid features remain separate and spend $0.",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-15 additional W-7 engineering: source 59e81e0ae9f27ae01ce31ff74891a4e6579f5274; focused workflow, new vulnerability-alert writer contracts, P-3 and registry checks passed (63). Synthetic fixtures only. Not in independently READY ecf190d7; no real repository/configuration, notification, purchase, activation or disposal performed."
+  },
+  {
+    "id": "GITHUB-W7-FIND",
+    "priority": 2,
+    "status": "PENDING",
+    "requiredRevision": "59e81e0ae9f27ae01ce31ff74891a4e6579f5274",
+    "task": "Compare genuine scoped mixed repository/PR/issue/commit/run/release searches, continuation and capped/unreadable cases against owned disposable provider fixtures without writes.",
+    "procedure": "docs/pr-cards/W-7.md",
+    "gates": "Reviewed source in READY live, service-issued scoped read principal and owned fixture contents; no message, write or actual cleanup.",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-15 additional W-7 engineering: source 59e81e0ae9f27ae01ce31ff74891a4e6579f5274; focused workflow, new vulnerability-alert writer contracts, P-3 and registry checks passed (63). Synthetic fixtures only. Not in independently READY ecf190d7; no real repository/configuration, notification, purchase, activation or disposal performed."
+  },
+  {
+    "id": "GITHUB-W7-DIGEST",
+    "priority": 2,
+    "status": "PENDING",
+    "requiredRevision": "59e81e0ae9f27ae01ce31ff74891a4e6579f5274",
+    "task": "Compare genuine seven-day account/repository activity, invitation and alert inventories plus actual date-bound usage charges, scope and Denver dates with independent provider readback.",
+    "procedure": "docs/pr-cards/W-7.md",
+    "gates": "Reviewed source in READY live, legitimate account and billing reads, user authorization only where actually needed; costs unknown if unexposed, no paid capacity or seat changes.",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-15 additional W-7 engineering: source 59e81e0ae9f27ae01ce31ff74891a4e6579f5274; focused workflow, new vulnerability-alert writer contracts, P-3 and registry checks passed (63). Synthetic fixtures only. Not in independently READY ecf190d7; no real repository/configuration, notification, purchase, activation or disposal performed."
   }
 ]
 ```
