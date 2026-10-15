@@ -2,6 +2,7 @@ import {describe,it,expect} from 'vitest';
 import {makeWorld,parse} from '../../test/helpers/write-contract.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
 import {registry} from '../../src/tools/index.js';
+import {createGates} from '../../src/tools/gates.js';
 import {DEFAULT_PROJECTS,APP_READINESS_IDS} from '../../src/data/profile-schema.js';
 import * as readiness from '../../src/tools/app-readiness.js';
 
@@ -57,7 +58,7 @@ function arrange(gh,{ruleList=[],repoState={},security={},work='read',fork='all_
 }
 const invoke=async(w,args)=>{
   const dispatch=createDispatch({env:w.ctx.env,credentials:w.credentials,
-    fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep});
+    fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep,gates:createGates()});
   return dispatch({registry,name:'github_workflow_app_readiness',args,
     connection:w.connection,db:w.db});
 };
@@ -137,7 +138,7 @@ describe('P-2 project G1–G20 readiness and safe fix routing',()=>{
     w.gh.when('POST /repos/{owner}/{repo}/rulesets').reply(201,{id:88});
     w.gh.when('GET /repos/{owner}/{repo}/rulesets/{ruleset_id}').reply(200,created);
     const x=parse(await invoke(w,{spec,fixRow:'G2',confirm:true}));
-    expect(x.status).toBe('fixed');
+    expect(x.status,JSON.stringify(x.attempted)).toBe('fixed');
     expect(x.rows.find(row=>row.id==='G2').status).toBe('fixed');
     expect(w.gh.calls.filter(q=>q.method==='POST')).toHaveLength(1);
     expect(w.gh.invalid).toEqual([]);

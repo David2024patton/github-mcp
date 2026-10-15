@@ -101,8 +101,10 @@ const tool={
   name:'github_workflow_app_readiness',area:'workflow',audience:['B','O'],
   description:'Check G1-G20 readiness for a stored or inline project; optionally confirm one guarded fix with provider readback.',
   usesRegistry:true,passthrough:true,
+  delegatedWrites:['github_ruleset_save','github_repo_update_settings',
+    'github_security_set_feature','github_actions_set_settings'],
   inputSchema:{type:'object',properties:fields,additionalProperties:false},
-  annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:false,openWorldHint:true}
+  annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false,openWorldHint:true}
 };
 export const tools=[tool];
 export const handlers={[tool.name]:run};
