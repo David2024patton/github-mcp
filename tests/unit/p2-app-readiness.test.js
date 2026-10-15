@@ -146,6 +146,36 @@ describe('P-2 project G1–G20 readiness and safe fix routing',()=>{
     expect(w.gh.calls.filter(q=>q.method==='POST')).toHaveLength(1);
     expect(w.gh.invalid).toEqual([]);
   });
+  it('uses a validated inline profile exact custom required-check list, not hardcoded ci',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    arrange(w.gh);
+    const policy={...spec,requiredChecks:['build','security']};
+    const x=parse(await invoke(w,{spec:policy,fixRow:'G2',confirm:false}));
+    expect(x.rows.find(r=>r.id==='G2').evidence).toContain('build, security');
+    expect(x.status).toBe('fix_not_applied');
+    expect(w.gh.calls.filter(y=>!['GET','HEAD'].includes(y.method))).toEqual([]);
+  });
+  it('detects flow-style forbidden workflow triggers even with apparently safe permissions',async()=>{
+    const w=await makeWorld({profile:'full'});
+    arrange(w.gh,{workflowText:'on: [pull_request_target]\\npermissions:\\n  contents: read'});
+    const x=parse(await invoke(w,{spec}));
+    expect(x.rows.find(r=>r.id==='G11').status).toBe('needs_attention');
+    expect(x.rows.find(r=>r.id==='G12').status).toBe('needs_attention');
+  });
+  it('accepts profile-declared read-level checks permission on a daily release workflow',async()=>{
+    const w=await makeWorld({profile:'full'});
+    arrange(w.gh,{workflowText:'on:\\n  schedule: []\\npermissions:\\n  contents: write\\n  checks: read'});
+    const x=parse(await invoke(w,{spec}));
+    expect(x.rows.find(r=>r.id==='G12').status).toBe('done');
+  });
+  it('does not mistake an organization member user login for an outside collaborator',async()=>{
+    const w=await makeWorld({profile:'full'});
+    arrange(w.gh,{repoState:{owner:{login:'example-org',type:'Organization'}}});
+    w.gh.when(PEOPLE).reply(200,[{login:'example-admin',id:1}]);
+    const x=parse(await invoke(w,{spec}));
+    expect(x.rows.find(r=>r.id==='G19').status).toBe('needs_you');
+    expect(x.rows.find(r=>r.id==='G19').evidence).toContain('user identities');
+  });
   it('readable private-repository paid scanning never bypasses zero spending policy',async()=>{
     const w=await makeWorld({mode:'production',profile:'full'});
     arrange(w.gh,{repoState:{private:true},

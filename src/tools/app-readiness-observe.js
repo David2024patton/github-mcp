@@ -110,26 +110,35 @@ export async function inspectReadiness(ctx,owner,repo,profile){
   }
   const effectiveRules=ok(rules)?rules.data.filter(x=>x.enforcement==='active'&&hasDefault(x)):[];
   const single=effectiveRules.length===1?effectiveRules[0]:null;
-  const hasCi=effectiveRules.some(x=>contexts(checkRule(x)).includes('ci')&&
-    contexts(checkRule(x)).length===1);
+  // A supplied inline project is as authoritative as a stored validated
+  // policy. Never replace the owner's required checks with a hardcoded ci.
+  const required=profile.requiredChecks??[];
+  const sameChecks=actual=>actual.length===required.length&&
+    required.every(k=>actual.includes(k));
+  const hasCi=required.length>0&&effectiveRules.some(x=>
+    sameChecks(contexts(checkRule(x))));
   const noMoreCi=effectiveRules.every(x=>!checkRule(x)||
-    contexts(checkRule(x)).every(c=>c==='ci'));
+    contexts(checkRule(x)).every(c=>required.includes(c)));
   const force=effectiveRules.some(x=>x.rules.some(y=>y.type==='non_fast_forward'));
   const deletion=effectiveRules.some(x=>x.rules.some(y=>y.type==='deletion'));
   if(!ok(rules)){unknown('G2',rules);unknown('G3',rules);}
   else{
-    if(hasCi&&noMoreCi)add(out,labels,'G2','done','Active default-branch ruleset requires ci and no extra checks.');
+    if(hasCi&&noMoreCi)add(out,labels,'G2','done',
+      'Active default-branch ruleset requires exactly '+required.join(', ')+'.');
     else{
-      need('G2',!hasCi?'Default branch lacks a readable ci check requirement.':
-        'An extra required check needs an owner policy decision; not silently removed.');
-      if(noMoreCi&&(effectiveRules.length===0||single))fixes.set('G2',{
-        tool:'github_ruleset_save',args:rulesetChange(owner,repo,single,'G2')});
+      need('G2',!required.length?
+        'Project profile has no required check list; owner must choose before rules change.':
+        !hasCi?'Default branch lacks exact required checks: '+required.join(', ')+'.':
+        'Extra required checks need a deliberate owner policy decision; not silently removed.');
+      if(required.length&&noMoreCi&&(effectiveRules.length===0||single))
+        fixes.set('G2',{tool:'github_ruleset_save',
+          args:rulesetChange(owner,repo,single,'G2',required)});
     }
     if(force&&deletion)add(out,labels,'G3','done','Active default-branch rules block both force pushes and branch deletion.');
     else{
       need('G3','Both non-fast-forward and deletion protections must be in force.');
       if(effectiveRules.length===0||single)fixes.set('G3',{
-        tool:'github_ruleset_save',args:rulesetChange(owner,repo,single,'G3')});
+        tool:'github_ruleset_save',args:rulesetChange(owner,repo,single,'G3',required)});
     }
   }
   for(const id of ['G5','G6','G7','G9','G10','G20'])
@@ -152,10 +161,19 @@ export async function inspectReadiness(ctx,owner,repo,profile){
     if(files.some(x=>!ok(x))){unknown(id,files.find(x=>!ok(x)));continue;}
     const texts=files.map(x=>workflowContent(x.data));
     if(texts.some(t=>t===null)){unknown(id,{reason:'Workflow source is too large or not base64/readable.'});continue;}
-    const forbidden=texts.some(s=>/(^|\n)\s*pull_request_target\s*:/.test(s));
-    const safe= !forbidden&&texts.every(s=>s.includes('permissions:')&&
-      (writeNames.length?writeNames.every(k=>permission(s,k,k==='contents'?'write':'write')):
-        permission(s,'contents','read')));
+    // Conservative source classification: unlike a colon-only regexp, this
+    // catches quoted and flow-style YAML: on: [pull_request_target]. Any
+    // mention in non-comment source prevents a "done" result, even if it
+    // appeared only in a template/comment-like string.
+    const forbidden=texts.some(s=>/(^|[^A-Za-z0-9_])pull_request_target([^A-Za-z0-9_]|$)/i.test(s));
+    const fileNames=id==='G11'?['ci.yml','perf.yml']:
+      id==='G12'?['daily-live.yml']:['sandbox-publish.yml'];
+    const expected=fileNames.map(name=>profile.workflows?.find(w=>w.file===name||
+      w.file==='.github/workflows/'+name)?.maxPermissions??null);
+    // Missing declared policy means no independent reason to claim done.
+    const safe= !forbidden&&texts.every((s,i)=>s.includes('permissions:')&&
+      expected[i]&&Object.entries(expected[i]).every(([key,level])=>
+        permission(s,key,level)));
     if(safe)add(out,labels,id,'done','Published workflow permission/trigger text passes conservative checks; runtime proof is separate.');
     else need(id,'Workflow trigger or permission policy differs; inspect source manually. Never edit workflow files.');
   }
@@ -196,10 +214,15 @@ export async function inspectReadiness(ctx,owner,repo,profile){
   if(!ok(keys)||!ok(collabs)){unknown('G19',!ok(keys)?keys:collabs);}
   else if((keys.data??[]).length===100||(collabs.data??[]).length===100)
     unknown('G19',{reason:'Access inventory reached the page limit; not enough evidence to claim owner-only access.'});
-  else if((keys.data??[]).some(k=>k.read_only===false)||
-      (collabs.data??[]).some(c=>c.login?.toLowerCase()!==owner.toLowerCase()))
-    need('G19','External collaborators or write-enabled deploy keys need owner review.');
-  else add(out,labels,'G19','done','No external collaborator or write deploy key found in readable first page.');
+  else if((keys.data??[]).some(k=>k.read_only===false))
+    need('G19','Write-enabled deploy key requires separate owner review.');
+  else if(repoObj?.owner?.type==='Organization'&&(collabs.data??[]).length)
+    add(out,labels,'G19','needs_you',
+      'Organization collaborators are user identities, not the organization slug. Verify these users against the organization owner/member and approved outside-collaborator roster; no access is classified safe or external from name mismatch alone.',
+      {url:settingsLink+'/access'});
+  else if((collabs.data??[]).some(c=>c.login?.toLowerCase()!==owner.toLowerCase()))
+    need('G19','User-owned repository has collaborators other than its owner; review authorization.');
+  else add(out,labels,'G19','done','No unrelated collaborator or write deploy key found in complete readable inventory.');
   let installations;
   try{
     const u=await githubFor(ctx,{owner,cred:'U'});
@@ -214,10 +237,10 @@ export async function inspectReadiness(ctx,owner,repo,profile){
   out.sort((a,b)=>order[a.id]-order[b.id]);
   return {rows:out,fixes,scope:name};
 }
-function rulesetChange(owner,repo,existing,kind){
+function rulesetChange(owner,repo,existing,kind,required){
   const check={type:'required_status_checks',parameters:{
     strict_required_status_checks_policy:true,
-    required_status_checks:[{context:'ci'}]}};
+    required_status_checks:required.map(context=>({context}))}};
   const current=existing?.rules??[];
   const rules=current.filter(r=>r.type!=='required_status_checks');
   if(kind==='G2'&&!current.some(r=>r.type==='required_status_checks'))rules.push(check);
