@@ -154,7 +154,7 @@ const selectRepos=defineGithubWrite({
   properties:{owner:OWNER,repo:REPO,installationId:ID,
     action:{type:'string',enum:['add','remove']}},
   required:['repo','installationId','action'],
-  declarations:{production:'always',confirm:'always',accessWidening:true,profiles:['full']},
+  declarations:{production:'always',confirm:'always',accessWidening:true,cred:'U',profiles:['full']},
   target:repoTarget,
   read:async(a,c,t)=>{
     const app=await findInstall(c,t,a.installationId);
