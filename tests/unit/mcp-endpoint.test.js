@@ -5,7 +5,7 @@ import { call, json, request, response } from '../../test/helpers/http-harness.j
 import { CONNECTION_FIELDS } from '../../src/db.js';
 import { requireMcpToken } from '../../src/core/mcp-auth.js';
 import { createMcpHandler, denyAll } from '../../src/core/mcp-server.js';
-import { mergeNamespaces } from '../../src/core/registry.js';
+import { mergeNamespaces , isToolVisible } from '../../src/core/registry.js';
 import { registry as builtRegistry } from '../../src/tools/index.js';
 import { createGithubPolicy } from '../../src/oauth/policy.js';
 import { handleOAuth } from '../../src/oauth/routes.js';
@@ -153,7 +153,7 @@ describe('MCP endpoint over HTTP', () => {
       names.push(...body.result.tools.map(t => t.name));
       cursor = body.result.nextCursor;
     } while (cursor);
-    const expected = builtRegistry.tools.filter(t => t.writes !== true || t.profiles.includes('everyday')).map(t => t.name);
+    const expected = builtRegistry.tools.filter(t => isToolVisible(t,'everyday')).map(t => t.name);
     expect(names).toEqual(expected);
     expect(new Set(names).size).toBe(names.length);
   });
