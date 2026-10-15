@@ -33,7 +33,9 @@ export async function readActionSections(gh,p){
     pre+actionsRoutes.selected,base);
   if(typeof main?.enabled!=='boolean'||!main?.allowed_actions||
     !workflow?.default_workflow_permissions||
-    !Number.isInteger(fork?.approval_policy)||!Number.isInteger(retention?.days))
+    !(['all_external_contributors','first_time_contributors',
+      'first_time_contributors_new_to_github'].includes(fork?.approval_policy)||
+      Number.isInteger(fork?.approval_policy))||!Number.isInteger(retention?.days))
     throw new TypeError('GitHub Actions policy returned incomplete required fields.');
   return {
     actions:{enabled:main.enabled,allowed_actions:main.allowed_actions,

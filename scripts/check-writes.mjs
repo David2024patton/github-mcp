@@ -41,6 +41,7 @@ const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x))
 /** @returns {string[]} failures for the given tool definitions (and, when given, the parsed catalog). */
 export function checkWrites(tools, catalog) {
   const failures = [];
+  const known=new Map(tools.map(t=>[t.name,t]));
   for (const tool of tools) {
     const row = catalog?.get(tool.name);
     if (catalog && !row) failures.push(`${tool.name}: registered tool has no row in docs/TOOL-CATALOG.md`);
@@ -48,6 +49,21 @@ export function checkWrites(tools, catalog) {
     if (!Array.isArray(tool.audience) || !tool.audience.length) failures.push(`${tool.name}: tool without an audience (B, O, Op)`);
     else if (row && !sameSet(tool.audience, row.audience.split(',').map((a) => a.trim()))) failures.push(`${tool.name}: audience is ${tool.audience.join(',')} but the catalog says ${row.audience}`);
     if (!tool.writes) {
+      if(tool.passthrough===true&&tool.usesRegistry===true&&
+        tool.name==='github_workflow_app_readiness'){
+        const delegates=tool.delegatedWrites;
+        if(!Array.isArray(delegates)||!delegates.length||
+          delegates.some(name=>known.get(name)?.writeContract!=='defineWrite-v1'))
+          failures.push(tool.name+': composed mutation lacks verified guarded delegates');
+        if(!tool.inputSchema?.properties?.fixRow||
+          !tool.inputSchema?.properties?.confirm||
+          !tool.inputSchema?.properties?.dryRun||
+          tool.annotations?.readOnlyHint!==false||
+          tool.annotations?.destructiveHint!==true||
+          !safety?.preview||safety.prod!=='never')
+          failures.push(tool.name+': composed tool must be explicitly interactive and preview-classified');
+        continue;
+      }
       if (safety && !safety.read) failures.push(`${tool.name}: the catalog says it changes things (${row.safety}) but the tool is read-only`);
       continue;
     }

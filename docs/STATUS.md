@@ -15,6 +15,17 @@ Required exact-head checks and applicable review disposition govern merge. Resum
 actual main and the active implementing agent's current outcome, not this
 maintenance checkpoint or a new five-PR quota. No provider acceptance claimed.
 
+Reconciled the concurrent implementation merge without changing its source,
+roadmap state, evidence or active agent branch.
+
+### October 15, 2026 — P-2 no-shell CI polling stall corrected in active PR #207
+
+Diagnosis: head `e40846b059b369b0809af183d2da8487b6093cc2` already had all required checks green, but repeated no-op status reads delayed disposition of four known review threads and merging. Added binding CI decision/transition procedure to AGENTS, SESSION-START and PLAYBOOK inside substantive PR #207; next action is exact-head checks on the new documentation-inclusive head, address four verified review threads, merge with expected SHA when CI and release-policy are green. This is not provider deployment or custom MCP acceptance. P-2 must not be counted until merged.
+
+### October 15, 2026 — P-1 merged and P-2 readiness in implementation
+
+P-1 PR #206 merged at ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904 with green full exact-head CI and independent review-thread closure, completing one P-1 subsection. P-2 is now IN_PROGRESS: all G1–G20 readiness results and single-action guarded corrections; source is not yet deployed or provider-accepted. Personal/production privileges and spending remain unchanged.
+
 ### October 15, 2026 — O-7 merged; P-1 profiles under implementation
 
 PR #205 merged at 810c06562013d15b811255beb026606ab82e7ea0 with exact-head CI, two unit shards, DB, shape, static/security and release-policy passes. One complete O-7 subsection. P-1 is IN_PROGRESS (not counted) until green and merged. Appliance Desk main re-audited: daily-live.yml replaces release.yml and live exists. No account mutation or deployment inferred.
