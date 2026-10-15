@@ -71,8 +71,9 @@ Finish: <acceptance/test table>; full gates per SESSION-START; successor inherit
 | 3 | Remaining tools using the proven pattern; semantic variants get distinct fixtures | Targeted files; db when SQL changes; shapes when GitHub calls change |
 | 4 | Acceptance evidence and drift checklist B | Full `check`, unit and applicable db/shapes before the single push |
 
-Slice size and checkpoints still follow AGENTS (~150 production lines between focused runs). A slice is not a
-new PR requirement; combine coherent slices within the normal ~500-line target and ~800-line hard limit.
+Internal implementation steps are checkpoints, not PR boundaries or countable batch subsections.
+Use AGENTS' current rolling 400–800 production-line and 2–5 whole-subsection planning averages, with
+evidence-backed exceptions; 800 lines is not a hard cap.
 Use the existing shared contract instead of copying its nine checks. Do not refactor unrelated helpers to make
 a new tool look elegant. When two callers need the same behavior, extract the smallest tested shared function.
 
