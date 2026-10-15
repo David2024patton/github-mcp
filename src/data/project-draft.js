@@ -118,7 +118,7 @@ export function composeProjectDraft(input,now=Date.now()){
     '| Production branch | '+scrub(productionBranch??'none specified')+' |',
     '| Environments | '+scrub(environments.join(', ')||'none')+' |',
     '| Work branches | '+workBranches.map(scrub).join(', ')+' |',
-    '| Provider apps | '+apps.map(scrub).join(', ')||'not verified |',
+    '| Provider apps | '+(apps.length?apps.map(scrub).join(', '):'not yet verified')+' |',
     '',
     '## Workflow evidence to verify',
     ...workflows.map(w=>'- '+scrub(w.file)+': '+Object.entries(w.maxPermissions)

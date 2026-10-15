@@ -29,7 +29,6 @@ const body=x=>x?.structuredContent??null;
 const safe=x=>({project:x.profile.id,repository:x.repository,
   draft_status:x.profile.status,profile:x.profile,doc:x.doc,
   needs_owner_review:x.review});
-const nonBlank=x=>x!==undefined&&x!==null;
 const err=e=>e?.status===404?'absent':e?.status===403?
   'Provider denied this API (permissions/plan); do not infer absence.':
   'The provider state is unreadable; no mutation was attempted.';
@@ -69,7 +68,8 @@ const state=(status,detail,more={})=>({status,detail,...more});
 // On retries this row is the ownership/recovery anchor; a partially configured
 // repository is never silently treated as a new unowned project.
 export async function planProjectSetup(ctx,draft,stored){
-  const {profile}=draft,{owner,repo}=profile.source.repository.split('/');
+  const {profile}=draft;
+  const [owner,repo]=profile.source.repository.split('/');
   if(stored&&stored.profile?.status!=='draft')
     return state('needs_owner_review','The existing policy is active or retired; setup cannot rewrite it.');
   if(stored&&(stored.profile.source.repository!==profile.source.repository||
