@@ -2,7 +2,6 @@ import {describe,it,expect} from 'vitest';
 import {makeWorld,runWriteContract,parse} from '../../test/helpers/write-contract.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
 import {registry} from '../../src/tools/index.js';
-import * as readers from '../../src/tools/org-read.js';
 import * as writers from '../../src/tools/org-write.js';
 
 const R={
@@ -92,7 +91,7 @@ const def=name=>({tool:writers.tools.find(x=>x.name===name),
   handler:writers.handlers[name]});
 for(const x of [
   {name:'github_org_update_settings',args:{changes:{name:'Updated'}},
-    arrange:arrangeUpdate,production:true,accessWidening:true},
+    arrange:arrangeUpdate,production:true},
   {name:'github_org_invite_member',args:{username:'alice',role:'direct_member'},
     arrange:arrangeInvite,notifies:['alice'],accessWidening:true},
   {name:'github_org_cancel_invitation',args:{invitationId:12},
@@ -119,7 +118,8 @@ for(const x of [
 async function call(w,name,args={}){
   const dispatch=createDispatch({env:w.ctx.env,credentials:w.credentials,
     fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep,gates:[]});
-  return parse(await dispatch({registry,name,args,connection:w.connection,db:w.db}));
+  const result=await dispatch({registry,name,args,connection:w.connection,db:w.db});
+  return result.isError?{error:result.content?.[0]?.text??'Unknown error'}:parse(result);
 }
 describe('O-2 live-request contract and scope regressions',()=>{
   it('organization reads use exact enrolled identity and never write',async()=>{

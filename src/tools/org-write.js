@@ -109,7 +109,7 @@ export const orgInvite=defineGithubWrite({
     const match=pending.find(x=>a.username?
       (x.invitee?.login??x.login)?.toLowerCase()===a.username.toLowerCase():
       x.email?.toLowerCase()===a.email.toLowerCase());
-    if(match)throw refusal('This recipient already has a pending organization invitation.');
+    const alreadyPending=Boolean(match);
     const teams=a.teamIds??[];
     if(teams.length){
       const existing=await all(ctx,t,'GET /orgs/{org}/teams');
@@ -120,9 +120,9 @@ export const orgInvite=defineGithubWrite({
       const user=(await (await client(ctx,t)).request('GET /users/{username}',{username:a.username})).data;
       if(!Number.isInteger(user?.id)||user.login?.toLowerCase()!==a.username.toLowerCase())
         throw refusal('Cannot verify the exact invitee login and numeric GitHub identity.');
-      return {pending,inviteeId:user.id};
+      return {pending,alreadyPending,inviteeId:user.id};
     }
-    return {pending};
+    return {pending,alreadyPending};
   },
   classify:({args:a,target:t})=>invitation({
     who:a.username??a.email,access:a.role,where:t.owner}),
@@ -131,6 +131,7 @@ export const orgInvite=defineGithubWrite({
     '; GitHub will notify the recipient',
   apply:async({args:a,ctx,target:t,before:b})=>{
     if(!b)throw refusal('Invitation preflight was not readable.');
+    if(b.alreadyPending)throw refusal('Recipient already has an organization invitation.');
     const body={...params(t),role:a.role,team_ids:a.teamIds??[],
       ...(a.username?{invitee_id:b.inviteeId}:{email:a.email})};
     return (await client(ctx,t)).request('POST /orgs/{org}/invitations',body);
@@ -155,8 +156,7 @@ export const orgCancelInvitation=defineGithubWrite({
   declarations:{production:'never',confirm:'always',notifies:true,profiles:['full']},target,
   read:async(a,c,t)=>{
     const found=(await getInvitations(c,t)).find(x=>x.id===a.invitationId);
-    if(!found)throw refusal('The exact pending invitation ID was not verified.');
-    return normalizeInvite(found);
+    return found?normalizeInvite(found):null;
   },
   classify:({before:b})=>({notifies:b?[b.login??b.email].filter(Boolean):[]}),
   summarize:({args:a,before:b,target:t})=>'Cancel invitation #'+a.invitationId+
@@ -205,8 +205,7 @@ export const orgRemoveMember=defineGithubWrite({
   declarations:{production:'never',confirm:'always',profiles:['full']},target,
   read:async(a,c,t)=>{
     const x=await getMembership(c,t,a.username);
-    if(x?.state!=='active')throw refusal('The named user is not an active organization member.');
-    return {role:x.role,state:x.state};
+    return x?.state==='active'?{role:x.role,state:x.state}:null;
   },
   classify:()=>({}),
   summarize:({args:a,before:b,target:t})=>'REMOVE '+a.username+' ('+b?.role+
@@ -231,19 +230,20 @@ export const orgOutsideCollaborator=defineGithubWrite({
     const outside=await getOutside(c,t);
     const membership=await getMembership(c,t,a.username);
     const isOutside=outside.some(x=>x.login?.toLowerCase()===a.username.toLowerCase());
-    if(a.action==='convert'&&(isOutside||membership?.role!=='member'||membership.state!=='active'))
-      throw refusal('Only an active non-owner member may be converted.');
-    if(a.action==='remove'&&!isOutside)
-      throw refusal('Exact outside collaborator was not found.');
-    return {isOutside,role:membership?.role??null};
+    return {isOutside,role:membership?.role??null,
+      activeMember:membership?.state==='active'};
   },
   classify:()=>({}),
-  summarize:({args:a,target:t,before:b})=>(a.action==='convert'?'CONVERT':'REMOVE')+
+  summarize:({args:a,target:t})=>(a.action==='convert'?'CONVERT':'REMOVE')+
     ' '+a.username+' in '+t.owner+
     (a.action==='convert'?'; organization membership ends, existing repository access may remain':
       '; direct access in all organization repositories may be lost'),
   apply:async({args:a,ctx,target:t,before:b})=>{
     if(!b)throw refusal('Outside-collaborator baseline missing.');
+    if(a.action==='convert'&&(b.isOutside||b.role!=='member'||!b.activeMember))
+      throw refusal('Only an active non-owner member may be converted.');
+    if(a.action==='remove'&&!b.isOutside)
+      throw refusal('The exact outside collaborator is already absent.');
     return (await client(ctx,t)).request(
       (a.action==='convert'?'PUT ':'DELETE ')+
         '/orgs/{org}/outside_collaborators/{username}',
@@ -284,7 +284,13 @@ export const orgSetBlocked=defineGithubWrite({
   verify:({args:a,after:x})=>x===a.blocked,
   inverse:()=>null,present:({args:a,after:x})=>({username:a.username,blocked:x})
 });
-const props=async(c,t)=>all(c,t,'GET /orgs/{org}/properties/schema');
+const props=async(c,t)=>{
+  // This REST endpoint returns the complete schema, not a paginated collection.
+  const rows=await scoped(c,t,'GET /orgs/{org}/properties/schema');
+  if(!Array.isArray(rows)||rows.length>500)
+    throw refusal('Organization custom property schema was incomplete or malformed.');
+  return rows;
+};
 const propName={type:'string',minLength:1,maxLength:75,pattern:'^[A-Za-z0-9][A-Za-z0-9_-]*$'};
 const valueType={type:'string',enum:['string','single_select','multi_select','true_false','url']};
 const propertyFields=['value_type','required','description','default_value','allowed_values','values_editable_by','require_explicit_values'];
@@ -305,8 +311,6 @@ export const orgCustomProperties=defineGithubWrite({
   read:async(a,c,t)=>{
     const properties=await props(c,t);
     const existing=properties.find(x=>x.property_name===a.name)??null;
-    if(a.action==='delete'&&!existing)
-      throw refusal('Cannot delete an unverified organization custom property.');
     if(a.action==='save'&&!a.spec)
       throw refusal('Saving a custom property requires a complete schema specification.');
     return {existing};
@@ -317,6 +321,8 @@ export const orgCustomProperties=defineGithubWrite({
     '; existing schema '+JSON.stringify(cleanProperty(b?.existing)),
   apply:async({args:a,ctx,target:t,before:b})=>{
     if(!b)throw refusal('Property baseline is absent.');
+    if(a.action==='delete'&&!b.existing)
+      throw refusal('Cannot delete an unverified organization custom property.');
     const merged=a.action==='save'?{...cleanProperty(b.existing),...a.spec}:{};
     return (await client(ctx,t)).request(
       (a.action==='save'?'PUT ':'DELETE ')+
