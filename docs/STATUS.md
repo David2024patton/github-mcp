@@ -1,3 +1,7 @@
+### October 15, 2026 — P-1 merged and P-2 readiness in implementation
+
+P-1 PR #206 merged at ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904 with green full exact-head CI and independent review-thread closure, completing one P-1 subsection. P-2 is now IN_PROGRESS: all G1–G20 readiness results and single-action guarded corrections; source is not yet deployed or provider-accepted. Personal/production privileges and spending remain unchanged.
+
 ### October 15, 2026 — O-7 merged; P-1 profiles under implementation
 
 PR #205 merged at 810c06562013d15b811255beb026606ab82e7ea0 with exact-head CI, two unit shards, DB, shape, static/security and release-policy passes. One complete O-7 subsection. P-1 is IN_PROGRESS (not counted) until green and merged. Appliance Desk main re-audited: daily-live.yml replaces release.yml and live exists. No account mutation or deployment inferred.
