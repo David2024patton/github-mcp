@@ -1,3 +1,7 @@
+## October 16, 2026 — Bundle 3: X-1 undo, X-2 smoke report, H-4 reporting toggle, O-1 close-out (PR #224)
+
+`github_undo_change` runs a change's stored clean opposite through the same guarded tool (refuses unknown, foreign, unconfirmed or overtaken changes; says what to do when there is no opposite). `scripts/smoke-readonly.mjs` produces the read-only smoke report (not yet run on a real account: owner step). `github_security_set_feature` and `github_security_get_settings` now cover private vulnerability reporting. H-4 and O-1 cards and index closed out; paid private security activation and live acceptance stay with the owner. Next: R-1..R-3 (passes, HTTPS doors, conformance), which change authentication and get their own bundle.
+
 ## October 16, 2026 — Bundle 2: V-1 webhook-target seed, V-2 forwarder cleanup, H-2/H-3 reconciliation (PR #223)
 
 Merged on green: see PR #223. `webhook-target` is now an executable scenario (scratch repo + run-bound forwarder + test webhook, signing secret revealed once). Cleanup removes run-bound forwarders in both modes. H-2 (#189/#190/#193) and H-3 (#194) were already built; their cards, catalog rows and index status were stale and are now corrected. Live provider acceptance of V-1/V-2/H-2/H-3 stays in the release queue. Next: H-4 remainder and O-1 reconciliation, then R/X.
