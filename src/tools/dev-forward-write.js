@@ -3,15 +3,14 @@
 // ciphertext and shown once on the setup page; a target is contacted only through the pinned, redirect-refusing sender; the
 // change journal sees host names and counts, never a URL, a payload or a secret.
 import { randomBytes } from 'node:crypto';
-import { createOneTimeStore } from '../core/one-time-secrets.js';
-import { decryptSecret, encryptSecret, readEncryptionKey } from '../core/crypto.js';
 import { resolvePublicIpv4 } from '../github/public-url.js';
 import { listAll } from '../github/client.js';
 import { defineGithubWrite } from './define-github-write.js';
 import { missing, octo, ownerOf, refusal, slug } from './github-write.js';
 import { forwarderUrl, sendSigned } from '../dev/forward-sender.js';
+import { forwarderKey as key, forwarderSecret, forwarderView as view, oneTimeStore as store, registerForwarder } from '../dev/forwarders.js';
 import { MAX_FORWARDERS } from '../dev/ledger.js';
-import { MAX_TEST_WEBHOOKS } from '../dev/scenario-ownership.js';
+import { webhookLimit } from '../dev/scenario-ownership.js';
 import { runDevMutationOnce } from '../dev/execute.js';
 import { requireScratchOrg } from '../dev/scratch.js';
 import { assertRunName, deniable, MAX_TEST_OBJECTS, previewOnly, TEST_NAME } from '../dev/test-refs.js';
@@ -33,20 +32,12 @@ const repoTarget = (args, ctx) => {
   previewOnly(ctx);
   return { owner: ownerOf(args, ctx), repo: args.repo, scope: 'repo' };
 };
-const key = (ctx) => {
-  try { return readEncryptionKey(ctx.env ?? process.env); } catch { throw refusal('The server encryption key is not configured, so signing secrets cannot be kept.', 500); }
-};
-const secretAad = ({ id, account, connection }) => `github-forwarder/${id}/${account}/${connection}`;
 const scoped = (ctx, target) => ({ account: target.owner, connection: ctx.connection.client_id });
 async function publicTarget(ctx, input) {
   const url = forwarderUrl(input);
   try { await resolvePublicIpv4(url.hostname); } catch { throw refusal('That address resolves to a private, reserved or unknown network address, so it was refused.'); }
   return url;
 }
-const store = (ctx) => createOneTimeStore({ db: ctx.db, service: 'github', setupPath: '/api/github/setup', encryptionKey: key(ctx) });
-/** Safe view of a stored forwarder: never the URL path/query, never the ciphertext. */
-const view = (row) => ({ id: row.id, host: forwarderUrl(row.url).hostname, events: [...(row.events ?? [])], run_id: row.run_id ?? null, repo: row.repo ?? null });
-
 async function loadForwarder(ctx, target, id) {
   const row = await ctx.db.getDevForwarder({ id, ...scoped(ctx, target) });
   if (!row) throw refusal('No such forwarder on this account and connection.', 404);
@@ -87,25 +78,13 @@ const createForwarder = defineGithubWrite({
     : `Register a forwarder to ${before.host} (${before.events.length ? before.events.join(', ') : 'all events'}); a new signing secret is generated and shown once on the setup page. Nothing is sent to it now.`),
   apply: async ({ args, ctx, target, before }) => {
     if (before.denied) throw refusal(before.denied);
-    const scope = scoped(ctx, target);
-    const id = `fwd_${randomBytes(12).toString('base64url')}`;
-    const secret = randomBytes(32).toString('hex');
-    const made = await ctx.db.createDevForwarder({ id, ...scope, url: forwarderUrl(args.url).toString(), events: args.events ?? [],
-      secretEnc: encryptSecret(secret, { aad: secretAad({ id, ...scope }), key: key(ctx) }), runId: args.runId ?? null, repo: args.repo ?? null });
-    if (!made) throw refusal(`This connection already has ${MAX_FORWARDERS} forwarders; delete one first.`);
-    try {
-      const once = await store(ctx).issue({ account: target.owner, kind: 'github-forwarder-signing-secret', secret });
-      return { id, reveal: once.setupPath };
-    } catch (error) {
-      await ctx.db.deleteDevForwarder({ id, ...scope }).catch(() => {});
-      throw error;
-    }
+    return await registerForwarder(ctx, { ...scoped(ctx, target), url: args.url, events: args.events ?? [], runId: args.runId ?? null, repo: args.repo ?? null });
   },
   readAfter: async ({ ctx, target, response }) => {
     const row = await ctx.db.getDevForwarder({ id: response.id, ...scoped(ctx, target) });
     if (!row) return null;
     let secretReadable = false;
-    try { secretReadable = decryptSecret(row.secret_enc, { aad: secretAad({ id: row.id, ...scoped(ctx, target) }), key: key(ctx) }).length === 64; } catch { /* reported as unconfirmed */ }
+    try { secretReadable = forwarderSecret(ctx, row).length === 64; } catch { /* reported as unconfirmed */ }
     return { ...view(row), secret_readable: secretReadable };
   },
   verify: ({ args, after, response }) => !!after && after.id === response.id && after.secret_readable === true &&
@@ -193,10 +172,9 @@ const forwardDeliveries = defineGithubWrite({
   },
   apply: async ({ args, ctx, target, before }) => {
     if (before.denied) throw refusal(before.denied);
-    const scope = scoped(ctx, target);
     const row = await loadForwarder(ctx, target, args.forwarderId);
     await assertBinding(ctx, target, row, target.repo);
-    const secret = decryptSecret(row.secret_enc, { aad: secretAad({ id: row.id, ...scope }), key: key(ctx) });
+    const secret = forwarderSecret(ctx, row);
     const gh = await octo(ctx, target.owner);
     const started = (ctx.now ?? Date.now)();
     const results = [];
@@ -253,7 +231,8 @@ const createTestWebhook = defineGithubWrite({
     const objects = await ctx.db.listDevObjects({ runId: args.runId, ...scope, limit: 50 });
     if (!objects.some((o) => o.object_type === 'repo' && eq(o.repo, target.repo))) throw refusal('Test webhooks go only in the scratch repository this run created.');
     if (objects.length + 1 > MAX_TEST_OBJECTS) throw refusal(`A run holds at most ${MAX_TEST_OBJECTS} recorded objects; start a new run.`);
-    if (objects.filter((o) => o.object_type === 'webhook').length >= MAX_TEST_WEBHOOKS) throw refusal(`A run may hold at most ${MAX_TEST_WEBHOOKS} test webhooks.`);
+    const allowed = run.scenarios?.length === 1 ? webhookLimit(run.scenarios[0]) : 0;
+    if (objects.filter((o) => o.object_type === 'webhook').length >= allowed) throw refusal(`This run may hold at most ${allowed} test webhook${allowed === 1 ? '' : 's'}.`);
     let host;
     if (args.forwarderId) {
       const row = await loadForwarder(ctx, target, args.forwarderId);
@@ -270,12 +249,11 @@ const createTestWebhook = defineGithubWrite({
       + (before.source === 'forwarder' ? " It uses the forwarder's signing secret." : ' A new signing secret is generated and shown once.')),
   apply: async ({ args, ctx, target, before }) => {
     if (before.denied) throw refusal(before.denied);
-    const scope = scoped(ctx, target);
     let url; let secret; let reveal = null;
     if (args.forwarderId) {
       const row = await loadForwarder(ctx, target, args.forwarderId);
       url = row.url;
-      secret = decryptSecret(row.secret_enc, { aad: secretAad({ id: row.id, ...scope }), key: key(ctx) });
+      secret = forwarderSecret(ctx, row);
     } else {
       url = forwarderUrl(args.url).toString();
       secret = randomBytes(32).toString('hex');

@@ -318,6 +318,12 @@ export function createDevLedger(sql) {
       const rows = await sql`DELETE FROM dev_forwarders WHERE id = ${id} AND account = ${account} AND connection = ${connection} RETURNING id`;
       return rows.length === 1;
     },
+    // Cleanup of a run removes the forwarders created for it (by run ID only; other runs and connections are untouched).
+    async deleteDevRunForwarders({ runId, account, connection }) {
+      validateRun({ id: runId, account, connection });
+      const rows = await sql`DELETE FROM dev_forwarders WHERE run_id = ${runId} AND account = ${account} AND connection = ${connection} RETURNING id`;
+      return rows.length;
+    },
     async listDevObjects({ runId, account, connection, limit = 50 }) {
       validateRun({ id: runId, account, connection }); boundedRunLimit(limit);
       return await sql`SELECT o.run_id, o.object_type, o.owner, o.repo, o.object_id, o.created_sha,

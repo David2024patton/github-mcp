@@ -6,6 +6,8 @@ import {EXECUTABLE_SCENARIOS,scenarioObjectLimits} from './scenarios.js';
 import {refusal} from '../tools/github-write.js';
 
 export const MAX_TEST_WEBHOOKS=3;
+// A scenario that plans its own webhook (webhook-target) is held to exactly that; every other scenario may carry up to three test webhooks.
+export const webhookLimit=(scenario)=>scenarioObjectLimits(scenario).webhook??MAX_TEST_WEBHOOKS;
 
 export function assertScenarioResourceBounds({run,objects,owner,repo}) {
   if(!run||!Array.isArray(run.scenarios)||run.scenarios.length!==1||
@@ -14,7 +16,7 @@ export function assertScenarioResourceBounds({run,objects,owner,repo}) {
     throw refusal('Scratch run has no single supported executable scenario; cleanup refused.');
   // V-4 test webhooks may be added to any executable scenario's scratch repository (at most three).
   const limits={...scenarioObjectLimits(run.scenarios[0])};
-  limits.webhook=Math.max(limits.webhook??0,MAX_TEST_WEBHOOKS);
+  limits.webhook=webhookLimit(run.scenarios[0]);
   const counts=Object.create(null);
   for(const item of objects) {
     if(!item||item.owner?.toLowerCase()!==owner.toLowerCase()||

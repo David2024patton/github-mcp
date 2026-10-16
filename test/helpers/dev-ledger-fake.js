@@ -178,6 +178,12 @@ export function createFakeDevLedger({ clock = Date.now } = {}) {
       if (!v || v.account !== account || v.connection !== connection) return false;
       forwarders.delete(id); return true;
     },
+    async deleteDevRunForwarders({ runId, account, connection }) {
+      validateRun({ id: runId, account, connection });
+      let n = 0;
+      for (const [id, v] of [...forwarders]) if (v.run_id === runId && v.account === account && v.connection === connection) { forwarders.delete(id); n += 1; }
+      return n;
+    },
     async listDevObjects({ runId, account, connection, limit=50 }) {
       boundedRunLimit(limit);
       if (!scoped({ id:runId,account,connection })) return [];

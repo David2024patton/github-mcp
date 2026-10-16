@@ -55,11 +55,11 @@ describe('V-1 correct per-scenario resource classification',()=>{
   expect(call(false,wrong,wrong.map(o=>intent(o)))).toMatchObject({
     state:'identity_review_required',missing_object_count:1});
  });
- it('does not claim executable completion for a plan-only webhook scenario',()=>{
+ it('recognizes a complete executable webhook-target scenario but never claims live acceptance',()=>{
   const full=[obj('repo','example-org/scratch'),obj('forwarder','target'),obj('webhook','hook')];
   expect(call(false,full,full.map(o=>intent(o)),{
     run:{...run,scenarios:['webhook-target']}
-  })).toMatchObject({state:'unknown_scenario',expected_object_count:null,
+  })).toMatchObject({state:'recorded_complete',expected_object_count:3,
     live_acceptance_verified:false});
  });
 });

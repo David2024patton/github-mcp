@@ -28,6 +28,16 @@ export function runDevLedgerContract(label, makeDb) {
       await expect(db.createDevForwarder(f(31, { events: ['bad event'] }))).rejects.toThrow(/events/);
       await expect(db.getDevForwarder({ ...a, id: 'nope' })).rejects.toThrow(/forwarder/i);
     });
+    it('removes only the forwarders bound to one run, account and connection', async () => {
+      const db = await makeDb(); const a = { account: 'example-org', connection: 'fwd-cleanup-one' };
+      const f = (n, extra = {}) => ({ ...a, id: `fwd_${String(n).padStart(16, 'b')}`, url: 'https://app.example.net/hook', events: [], secretEnc: 'v1.' + 'y'.repeat(40), ...extra });
+      await db.createDevForwarder(f(1, { runId: 'run-fwd-001' })); await db.createDevForwarder(f(2, { runId: 'run-fwd-001' }));
+      await db.createDevForwarder(f(3, { runId: 'run-fwd-002' })); await db.createDevForwarder(f(4)); await db.createDevForwarder(f(5, { runId: 'run-fwd-001', connection: 'fwd-cleanup-two' }));
+      expect(await db.deleteDevRunForwarders({ ...a, runId: 'run-fwd-001' })).toBe(2);
+      expect((await db.listDevForwarders(a)).map((x) => x.id)).toEqual([f(3).id, f(4).id]);
+      expect(await db.getDevForwarder({ ...a, connection: 'fwd-cleanup-two', id: f(5).id })).not.toBeNull();
+      expect(await db.deleteDevRunForwarders({ ...a, runId: 'run-fwd-001' })).toBe(0);
+    });
     it('permits one cleanup executor, isolates scopes and never expires or lets another executor release it',async()=>{
       const db=await makeDb(),runId='run-exclusive-cleanup';
       await db.createDevRun({...a,id:runId});

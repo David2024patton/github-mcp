@@ -368,6 +368,13 @@ async function executeExclusiveCleanup(ctx,{owner,repo,runId,before}) {
   }
   const remaining=await getRepo(github,owner,repo);
   if(remaining)return {deleted:false,remaining:true,verified:false};
+  // The recorded repository is independently absent, so its webhooks are absent. Forwarders live in this server's
+  // database: remove those bound to the run, then require every recorded one to be gone before marking anything cleaned.
+  const forwardersRemoved=await db.deleteDevRunForwarders({runId,account:owner,connection});
+  for(const item of snapshot.objects.filter(x=>x.object_type==='forwarder')){
+    if(await db.getDevForwarder({id:item.object_id,account:owner,connection}))
+      throw refusal('A recorded forwarder is still present; inspect the run before retrying.');
+  }
   // The recorded repository is independently absent, so all objects inside it are absent.
   for(const item of snapshot.objects.filter(x=>!x.cleaned)){
     const saved=await db.markDevObjectCleaned({runId,account:owner,connection,
@@ -376,7 +383,7 @@ async function executeExclusiveCleanup(ctx,{owner,repo,runId,before}) {
   }
   if(!(await db.completeDevCleanup({runId,account:owner,connection})))
     throw refusal('The cleanup ledger is incomplete. Inspect the exact remaining rows.');
-  return {deleted:true,verified:true,objects_cleaned:snapshot.objects.length,run_id:runId};
+  return {deleted:true,verified:true,objects_cleaned:snapshot.objects.length,forwarders_removed:forwardersRemoved,run_id:runId};
 }
 export async function readCleanupAfter(ctx,{owner,repo,runId}) {
   const connection=ctx.connection.client_id;

@@ -1,3 +1,7 @@
+## 2026-10-16 — webhook-target seed and run-bound forwarders
+
+A `webhook-target` scenario allows `webhookLimit(scenario)` test hooks (default 3); a run with no single scenario allows none. Its forwarder is bound to the run and repo and is deleted by run cleanup (execute and standalone) after the repository is confirmed absent. The signing secret is revealed once and never journaled; the journal holds only host and counts. Reason: scratch runs must leave no registered receiver behind.
+
 # Decisions (dated)
 
 One entry per design decision, newest last. Reasons live here; current rules live in AGENTS and the designs.
