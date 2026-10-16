@@ -176,6 +176,16 @@ export const SETTINGS = Object.freeze([
     ],
     expected: 'Deleting removes everything and cannot be undone. This server will never do it.'
   },
+  {
+    id: 'repo-wiki-edit', scope: 'repo', title: 'Edit a repository wiki', page: 'Repository → Wiki',
+    words: ['wiki', 'wiki page', 'documentation page', 'edit wiki', 'new wiki page'], url: 'https://github.com/{org}/{repo}/wiki',
+    steps: [
+      { action: 'Open the page', target: 'Wiki tab of the repository (turn the wiki on first under Settings → Features if it is missing)' },
+      { action: 'Press the button', target: 'New Page, or Edit on an existing page' },
+      { action: 'Type the title and text, then press', target: 'Save Page' }
+    ],
+    expected: 'The page appears in the wiki sidebar. GitHub has no API for wiki pages, so this server cannot edit them (open owner decision IN-17).'
+  },
   ...EXTRA_GUIDES
 ]);
 

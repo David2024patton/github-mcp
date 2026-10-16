@@ -2,7 +2,7 @@
 // schema, A-3a adds the connector login store. Service-independent in-memory fake of createDb(): it mirrors the behavior
 // of src/db.js (hashed storage, single-use codes, atomic refresh) and is held to the same contract suite
 // (test/contract/oauth-contract.js) as real PostgreSQL.
-import { RESULT_HANDLE, SCHEMA_TABLES, SETUP_PURPOSES, ETAG_BODY_LIMIT_BYTES, PROTECTED_SEEDED_KEY, checkConnection, checkProtected, connectionSettings, normalizeChange } from '../../src/db.js';
+import { JOB_ID, RESULT_HANDLE, SCHEMA_TABLES, SETUP_PURPOSES, ETAG_BODY_LIMIT_BYTES, PROTECTED_SEEDED_KEY, checkConnection, checkProtected, connectionSettings, normalizeChange } from '../../src/db.js';
 import { hashToken } from '../../src/core/oauth.js';
 import { createFakeDevLedger } from './dev-ledger-fake.js';
 import { DEFAULT_PROJECTS, validateProjectProfile, storedProject, containsRepo } from '../../src/data/profile-schema.js';
@@ -35,6 +35,7 @@ export function createFakeDb({ clock = Date.now } = {}) {
   const protectedRows = new Map();
   const knownProjects = new Map();
   const results = new Map();
+  const jobs = new Map();
   let changeId = 0;
   const DAY_MS = 24 * 60 * 60 * 1000;
   let attemptId = 0;
@@ -90,6 +91,34 @@ export function createFakeDb({ clock = Date.now } = {}) {
       const row = results.get(handle);
       if (!RESULT_HANDLE.test(handle ?? '') || !row || row.connection !== connection || row.expires_at.getTime() <= clock()) return null;
       return { handle: row.handle, summary: row.summary, body: structuredClone(row.body), created_at: row.created_at, expires_at: row.expires_at };
+    },
+    async createJob({ id, connection, owner, repo = null, kind, providerRef = null, ttlMinutes = 1440 }) {
+      if (!JOB_ID.test(id ?? '')) throw new TypeError('A job id looks like job_ followed by 16 hex digits.');
+      if (typeof connection !== 'string' || !connection || typeof owner !== 'string' || !owner || typeof kind !== 'string' || !kind) throw new TypeError('A job needs a connection, an owner and a kind.');
+      for (const [key] of [...jobs].filter(([, j]) => j.expires_at.getTime() < clock()).slice(0, 100)) jobs.delete(key);
+      if (jobs.has(id)) throw new Error('duplicate key value violates unique constraint "gh_async_jobs_pkey"');
+      const row = { id, connection_id: connection, owner, repo, kind, provider_ref: providerRef === null ? null : String(providerRef).slice(0, 200), state: 'pending', result_handle: null, detail: null, created_at: new Date(clock()), updated_at: new Date(clock()), last_polled_at: null, expires_at: new Date(clock() + ttlMinutes * 60_000) };
+      jobs.set(id, row);
+      return { ...row };
+    },
+    async getJob(id, connection) {
+      const row = jobs.get(id);
+      if (!JOB_ID.test(id ?? '') || !row || row.connection_id !== connection || !connection || row.expires_at.getTime() <= clock()) return null;
+      return { ...row };
+    },
+    async finishJob(id, connection, { state, resultHandle = null, detail = null }) {
+      if (!['ready', 'failed', 'expired'].includes(state)) throw new TypeError('A job finishes as ready, failed or expired.');
+      const row = jobs.get(id);
+      if (!row || row.connection_id !== connection || row.state !== 'pending' || row.expires_at.getTime() <= clock()) return null;
+      Object.assign(row, { state, result_handle: resultHandle, detail: detail === null ? null : String(detail).slice(0, 200), updated_at: new Date(clock()) });
+      return { ...row };
+    },
+    async claimJobPoll(id, connection, minGapSeconds = 10) {
+      const row = jobs.get(id);
+      if (!row || row.connection_id !== connection || row.state !== 'pending' || row.expires_at.getTime() <= clock()) return false;
+      if (row.last_polled_at && row.last_polled_at.getTime() > clock() - minGapSeconds * 1000) return false;
+      row.last_polled_at = new Date(clock());
+      return true;
     },
     async put(key, value) { rows.set(key, structuredClone(value)); },
     async get(key) { return rows.has(key) ? structuredClone(rows.get(key)) : null; },

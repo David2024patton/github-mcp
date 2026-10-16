@@ -6,6 +6,8 @@ vi.mock('../../src/github/public-url.js', async (importOriginal) => ({
     bytes: Buffer.from('abc'), size: 3, contentType: 'application/octet-stream'
   }))
 }));
+import { downloadPublicAsset } from '../../src/github/public-url.js';
+import { buildZip } from '../../test/helpers/zip-builder.js';
 import * as assets from '../../src/tools/releases-assets.js';
 
 const REL = 'GET /repos/{owner}/{repo}/releases/{release_id}';
@@ -60,5 +62,22 @@ describe('G-5 guarded release asset upload', () => {
     w.gh.when(REL).reply(200, { ...release, assets: [uploaded] });
     expect((await call(w, { confirm: true })).status).not.toBe('applied');
     expect(mutations(w)).toHaveLength(0);
+  });
+  it('uploads one file from a build artifact, and refuses two sources or none', async () => {
+    const w = await makeWorld({ mode: 'preview', profile: 'full' });
+    w.gh.when(REL).reply(200, release); w.gh.when(UP).reply(201, uploaded); w.gh.when(ONE).reply(200, uploaded);
+    w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}').reply(200, { id: 8, name: 'build', size_in_bytes: 100, expired: false });
+    w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}').reply(302, '', { location: 'https://pipelines.actions.githubusercontent.com/x' });
+    downloadPublicAsset.mockResolvedValueOnce({ bytes: buildZip([{ name: 'app.zip', data: 'abc' }]), size: 1, contentType: 'application/zip' });
+    const noUrl = { repo: 'hello', releaseId: 42, name: 'app.zip', artifactId: 8, entry: 'app.zip', confirm: true };
+    const out = parse(await doorsFor(def)[0].call(w, noUrl));
+    expect(out.status).toBe('applied');
+    expect(mutations(w).map((x) => x.route)).toEqual([UP]);
+    expect(w.gh.invalid).toEqual([]);
+    const w2 = await makeWorld({ mode: 'preview', profile: 'full' });
+    w2.gh.when(REL).reply(200, release);
+    expect((parse(await doorsFor(def)[0].call(w2, { ...noUrl, sourceUrl: args.sourceUrl }))).status).not.toBe('applied');
+    expect((parse(await doorsFor(def)[0].call(w2, { repo: 'hello', releaseId: 42, name: 'app.zip', confirm: true }))).status).not.toBe('applied');
+    expect(mutations(w2)).toHaveLength(0);
   });
 });

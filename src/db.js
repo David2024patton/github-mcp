@@ -29,6 +29,7 @@ export const SCHEMA_TABLES = Object.freeze([
   'protected_resources',
   'known_projects',
   'result_store',
+  'gh_async_jobs',
   'secret_entry_requests',
   'dev_runs',
   'dev_run_objects',
@@ -38,6 +39,7 @@ export const SCHEMA_TABLES = Object.freeze([
   'dev_cleanup_executions'
 ]);
 export const RESULT_HANDLE = /^res_[A-Za-z0-9_-]{20,64}$/;
+export const JOB_ID = /^job_[0-9a-f]{16}$/;
 
 export const PROTECTED_KINDS = Object.freeze(['repo', 'installation']);
 export const PROTECTED_LEVELS = Object.freeze(['pr-only', 'locked']);
@@ -366,6 +368,23 @@ export function createDb(sql = productionSql()) {
         body JSONB NOT NULL
       )`;
       await sql`CREATE INDEX IF NOT EXISTS result_store_expires ON result_store (expires_at)`;
+      // Slow GitHub operations that finish later (Y-8): who started it, what it is waiting for, and where the result will be kept.
+      await sql`CREATE TABLE IF NOT EXISTS gh_async_jobs (
+        id TEXT PRIMARY KEY,
+        connection_id TEXT NOT NULL,
+        owner TEXT NOT NULL,
+        repo TEXT,
+        kind TEXT NOT NULL,
+        provider_ref TEXT,
+        state TEXT NOT NULL DEFAULT 'pending',
+        result_handle TEXT,
+        detail TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_polled_at TIMESTAMPTZ,
+        expires_at TIMESTAMPTZ NOT NULL
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS gh_async_jobs_connection_idx ON gh_async_jobs (connection_id, state)`;
       // A secret the owner will type on the setup page (G-3): who it is for and where it goes, never the value itself.
       await sql`CREATE TABLE IF NOT EXISTS secret_entry_requests (
         id TEXT PRIMARY KEY,
@@ -456,6 +475,40 @@ export function createDb(sql = productionSql()) {
       if (!RESULT_HANDLE.test(handle ?? '') || typeof connection !== 'string' || !connection) return null;
       const rows = await sql`SELECT handle, summary, body, created_at, expires_at FROM result_store WHERE handle = ${handle} AND connection = ${connection} AND expires_at > now()`;
       return rows[0] ?? null;
+    },
+
+    /** Starts tracking a slow GitHub operation (Y-8). Also deletes up to 100 expired jobs (no cron). */
+    async createJob({ id, connection, owner, repo = null, kind, providerRef = null, ttlMinutes = 1440 }) {
+      if (!JOB_ID.test(id ?? '')) throw new TypeError('A job id looks like job_ followed by 16 hex digits.');
+      if (typeof connection !== 'string' || !connection || typeof owner !== 'string' || !owner || typeof kind !== 'string' || !kind) throw new TypeError('A job needs a connection, an owner and a kind.');
+      await sql`DELETE FROM gh_async_jobs WHERE id IN (SELECT id FROM gh_async_jobs WHERE expires_at < now() LIMIT 100)`;
+      const rows = await sql`INSERT INTO gh_async_jobs (id, connection_id, owner, repo, kind, provider_ref, expires_at)
+        VALUES (${id}, ${connection}, ${owner}, ${repo}, ${kind}, ${providerRef === null ? null : String(providerRef).slice(0, 200)}, now() + make_interval(mins => ${ttlMinutes}))
+        RETURNING id, connection_id, owner, repo, kind, provider_ref, state, result_handle, detail, created_at, updated_at, last_polled_at, expires_at`;
+      return rows[0];
+    },
+    /** The job, only for the connection that started it and only while it has not expired. */
+    async getJob(id, connection) {
+      if (!JOB_ID.test(id ?? '') || typeof connection !== 'string' || !connection) return null;
+      const rows = await sql`SELECT id, connection_id, owner, repo, kind, provider_ref, state, result_handle, detail, created_at, updated_at, last_polled_at, expires_at
+        FROM gh_async_jobs WHERE id = ${id} AND connection_id = ${connection} AND expires_at > now()`;
+      return rows[0] ?? null;
+    },
+    /** Moves a pending job on (ready, failed or expired). A job that is no longer pending is left alone. Returns the row or null. */
+    async finishJob(id, connection, { state, resultHandle = null, detail = null }) {
+      if (!['ready', 'failed', 'expired'].includes(state)) throw new TypeError('A job finishes as ready, failed or expired.');
+      const rows = await sql`UPDATE gh_async_jobs SET state = ${state}, result_handle = ${resultHandle}, detail = ${detail === null ? null : String(detail).slice(0, 200)}, updated_at = now()
+        WHERE id = ${id} AND connection_id = ${connection} AND state = 'pending' AND expires_at > now()
+        RETURNING id, connection_id, owner, repo, kind, provider_ref, state, result_handle, detail, created_at, updated_at, last_polled_at, expires_at`;
+      return rows[0] ?? null;
+    },
+    /** Marks a poll and says whether GitHub may be asked again: true at most once per `minGapSeconds`. */
+    async claimJobPoll(id, connection, minGapSeconds = 10) {
+      const rows = await sql`UPDATE gh_async_jobs SET last_polled_at = now()
+        WHERE id = ${id} AND connection_id = ${connection} AND state = 'pending' AND expires_at > now()
+          AND (last_polled_at IS NULL OR last_polled_at <= now() - make_interval(secs => ${minGapSeconds}::float8))
+        RETURNING id`;
+      return rows.length === 1;
     },
 
     // Project profile reads fail closed on malformed storage, overlapping scopes

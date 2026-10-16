@@ -1,3 +1,11 @@
+## October 16, 2026 — Bundle 9: Y-8 background jobs, artifacts, archives, SBOM, autofix (PR #231)
+
+Y-8 of the gap-closure Batch Y (8 new tools, 386 in total). **Jobs:** slow GitHub work returns a job id; `github_job_status` checks once and never waits; `github_job_cancel` stops tracking. **Reading:** look inside a build artifact or a repository snapshot (list files, read one text file; binary files show size and SHA-256 only; zip bombs, unsafe names and links refused), and read a repository's software parts list (SBOM), directly or as a background report. **Autofix:** ask GitHub for a suggested fix for a code scanning alert, then commit it to a named branch (default branch counts as production). **Release upload** can now take a build artifact (whole zip or one file) as its source. **Wiki:** a browser-steps guide only, because GitHub has no wiki API and the two extra libraries need your approval (IN-17, default kept).
+
+Not claimed: no live acceptance of any Y tool. The owner-inputs file still shows IN-15, IN-16 and IN-17 as open; Chris says he answered them, but the answers are not recorded anywhere this server can read, so defaults are used until he restates them.
+
+Next: Y-9 (organization long tail, read-backs, guides; money tools stay guided unless IN-16 says otherwise).
+
 ## October 16, 2026 — Bundle 8: Y-7 security writes (PR #230)
 
 Y-7 of the gap-closure Batch Y (12 new tools, 378 in total). **Advisories:** create or edit a draft security advisory, publish it (public, cannot be undone, GHSA id typed twice), request a CVE, and privately report a vulnerability to another project as you. The advisory text never appears in a result or the change log, only a fingerprint (SHA-256). **Scanning:** turn code scanning default setup on or off, create/edit/delete custom secret-scanning patterns for an organization or repository, and choose which repositories Dependabot may read. **Organization configurations:** create/edit a code-security configuration, attach it, make it the default for new repositories, detach it, delete it. Anything that would switch on paid security features for private repositories is refused (the cost cannot be calculated), so paid configurations only reach public repositories.
@@ -6,7 +14,7 @@ Not built on purpose: push-protection bypass review and advisory private forks (
 
 Not claimed: no live acceptance of any Y tool; the App's security permissions need your approval on github.com (IN-15).
 
-Next: Y-8 (artifacts, archives, uploads, async jobs, wiki), then Y-9.
+Next: see Bundle 9 above.
 
 ## October 16, 2026 — Bundle 7: Y-5 moderation and organization planning objects, Y-6 runners and Actions administration (PR #229)
 

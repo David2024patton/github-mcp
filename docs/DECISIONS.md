@@ -1,3 +1,11 @@
+## 2026-10-16 — Y-8: jobs never wait, archives are opened in memory only, wiki stays a guide
+
+1. A slow GitHub operation returns a job id; `github_job_status` makes one GitHub call and returns, so no request is held open and no loop exists. Jobs belong to the connection that started them and expire after 24 hours.
+2. Artifacts and repository snapshots are read on the server with hard limits and never written to disk; binary files return only name, size and SHA-256; the signed download address is never shown.
+3. Committing an autofix requires a named branch (the production check needs it) and a ready fix; the default branch counts as production.
+4. Release upload gained an artifact source but no new host: the existing upload address check stays the only upload path.
+5. Wiki editing: IN-17 is still recorded as open, so the default stands (guide only, no `isomorphic-git`/`memfs`). If the owner approves, it becomes a later card.
+
 ## 2026-10-16 — Y-7: paid security features are refused, not priced; advisory text is never stored
 
 1. Turning on code scanning, secret protection or push protection for a private repository is billed per active committer. There is no verified price source, so the tools refuse instead of guessing (same as `github_security_set_feature`): `github_security_code_scanning_default_setup` refuses private repositories; a configuration with paid settings is attached only with scope `public` (or named public repositories) and cannot be the default for private or all new repositories; turning on paid settings of a configuration already attached to a private repository is refused. The design's "priced and blocked at $0" is therefore stricter: blocked at every limit until a real price table exists.
