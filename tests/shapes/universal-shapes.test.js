@@ -36,15 +36,17 @@ describe('U-1 pinned GitHub request shape sample',()=>{
     expect(gh.invalid).toEqual([]);
     expect(new Set(gh.calls.map(x=>x.route)).size).toBe(25);
   });
-  it('10 different nonbody write routes survive actual Octokit and fake schema validation',async()=>{
-    const ops=restOperations().filter(op=>op.method==='DELETE'&&eligible(op)).slice(0,10);
-    expect(ops).toHaveLength(10);
+  it('10 distinct writes (9 DELETE and 1 PUT) pass real-client schema validation',async()=>{
+    const deletes=restOperations().filter(op=>op.method==='DELETE'&&eligible(op)).slice(0,9);
+    expect(deletes).toHaveLength(9);
+    const topic=restOperations().find(op=>op.route==='PUT /repos/{owner}/{repo}/topics');
+    expect(topic).toBeDefined();
     const {gh,octokit}=await client();
-    for(const op of ops){
-      const params={...p};
-      validateRest(op,params);
-      gh.when(op.route).reply(204,null);
-      await octokit.request(op.route,params);
+    for(const op of [...deletes,topic]){
+      const body=op===topic?{names:['universal']}:undefined;
+      validateRest(op,p,body);
+      gh.when(op.route).reply(op===topic?200:204,null);
+      await octokit.request(op.route,{...p,...(body??{})});
     }
     expect(gh.invalid).toEqual([]);
     expect(new Set(gh.calls.map(x=>x.route)).size).toBe(10);

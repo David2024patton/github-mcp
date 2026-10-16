@@ -5,7 +5,7 @@ import { defineGithubWrite } from './define-github-write.js';
 import { githubFor } from '../github/client.js';
 import { plain } from './github-read.js';
 import { refusal } from './github-write.js';
-import { restOperations,restOperation,restParameters,validateRest,describeRest } from '../github/openapi-index.js';
+import { restOperations,restOperation,validateRest,describeRest } from '../github/openapi-index.js';
 import { classifyUniversal,assertUniversalAuthority,universalPrice } from '../github/operation-classes.js';
 import { curatedTool } from '../github/hand-built-map.js';
 
@@ -54,14 +54,27 @@ function resolve(a,c,methods,writing=false) {
     if(curated) throw new TypeError('The specialized '+curated+' tool must be used for this operation; universal access cannot bypass its checks.');
   }
   const target=scopeFor(a,c,params,op);
+  const body=a.body??{};
+  const reserved=new Set(['headers','request','mediaType','url','method','baseUrl']);
+  for(const name of [...Object.keys(params),...Object.keys(body)]) {
+    if(reserved.has(name))throw new TypeError('Transport override is not permitted: '+name);
+    if(Object.hasOwn(params,name)&&Object.hasOwn(body,name))throw new TypeError('Body overrides a path/query value: '+name);
+  }
+  if(JSON.stringify({params,body}).length>32768)throw new TypeError('REST arguments exceed the safe request size.');
   const cred=credentials(a,op);
   if(writing && op.deprecated) throw new TypeError('Deprecated provider writes are refused until reviewed.');
   return {op,params,target,cred,request:{...params,...(a.body??{})}};
 }
+async function accountClient(ctx,target,cred) {
+  // Fine-grained and U credentials cannot be narrowed per request.
+  // An enrolled GitHub App can mint a scoped installation credential.
+  const account=await ctx.db.getAccount(target.owner);
+  return githubFor(ctx,{owner:target.owner,cred,
+    ...(cred==='I'&&account?.credential_kind==='app'&&target.repo?
+      {scope:{repositories:[target.repo]}}:{})});
+}
 async function requestFor(ctx,{target,cred,op,request}) {
-  const client=await githubFor(ctx,{owner:target.owner,cred,
-    ...(target.repo?{scope:{repositories:[target.repo]}}:{})});
-  return client.request(op.route,request);
+  return (await accountClient(ctx,target,cred)).request(op.route,request);
 }
 function safeDescription(op) {
   const mark=classifyUniversal(op);
@@ -127,13 +140,13 @@ async function baseline(ctx,chosen) {
     }
   }
   if(target.repo) {
-    const data=(await (await githubFor(ctx,{owner:target.owner,cred,scope:{repositories:[target.repo]}}))
+    const data=(await (await accountClient(ctx,target,cred))
       .request('GET /repos/{owner}/{repo}',{owner:target.owner,repo:target.repo})).data;
     if(data?.full_name && data.full_name.toLowerCase()!==(target.owner+'/'+target.repo).toLowerCase())
       throw refusal('The repository identity returned by GitHub did not match the requested target.');
     return {kind:'parent',state:{full_name:data.full_name,default_branch:data.default_branch}};
   }
-  const org=(await (await githubFor(ctx,{owner:target.owner,cred}))
+  const org=(await (await accountClient(ctx,target,cred))
     .request('GET /orgs/{org}',{org:target.owner})).data;
   if(String(org?.login??'').toLowerCase()!==target.owner.toLowerCase())
     throw refusal('The account identity returned by GitHub did not match.');

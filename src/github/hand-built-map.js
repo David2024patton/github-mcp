@@ -6,8 +6,8 @@ const maps=[
   [/^PUT \/repos\/\{owner\}\/\{repo\}\/actions\/secrets\//, 'github_secret_set'],
   [/^PUT \/orgs\/\{org\}\/actions\/secrets\//, 'github_secret_set'],
   [/^PUT \/repos\/\{owner\}\/\{repo\}\/dependabot\/secrets\//, 'github_secret_set'],
-  [/^PUT \/repos\/\{owner\}\/\{repo\}\/branches\/\{branch\}\/protection/, 'github_branch_protection_save'],
-  [/^PUT \/repos\/\{owner\}\/\{repo\}\/rulesets/, 'github_ruleset_save'],
+  [/^(?:POST|PUT|PATCH|DELETE) \/repos\/\{owner\}\/\{repo\}\/branches\/\{branch\}\/protection/, 'github_protection_set'],
+  [/^(?:POST|PUT|PATCH|DELETE) \/repos\/\{owner\}\/\{repo\}\/rulesets/, 'github_ruleset_save'],
   [/^POST \/repos\/\{owner\}\/\{repo\}\/pulls$/, 'github_pr_create'],
   [/^PATCH \/repos\/\{owner\}\/\{repo\}\/pulls\/\{pull_number\}$/, 'github_pr_update'],
   [/^POST \/repos\/\{owner\}\/\{repo\}\/issues$/, 'github_issue_create'],
@@ -20,7 +20,8 @@ const maps=[
   [/^DELETE \/repos\/\{owner\}\/\{repo\}\/git\/refs\//, 'github_branch_delete'],
   [/\/copilot\/billing\/selected_users$/, 'github_copilot_add_seats'],
   [/\/settings\/billing\/budgets/, 'github_billing_save_budget'],
-  [/\/codespaces/, 'github_codespace_manage']
+  [/\/codespaces/, 'github_codespace_create'],
+  [/^(?:POST|PUT|PATCH|DELETE) \/(?:repos\/\{owner\}\/\{repo\}|orgs\/\{org\})\/actions\/permissions/, 'github_actions_set_settings']
 ];
 export function curatedTool(op) {
   if (!op || !op.route) return null;

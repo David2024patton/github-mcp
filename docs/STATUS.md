@@ -1,5 +1,12 @@
 ### W source batch closeout — October 15
 
+## 2026-10-15 — U-1 guarded REST candidate PR #219 (CI/review pending)
+
+Approved U-1 whole scope: pinned REST index/search/describe/read/write, schema validation, curated first, production-classified always-confirmed non-curated writes, source/synthetic test fixtures and guarded journal. Frozen plan `ffd38c79ca744d93224025f4ee4ec4267c75aa9f` follows independently inspected main `f538baeb2a656e430865369ed69a150cd56c4644`. This is a candidate, **not a pass** until exact-head gates, review and merge. U-2 remains separate and unimplemented.
+
+Independent non-engineering verification: Vercel deployment `dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7` READY at `ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904`, 64 commits behind inspected main. Custom MCP whoami PREVIEW/full, scratch org installation enrolled, production OFF, spend $0. PR #218 preserves permanent 36 pending external acceptance tasks (38 total; 2 previously passed). W real-service acceptance awaits deployment; write/cleanup fixtures and RTC require independent approval and authority. No live write, cleanup or promotion performed in this PR.
+
+
 DRIFT-PROTOCOL C: all W-1..W-7 handlers implemented; code, automated, live/service OAuth, Hub/RTC, revocation and cleanup remain distinct. Owner guidance/architecture/roadmap and IN-06 evidence are reconciled without changing authority. U-1 successor card is prepared, not implemented: pinned version/description verified (1,232 operations; all categorized; 24 notifying rather than historical 25), official version/changelog checked; client validation remains green. No API/vendor upgrade. Existing A-3/A-4 changes-since-design entries remain required by future U/R work, so no live guidance is retired. DECISIONS records the interval and count choices. This required batch closeout is folded into the substantive W-7 PR; source is byte-identical to the 5,526-pass tree.
 
 ## October 15 — additional approved W-7 engineering

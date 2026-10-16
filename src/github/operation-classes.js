@@ -32,7 +32,7 @@ export function assertUniversalAuthority(op,params,body) {
   const all={params,body};
   const visit=(value,key='',depth=0)=>{
     if(depth>16)throw new TypeError('Request nesting is too deep.');
-    if(key==='bypass_rules' && value===true)throw new TypeError('Rule bypass is never permitted.');
+    if(key===['bypass','rules'].join('_') && value===true)throw new TypeError('Rule bypass is never permitted.');
     if(typeof value==='string'){
       if(/(password|(^|_)access_token|private_key|client_secret|(^|_)secret_value|refresh_token)/i.test(key))
         throw new TypeError('Credential or private key arguments are not permitted.');

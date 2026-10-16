@@ -1,11 +1,11 @@
 import {describe,it,expect} from 'vitest';
 import {createDispatch} from '../../src/tools/dispatch.js';
 import {registry} from '../../src/tools/index.js';
-import {restOperations,restOperation,restParameters,validateRest,describeRest} from '../../src/github/openapi-index.js';
+import {restOperations,restOperation,validateRest} from '../../src/github/openapi-index.js';
 import {classifyUniversal,assertUniversalAuthority,universalPrice} from '../../src/github/operation-classes.js';
 import {curatedTool} from '../../src/github/hand-built-map.js';
 import * as u from '../../src/tools/universal.js';
-import {makeWorld,parse,doorsFor,runWriteContract} from '../../test/helpers/write-contract.js';
+import {makeWorld,parse,runWriteContract} from '../../test/helpers/write-contract.js';
 
 const api=(operation,params={},body)=>({operation,params,...(body?{body}:{})});
 const route='PUT /repos/{owner}/{repo}/interaction-limits';
@@ -60,8 +60,8 @@ describe('U-1 pinned operation index and read boundary',()=>{
   });
   it('enforces connected scope and explicitly U credential for /user endpoints',async()=>{
     const w=await makeWorld({profile:'read_only'});
-    const foreign=parse(await dispatch(w,'github_api_read',api('GET /repos/{owner}/{repo}',{owner:'outsider',repo:'hello'})));
-    expect(foreign.status).not.toBe('applied');
+    const foreign=await dispatch(w,'github_api_read',api('GET /repos/{owner}/{repo}',{owner:'outsider',repo:'hello'}));
+    expect(foreign.isError).toBe(true);
     expect(w.gh.calls).toEqual([]);
     const personal=await dispatch(w,'github_api_read',api('GET /user',{}));
     expect(personal.isError).toBe(true);
