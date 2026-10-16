@@ -16,6 +16,10 @@ function validRun(run,stepId) {
     !/^[a-z0-9][a-z0-9-]{0,70}$/.test(stepId??''))
     throw new TypeError('A scoped run and stable step ID are required.');
 }
+const labelFor=(run,label)=>label==='rtc-run'||label===`rtc-run-${run.runId}`;
+function ownLabel(run,label){
+  if(!labelFor(run,label))throw new TypeError('Only the reserved run label may be created or applied.');
+}
 function params(run){return {owner:run.owner,repo:run.repo};}
 function objects(ctx,run){return ctx.db.listDevObjects({
   runId:run.runId,account:run.account,connection:run.connection,limit:50
@@ -50,33 +54,33 @@ export async function createOwnedDraftPr(ctx,{github,run,stepId,head,base,defaul
       return {objectId:String(p.number),createdSha:expectedHeadSha};
     }});
 }
-export async function createOwnedRunLabel(ctx,{github,run,stepId='seed-pr-label'}) {
-  validRun(run,stepId);
-  return runDevMutationOnce(ctx,{...run,stepId,type:'label',objectName:LABEL,
+export async function createOwnedRunLabel(ctx,{github,run,stepId='seed-pr-label',label=LABEL}) {
+  validRun(run,stepId);ownLabel(run,label);
+  return runDevMutationOnce(ctx,{...run,stepId,type:'label',objectName:label,
     create:async()=>{
       const data=(await github.request('POST /repos/{owner}/{repo}/labels',{
-        ...params(run),name:LABEL,color:'0969da',description:`rtc_run=${run.runId}`
+        ...params(run),name:label,color:'0969da',description:`rtc_run=${run.runId}`
       })).data;
-      if(data?.name!==LABEL||data.description!==`rtc_run=${run.runId}`)
+      if(data?.name!==label||data.description!==`rtc_run=${run.runId}`)
         throw refusal('GitHub did not confirm the exact run-owned label.');
-      return {objectId:LABEL};
+      return {objectId:label};
     }});
 }
-export async function labelOwnedDraftPr(ctx,{github,run,stepId,prNumber}) {
-  validRun(run,stepId);
+export async function labelOwnedDraftPr(ctx,{github,run,stepId,prNumber,label=LABEL}) {
+  validRun(run,stepId);ownLabel(run,label);
   if(!Number.isSafeInteger(prNumber)||prNumber<1)
     throw new TypeError('An exact numeric run-owned PR number is required.');
   const saved=await objects(ctx,run);
   if(!saved.some(x=>x.object_type==='pr'&&x.object_id===String(prNumber)&&x.repo===run.repo)||
-    !saved.some(x=>x.object_type==='label'&&x.object_id===LABEL&&x.repo===run.repo))
+    !saved.some(x=>x.object_type==='label'&&x.object_id===label&&x.repo===run.repo))
     throw new TypeError('Cannot label an unrecorded PR or with an unrecorded run label.');
   return runDevMutationOnce(ctx,{...run,stepId,type:'pr_label',
-    objectName:`${prNumber}:${LABEL}`,create:async()=>{
+    objectName:`${prNumber}:${label}`,create:async()=>{
       const data=(await github.request('POST /repos/{owner}/{repo}/issues/{issue_number}/labels',{
-        ...params(run),issue_number:prNumber,labels:[LABEL]
+        ...params(run),issue_number:prNumber,labels:[label]
       })).data;
-      if(!Array.isArray(data)||!data.some(x=>x.name===LABEL))
+      if(!Array.isArray(data)||!data.some(x=>x.name===label))
         throw refusal('GitHub did not confirm the exact PR label association.');
-      return {objectId:`${prNumber}:${LABEL}`};
+      return {objectId:`${prNumber}:${label}`};
     }});
 }

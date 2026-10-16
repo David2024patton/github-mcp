@@ -1,5 +1,5 @@
 // Pure recorded-object cleanup plan. Nothing may search GitHub for look-alike tags.
-const ORDER=['pr','review_comment','review_thread','pr_label','branch','release','tag','ruleset','webhook','forwarder','check_run','issue','label','workflow_file','fixture_revision','fixture_file','repo'];
+const ORDER=['pr','review_comment','review_thread','pr_label','branch','release','tag','ruleset','webhook','forwarder','workflow_run','check_run','issue','label','workflow_file','fixture_revision','fixture_file','repo'];
 export function planDevCleanup({run,objects,intents,moreMayExist=false}) {
   if(!run?.id||!run.account||!run.connection||!Array.isArray(objects)||!Array.isArray(intents))
     throw new TypeError('A scoped run and its exact inventory are required.');
