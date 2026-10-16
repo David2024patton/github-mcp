@@ -1,10 +1,18 @@
+## October 16, 2026 — Bundle 7: Y-5 moderation and organization planning objects, Y-6 runners and Actions administration (PR #229)
+
+Y-5 and Y-6 of the gap-closure Batch Y, delivered as one PR (28 new tools, 366 in total). **Y-5 (16 tools):** pin and unpin issues and comments, delete or hide comments, edit review comments, delete issues (number typed twice), close/reopen/edit/delete discussions and mark answers, link or unlink branches, organization issue types and fields (select options keep their ids), issue field values, interaction limits and autolinks. Deletes always ask first, show the author and text as untrusted data and have no undo. **Y-6 (12 tools):** list and read self-hosted runners and groups; remove a runner (a busy one is refused), set labels, create/edit/delete runner groups (letting public repositories use a group is off by default and asks first with a warning), set group access; runner registration, removal and just-in-time tokens are sealed and revealed once on the private setup page (never in a chat or log); one tool to set cache retention, cache size, artifact/log retention and the OIDC subject template (raising a storage limit counts as spend and is blocked while the spend limit is $0); add or disable custom deployment protection rules (only apps GitHub lists), answer a waiting custom rule, and request a Pages rebuild. Not built on purpose: `github_deploy_review_pending` (an existing tool already does it).
+
+Not claimed: no live acceptance of any Y tool. Answering a custom protection rule only works if this server's App owns that rule; new App permissions still need your approval on github.com (IN-15).
+
+Next: Y-7 (security writes), then Y-8 and Y-9.
+
 ## October 16, 2026 — Bundle 6: Y-3 other people's data, follow, star lists; Y-4 Projects v2 lifecycle (PR #228)
 
 Y-3 and Y-4 of the gap-closure Batch Y, delivered as one PR (27 new tools, 338 in total). **Y-3:** an agent can now read any public profile, a user's public repositories, followers, following and social links, and any public repository (README excerpt, contents, releases, issues, pull requests) through GET-only allowlisted routes; a private or missing repository gives the same answer. As the signed-in user (credential U) it can follow or unfollow a person (a stranger needs your confirmation because following notifies them), watch or ignore a repository, add or remove up to four https links on the profile, and create, edit, delete and fill star lists. **Y-4:** fifteen project-board tools: create (private), edit (making it public always asks first), copy, delete (exact title typed, production-class, no restore), link to a repository or team, fields (select options keep their ids unless you name the ones to remove), views (create/delete only; filters and charts stay web-only), drafts, convert to issue, archive, move, clear a field, remove an item and post status updates. Every tool reads first, proves GitHub says the project belongs to a connected account, sends one change and reads it back. Verified locally: `npm run check`, 409 new/updated unit tests plus the full suite, DB and shape suites.
 
 Not claimed: no live acceptance of any Y tool; user-owned projects and the user-credential tools need the owner's GitHub sign-in (credential U).
 
-Next: Y-5 (moderation, org issue types and fields), then Y-6 … Y-9.
+Next: see Bundle 7 above.
 
 ## October 16, 2026 — Bundle 5: Y-1 unblock the universal tools, Y-2 spec-driven GraphQL writes (PR #227)
 

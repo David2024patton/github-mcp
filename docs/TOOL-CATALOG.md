@@ -6,7 +6,7 @@ Restricted preview RTC successful replies revalidate service pass and scratch ow
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
-tool merges, its Card cell gains `built #<PR>`. Built so far: **all 338 tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
+tool merges, its Card cell gains `built #<PR>`. Built so far: **all 366 tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
 and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Since B-5 every result of these tools is shaped (`src/tools/util.js`) and failures are explained by `src/tools/errors.js`. Since B-6 a connection sees only the tools its profile allows (`tools/list` and by-name calls). Every write tool below is built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
@@ -505,6 +505,29 @@ Card(s): O-1. Every GitHub settings page is in the dashboard map (`src/data/dash
 | `github_admin_check_setting` | Verify supported organization 2FA directly; unsupported settings explicitly require manual confirmation | — | N | I,U | O | R | O-1 built #197/#224 |
 | `github_admin_review_security` | Review bounded enrolled organization access and security findings without misclassifying denied reads as passing | — | N | I,U | O | R | O-1 built #197/#224 |
 
+## Moderation and organization planning objects (`github_comment_*, github_org_issue_*`) — 16
+
+Card(s): Y-5. Acts on text written by other people, so hiding and deleting always ask first and previews quote the text as untrusted data. GraphQL tools reuse the reviewed Y-2 write specs. Issue types and fields are organization-wide: every change asks first and deletes need the exact name and have no undo. Select-field options keep their ids unless named in `removeOptions`.
+
+| Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `github_issue_pin` | Pin an issue to the top of a repository (at most 3) or unpin it | P | N | I | Op,O | F | Y-5 |
+| `github_comment_pin` | Pin an issue comment or unpin it | P | N | I | Op,O | F | Y-5 |
+| `github_comment_delete` | Delete an issue or review comment (preview shows author and first 120 characters; no undo) | C·D·Prod* | N | I | Op,O | F | Y-5 |
+| `github_comment_hide` | Hide a comment (spam, abuse, off topic, ...) or show it again | C | N | I | Op,O | F | Y-5 |
+| `github_review_comment_edit` | Edit a pull request review comment | P·M* | N | I | Op,O | F | Y-5 |
+| `github_issue_delete` | Permanently delete an issue (admin only; number typed twice; no undo) | C·D·Prod | N | I | Op,O | F | Y-5 |
+| `github_discussion_manage` | Close, reopen, edit or delete a discussion, or mark an answer | C·D·Prod* | N | I | Op,O | F | Y-5 |
+| `github_issue_link_branch` | Create a branch linked to an issue or unlink one | C | N | I | Op,O | F | Y-5 |
+| `github_org_issue_type_save` | Create or edit an organization issue type | C | N | I | O | F | Y-5 |
+| `github_org_issue_type_delete` | Delete an organization issue type (name typed; no undo) | C·D·Prod | N | I | O | F | Y-5 |
+| `github_org_issue_field_save` | Create or edit an organization issue field; select options keep their ids | C | N | I | O | F | Y-5 |
+| `github_org_issue_field_delete` | Delete an organization issue field and its values (name typed; no undo) | C·D·Prod | N | I | O | F | Y-5 |
+| `github_issue_set_fields` | Set organization issue field values on an issue | P·M | N | I | Op,O | F | Y-5 |
+| `github_interaction_limit_set` | Limit who may comment or open issues on a repository or organization for a time, or lift it | C | N | I | O | F | Y-5 |
+| `github_repo_autolink_save` | Add an autolink reference (key prefix to URL template) to a repository | C | N | I | O | F | Y-5 |
+| `github_repo_autolink_delete` | Delete an autolink reference from a repository | C | N | I | O | F | Y-5 |
+
 ## Projects v2 lifecycle (`github_project_*`) — 15
 
 Card(s): Y-4. GraphQL only. A project is named by owner and number; GitHub must confirm it belongs to a connected account. Organizations use the installation credential, personal accounts the user sign-in. Deletes need the exact title or are production-class and have no undo. Select-option edits resend every existing option with its id.
@@ -634,11 +657,30 @@ OAuth app access policy; fine-grained token policy for the organization; Copilot
 notification email routing; the personal security log; Sponsors; deleting the organization or the account; transferring
 an organization; scheduled reminders; interaction limits beyond 6 months. The full page-by-page map is built in O-1.
 
+## Self-hosted runners and Actions administration (`github_runner_*, github_actions_set_limits`) — 12
+
+Card(s): Y-6. Runner registration, removal and just-in-time tokens are sealed in the one-time store: the tool returns only the private setup-page address, never the token. Letting public repositories use a self-hosted runner is off by default and asks first with a plain warning. A busy runner is never removed. Raising a cache, size or artifact/log limit counts as spend (cost cannot be calculated) and is blocked while the spend limit is $0. `github_deploy_review_pending` is not built: `github_actions_review_pending_deployment` already does it.
+
+| Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `github_runner_list` | List self-hosted runners or runner groups of an organization or repository | — | N | I | B,O,Op | R | Y-6 |
+| `github_runner_get` | One runner (status, busy, labels) without any token | — | N | I | B,O,Op | R | Y-6 |
+| `github_runner_remove` | Remove a self-hosted runner from GitHub (busy runners refused) | C·Prod | N | I | O | F | Y-6 |
+| `github_runner_set_labels` | Replace the custom labels of a runner | C | N | I | O | F | Y-6 |
+| `github_runner_group_save` | Create or edit an organization runner group; public repositories or all repositories ask first | C·A | N | I | O | F | Y-6 |
+| `github_runner_group_delete` | Delete a runner group (name typed; no undo) | C·Prod | N | I | O | F | Y-6 |
+| `github_runner_group_set_access` | Set which repositories and runners belong to a group | C·A | N | I | O | F | Y-6 |
+| `github_runner_register` | Registration, removal or JIT token, revealed once on the private setup page | C·A·Prod | N | I | O | F | Y-6 |
+| `github_actions_set_limits` | Set cache retention, cache size, artifact/log retention or the OIDC subject template (raising storage is spend) | C·$ | N | I | O | F | Y-6 |
+| `github_env_protection_rule_save` | Add or disable a custom deployment protection rule (only listed apps) | C·Prod* | N | I | O | F | Y-6 |
+| `github_deploy_review_custom_rule` | Approve or reject a deployment waiting on a custom rule (only the owning App) | C·Prod | N | I | O | F | Y-6 |
+| `github_pages_build_request` | Request a Pages rebuild | P | N | I | Op,O | F | Y-6 |
+
 ## Totals
 
-**Totals:** 338 tools: 332 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 366 tools: 360 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 134, everyday adds 81
-(everyday lists 215), full adds 96 (full lists 338). In compact mode (`docs/designs/BATCH-C.md`) an agent
+(everyday lists 215), full adds 96 (full lists 354). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
 `github_search_tools` / `github_call`.
 
@@ -671,12 +713,14 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Owner: personal account | 10 |
 | Owner: notifications and gists | 7 |
 | Owner and administration: guided settings | 3 |
+| Moderation and organization planning objects | 16 |
+| Self-hosted runners and Actions administration | 12 |
 | Projects v2 lifecycle | 15 |
 | Public profiles, following and star lists | 12 |
 | Project profiles | 3 |
 | Workflows | 17 |
 | Everything else on GitHub: the universal tools | 6 |
-| **Total** | **338** |
+| **Total** | **366** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 
