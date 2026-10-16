@@ -1,3 +1,4 @@
+import { isReviewedFree } from './spend-classes.js';
 // U-1: reviewed conservative policy for non-curated universal operations.
 // A miss cannot become a non-production, non-access-widening, or free operation.
 const productionWords=/(create|delete|transfer|invite|enable|assign|approve|revoke|purchase|upgrade|grant|publish|set|change|update settings|remove)/i;
@@ -13,7 +14,7 @@ export function classifyUniversal(op) {
     production:protectedPaths.test(op.path)||productionWords.test(s)||!['GET','HEAD'].includes(op.method),
     accessWidening:accessWords.test(s)||productionWords.test(s)||!['GET','HEAD'].includes(op.method),
     notifies:op.notifies===true,
-    spendRisk:suspectedSpend
+    spendRisk:suspectedSpend && !isReviewedFree(op)
   };
   return Object.freeze(classification);
 }

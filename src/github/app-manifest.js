@@ -6,12 +6,18 @@
 // identically (`tests/unit/app-manifest.test.js` checks both). Account-level (user) permissions are NOT requested yet: that file
 // and the REST description name several of them differently (`emails` / `email_addresses`, `keys` / `git_ssh_keys`), and GitHub
 // rejects a manifest with an unknown name. Batch O adds them in its own card, verified then (DECISIONS 2026-10-10).
+// Y-1 (DECISIONS 2026-10-16): account permissions stay out of the manifest because they cannot be verified without a real
+// GitHub round trip; they are reached through the OAuth user route (credential U) and the owner checklist
+// (`app-permissions-review` in the dashboard map). `repository_advisories` is not in the pinned description: advisories use `security_events`.
 export const REPOSITORY_PERMISSIONS = Object.freeze({
   actions: 'write', administration: 'write', attestations: 'read', checks: 'write', codespaces: 'write', codespaces_secrets: 'write',
   contents: 'write', dependabot_secrets: 'write', deployments: 'write', discussions: 'write', environments: 'write', issues: 'write',
   metadata: 'read', pages: 'write', pull_requests: 'write', repository_custom_properties: 'write', repository_hooks: 'write',
   secret_scanning_alerts: 'write', secrets: 'write', security_events: 'write', statuses: 'write', actions_variables: 'write',
-  vulnerability_alerts: 'write', workflows: 'write'
+  vulnerability_alerts: 'write', workflows: 'write',
+  // Y-1: packages (delete/restore), merge queues and build-artifact metadata records. These names are in the REST
+  // description's app-permissions schema (checked by tests/unit/app-manifest.test.js); an existing App must be edited by the owner.
+  packages: 'write', merge_queues: 'write', artifact_metadata: 'write'
 });
 
 export const ORGANIZATION_PERMISSIONS = Object.freeze({
@@ -19,7 +25,15 @@ export const ORGANIZATION_PERMISSIONS = Object.freeze({
   organization_codespaces_secrets: 'write', organization_codespaces_settings: 'write', organization_copilot_seat_management: 'write',
   organization_custom_org_roles: 'read', organization_custom_properties: 'write', organization_dependabot_secrets: 'write',
   organization_hooks: 'write', organization_personal_access_token_requests: 'write', organization_personal_access_tokens: 'write',
-  organization_plan: 'read', organization_projects: 'write', organization_secrets: 'write', organization_user_blocking: 'write'
+  organization_plan: 'read', organization_projects: 'write', organization_secrets: 'write', organization_user_blocking: 'write',
+  // Y-1: organization packages, self-hosted runner administration and the organization event feed.
+  organization_packages: 'write', organization_self_hosted_runners: 'write', organization_events: 'read'
+});
+
+/** Y-1: permissions added after the first Apps were created. An existing App never gains them by itself (Batch Y decision Y9). */
+export const Y1_ADDED_PERMISSIONS = Object.freeze({
+  packages: 'write', merge_queues: 'write', artifact_metadata: 'write',
+  organization_packages: 'write', organization_self_hosted_runners: 'write', organization_events: 'read'
 });
 
 export const MANIFEST_PERMISSIONS = Object.freeze({ ...REPOSITORY_PERMISSIONS, ...ORGANIZATION_PERMISSIONS });

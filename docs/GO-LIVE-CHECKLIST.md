@@ -41,6 +41,7 @@ Per-account onboarding for `Robinson-AI-Systems` and `christcr2012` is still pen
 | [ ] | Production enabled for the account (IN-07): ask Claude, then re-enter your passphrase on the setup page within 10 minutes | Owner | Off | A new connection offers "production" for that account |
 | [ ] | First production action done with you watching: merge one small green PR at its exact head | Owner + Agent | Not done | The PR shows merged with a merge commit; `github_recent_changes` lists it as PRODUCTION |
 | [ ] | Spend limit raised above $0 — **only if you want Claude to add seats or paid features** (IN-09) | Setup page (Owner) | $0 | `github_whoami` shows the new limit |
+| [ ] | Approve the new GitHub App permissions (IN-15): `packages`, `merge_queues`, `artifact_metadata`, `organization_packages`, `organization_self_hosted_runners`, `organization_events` | github.com → Settings → Developer settings → GitHub Apps → the App → Permissions & events, then accept on each installation (`github_where_is_setting` "app permissions" lists the steps) | Not done; existing Apps never gain permissions by themselves | `github_check_permissions` reports `all good` for the account |
 
 ## 4. Developer tools
 

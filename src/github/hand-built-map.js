@@ -27,3 +27,6 @@ export function curatedTool(op) {
   if (!op || !op.route) return null;
   return maps.find(([pattern])=>pattern.test(op.route))?.[1]??null;
 }
+
+/** Read-only list of every tool name this map points at (registry consistency test). */
+export const handBuiltTargets=()=>Object.freeze([...new Set(maps.map(([,tool])=>tool))]);

@@ -8,10 +8,11 @@ import {makeWorld,parse,runWriteContract} from '../../test/helpers/write-contrac
 
 const query='query OwnerRepo($owner: String!, $name: String!) { repository(owner:$owner, name:$name) { nameWithOwner } }';
 const queryArgs={query,variables:{owner:'example-org',name:'hello'}};
-const doc='mutation UpdateDiscussion($input: UpdateDiscussionInput!) { updateDiscussion(input:$input) { discussion { id title } } }';
-const changes={discussionId:'D_kgDO12345',title:'New approved title'};
+// Legacy (no reviewed spec) title-change shape. updateDiscussion now has a Y-2 spec; updateProjectV2 does not.
+const doc='mutation UpdateProject($input: UpdateProjectV2Input!) { updateProjectV2(input:$input) { projectV2 { id title } } }';
+const changes={projectId:'PVT_kwDO12345',title:'New approved title'};
 const writeArgs={mutation:doc,variables:{input:changes},owner:'example-org',repo:'hello'};
-const node=(title)=>({__typename:'Discussion',id:changes.discussionId,title,repository:{nameWithOwner:'example-org/hello'}});
+const node=(title)=>({__typename:'ProjectV2',id:changes.projectId,title,owner:{login:'example-org'}});
 const reply=(body)=>({status:200,body:{data:body}});
 async function dispatch(w,name,args) {
   return createDispatch({credentials:w.credentials,fetch:w.gh.fetch,gates:w.ctx.gates,now:w.ctx.now,sleep:w.ctx.sleep})
@@ -20,7 +21,7 @@ async function dispatch(w,name,args) {
 function stubMutation(gh,outcome) {
   gh.when('POST /graphql').replySequence([
     reply({node:node('Earlier title')}),
-    reply({updateDiscussion:{discussion:{id:changes.discussionId,title:changes.title}}}),
+    reply({updateProjectV2:{projectV2:{id:changes.projectId,title:changes.title}}}),
     reply({node:node(outcome==='mismatch'?'Earlier title':changes.title)})
   ]);
 }
@@ -67,7 +68,7 @@ describe('U-2 pinned GraphQL schema, AST and cost',()=>{
     expect(()=>classifyGraphqlMutation('updateDiscussion',{input:{discussionId:'D_ID',bypassRules:true}})).toThrow(/bypass/);
     expect(()=>classifyGraphqlMutation('createCodespace',{input:{id:'R_ID'}})).toThrow(/price/);
     expect(classifyGraphqlMutation('enqueuePullRequest',{input:{id:'PR_ID'}})).toMatchObject({production:true,accessWidening:true});
-    expect(classifyGraphqlMutation('updateDiscussion',{input:changes})).toMatchObject({production:true,accessWidening:true});
+    expect(classifyGraphqlMutation('updateProjectV2',{input:changes})).toMatchObject({production:true,accessWidening:true});
   });
   it('runs a valid read through scoped pinned client and bounded result shaping',async()=>{
     const w=await makeWorld({profile:'read_only'});
@@ -86,7 +87,7 @@ describe('U-2 pinned GraphQL schema, AST and cost',()=>{
   });
   it('denies unknown node ownership and missing confirmation without a mutation',async()=>{
     const w=await makeWorld({profile:'full',mode:'production'});
-    w.gh.when('POST /graphql').reply(200,{data:{node:{...node('Prior'),repository:{nameWithOwner:'other-org/hello'}}}});
+    w.gh.when('POST /graphql').reply(200,{data:{node:{...node('Prior'),owner:{login:'other-org'}}}});
     const res=parse(await dispatch(w,'github_graphql_write',{...writeArgs,confirm:true}));
     expect(res.status).not.toBe('applied');
     expect(w.gh.calls.filter(x=>/^mutation/.test(x.body?.query??''))).toEqual([]);
@@ -214,7 +215,7 @@ describe('U-2 reviewed secret selections, typed IDs and independently confirmed 
   });
 });
 runWriteContract({
-  label:'U-2 updateDiscussion verified scoped GraphQL mutation',
+  label:'U-2 updateProjectV2 verified scoped GraphQL mutation',
   definition:{tool:g.tools[1],handler:g.handlers.github_graphql_write},
   args:writeArgs,profile:'full',production:true,needsConfirm:true,accessWidening:true,
   notifies:['example-org'],advanceClockOnSleep:true,
