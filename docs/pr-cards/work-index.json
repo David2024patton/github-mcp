@@ -1555,7 +1555,7 @@
         "Y-2"
       ],
       "card": "docs/pr-cards/Y-3.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 600,
       "units": [
@@ -1565,7 +1565,9 @@
       "ownerInputs": [
         "IN-15"
       ],
-      "pr": []
+      "pr": [
+        228
+      ]
     },
     {
       "id": "Y-4",
@@ -1576,7 +1578,7 @@
         "Y-2"
       ],
       "card": "docs/pr-cards/Y-4.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 600,
       "units": [
@@ -1584,7 +1586,9 @@
       ],
       "readiness": "READY",
       "ownerInputs": [],
-      "pr": []
+      "pr": [
+        228
+      ]
     },
     {
       "id": "Y-5",

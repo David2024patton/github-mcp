@@ -1,8 +1,16 @@
+## October 16, 2026 — Bundle 6: Y-3 other people's data, follow, star lists; Y-4 Projects v2 lifecycle (PR #228)
+
+Y-3 and Y-4 of the gap-closure Batch Y, delivered as one PR (27 new tools, 338 in total). **Y-3:** an agent can now read any public profile, a user's public repositories, followers, following and social links, and any public repository (README excerpt, contents, releases, issues, pull requests) through GET-only allowlisted routes; a private or missing repository gives the same answer. As the signed-in user (credential U) it can follow or unfollow a person (a stranger needs your confirmation because following notifies them), watch or ignore a repository, add or remove up to four https links on the profile, and create, edit, delete and fill star lists. **Y-4:** fifteen project-board tools: create (private), edit (making it public always asks first), copy, delete (exact title typed, production-class, no restore), link to a repository or team, fields (select options keep their ids unless you name the ones to remove), views (create/delete only; filters and charts stay web-only), drafts, convert to issue, archive, move, clear a field, remove an item and post status updates. Every tool reads first, proves GitHub says the project belongs to a connected account, sends one change and reads it back. Verified locally: `npm run check`, 409 new/updated unit tests plus the full suite, DB and shape suites.
+
+Not claimed: no live acceptance of any Y tool; user-owned projects and the user-credential tools need the owner's GitHub sign-in (credential U).
+
+Next: Y-5 (moderation, org issue types and fields), then Y-6 … Y-9.
+
 ## October 16, 2026 — Bundle 5: Y-1 unblock the universal tools, Y-2 spec-driven GraphQL writes (PR #227)
 
 Y-1 and Y-2 of the gap-closure Batch Y, delivered as one PR. **Y-1:** a reviewed-free route table (`src/github/spend-classes.js`, 54 routes) lets the universal REST write reach self-hosted runner and runner-group administration, OIDC customisation, deployment approvals, package delete/restore, Pages rebuilds and artifact-metadata records; everything whose cost cannot be computed stays blocked (100 writes, pinned in a test). Six App permissions were added to the manifest for Apps created later, three new permission areas (`packages`, `runners`, `merge-queue`) and an `app-permissions-review` guided setting list exactly what you must approve on github.com for the existing App (IN-15; GO-LIVE row added). New tool `github_account_set_status` (your profile status, read back field by field) and a registry test that fails if any "use this tool" pointer names a tool that does not exist. **Y-2:** `github_graphql_write` now supports 24 reviewed mutations (pin/unpin issue and comment, lock/unlock, minimize/unminimize, discussion close/reopen/update/delete and answer marks, comment edit/delete, issue delete with an admin check, draft/ready for review, linked branches, team review assignment). Each proves ownership of every id, reads the item before and after, refuses a no-op or an item that changed since the preview, never lowers the access/notification marks, and records an undo (pin → `github_undo_change` → unpinned is tested); deletes say plainly they cannot be restored. Total tools 311. Not deployed, not provider-accepted; production remains OFF.
 
-Next: Y-3 (other people's data, follow, star lists, watching, social links), then Y-4 … Y-9.
+Next: see Bundle 6 above.
 
 ## October 16, 2026 — Documentation audit and gap-closure plan (Batch Y), docs/planning only (owner-requested)
 

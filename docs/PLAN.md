@@ -154,8 +154,8 @@ next bounded implementation. Every line below maps to evidence named in its desi
 ## Batch Y — Gap closure (`designs/BATCH-Y.md`)
 - [x] Y-1 (#227): universal REST no longer blocks reviewed-free routes (`FREE_ROUTES`, pinned blocked count); permission checklist and `github_check_permissions` report missing App permissions; `github_account_set_status` exists; every curated/hand-built-map target is a real tool (test).
 - [x] Y-2 (#227): `github_graphql_write` supports at least 24 spec-driven mutations with independent read-back and undo where an opposite exists; unknown mutations still refused.
-- [ ] Y-3: public reads of other accounts, follow/unfollow, star lists, repository watching and social links work through hand-built tools; universal tools unchanged.
-- [ ] Y-4: Projects v2 create/update/copy/delete/link, fields, views, drafts, archive, move, clear and status updates; option merge never drops existing option ids.
+- [x] Y-3 (#228): public reads of other accounts, follow/unfollow, star lists, repository watching and social links work through hand-built tools; universal tools unchanged.
+- [x] Y-4 (#228): Projects v2 create/update/copy/delete/link, fields, views, drafts, archive, move, clear and status updates; option merge never drops existing option ids.
 - [ ] Y-5: pin, delete and hide comments/issues, discussion management, linked branches, org issue types and fields, interaction limits, autolinks.
 - [ ] Y-6: runners and groups (tokens only through the one-time page), Actions retention/OIDC settings with spend rules, deployment protection rules and pending-deployment reviews, Pages build request.
 - [ ] Y-7: security advisories (publish irreversible and confirmed), code-scanning default setup, secret-scanning patterns, Dependabot org settings, org code-security configurations priced and spend-guarded.
