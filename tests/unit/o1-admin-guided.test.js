@@ -66,7 +66,7 @@ describe('O-1 full guided GitHub settings inventory and verification',()=>{
       scope:'repo',owner:'example-org',repo:'hello',query:'Actions',max:20});
     expect(guides.settings.length).toBeGreaterThan(0);
     expect(guides.settings.some(x=>x.url.includes('/example-org/hello/settings'))).toBe(true);
-    expect(guides.settings.every(x=>x.status==='manual_confirmation_required')).toBe(true);
+    expect(guides.settings.every(x=>x.status===(x.verification?'can_check_with_provider':'manual_confirmation_required'))).toBe(true);
     const where=await call(w,'github_where_is_setting',{
       query:'deploy keys',org:'example-org',repo:'hello',detail:'full'});
     expect(where.settings.some(x=>x.url.endsWith('/hello/settings/keys'))).toBe(true);

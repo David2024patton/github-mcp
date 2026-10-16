@@ -95,8 +95,11 @@ export function makeFakeGitHub({ routes = [], baseUrl = 'https://api.github.com'
     };
   }
 
+  // Wiki git traffic (https://github.com/<o>/<r>.wiki.git/...) is not the REST API; a test may hand it to its own git server.
+  let wikiHandler = null;
   async function fetch(input, init = {}) {
     const url = new URL(typeof input === 'string' ? input : input.url);
+    if (wikiHandler && url.origin === 'https://github.com' && url.pathname.includes('.wiki.git/')) return wikiHandler(input, init);
     const method = String(init.method || input.method || 'GET').toUpperCase();
     const base = new URL(baseUrl);
     const rawPath = url.pathname.startsWith(base.pathname.replace(/\/$/, '') + '/')
@@ -152,5 +155,5 @@ export function makeFakeGitHub({ routes = [], baseUrl = 'https://api.github.com'
     return json(step.status, body, step.headers);
   }
 
-  return { fetch, calls, unmatched, invalid, graphql, when, routes: [...known] };
+  return { fetch, calls, unmatched, invalid, graphql, when, routes: [...known], serveWiki(handler) { wikiHandler = handler; } };
 }

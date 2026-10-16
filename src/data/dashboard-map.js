@@ -10,6 +10,48 @@ export const MAP_STATUS = 'Guided owner settings index: verify the current GitHu
 const org = (path) => `https://github.com/organizations/{org}/${path}`;
 const me = (path) => `https://github.com/settings/${path}`;
 
+
+// Y-9c: settings that GitHub offers only in the browser. Each says so (apiAvailable:false) and why, and which steps a browser agent could do.
+const webOnly = (id, scope, title, page, words, url, steps, expected, reason, browserAgent) => ({ id, scope, title, page, words, url, steps, expected, apiAvailable: false, reason, browserAgent });
+const WEB_ONLY = [
+  webOnly('user-avatar', 'user', 'Profile picture', 'Settings → Public profile', ['avatar', 'profile picture', 'photo', 'profile image'], me('profile'),
+    [{ action: 'Open the page', target: 'Public profile' }, { action: 'Press', target: 'Edit under Profile picture, then Upload a photo' }, { action: 'Crop and press', target: 'Set new profile picture' }],
+    'The new picture shows on your profile after a refresh.', 'GitHub has no API for profile pictures.', 'A browser agent can do the clicks; choosing the file needs a file picker the owner may have to complete.'),
+  webOnly('org-avatar', 'org', 'Organization picture', 'Organization settings → Profile', ['avatar', 'logo', 'organization picture', 'org image'], org('settings/profile'),
+    [{ action: 'Open the page', target: 'Organization settings → Profile' }, { action: 'Press', target: 'Upload new picture' }, { action: 'Save', target: 'Update profile' }],
+    'The organization page shows the new picture.', 'GitHub has no API for organization pictures.', 'A browser agent can do the clicks; the file picker may need the owner.'),
+  webOnly('repo-social-preview', 'repo', 'Repository social preview image', 'Repository → Settings → General', ['social preview', 'og image', 'preview image', 'link preview'], 'https://github.com/{org}/{repo}/settings',
+    [{ action: 'Open the page', target: 'Settings → General' }, { action: 'Scroll to', target: 'Social preview' }, { action: 'Press', target: 'Edit → Upload an image' }],
+    'Links to the repository show the new image (it can take a few minutes).', 'GitHub has no API for the social preview image.', 'A browser agent can reach the page; the image upload needs a file picker.'),
+  webOnly('user-pinned', 'user', 'Pinned repositories and gists on your profile', 'Your profile page', ['pinned', 'pin repositories', 'pin gists', 'profile pins'], 'https://github.com/{user}',
+    [{ action: 'Open the page', target: 'Your profile' }, { action: 'Press', target: 'Customize your pins' }, { action: 'Tick up to six items, then press', target: 'Save pins' }],
+    'The pinned items show at the top of your profile.', 'GitHub offers pinning of profile items only in the browser (its GraphQL schema has no mutation).', 'A browser agent can do every step.'),
+  webOnly('user-profile-readme', 'user', 'Show your profile README', 'Your profile page', ['profile readme', 'readme toggle', 'special repository', 'about me'], 'https://github.com/{user}',
+    [{ action: 'Create a public repository', target: 'named exactly like your username, with a README.md (this server can do that)' }, { action: 'Open', target: 'Your profile and check the README shows' }],
+    'The README appears on your profile.', 'The toggle itself is browser-only; the repository and file can be made with this server\'s repository and file tools.', 'A browser agent can check the result.'),
+  webOnly('user-contribution-visibility', 'user', 'Contribution graph and achievements visibility', 'Settings → Public profile', ['contributions', 'private contributions', 'achievements', 'activity overview', 'contribution graph'], me('profile'),
+    [{ action: 'Open the page', target: 'Public profile' }, { action: 'Tick or untick', target: 'Include private contributions on my profile; Show Achievements on my profile' }, { action: 'Press', target: 'Update profile' }],
+    'The profile shows or hides the items as chosen.', 'These profile switches have no API.', 'A browser agent can do every step.'),
+  webOnly('user-recovery-codes', 'user', 'Recovery codes and trusted devices', 'Settings → Password and authentication', ['recovery codes', 'devices', 'sessions', 'two-factor recovery', 'passkey recovery'], me('security'),
+    [{ action: 'Open the page', target: 'Password and authentication' }, { action: 'Press', target: 'View recovery codes (re-enter your password)' }, { action: 'Save them somewhere safe', target: 'Download or print' }],
+    'You hold a current copy of the codes. Never paste them into any chat or tool.', 'Recovery codes are secrets and have no API.', 'Not for an agent: the codes are secrets and must stay with the owner.'),
+  webOnly('project-v2-workflows', 'org', 'Projects v2 workflows, charts and layout', 'Project → ··· menu', ['project workflows', 'charts', 'insights', 'project layout', 'auto add', 'auto archive'], 'https://github.com/orgs/{org}/projects',
+    [{ action: 'Open the project', target: 'the project page' }, { action: 'Open the menu', target: '··· → Workflows (automations) or Insights (charts)' }, { action: 'Choose and save', target: 'the workflow, chart or layout you want' }],
+    'The workflow shows as enabled; charts appear under Insights.', 'GitHub has no API for project workflows, charts or saved layouts (views are covered by github_project_view_save).', 'A browser agent can do every step.'),
+  webOnly('discussion-categories', 'repo', 'Discussion categories and polls', 'Repository → Discussions', ['discussion categories', 'poll', 'discussions categories', 'category'], 'https://github.com/{org}/{repo}/discussions',
+    [{ action: 'Open the page', target: 'Discussions' }, { action: 'Press', target: 'the pencil next to Categories (create, edit, delete)' }, { action: 'To add a poll', target: 'New discussion → Poll category' }],
+    'Categories show in the sidebar; polls appear in the new discussion.', 'Categories and polls cannot be created through GitHub\'s API (discussions themselves can).', 'A browser agent can do every step.'),
+  webOnly('org-announcement-banner', 'org', 'Organization announcement banner', 'Organization settings → Announcements', ['announcement', 'banner', 'announcement banner', 'notice'], org('settings/announcements'),
+    [{ action: 'Open the page', target: 'Organization settings → Announcements' }, { action: 'Type the message and choose an expiry', target: 'Announcement' }, { action: 'Press', target: 'Save' }],
+    'Members see the banner on the organization pages until it expires.', 'No API exists for organization announcements.', 'A browser agent can do every step.'),
+  webOnly('user-revoke-leaked-credential', 'user', 'Revoke a leaked token or key', 'Settings → Developer settings', ['leaked token', 'revoke token', 'leaked secret', 'compromised key', 'credential leak', 'revoke credential'], me('tokens'),
+    [{ action: 'Open the page', target: 'Developer settings → Personal access tokens (or SSH and GPG keys, or Applications)' }, { action: 'Find the leaked credential and press', target: 'Delete / Revoke' }, { action: 'Then create a new one', target: 'and update wherever it is used' }],
+    'The credential no longer appears in the list; anything still using it fails.', 'GitHub\'s revoke-credentials endpoint takes the secret itself, and no secret ever passes through a tool here, so revoking is done on github.com.', 'Not for an agent: never give a secret to an agent.'),
+  webOnly('repo-tag-protection', 'repo', 'Tag protection (retired — use rulesets)', 'Repository → Settings → Rules', ['tag protection', 'protected tags', 'tags'], 'https://github.com/{org}/{repo}/settings/rules',
+    [{ action: 'Do not use the old tag protection', target: 'GitHub retired it' }, { action: 'Use a ruleset instead', target: 'github_ruleset_save with target "tag" (this server can do that)' }],
+    'A ruleset targeting tags blocks the changes you wanted to stop.', 'Tag protection rules were retired by GitHub; rulesets replace them and have an API.', 'Not needed: use the ruleset tool.')
+];
+
 export const SETTINGS = Object.freeze([
   {
     id: 'org-require-2fa', scope: 'org', title: 'Require two-factor authentication for an organization', page: 'Organization settings → Authentication security',
@@ -177,15 +219,17 @@ export const SETTINGS = Object.freeze([
     expected: 'Deleting removes everything and cannot be undone. This server will never do it.'
   },
   {
-    id: 'repo-wiki-edit', scope: 'repo', title: 'Edit a repository wiki', page: 'Repository → Wiki',
-    words: ['wiki', 'wiki page', 'documentation page', 'edit wiki', 'new wiki page'], url: 'https://github.com/{org}/{repo}/wiki',
+    id: 'repo-wiki-edit', scope: 'repo', title: 'Create the first page of a repository wiki (editing later: use the wiki tools)', page: 'Repository → Wiki',
+    words: ['wiki', 'wiki page', 'documentation page', 'edit wiki', 'new wiki page', 'first wiki page'], url: 'https://github.com/{org}/{repo}/wiki',
     steps: [
       { action: 'Open the page', target: 'Wiki tab of the repository (turn the wiki on first under Settings → Features if it is missing)' },
-      { action: 'Press the button', target: 'New Page, or Edit on an existing page' },
+      { action: 'Press the button', target: 'Create the first page' },
       { action: 'Type the title and text, then press', target: 'Save Page' }
     ],
-    expected: 'The page appears in the wiki sidebar. GitHub has no API for wiki pages, so this server cannot edit them (open owner decision IN-17).'
+    expected: 'The page appears in the wiki sidebar. GitHub only creates a wiki\'s git repository when its first page is saved in the browser; after that github_wiki_list, github_wiki_read and github_wiki_write work.',
+    apiAvailable: false, reason: 'GitHub has no API to create a wiki; the first page has to be saved in the browser.', browserAgent: 'A browser agent can do every step.'
   },
+  ...WEB_ONLY,
   ...EXTRA_GUIDES
 ]);
 

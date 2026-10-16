@@ -46,7 +46,7 @@ A-1 (repository, fake GitHub, CI, checks) merged in PR #1; A-2 (foundation schem
 
 `docs/pr-cards/work-index.json` is the machine-readable list (`python3 docs/pr-cards/validate-index.py`). **JIT** = covered
 by the approved design; write the card when its predecessor is real. Tool counts are from `docs/TOOL-CATALOG.md`
-(`python3 scripts/count-catalog.py`: 386 = 380 hand-built + 6 universal).
+(`python3 scripts/count-catalog.py`: 394 = 388 hand-built + 6 universal).
 
 | Batch | Cards | Tools | Card status |
 |---|---|---|---|
@@ -66,4 +66,4 @@ by the approved design; write the card when its predecessor is real. Tool counts
 | R Hub-ready doors (RTC 1) | R-1 passes · R-2 HTTPS API, manifest, OpenAPI, shared rate limit · R-3 conformance in CI | 1 | MERGED #225 |
 | X Close-out | X-1 undo · X-2 read-only smoke test | 1 | MERGED |
 | Y Gap closure (designed 2026-10-16) | Y-1 unblock universal tools · Y-2 GraphQL write specs · Y-3 other people's data, follow, star lists · Y-4 Projects v2 lifecycle · Y-5 moderation, org issue types/fields · Y-6 runners, Actions admin · Y-7 security writes · Y-8 artifacts, archives, uploads, jobs, wiki · Y-9 org long tail, read-backs, guides | ~80 planned | Y-1 and Y-2 merged (#227), Y-3 and Y-4 merged (#228), Y-5 and Y-6 merged (#229), Y-7 merged (#230), Y-8 merged (#231); Y-9 APPROVED, not started |
-| **Total** | 73 cards (64 merged + 9 planned) | **386** | |
+| **Total** | 73 cards (64 merged + 9 planned) | **394** | |

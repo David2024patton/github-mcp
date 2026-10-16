@@ -2,6 +2,7 @@
 // Browsing a settings page is not evidence a setting changed. Where GitHub has no
 // readable API, completion requires independent owner/browser confirmation.
 import {SETTINGS,MAP_STATUS,fill,findSettings} from '../data/dashboard-map.js';
+import {READBACKS,pointerGet} from '../data/readbacks.js';
 import {defineRead} from './define-read.js';
 import {plain,readerFor} from './github-read.js';
 
@@ -18,8 +19,9 @@ const allowed=(ctx,owner)=>{
 const guide=(s,a,owner)=>fill({
   id:s.id,setting:s.title,page:s.page,scope:s.scope,url:s.url,
   steps:s.steps.map((x,i)=>({n:i+1,...x})),expected:s.expected,
-  verification:s.verifyWith??null,
-  status:s.verifyWith?'can_check_with_provider':'manual_confirmation_required'
+  ...(s.apiAvailable===false?{apiAvailable:false,reason:s.reason,browserAgent:s.browserAgent}:{}),
+  verification:s.verifyWith??(READBACKS[s.id]?{tool:'github_admin_check_setting',args:{settingId:s.id,owner:'{org}',repo:'{repo}'},fields:Object.keys(READBACKS[s.id].fields)}:null),
+  status:s.verifyWith||READBACKS[s.id]?'can_check_with_provider':'manual_confirmation_required'
 },{org:owner,user:owner,repo:a.repo});
 export const listGuided=defineRead({
   name:'github_admin_list_guided_settings',area:'admin',audience:['O'],
@@ -40,11 +42,34 @@ export const listGuided=defineRead({
       note:'Navigation links and manual checks are not proof of a changed setting.'};
   })
 });
+const fillRoute=(route,owner,repo)=>route.replace('{org}',owner).replace('{owner}',owner).replace('{repo}',repo??'');
+async function tableReadback({gh,row,table,owner,a}){
+  const base={setting_id:row.id,owner,...(a.repo?{repo:a.repo}:{})};
+  const names=Object.keys(table.fields);
+  if(!a.field&&names.length>1)return {...base,status:'needs_field',verified:false,
+    fields:names.map(n=>({field:n,type:table.fields[n].type})),
+    reason:'This page has several values GitHub can read back. Say which one with "field", plus the value you expect.'};
+  const name=a.field??names[0],spec=table.fields[name];
+  if(!spec)throw new TypeError('Unknown field. Choose one of: '+names.join(', ')+'.');
+  const [method,path]=spec.route.split(' ');
+  const params=path.includes('{org}')?{org:owner}:{owner,repo:a.repo};
+  const response=await gh.request(method+' '+path,params);
+  let observed=pointerGet(response.data,spec.pointer);
+  const source=fillRoute(spec.route,owner,a.repo);
+  if(observed===undefined&&'absent' in spec)observed=spec.absent;
+  if(observed===undefined||observed===null)return {...base,field:name,source,status:'not_readable',verified:false,
+    reason:'GitHub did not disclose this value (it may be off, or the App may lack the permission); confirm it by hand.'};
+  const expected={boolean:a.expectedBoolean,string:a.expectedText,number:a.expectedNumber}[spec.type];
+  if(expected===undefined)return {...base,field:name,source,status:'needs_expected_value',verified:false,observed,
+    reason:'Give the expected '+spec.type+' value ('+({boolean:'expectedBoolean',string:'expectedText',number:'expectedNumber'}[spec.type])+') before concluding anything.'};
+  return {...base,field:name,source,observed,expected,status:observed===expected?'verified':'differs',verified:observed===expected};
+}
 export const checkSetting=defineRead({
   name:'github_admin_check_setting',area:'admin',audience:['O'],
   description:'Independently read one supported organization setting from GitHub; require an observed match, never a guessed pass.',
   properties:{owner:OWNER,repo:REPO,settingId:{type:'string',minLength:3,maxLength:100},
-    expectedBoolean:{type:'boolean'},expectedText:{type:'string',maxLength:120}},
+    expectedBoolean:{type:'boolean'},expectedText:{type:'string',maxLength:120},expectedNumber:{type:'number'},
+    field:{type:'string',maxLength:60,description:'Which value to read, when the setting page has several (the answer lists them)'}},
   required:['settingId'],
   handler:(a,ctx)=>plain(async()=>{
     const owner=allowed(ctx,a.owner),row=SETTINGS.find(x=>x.id===a.settingId);
@@ -53,9 +78,11 @@ export const checkSetting=defineRead({
     if(row.scope==='user')return {setting_id:a.settingId,owner,
       status:'not_readable',verified:false,
       reason:'A user-authorized credential and a current native readback are required; this setting is not proven.'};
-    if(a.expectedBoolean!==undefined&&a.expectedText!==undefined)
+    if([a.expectedBoolean,a.expectedText,a.expectedNumber].filter(v=>v!==undefined).length>1)
       throw new TypeError('Choose one expected value type.');
     const {octokit:gh}=await readerFor({owner},ctx);
+    const table=READBACKS[row.id];
+    if(table)return tableReadback({gh,row,table,owner,a});
     let observed=null,field=null,source=null;
     if(row.id==='org-require-2fa'){
       const d=(await gh.request('GET /orgs/{org}',{org:owner})).data;
