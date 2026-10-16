@@ -972,7 +972,7 @@
         "H-3"
       ],
       "card": "docs/pr-cards/H-4.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "none",
       "budget": 490,
       "units": [
@@ -981,6 +981,11 @@
       "readiness": "READY",
       "ownerInputs": [
         "IN-09"
+      ],
+      "pr": [
+        195,
+        196,
+        224
       ]
     },
     {
@@ -992,14 +997,18 @@
         "H-4"
       ],
       "card": "docs/pr-cards/O-1.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
         "O-1"
       ],
       "readiness": "READY",
-      "ownerInputs": []
+      "ownerInputs": [],
+      "pr": [
+        197,
+        224
+      ]
     },
     {
       "id": "O-2",
@@ -1416,14 +1425,17 @@
         "R-3"
       ],
       "card": "docs/pr-cards/X-1.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 400,
       "units": [
         "X-1"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "ownerInputs": []
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": [
+        224
+      ]
     },
     {
       "id": "X-2",
@@ -1434,16 +1446,19 @@
         "X-1"
       ],
       "card": "docs/pr-cards/X-2.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 250,
       "units": [
         "X-2"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [
         "IN-04",
         "IN-05"
+      ],
+      "pr": [
+        224
       ]
     }
   ],

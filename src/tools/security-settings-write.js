@@ -9,7 +9,7 @@ const OWNER={type:'string',maxLength:39},REPO={type:'string',minLength:1,maxLeng
 const t=(a,c)=>({owner:ownerOf(a,c),repo:a.repo,scope:'repo',kind:'repo-settings'});
 const p=t=>({owner:t.owner,repo:t.repo});
 const featureNames=['advanced_security','code_security','secret_scanning',
-  'secret_scanning_push_protection','dependabot_security_updates'];
+  'secret_scanning_push_protection','dependabot_security_updates','private_vulnerability_reporting'];
 const premium=new Set(['advanced_security','code_security','secret_scanning',
   'secret_scanning_push_protection']);
 const feature=(a,b)=>b.security_and_analysis?.[a.feature];
@@ -41,6 +41,9 @@ export const securitySetFeature=defineGithubWrite({
   },
   apply:({args:a,ctx,target,before:b})=>{
     safeFeature(a,b);
+    // Private vulnerability reporting has its own endpoint (PUT enables, DELETE disables); the rest are one PATCH field.
+    if(a.feature==='private_vulnerability_reporting')return octo(ctx,target.owner).then(gh=>gh.request(
+      (a.enabled?'PUT':'DELETE')+' /repos/{owner}/{repo}/private-vulnerability-reporting',p(target)));
     return octo(ctx,target.owner).then(gh=>gh.request(
       'PATCH /repos/{owner}/{repo}',{...p(target),
         security_and_analysis:{[a.feature]:{status:a.enabled?'enabled':'disabled'}}}));

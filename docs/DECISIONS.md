@@ -1,3 +1,7 @@
+## 2026-10-16 — undo is a dispatched change, not a second writer
+
+`github_undo_change` never calls GitHub. It re-dispatches the stored inverse so every guard of the target tool applies again, and refuses a change followed by a newer change to the same repository and tool family (this also blocks double undo). Reason: a stale opposite must never overwrite newer work, and a second write path would duplicate the safety checks. The read-only smoke test blocks non-read requests at its network function as defense in depth, and skips rather than invents arguments.
+
 ## 2026-10-16 — webhook-target seed and run-bound forwarders
 
 A `webhook-target` scenario allows `webhookLimit(scenario)` test hooks (default 3); a run with no single scenario allows none. Its forwarder is bound to the run and repo and is deleted by run cleanup (execute and standalone) after the repository is confirmed absent. The signing secret is revealed once and never journaled; the journal holds only host and counts. Reason: scratch runs must leave no registered receiver behind.

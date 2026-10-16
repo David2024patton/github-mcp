@@ -41,6 +41,7 @@ function arrange(gh,{ruleList=[],repoState={},security={},work='read',fork='all_
   gh.when(REPO).reply(200,repo({...repoState,
     security_and_analysis:{...repo().security_and_analysis,...security}}));
   gh.when(RULES).reply(200,ruleList);
+  gh.when('GET /repos/{owner}/{repo}/private-vulnerability-reporting').reply(200,{enabled:false});
   gh.when(BRANCH).reply(404,{message:'not found'});
   gh.when(ACT).reply(200,{enabled:true,allowed_actions:'all'});
   gh.when(WORK).reply(200,{default_workflow_permissions:work,

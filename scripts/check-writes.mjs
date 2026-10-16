@@ -49,6 +49,15 @@ export function checkWrites(tools, catalog) {
     if (!Array.isArray(tool.audience) || !tool.audience.length) failures.push(`${tool.name}: tool without an audience (B, O, Op)`);
     else if (row && !sameSet(tool.audience, row.audience.split(',').map((a) => a.trim()))) failures.push(`${tool.name}: audience is ${tool.audience.join(',')} but the catalog says ${row.audience}`);
     if (!tool.writes) {
+      if(tool.name==='github_undo_change'&&tool.passthrough===true&&tool.usesRegistry===true){
+        // X-1: the opposite is a stored defineWrite tool run through the dispatcher, so the target keeps every guard.
+        const p=tool.inputSchema?.properties;
+        if(!p?.changeId||!p?.confirm||!p?.dryRun||!p?.requestKey||tool.annotations?.readOnlyHint!==false||
+          tool.annotations?.destructiveHint!==true||!sameSet(tool.profiles??[],['everyday','full'])||
+          row?.profile!=='E'||!safety?.confirmAlways||safety?.prod!=='never')
+          failures.push(tool.name+': undo must stay a dispatched, previewed and confirmed change with its exact catalog safety.');
+        continue;
+      }
       if(tool.passthrough===true&&tool.usesRegistry===true&&
         ['github_workflow_app_readiness','github_workflow_project_setup'].includes(tool.name)){
         const delegates=tool.delegatedWrites;

@@ -48,7 +48,7 @@ Card(s): A-5, B-2, B-3, B-8, C-1, C-2, R-1, O-1, X-1. Meta-tools, connection and
 | `github_set_spend_limit` | Lower the monthly spend this server may add for an account (raising it is only possible on the setup page) | C | N | — | O | F | B-8 built #20 |
 | `github_list_protected_resources` | The repositories and installations this server refuses to change (its own repo, other Robinson servers) and at what level | — | N | — | O,B | R | B-3 built #19 |
 | `github_recent_changes` | What was changed through this server (filter by repo, tool, account, date; previews hidden unless asked) | — | N | — | O,Op | R | B-8 built #23 |
-| `github_undo_change` | Undo one change-log entry when it has a clean opposite; says plainly when it does not | C | N | I | Op | E | X-1 |
+| `github_undo_change` | Undo one change-log entry when it has a clean opposite; says plainly when it does not | C | N | I | Op | E | X-1 built #224 |
 | `github_search_tools` | Find tools by plain words (and audience); one line each with safety marks | — | N | — | B,O,Op | R | C-2 built #26 |
 | `github_describe_tool` | Full instructions and arguments for one tool | — | N | — | B,O,Op | R | C-2 built #26 |
 | `github_call` | Run any tool in the profile by name, through the same guards | as the tool | N | — | B,O,Op | R | C-2 built #26 |
@@ -386,7 +386,7 @@ Card(s): H-4.
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_security_get_settings` | Repository security features: secret scanning, push protection, Dependabot alerts/updates, code security, private vulnerability reporting | — | F | I | O,B | R | H-4 settings source implementation under CI |
-| `github_security_set_feature` | Turn a security feature on or off (paid features on private repositories raise spend) | C·Prod | F | I | O | F | H-4 settings source implementation under CI |
+| `github_security_set_feature` | Turn a security feature on or off, including private vulnerability reporting (paid features on private repositories raise spend) | C·Prod | F | I | O | F | H-4 settings source implementation under CI |
 | `github_security_list_alerts` | Dependabot, code scanning or secret scanning alerts for a repo or org (kind chosen by argument) | — | C | I | O,B,Op | R | H-4 security-triage source, CI pending |
 | `github_security_get_alert` | One alert in plain words (secret scanning: the secret itself is never returned) | — | F | I | O,B | R | H-4 security-triage source, CI pending |
 | `github_security_update_alert` | Dismiss, resolve or reopen an alert with a reason | C·Prod | C | I | O,B | E | H-4 security-triage source, CI pending |

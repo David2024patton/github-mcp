@@ -11,6 +11,8 @@ const routes={
   selected:'GET /repos/{owner}/{repo}/actions/permissions/selected-actions',
   fork:'GET /repos/{owner}/{repo}/actions/permissions/fork-pr-contributor-approval',
   retention:'GET /repos/{owner}/{repo}/actions/permissions/artifact-and-log-retention',
+  pvr:'GET /repos/{owner}/{repo}/private-vulnerability-reporting',pvrPut:'PUT /repos/{owner}/{repo}/private-vulnerability-reporting',
+  pvrDelete:'DELETE /repos/{owner}/{repo}/private-vulnerability-reporting',
   workflowPut:'PUT /repos/{owner}/{repo}/actions/permissions/workflow',
   retentionPut:'PUT /repos/{owner}/{repo}/actions/permissions/artifact-and-log-retention'
 };
@@ -26,6 +28,7 @@ function arrangeFeature(gh,result){
     {status:200,body:security()},
     {status:200,body:security(result==='ok'?'enabled':'disabled')}]);
   gh.when(routes.repoPatch).reply(200,security('enabled'));
+  gh.when(routes.pvr).reply(200,{enabled:false});
 }
 const actions={enabled:true,allowed_actions:'all',sha_pinning_required:true};
 const workflow=(p='read')=>({
@@ -64,13 +67,14 @@ async function call(w,name,args){
 describe('H-4 security feature and Actions policy safety',()=>{
   it('reads five Actions categories and feature state before modifying anything',async()=>{
     const w=await makeWorld({mode:'preview',profile:'full'});
-    arrangeWorkflow(w.gh,'ok');w.gh.when(routes.repo).reply(200,security());
+    arrangeWorkflow(w.gh,'ok');w.gh.when(routes.repo).reply(200,security());w.gh.when(routes.pvr).reply(200,{enabled:true});
     const a=await call(w,'github_actions_get_settings',{repo:'hello'});
     const s=await call(w,'github_security_get_settings',{repo:'hello'});
     expect(a.workflow.default_workflow_permissions).toBe('read');
     expect(a.retention.days).toBe(30);
     expect(a.actions.sha_pinning_required).toBe(true);
     expect(s.security_and_analysis.dependabot_security_updates).toBe('enabled');
+    expect(s.security_and_analysis.private_vulnerability_reporting).toBe('enabled');
     expect(w.gh.invalid).toEqual([]);
   });
   it('paid activation on a private repo is refused at source even if confirmation is sent',async()=>{
@@ -120,3 +124,49 @@ describe('H-4 security feature and Actions policy safety',()=>{
     expect(r.done).not.toBe(true);
   });
 });
+
+describe('H-4 private vulnerability reporting (its own GitHub endpoint)',()=>{
+  const run=(w,args)=>call(w,'github_security_set_feature',{repo:'hello',feature:'private_vulnerability_reporting',...args});
+  it('turns reporting on with PUT and verifies by reading it back, leaving every other feature alone',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    w.gh.when(routes.repo).reply(200,security());
+    w.gh.when(routes.pvr).replySequence([{status:200,body:{enabled:false}},{status:200,body:{enabled:true}}]);
+    w.gh.when(routes.pvrPut).reply(204,null);
+    const out=await run(w,{enabled:true,confirm:true});
+    expect(out).toMatchObject({status:'applied',confirmed:true,result:{feature:'private_vulnerability_reporting',enabled:true}});
+    expect(w.gh.calls.filter(c=>c.method!=='GET').map(c=>c.route)).toEqual([routes.pvrPut]);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('turns reporting off with DELETE',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    w.gh.when(routes.repo).reply(200,security());
+    w.gh.when(routes.pvr).replySequence([{status:200,body:{enabled:true}},{status:200,body:{enabled:false}}]);
+    w.gh.when(routes.pvrDelete).reply(204,null);
+    expect(await run(w,{enabled:false,confirm:true})).toMatchObject({status:'applied',confirmed:true,result:{enabled:false}});
+    expect(w.gh.calls.filter(c=>c.method!=='GET').map(c=>c.route)).toEqual([routes.pvrDelete]);
+  });
+  it('refuses to guess when the reporting status cannot be read, and sends nothing',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    w.gh.when(routes.repo).reply(200,security());
+    w.gh.when(routes.pvr).reply(404,{message:'Not Found'});
+    const out=await run(w,{enabled:true,confirm:true});
+    expect(out.done).toBe(false);
+    expect(w.gh.calls.filter(c=>c.method!=='GET')).toEqual([]);
+  });
+  it('is not a paid feature: private repositories are not refused for cost',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    w.gh.when(routes.repo).reply(200,security('disabled',true));
+    w.gh.when(routes.pvr).replySequence([{status:200,body:{enabled:false}},{status:200,body:{enabled:true}}]);
+    w.gh.when(routes.pvrPut).reply(204,null);
+    expect(await run(w,{enabled:true,confirm:true})).toMatchObject({status:'applied'});
+  });
+});
+runWriteContract({
+  label:'github_security_set_feature private vulnerability reporting',definition:pvrDefForContract(),
+  args:{repo:'hello',feature:'private_vulnerability_reporting',enabled:true},
+  production:true,needsConfirm:true,profile:'full',arrange(gh,result){
+    gh.when(routes.repo).reply(200,security());
+    gh.when(routes.pvr).replySequence([{status:200,body:{enabled:false}},{status:200,body:{enabled:result==='ok'}}]);
+    gh.when(routes.pvrPut).reply(204,null);
+  }});
+function pvrDefForContract(){return {tool:settings.securitySetFeature.tool,handler:settings.securitySetFeature.handler};}

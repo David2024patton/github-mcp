@@ -128,5 +128,5 @@ next bounded implementation. Every line below maps to evidence named in its desi
 - [ ] RTC 1 conformance green in CI once the hub's package exists (never a blocker before).
 
 ## Batch X — Undo, smoke test (`designs/BATCH-X.md`)
-- [ ] Undo for every clean opposite (audit G17 fixed); every other change says what the right opposite is.
-- [ ] Read-only smoke report on the real accounts (`docs/audits/smoke-<date>.md`), preview read-only connection, no write.
+- [x] Undo for every clean opposite (audit G17 fixed); every other change says what the right opposite is.
+- [ ] Read-only smoke report on the real accounts (`docs/audits/smoke-<date>.md`), preview read-only connection, no write. (script built in X-2; the real-account run is an owner step)

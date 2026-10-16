@@ -47,6 +47,14 @@ export async function readActionSections(gh,p){
     retention:{days:retention.days,maximum_allowed_days:retention.maximum_allowed_days??null}
   };
 }
+// Private vulnerability reporting is a separate GitHub endpoint, not part of security_and_analysis. A read that fails stays
+// unknown (null); a later write then refuses rather than guessing.
+const reportingStatus=async(gh,p)=>{
+  try{
+    const r=await get(gh,'/repos/{owner}/{repo}/private-vulnerability-reporting',root(p));
+    return typeof r?.enabled==='boolean'?(r.enabled?'enabled':'disabled'):null;
+  }catch{return null;}
+};
 export async function readRepoSecurity(gh,p){
   const r=await get(gh,'/repos/{owner}/{repo}',root(p));
   if(!r?.full_name||r.full_name.toLowerCase()!==`${p.owner}/${p.repo}`.toLowerCase())
@@ -54,7 +62,8 @@ export async function readRepoSecurity(gh,p){
   if(!r.security_and_analysis||typeof r.private!=='boolean')
     throw new TypeError('GitHub did not disclose complete security feature settings.');
   return {owner:p.owner,repo:p.repo,private:r.private,
-    security_and_analysis:securityStatus(r.security_and_analysis)};
+    security_and_analysis:{...securityStatus(r.security_and_analysis),
+      private_vulnerability_reporting:await reportingStatus(gh,p)}};
 }
 export const securitySettings=defineRead({
   name:'github_security_get_settings',area:'security',audience:['B','O'],

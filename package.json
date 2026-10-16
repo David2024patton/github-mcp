@@ -23,7 +23,8 @@
     "session:status": "node scripts/session-status.mjs",
     "check:session": "node --test scripts/session-prepare.test.mjs scripts/check-ci-layout.test.mjs scripts/ci-phase.test.mjs scripts/bundle-plan.test.mjs scripts/completion-evidence.test.mjs scripts/release-needed.test.mjs scripts/session-status.test.mjs && node scripts/session-status.mjs && node scripts/check-ci-layout.mjs",
     "session:bundle": "node scripts/bundle-plan.mjs",
-    "session:prepare": "node scripts/session-prepare.mjs"
+    "session:prepare": "node scripts/session-prepare.mjs",
+    "smoke:readonly": "node scripts/smoke-readonly.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
