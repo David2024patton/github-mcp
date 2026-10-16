@@ -29,7 +29,7 @@ describe('U-2 pinned GraphQL request shapes through actual scoped Octokit + fake
       w.gh.when('POST /graphql').reply(200,{data:{repository:{id:'R_1',nameWithOwner:owner+'/'+repo}}});
       const query='query Shape($owner:String!,$name:String!){alias:repository(owner:$owner,name:$name){'+field+'}}';
       const result=await run(w,'github_graphql_read',{query,variables:{owner,name:repo}});
-      expect(result.isError).not.toBe(true);
+      expect(result.isError,'GraphQL shape '+field+': '+JSON.stringify(result.structuredContent??result.content)).not.toBe(true);
       expect(parse(result).account).toBe(owner);
       expect(w.gh.calls.map(x=>x.route)).toEqual(['POST /graphql']);
       expect(w.gh.invalid).toEqual([]);

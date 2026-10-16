@@ -548,8 +548,8 @@ Card(s): U-1, U-2.
 | `github_api_describe` | Parameters for one operation, trimmed, from GitHub's own description at the pinned version | — | N | — | B,O,Op | R | U-1 |
 | `github_api_read` | Any GET operation, with the same summaries, `fields`, size cap and handles as every other read | — | N | I,U | B,O,Op | R | U-1 |
 | `github_api_write` | Any POST/PUT/PATCH/DELETE operation through the full safety layer | C·Prod*·A*·M* | N | I,U | B,O,Op | F | U-1 |
-| `github_graphql_read` | Any GraphQL query, validated against GitHub's published schema; cost estimated before sending | — | N | I,U | B,O,Op | R | U-2 |
-| `github_graphql_write` | Any GraphQL mutation, validated against the schema, through the full safety layer | C (always) | N | I,U | B,O,Op | F | U-2 |
+| `github_graphql_read` | Pinned-schema validated single GraphQL query, typed variables, scoped aliases/fragments/nodes and 500-point/500,000-node cap before sending | — | N | I,U | B,O,Op | R | U-2 |
+| `github_graphql_write` | Exactly one non-curated schema-valid GraphQL mutation with explicit repository/node baseline, production/access/notification guards, always-confirmed journal and independent readback | C (always) | N | I,U | B,O,Op | F | U-2 |
 
 How `github_api_write` and `github_graphql_write` stay safe (`docs/designs/BATCH-U.md`):
 

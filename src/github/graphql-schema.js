@@ -35,7 +35,8 @@ function documentFor(source,variables,kind){
   const values=getVariableValues(schema,operation.variableDefinitions??[],variables,{maxErrors:4});
   if(values.errors?.length)refuse(values.errors.map(x=>x.message).join('; '));
   const fragments=new Map(ast.definitions.filter(x=>x.kind===Kind.FRAGMENT_DEFINITION).map(x=>[x.name.value,x]));
-  return {source,variables:values.coerced??{},schema,ast,operation,fragments};
+  if(!values.variableValues?.coerced)refuse('typed variable coercion failed closed.');
+  return {source,variables:values.variableValues.coerced,schema,ast,operation,fragments};
 }
 function evaluate(value,variables){
   return valueFromASTUntyped(value,variables);
