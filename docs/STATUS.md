@@ -1,5 +1,12 @@
 ### W source batch closeout — October 15
 
+## 2026-10-15 — U-1 guarded REST candidate PR #219 (CI/review pending)
+
+Approved U-1 whole scope: pinned REST index/search/describe/read/write, schema validation, curated first, production-classified always-confirmed non-curated writes, source/synthetic test fixtures and guarded journal. Frozen plan `ffd38c79ca744d93224025f4ee4ec4267c75aa9f` follows independently inspected main `f538baeb2a656e430865369ed69a150cd56c4644`. This is a candidate, **not a pass** until exact-head gates, review and merge. U-2 remains separate and unimplemented.
+
+Independent non-engineering verification: Vercel deployment `dpl_BETtUL2QmmUXJwhNPRCiM9SjTDA7` READY at `ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904`, 64 commits behind inspected main. Custom MCP whoami PREVIEW/full, scratch org installation enrolled, production OFF, spend $0. PR #218 preserves permanent 36 pending external acceptance tasks (38 total; 2 previously passed). W real-service acceptance awaits deployment; write/cleanup fixtures and RTC require independent approval and authority. No live write, cleanup or promotion performed in this PR.
+
+
 DRIFT-PROTOCOL C: all W-1..W-7 handlers implemented; code, automated, live/service OAuth, Hub/RTC, revocation and cleanup remain distinct. Owner guidance/architecture/roadmap and IN-06 evidence are reconciled without changing authority. U-1 successor card is prepared, not implemented: pinned version/description verified (1,232 operations; all categorized; 24 notifying rather than historical 25), official version/changelog checked; client validation remains green. No API/vendor upgrade. Existing A-3/A-4 changes-since-design entries remain required by future U/R work, so no live guidance is retired. DECISIONS records the interval and count choices. This required batch closeout is folded into the substantive W-7 PR; source is byte-identical to the 5,526-pass tree.
 
 ## October 15 — additional approved W-7 engineering
@@ -390,7 +397,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
     "task": "Re-run exact classic branch protection read against an eligible private scratch repository, without modifying visibility or paying for an upgrade",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "BLOCKED \u2014 PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
+    "gates": "BLOCKED — PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Actual private protection read returned provider HTTP403 upgrade-or-public plan explanation. Next: An independently eligible private test repository on existing authorized plan. Keep private repository private; do not upgrade or widen permission; owner must supply eligible fixture if desired.",
@@ -402,7 +409,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
     "task": "Re-run scoped private-repository ruleset inventory when GitHub plan legitimately permits it",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "BLOCKED \u2014 PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
+    "gates": "BLOCKED — PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Actual private ruleset inventory returned provider HTTP403 upgrade-or-public plan explanation. Next: An independently eligible private test repository on existing authorized plan. Keep visibility and spending unchanged; owner supplies eligible fixture if desired.",
@@ -475,7 +482,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "674fea131e0eb0002f474bb8f529d0f619011286",
     "task": "Independently exercise new H-1 classic complete-object set and remove using isolated public scratch, including preserve-other-controls, readback and exact cleanup",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "Source #188 merged; requires reviewed source in READY live, explicit production-enabled test credential and independent per-operation confirmation. Current live PREVIEW/production OFF: no mutation authorized. Private H-1 403 remains BLOCKED \u2014 PROVIDER PLAN.",
+    "gates": "Source #188 merged; requires reviewed source in READY live, explicit production-enabled test credential and independent per-operation confirmation. Current live PREVIEW/production OFF: no mutation authorized. Private H-1 403 remains BLOCKED — PROVIDER PLAN.",
     "dependsOn": [
       "GITHUB-H1-PUBLIC-READ"
     ],
@@ -805,6 +812,32 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Reviewed source in READY live, legitimate account and billing reads, user authorization only where actually needed; costs unknown if unexposed, no paid capacity or seat changes.",
     "dependsOn": [],
     "lastEvidence": "2026-10-15 additional W-7 engineering: source 59e81e0ae9f27ae01ce31ff74891a4e6579f5274; focused workflow, new vulnerability-alert writer contracts, P-3 and registry checks passed (63). Synthetic fixtures only. Not in independently READY ecf190d7; no real repository/configuration, notification, purchase, activation or disposal performed."
+  },
+  {
+    "id": "GITHUB-U1-REST-READ",
+    "priority": 2,
+    "requiredRevision": "cf09aab182c7bc6d5e80196adb03f605731201a5",
+    "task": "Independently exercise the deployed custom service github_api_search/describe/read for genuine pinned REST operation identity, validated path/query, scoped response and foreign-account denial against GitHub provider readback.",
+    "procedure": "docs/pr-cards/U-1.md; docs/designs/BATCH-U.md",
+    "gates": "U-1 source present in independently verified serving READY live ancestry; genuine connected service principal with permitted scratch read scope, no production or spend activation, no mutation. Compare provider response to exact scope/method and retained pagination proof.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-15: U-1 source candidate PR #219, independent production still READY at ecf190d; no deployed U-1 connected read or provider comparison. Synthetic source CI is not live acceptance.",
+    "nextAction": "After checked daily release serves requiredRevision, verify READY and custom connection, run representative pinned safe GET/search/describe/foreign-denial and independent provider comparison; retain sanitized evidence."
+  },
+  {
+    "id": "GITHUB-U1-REST-WRITE",
+    "priority": 2,
+    "requiredRevision": "cf09aab182c7bc6d5e80196adb03f605731201a5",
+    "task": "Independently execute one authorized genuinely non-curated zero-spend scratch REST write through full production/resource/people/replay gates, confirm provider readback/uncertain-case behavior, restore fixture only under separately approved cleanup authority.",
+    "procedure": "docs/pr-cards/U-1.md; docs/designs/BATCH-U.md",
+    "gates": "Deployed eligible U-1, prerequisite genuine U-1 read, separately approved disposable scratch target and exact write/cleanup authorities, production-enabled full-profile principal only if expressly authorized, account spend $0 and no billed operation. Protected/curated targets never eligible.",
+    "dependsOn": [
+      "GITHUB-U1-REST-READ"
+    ],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-15: New implementation source from PR #219 has fake all-door write contracts only. Current custom connection PREVIEW, production disabled and spend $0; no genuine uncurated provider mutation, replay or cleanup authorized.",
+    "nextAction": "Obtain exact isolated zero-charge scratch operation, owner production/notification/fixture and cleanup authorization, then confirm preview/denial/write/readback/replay and journal through genuine custom service; never silently switch or spend."
   }
 ]
 ```
