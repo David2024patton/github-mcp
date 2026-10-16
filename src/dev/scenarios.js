@@ -17,9 +17,9 @@ const SPEC = Object.freeze({
   'protected-main': { scratch: true, objects: [['repo','scratch-repo'],['ruleset','required-ci']] },
   'webhook-target': { scratch: true, objects: [['repo','scratch-repo'],['forwarder','target'],['webhook','test-hook']] }
 });
-// Keep the executable subset separate from the plan-only webhook blueprint.
+// Every blueprint is executable; the list stays explicit so a new blueprint cannot run before its seed and cleanup exist.
 export const EXECUTABLE_SCENARIOS = Object.freeze([
-  'repo-basic','failing-ci','release-train','protected-main','stack-of-three','pr-with-threads'
+  'repo-basic','failing-ci','release-train','protected-main','stack-of-three','pr-with-threads','webhook-target'
 ]);
 export function scenarioObjectLimits(name) {
   const spec=SPEC[name];

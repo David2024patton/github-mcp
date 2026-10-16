@@ -8,9 +8,13 @@ import { planScenario, EXECUTABLE_SCENARIOS } from '../dev/scenarios.js';
 import { seedStack, readStack, verifyStack } from '../dev/stack.js';
 import { seedReviewScenario, readReviewScenario, verifyReviewScenario } from '../dev/review-scenario.js';
 import { matchesRunDescription } from '../dev/run-marker.js';
+import { forwarderUrl } from '../dev/forward-sender.js';
+import { forwarderSecret, forwarderView, registerForwarder } from '../dev/forwarders.js';
+import { resolvePublicIpv4 } from '../github/public-url.js';
 import { captureScratchOrigin, captureScratchBirthLabels, verifySeedResumeOrigin } from '../dev/scratch-origin.js';
 
 export const SEEDABLE=EXECUTABLE_SCENARIOS;
+const HOOK_EVENTS=Object.freeze(['push','pull_request']);
 const RELEASE_TAGS=Object.freeze(['v0.1.0','v0.2.0','v0.3.0']);
 const RUN={type:'string',minLength:3,maxLength:43,pattern:'^[a-z][a-z0-9-]{2,42}$'};
 const OWNER={type:'string',maxLength:39};
@@ -35,15 +39,23 @@ const same=(a,b)=>String(a??'').toLowerCase()===String(b??'').toLowerCase();
 export const seed=defineGithubWrite({
   name:'github_dev_seed',area:'dev',audience:['B'],
   description:'Seed private scratch CI, releases, rules, PR stacks and reviews.',
-  properties:{owner:OWNER,repo:REPO,runId:RUN,scenario:{type:'string',enum:[...SEEDABLE]}},
+  properties:{owner:OWNER,repo:REPO,runId:RUN,scenario:{type:'string',enum:[...SEEDABLE]},
+    url:{type:'string',minLength:12,maxLength:2048,description:'webhook-target only: public HTTPS address of the app that will receive the test webhook'}},
   required:['repo','runId','scenario'],declarations:{production:'never'},
   target:(args,ctx)=>{
     if(ctx.connection?.mode!=='preview')throw new TypeError('Developer scenarios cannot run in production mode.');
+    if((args.scenario==='webhook-target')!==(args.url!==undefined))
+      throw new TypeError('Give url for the webhook-target scenario, and only for it.');
     return {owner:ownerOf(args,ctx),repo:args.repo,scope:'repo'};
   },
   read:async(args,ctx,target)=>{
     await requireScratchOrg(ctx,target.owner); // before any outbound GitHub read
     const plan=planScenario(args.scenario,{runId:args.runId,owner:target.owner,repo:args.repo,scratch:true});
+    let host=null;
+    if(args.scenario==='webhook-target'){
+      host=forwarderUrl(args.url).hostname;
+      try{await resolvePublicIpv4(host);}catch{throw refusal('That address resolves to a private, reserved or unknown network address, so it was refused.');}
+    }
     const run=await ctx.db.getDevRun({id:args.runId,account:target.owner,connection:ctx.connection.client_id});
     if(run&&(run.scenarios?.length!==1||run.scenarios[0]!==args.scenario))
       throw new TypeError('A run is bound to its original scenario and cannot be retargeted.');
@@ -58,10 +70,10 @@ export const seed=defineGithubWrite({
         repoIntent:prior,workflowIntent:workflow
       });
     }
-    return {existing,plan};
+    return {existing,plan,host};
   },
   classify:()=>({}),
-  summarize:({args,target,before})=>`Seed ${args.scenario} in private scratch ${target.owner}/${args.repo} (${marker(args.runId)}): ${before.plan.objects.map(x=>x.type).join(', ')}. No automatic workflow dispatch, PR merge or release publication.`,
+  summarize:({args,target,before})=>`Seed ${args.scenario} in private scratch ${target.owner}/${args.repo} (${marker(args.runId)}): ${before.plan.objects.map(x=>x.type).join(', ')}.`+(before.host?` The test webhook will send ${HOOK_EVENTS.join(' and ')} events to ${before.host}, signed with a new secret shown once on the setup page.`:'')+' No automatic workflow dispatch, PR merge or release publication.',
   apply:async({args,ctx,target})=>{
     const run={runId:args.runId,account:target.owner,connection:ctx.connection.client_id,
       owner:target.owner,repo:args.repo,scenarios:[args.scenario]};
@@ -84,6 +96,27 @@ export const seed=defineGithubWrite({
     if(args.scenario==='stack-of-three'){
       const objects=await seedStack(ctx,{github,run});
       return {data:{run_id:args.runId,scenario:args.scenario,objects:[repo,...objects]}};
+    }
+    if(args.scenario==='webhook-target'){
+      const scope={account:target.owner,connection:ctx.connection.client_id};
+      let reveal=null;
+      const forwarder=await runDevMutationOnce(ctx,{...run,stepId:'seed-forwarder',type:'forwarder',objectName:'target',
+        create:async()=>{
+          const made=await registerForwarder(ctx,{...scope,url:args.url,events:[...HOOK_EVENTS],runId:args.runId,repo:args.repo});
+          reveal=made.reveal;
+          return {objectId:made.id};
+        }});
+      const row=await ctx.db.getDevForwarder({id:forwarder.objectId,...scope});
+      if(!row||row.run_id!==args.runId||!same(row.repo,args.repo))
+        throw refusal('The recorded forwarder is missing or belongs to another run; reconcile before continuing.');
+      const hook=await runDevMutationOnce(ctx,{...run,stepId:'seed-test-hook',type:'webhook',objectName:'test-hook',
+        create:async()=>{
+          const result=(await github.request('POST /repos/{owner}/{repo}/hooks',{owner:target.owner,repo:args.repo,name:'web',active:true,
+            events:[...HOOK_EVENTS],config:{url:row.url,content_type:'json',secret:forwarderSecret(ctx,row),insecure_ssl:'0'}})).data;
+          if(!Number.isSafeInteger(result?.id)||result.id<1)throw refusal('GitHub accepted the webhook but returned no exact ID; check the repository before retrying.');
+          return {objectId:String(result.id)};
+        }});
+      return {data:{run_id:args.runId,scenario:args.scenario,objects:[repo,forwarder,hook],reveal}};
     }
     if(args.scenario==='protected-main'){
       const name=topic(args.runId);
@@ -171,6 +204,17 @@ export const seed=defineGithubWrite({
       owner:target.owner,repo:args.repo,response});
     if(args.scenario==='stack-of-three')return readStack({github,id:args.runId,
       owner:target.owner,repo:args.repo,response});
+    if(args.scenario==='webhook-target'){
+      const row=await ctx.db.getDevForwarder({id:response.data.objects[1].objectId,account:target.owner,connection:ctx.connection.client_id});
+      const [repository,hook]=await Promise.all([
+        repoGet(ctx,target.owner,args.repo),
+        github.request('GET /repos/{owner}/{repo}/hooks/{hook_id}',{...base,hook_id:Number(response.data.objects[2].objectId)}).then(x=>x.data)
+      ]);
+      let host=null;
+      try{host=forwarderUrl(hook?.config?.url).hostname;}catch{/* unsafe or unreadable: fails verification */}
+      return {repository,forwarder:row?forwarderView(row):null,
+        hook:{id:hook?.id,active:hook?.active===true,events:hook?.events??[],host,secure_tls:String(hook?.config?.insecure_ssl??'0')!=='1'}};
+    }
     if(args.scenario==='protected-main'){
       const [repository,ruleset]=await Promise.all([
         repoGet(ctx,target.owner,args.repo),
@@ -209,6 +253,11 @@ export const seed=defineGithubWrite({
       if(!verifyReviewScenario({id:args.runId,after,response}))return false;
     }else if(args.scenario==='stack-of-three'){
       if(!verifyStack({id:args.runId,after,response}))return false;
+    }else if(args.scenario==='webhook-target'){
+      const f=after.forwarder,h=after.hook;
+      if(response.data.objects.length!==3||!f||f.id!==response.data.objects[1].objectId||f.run_id!==args.runId||!same(f.repo,args.repo)||
+        !h||String(h.id)!==response.data.objects[2].objectId||h.active!==true||h.secure_tls!==true||h.host!==f.host||
+        h.events.length!==HOOK_EVENTS.length||!HOOK_EVENTS.every(e=>h.events.includes(e)))return false;
     }else if(args.scenario==='protected-main'){
       const rule=after.ruleset;
       const required=rule?.rules?.find(x=>x.type==='required_status_checks');
@@ -235,13 +284,14 @@ export const seed=defineGithubWrite({
     if(args.scenario==='repo-basic'&&after.extra?.name!==topic(args.runId))return false;
     if(args.scenario==='failing-ci'&&(after.extra?.ref!==`refs/heads/${branchName(args.runId)}`||
       after.extra?.object?.sha!==response.data.objects[2].createdSha))return false;
-    if(response.data.objects.length!==(args.scenario==='pr-with-threads'?13:args.scenario==='stack-of-three'?14:args.scenario==='protected-main'?2:args.scenario==='release-train'?5:3))return false;
+    if(response.data.objects.length!==(args.scenario==='pr-with-threads'?13:args.scenario==='stack-of-three'?14:args.scenario==='protected-main'?2:args.scenario==='release-train'?5:args.scenario==='webhook-target'?3:3))return false;
     const stored=await ctx.db.listDevObjects({runId:args.runId,account:target.owner,
       connection:ctx.connection.client_id,limit:50});
     return response.data.objects.every(o=>stored.some(r=>r.object_id===o.objectId&&r.owner===target.owner&&r.repo===args.repo));
   },
   inverse:()=>null,
   present:({args,response})=>({run_id:args.runId,scenario:args.scenario,created:response.data.objects,
+    ...(response.data.reveal?{signing_secret_reveal:response.data.reveal,secret_expires_in_minutes:10}:{}),
     manual_dispatch_only:['repo-basic','failing-ci'].includes(args.scenario),
     note:args.scenario==='release-train'
       ? 'Draft release and tags only; nothing was published, dispatched, or live-tested without IN-06.'
@@ -249,6 +299,8 @@ export const seed=defineGithubWrite({
         ? 'Three actual run-owned review threads, one outdated after a separate recorded commit; draft only.'
       : args.scenario==='stack-of-three'
         ? 'Three linked run-owned draft PRs; no merge or workflow dispatch occurred.'
+      : args.scenario==='webhook-target'
+        ? 'Private scratch repository, a forwarder bound to this run and a test webhook signed with its secret. Open signing_secret_reveal once to copy the secret into your app; nothing was sent to your app yet.'
       : args.scenario==='protected-main'
         ? 'Scratch-only active required-ci ruleset; no production branch or non-scratch repository was changed.'
         : 'Workflow files are real, but no Actions run was dispatched; IN-06 is required for live scratch usage.'})

@@ -358,12 +358,12 @@ Card(s): H-2.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_webhook_list` | Repository or organization webhooks (URL host, events, active; secrets never shown) | — | C | I | B,O | R | H-2 built #189 |
 | `github_webhook_get` | One webhook's configuration and recent delivery health | — | C | I | B,O | R | H-2 built #189 |
-| `github_webhook_save` | Create or update a webhook; a new signing secret is generated and shown once on the setup page | C·Prod | F | I | B,O | F | H-2 implementation, source gates pending |
+| `github_webhook_save` | Create or update a webhook; a new signing secret is generated and shown once on the setup page | C·Prod | F | I | B,O | F | H-2 built #193 |
 | `github_webhook_delete` | Delete a webhook | C·D·Prod | C | I | O | F | H-2 built #190 |
 | `github_webhook_list_deliveries` | Recent deliveries (status, event, duration), or one delivery's request/response (payload capped) | — | N | I | B,Op | R | H-2 built #189 |
 | `github_webhook_redeliver` | Redeliver one past delivery | C·Prod* | N | I | B,Op | E | H-2 built #190 |
 | `github_webhook_ping` | Send a confirmed ping to a public HTTPS webhook, with delivery readback | C·Prod* | C | I | B | E | H-2 built #190 |
-| `github_webhook_rotate_secret` | Replace a webhook's signing secret (new one shown once on the setup page) | C·Prod | N | I | O | F | H-2 implementation, source gates pending |
+| `github_webhook_rotate_secret` | Replace a webhook's signing secret (new one shown once on the setup page) | C·Prod | N | I | O | F | H-2 built #193 |
 
 ## Collaborators and deploy keys (`github_collab_*, github_deploykey_*`) — 7
 
@@ -371,13 +371,13 @@ Card(s): H-3.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_collab_list` | Collaborators with permission and how they got it, plus pending invitations | — | C | I | O,Op | R | H-3 source implementation pending CI/merge |
-| `github_collab_add` | Invite a collaborator or change their permission | C·A·M·Prod | F | I | O | F | H-3 source implementation pending CI/merge |
-| `github_collab_remove` | Remove a collaborator | C·Prod | C | I | O | F | H-3 source implementation pending CI/merge |
-| `github_collab_manage_invitation` | Change or cancel a pending repository invitation | C·A·Prod | C | I | O | F | H-3 source implementation pending CI/merge |
-| `github_deploykey_list` | Deploy keys with read-only/write flag and last use | — | C | I | O | R | H-3 source implementation pending CI/merge |
-| `github_deploykey_add` | Add a deploy key (public key only; write access is access-widening and production) | C·A·Prod* | F | I | O | F | H-3 source implementation pending CI/merge |
-| `github_deploykey_delete` | Remove a deploy key | C·Prod | C | I | O | F | H-3 source implementation pending CI/merge |
+| `github_collab_list` | Collaborators with permission and how they got it, plus pending invitations | — | C | I | O,Op | R | H-3 built #194 |
+| `github_collab_add` | Invite a collaborator or change their permission | C·A·M·Prod | F | I | O | F | H-3 built #194 |
+| `github_collab_remove` | Remove a collaborator | C·Prod | C | I | O | F | H-3 built #194 |
+| `github_collab_manage_invitation` | Change or cancel a pending repository invitation | C·A·Prod | C | I | O | F | H-3 built #194 |
+| `github_deploykey_list` | Deploy keys with read-only/write flag and last use | — | C | I | O | R | H-3 built #194 |
+| `github_deploykey_add` | Add a deploy key (public key only; write access is access-widening and production) | C·A·Prod* | F | I | O | F | H-3 built #194 |
+| `github_deploykey_delete` | Remove a deploy key | C·Prod | C | I | O | F | H-3 built #194 |
 
 ## Security features and alerts; Actions settings (`github_security_*, github_actions_*settings`) — 9
 

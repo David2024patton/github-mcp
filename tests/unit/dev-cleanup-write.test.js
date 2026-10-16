@@ -262,6 +262,24 @@ describe('V-2 protected run deletion',()=>{
       expect(w.gh.invalid).toEqual([]);
     }
   });
+  it('removes the recorded forwarder and every forwarder bound to the run, and never another run or connection', async () => {
+    const w = await makeWorld({ scratchAccount: true });
+    await prepare(w, 'webhook-target'); arrange(w.gh, 'ok');
+    const f = (n, extra = {}) => ({ account: OWNER, connection: 'client-1', id: `fwd_${String(n).padStart(16, 'd')}`, url: 'https://app.example.net/hook', events: [], secretEnc: 'v1.' + 'z'.repeat(40), ...extra });
+    await w.db.createDevForwarder(f(1, { runId: RUN, repo: REPO }));
+    await w.db.createDevForwarder(f(2, { runId: RUN }));
+    await w.db.createDevForwarder(f(3, { runId: 'run-other-999' }));
+    await w.db.createDevForwarder(f(4));
+    await w.db.createDevForwarder(f(5, { runId: RUN, connection: 'client-two' }));
+    await w.db.recordDevObject({ runId: RUN, account: OWNER, connection: 'client-1', type: 'forwarder', owner: OWNER, repo: REPO, objectId: f(1).id });
+    await w.db.recordDevObject({ runId: RUN, account: OWNER, connection: 'client-1', type: 'webhook', owner: OWNER, repo: REPO, objectId: '72' });
+    w.gh.when('GET /repos/{owner}/{repo}/hooks').reply(200, [{ id: 72, name: 'web', type: 'Repository' }]);
+    const out = parse(await def.handler({ runId: RUN, repo: REPO, confirm: true }, w.ctx));
+    expect(out).toMatchObject({ status: 'applied', done: true, result: { cleanup: { verified: true, forwarders_removed: 2 } } });
+    expect((await w.db.listDevForwarders({ account: OWNER, connection: 'client-1' })).map((x) => x.id)).toEqual([f(3).id, f(4).id]);
+    expect(await w.db.getDevForwarder({ account: OWNER, connection: 'client-two', id: f(5).id })).not.toBeNull();
+    expect(w.gh.invalid).toEqual([]);
+  });
   it('requires unchanged recorded required-ci scratch ruleset and refuses drift',async()=>{
     for(const altered of [false,true]){
       const w=await makeWorld({scratchAccount:true});await prepare(w,'protected-main');arrange(w.gh,'ok');

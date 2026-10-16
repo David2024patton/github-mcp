@@ -69,6 +69,15 @@ describe('V-2 cleanup of V-3 objects in a host repository', () => {
     expect((await run(moved)).done).toBe(false);
     expect(moved.gh.calls.filter((c) => c.method === 'DELETE')).toEqual([]);
   });
+  it('also removes the forwarders created for the run, and only those', async () => {
+    const w = await world();
+    const f = (n, extra = {}) => ({ account: OWNER, connection: 'client-1', id: `fwd_${String(n).padStart(16, 'e')}`, url: 'https://app.example.net/hook', events: [], secretEnc: 'v1.' + 'q'.repeat(40), ...extra });
+    await w.db.createDevForwarder(f(1, { runId: RUN }));
+    await w.db.createDevForwarder(f(2));
+    const out = await run(w);
+    expect(out.result.cleanup).toMatchObject({ verified: true, forwarders_removed: 1 });
+    expect((await w.db.listDevForwarders({ account: OWNER, connection: 'client-1' })).map((x) => x.id)).toEqual([f(2).id]);
+  });
   it('refuses a fixture file whose branch was never recorded', async () => {
     const w = await makeWorld();
     await w.db.createDevRun({ id: RUN, account: OWNER, connection: 'client-1' });

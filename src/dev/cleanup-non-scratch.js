@@ -279,8 +279,12 @@ export async function cleanupTestResources(ctx,{owner,repo,runId,before}) {
       throw refusal('Label cleanup was not journaled.');
     processed++;
   }
+  // Forwarders created for this run are removed last, and only by run ID within this account and connection.
+  const forwardersRemoved=await db.deleteDevRunForwarders({runId,account,connection});
+  if((await db.listDevForwarders({account,connection,limit:50})).some(x=>x.run_id===runId))
+    throw refusal('A forwarder bound to this run is still present; inspect before retry.');
   if(!(await db.completeDevCleanup({runId,account,connection})))
     throw refusal('Not all exact run objects were cleaned; inspect before retry.');
-  return {verified:true,deleted_repository:false,objects_cleaned:processed,run_id:runId,
+  return {verified:true,deleted_repository:false,objects_cleaned:processed,forwarders_removed:forwardersRemoved,run_id:runId,
     ...(retained.length?{retained_by_github:retained,note:'GitHub offers no way to delete check runs; they were closed out and remain attached to the run-owned commit.'}:{})};
 }

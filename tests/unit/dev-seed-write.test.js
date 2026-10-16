@@ -78,7 +78,7 @@ describe('V-1 real multi-step GitHub scenario safeguards',()=>{
     const prod=await makeWorld({scratchAccount:true,mode:'production'});
     expect(parse(await def.handler({repo:REPO,runId:ID,scenario:'repo-basic',confirm:true},prod.ctx)).done).toBe(false);
     expect(prod.gh.calls).toEqual([]);
-    expect(seeded.SEEDABLE).toEqual(['repo-basic','failing-ci','release-train','protected-main','stack-of-three','pr-with-threads']);
+    expect(seeded.SEEDABLE).toEqual(['repo-basic','failing-ci','release-train','protected-main','stack-of-three','pr-with-threads','webhook-target']);
   });
   it('never blindly repeats a failed downstream GitHub write after repo creation',async()=>{
     const w=await makeWorld({scratchAccount:true});arrange('repo-basic')(w.gh,'ok');
