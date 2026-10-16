@@ -115,6 +115,9 @@ export function estimateGraphql(entry){
   visitSelection(operation.selectionSet,rootType,1,0,new Set());
   return {points,nodes,connections};
 }
+export function graphqlRootSelections(entry){
+  return collectSelections(entry.operation.selectionSet,entry.fragments);
+}
 export function graphqlSelectionFields(entry){
-  return collectSelections(entry.operation.selectionSet,entry.fragments).map(x=>({name:x.name.value,alias:x.alias?.value??null}));
+  return graphqlRootSelections(entry).map(x=>({name:x.name.value,alias:x.alias?.value??null}));
 }

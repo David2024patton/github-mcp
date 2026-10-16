@@ -2,7 +2,6 @@
 // that it is permitted, belongs to the account, is free, or is reversible.
 const curated=new Map(Object.entries({
   mergePullRequest:'github_pr_merge',
-  enqueuePullRequest:'github_workflow_merge_when_green',
   createPullRequest:'github_pr_create',
   updatePullRequest:'github_pr_update',
   closePullRequest:'github_pr_close',

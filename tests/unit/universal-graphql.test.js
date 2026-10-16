@@ -64,7 +64,7 @@ describe('U-2 pinned GraphQL schema, AST and cost',()=>{
     expect(()=>classifyGraphqlMutation('updateDiscussion',{input:{discussionId:'D_ID',payload:{access_token:'notallowed'}}})).toThrow(/Secrets/);
     expect(()=>classifyGraphqlMutation('updateDiscussion',{input:{discussionId:'D_ID',bypassRules:true}})).toThrow(/bypass/);
     expect(()=>classifyGraphqlMutation('createCodespace',{input:{id:'R_ID'}})).toThrow(/price/);
-    expect(()=>classifyGraphqlMutation('enqueuePullRequest',{input:{id:'PR_ID'}})).toThrow(/specialist|merge_when_green/);
+    expect(classifyGraphqlMutation('enqueuePullRequest',{input:{id:'PR_ID'}})).toMatchObject({production:true,accessWidening:true});
     expect(classifyGraphqlMutation('updateDiscussion',{input:changes})).toMatchObject({production:true,accessWidening:true});
   });
   it('runs a valid read through scoped pinned client and bounded result shaping',async()=>{
