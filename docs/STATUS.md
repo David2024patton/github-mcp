@@ -842,6 +842,32 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "status": "PENDING",
     "lastEvidence": "2026-10-15: New implementation source from PR #219 has fake all-door write contracts only. Current custom connection PREVIEW, production disabled and spend $0; no genuine uncurated provider mutation, replay or cleanup authorized.",
     "nextAction": "Obtain exact isolated zero-charge scratch operation, owner production/notification/fixture and cleanup authorization, then confirm preview/denial/write/readback/replay and journal through genuine custom service; never silently switch or spend."
+  },
+  {
+    "id": "GITHUB-U2-GRAPHQL-READ",
+    "priority": 2,
+    "requiredRevision": "02df1aab0edcd8b6eee483dff39532a3ecb883c4",
+    "task": "Independently exercise the deployed custom service github_graphql_read against pinned schema with genuine scoped provider query, typed variables, fragment/alias and foreign-scope denial and bounded point/node results.",
+    "procedure": "docs/pr-cards/U-2.md; docs/designs/BATCH-U.md",
+    "gates": "Merged U-2 source in independently verified READY serving deployment, genuine service-issued OAuth and owner-authorized read-only scratch scope. No real mutation, account widening, production or spend activation.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-16: U-2 implementation branch fake schema/shape fixture evidence only. Independent READY live ecf190d7 predates U-2. No live GraphQL custom-service read evidence.",
+    "nextAction": "After checked deployment serving U-2, verify origin and source revision, run constrained GraphQL query and denied mutation-as-read, compare provider-scope/identity and retain sanitized evidence."
+  },
+  {
+    "id": "GITHUB-U2-GRAPHQL-WRITE",
+    "priority": 2,
+    "requiredRevision": "02df1aab0edcd8b6eee483dff39532a3ecb883c4",
+    "task": "Independently exercise genuine approved scoped single non-curated zero-spend GraphQL mutation through full preview, guard, confirmation, durable replay and independent node readback; dispose fixture only under separate owner approval.",
+    "procedure": "docs/pr-cards/U-2.md; docs/designs/BATCH-U.md",
+    "gates": "Depends on U-2 genuine read and eligible READY source. Requires independently exact disposable node/repo ownership, owner-selected zero-charge mutation, separate production/access/notification approval as applicable, isolated saved principal and cleanup authority. Current PREVIEW production OFF remains untouched.",
+    "dependsOn": [
+      "GITHUB-U2-GRAPHQL-READ"
+    ],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-16: Source tests on fake GitHub only; no owner-authorized genuine GraphQL mutation or fixture cleanup. Production remains off.",
+    "nextAction": "After U-2 deployed read proof, obtain exact mutation/target approval and appropriate protected production and cleanup permissions; perform preview/deny/confirmed write/readback/replay; never silently activate/spend."
   }
 ]
 ```

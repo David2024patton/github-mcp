@@ -86,30 +86,48 @@ export function estimateGraphql(entry){
     if(!Number.isSafeInteger(n)||n<0||n>1e9)refuse('unbounded '+why+'.');
     return n;
   };
+  // Follow each fragment with its schema type condition, not the interface's
+  // fields. This includes aliases and inline fragments nested in connections.
   function visitSelection(set,type,parentCount,depth,trail){
     if(depth>MAX_DEPTH)refuse('selection nesting exceeds '+MAX_DEPTH+'.');
-    for(const field of collectSelections(set,fragments,trail)){
+    for(const item of set?.selections??[]){
+      if(item.kind===Kind.FRAGMENT_SPREAD){
+        const name=item.name.value,fragment=fragments.get(name);
+        if(!fragment||trail.has(name))refuse('unknown or recursive fragment '+name);
+        const next=new Set(trail);next.add(name);
+        visitSelection(fragment.selectionSet,schema.getType(fragment.typeCondition.name.value),parentCount,depth+1,next);
+        continue;
+      }
+      if(item.kind===Kind.INLINE_FRAGMENT){
+        const branch=item.typeCondition?schema.getType(item.typeCondition.name.value):type;
+        visitSelection(item.selectionSet,branch,parentCount,depth+1,trail);
+        continue;
+      }
+      if(item.kind!==Kind.FIELD)refuse('unexpected GraphQL selection.');
       if(++fieldsVisited>1500)refuse('too many expanded fields.');
-      if(field.name.value==='__typename')continue;
-      const def=type?.getFields?.()?.[field.name.value];
-      if(!def)refuse('field unavailable in pinned schema: '+field.name.value);
+      if(item.name.value==='__typename')continue;
+      const def=type?.getFields?.()?.[item.name.value];
+      if(!def)refuse('field unavailable in pinned schema: '+item.name.value);
       const named=getNamedType(def.type);
       const conn=/Connection$/.test(named.name);
       let t=def.type;while(isNonNullType(t))t=t.ofType;
       const list=isListType(t);
-      const args=Object.fromEntries(field.arguments?.map(a=>[a.name.value,evaluate(a.value,variables)])??[]);
+      const args=Object.fromEntries(item.arguments?.map(a=>[a.name.value,evaluate(a.value,variables)])??[]);
       let multiplier=parentCount;
       if(conn||list){
         const first=args.first,last=args.last;
-        if(conn && ((first===undefined)===(last===undefined)))refuse('connections require exactly one first or last page bound.');
+        if(conn && ((first===undefined)===(last===undefined)))
+          refuse('connections require exactly one first or last page bound.');
         const page=conn?(first??last):100;
-        if(!Number.isInteger(page)||page<1||page>100)refuse('page size must be from 1 to 100.');
+        if(!Number.isInteger(page)||page<1||page>100)
+          refuse('page size must be from 1 to 100.');
         multiplier=safe(parentCount*page,'nested list');
         if(conn){connections++;points=safe(points+Math.ceil(multiplier/100),'query points');}
       }
       nodes=safe(nodes+multiplier,'response nodes');
-      if(nodes>500000||points>500)refuse('query exceeds 500 points or 500,000 nodes; use smaller pages.');
-      if(field.selectionSet)visitSelection(field.selectionSet,named,multiplier,depth+1,trail);
+      if(nodes>500000||points>500)
+        refuse('query exceeds 500 points or 500,000 nodes; use smaller pages.');
+      if(item.selectionSet)visitSelection(item.selectionSet,named,multiplier,depth+1,trail);
     }
   }
   visitSelection(operation.selectionSet,rootType,1,0,new Set());
