@@ -4,7 +4,7 @@ export function validateCleanupExecutor(id) {
   if(typeof id!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(id))
     throw new TypeError('A server-generated cleanup executor UUID is required.');
 }
-const TYPES = new Set(['repo','branch','pr','issue','label','webhook','check_run','tag','release','workflow_file','fixture_file','forwarder','ruleset','review_thread','review_comment','fixture_revision','pr_label']);
+const TYPES = new Set(['repo','branch','pr','issue','label','webhook','check_run','tag','release','workflow_file','fixture_file','forwarder','ruleset','review_thread','review_comment','fixture_revision','pr_label','workflow_run']);
 export function validateRun({ id, account, connection }) {
   if (!RUN_ID.test(id ?? '')) throw new TypeError('Run ID must contain 3–43 lowercase letters, digits or hyphens and start with a letter.');
   if (typeof account !== 'string' || !account.trim()) throw new TypeError('Account is required.');

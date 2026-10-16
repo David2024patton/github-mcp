@@ -1,6 +1,6 @@
 // V-2 recorded cleanup evidence. A journal is not live GitHub readback.
 const TYPES=new Set(['repo','branch','pr','issue','label','pr_label','tag','release','ruleset',
-  'webhook','forwarder','check_run','workflow_file','fixture_file','fixture_revision',
+  'webhook','forwarder','workflow_run','check_run','workflow_file','fixture_file','fixture_revision',
   'review_comment','review_thread']);
 export function summarizeDevCleanup({run,objects,intents,limit=50,moreMayExist=false}){
   if(!run?.id||!run.account||!run.connection||!Array.isArray(objects)||

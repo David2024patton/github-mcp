@@ -14,7 +14,10 @@ const getPr=(gh,owner,repo,n)=>missing(async()=>(await gh.request('GET /repos/{o
 const prIdentity=p=>JSON.stringify([p.id,p.number,p.body,p.draft,p.head?.ref,p.head?.sha,
   p.head?.repo?.full_name,p.base?.ref,p.base?.repo?.full_name]);
 const issueIdentity=i=>JSON.stringify([i.id,i.number,i.body,i.title,i.pull_request??null]);
-const branchIsSafe=async(ctx,gh,run,owner,repo,o,initial)=>{
+// A test branch may carry exactly one run-written fixture commit (rtc/<run>/<name>.md); that commit is then its expected head.
+const expectedHead=(objects,branch)=>objects.find(f=>f.object_type==='fixture_file'&&
+  f.object_id===`${branch.object_id}.md`&&/^[a-f0-9]{40}$/.test(f.created_sha??''))?.created_sha??branch.created_sha;
+const branchIsSafe=async(ctx,gh,run,owner,repo,o,initial,objects=[])=>{
   const b=await getBranch(gh,owner,repo,o.object_id);
   if(!b) {
     if(initial)throw refusal('Unrecorded external branch disappearance requires manual reconciliation.');
@@ -22,7 +25,7 @@ const branchIsSafe=async(ctx,gh,run,owner,repo,o,initial)=>{
   }
   const foundSha=b.commit?.sha;
   if(b.name!==o.object_id||b.protected!==false||!ownRef(run.id,b.name)||
-    (!/^[a-f0-9]{40}$/.test(o.created_sha??'')||foundSha!==o.created_sha))
+    (!/^[a-f0-9]{40}$/.test(o.created_sha??'')||foundSha!==expectedHead(objects,o)))
     throw refusal('Recorded branch is protected, renamed or changed; cleanup refused.');
   const reason=await productionReason(ctx,{owner,repo,ref:b.name,scope:'repo'});
   if(reason)throw refusal(`The test branch is production-controlled (${reason}); cleanup refused.`);
@@ -44,7 +47,7 @@ const prIsSafe=async(gh,run,owner,repo,objects,o,initial)=>{
     !eq(p.base?.repo?.full_name,`${owner}/${repo}`)||
     typeof p.base?.ref!=='string'||!p.base.ref||p.base.ref===p.head.ref||
     !head||!/^[a-f0-9]{40}$/.test(head.created_sha??'')||
-    p.head?.sha!==head.created_sha)
+    p.head?.sha!==expectedHead(objects,head))
     throw refusal('PR does not match its recorded run-owned draft branch; cleanup refused.');
   return p;
 };
@@ -107,18 +110,52 @@ async function inspectPrLabel(gh,run,owner,repo,objects,o,initial) {
   if(label&&label.name!==name)throw refusal('PR label association does not match the journal.');
   return {number,name,label};
 }
+const getWorkflowRun=(gh,owner,repo,id)=>missing(async()=>(await gh.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}',{owner,repo,run_id:id})).data);
+const getCheckRun=(gh,owner,repo,id)=>missing(async()=>(await gh.request('GET /repos/{owner}/{repo}/check-runs/{check_run_id}',{owner,repo,check_run_id:id})).data);
+const exactId=o=>{const n=Number(o.object_id);if(!Number.isSafeInteger(n)||n<1||String(n)!==o.object_id)throw refusal('Invalid recorded run or check ID.');return n;};
+async function inspectWorkflowRun(gh,run,owner,repo,objects,o,initial) {
+  const id=exactId(o),found=await getWorkflowRun(gh,owner,repo,id);
+  if(!found) {
+    if(initial)throw refusal('The recorded workflow run is missing; reconcile its exact identity.');
+    return null;
+  }
+  const branch=objects.find(b=>b.object_type==='branch'&&b.object_id===found.head_branch);
+  if(found.id!==id||found.event!=='workflow_dispatch'||!branch||!ownRef(run.id,found.head_branch)||
+    found.head_sha!==o.created_sha||!eq(found.repository?.full_name,`${owner}/${repo}`))
+    throw refusal('Workflow run does not match the run-owned dispatch recorded in the journal; cleanup refused.');
+  return found;
+}
+async function inspectCheckRun(gh,run,owner,repo,o,initial) {
+  const id=exactId(o),found=await getCheckRun(gh,owner,repo,id);
+  if(!found) {
+    if(initial)throw refusal('The recorded check run is missing; reconcile its exact identity.');
+    return null;
+  }
+  if(found.id!==id||found.head_sha!==o.created_sha||found.external_id!==marker(run.id))
+    throw refusal('Check run does not match the run-owned simulation recorded in the journal; cleanup refused.');
+  return found;
+}
+function fixtureBranch(objects,o) {
+  const branch=o.object_id.endsWith('.md')?o.object_id.slice(0,-3):'';
+  if(!objects.some(b=>b.object_type==='branch'&&b.object_id===branch))
+    throw refusal('Fixture file has no recorded run-owned branch.');
+  return branch;
+}
 // Preflight checks every action before beginning any mutation. A rerun still checks its uncleaned objects.
 export async function inspectTestResources(ctx,{run,owner,repo,objects}) {
-  if(objects.length===0||objects.some(o=>o.repo!==repo||!['pr','branch','label','pr_label','issue'].includes(o.object_type)))
-    throw refusal('Standalone cleanup accepts recorded issues, PRs, test branches and owned labels in one existing repository.');
+  if(objects.length===0||objects.some(o=>o.repo!==repo||!['pr','branch','label','pr_label','issue','fixture_file','workflow_run','check_run'].includes(o.object_type)))
+    throw refusal('Standalone cleanup accepts recorded issues, PRs, test branches, fixture files, workflow and check runs and owned labels in one existing repository.');
   if(!objects.some(o=>o.object_type==='branch'))
     throw refusal('Standalone cleanup requires an exact recorded run-owned branch.');
   const gh=await octo(ctx,owner),initial=run.status==='active';
   for(const o of objects.filter(x=>!x.cleaned)) {
     if(o.object_type==='branch') {
       if(!ownRef(run.id,o.object_id))throw refusal('Foreign ref cannot be cleaned as a developer-run branch.');
-      await branchIsSafe(ctx,gh,run,owner,repo,o,initial);
-    } else if(o.object_type==='pr') await prIsSafe(gh,run,owner,repo,objects,o,initial);
+      await branchIsSafe(ctx,gh,run,owner,repo,o,initial,objects);
+    } else if(o.object_type==='fixture_file')fixtureBranch(objects,o);
+    else if(o.object_type==='workflow_run')await inspectWorkflowRun(gh,run,owner,repo,objects,o,initial);
+    else if(o.object_type==='check_run')await inspectCheckRun(gh,run,owner,repo,o,initial);
+    else if(o.object_type==='pr') await prIsSafe(gh,run,owner,repo,objects,o,initial);
     else if(o.object_type==='label') await inspectLabel(gh,run,owner,repo,objects,o,initial);
     else if(o.object_type==='issue') await inspectOwnedIssue(gh,run,owner,repo,o,initial);
     else await inspectPrLabel(gh,run,owner,repo,objects,o,initial);
@@ -137,6 +174,7 @@ export async function cleanupTestResources(ctx,{owner,repo,runId,before}) {
   // Independent no-foreign/preflight readback, plus before preview checks by the calling tool.
   await inspectTestResources(ctx,{run,owner,repo,objects});
   let processed=0;
+  const retained=[];
   for(const o of objects.filter(x=>!x.cleaned&&x.object_type==='pr')) {
     const n=Number(o.object_id);
     const p=await prIsSafe(gh,run,owner,repo,objects,o,before.run.status==='active');
@@ -185,13 +223,48 @@ export async function cleanupTestResources(ctx,{owner,repo,runId,before}) {
       throw refusal('PR label association cleanup was not journaled.');
     processed++;
   }
+  // Workflow runs: stop a live one, delete the exact completed run and read the absence back.
+  for(const o of objects.filter(x=>!x.cleaned&&x.object_type==='workflow_run')) {
+    let found=await inspectWorkflowRun(gh,run,owner,repo,objects,o,before.run.status==='active');
+    if(found&&found.status!=='completed') {
+      await gh.request('POST /repos/{owner}/{repo}/actions/runs/{run_id}/cancel',{owner,repo,run_id:found.id});
+      found=await inspectWorkflowRun(gh,run,owner,repo,objects,o,false);
+      if(found&&found.status!=='completed')return {verified:false,remaining:true,run_id:runId,note:'A workflow run is still stopping; repeat the cleanup shortly.'};
+    }
+    if(found)await gh.request('DELETE /repos/{owner}/{repo}/actions/runs/{run_id}',{owner,repo,run_id:found.id});
+    if(await getWorkflowRun(gh,owner,repo,Number(o.object_id)))return {verified:false,remaining:true,run_id:runId};
+    if(!(await db.markDevObjectCleaned({runId,account,connection,type:o.object_type,owner:o.owner,objectId:o.object_id})))
+      throw refusal('Workflow run cleanup was not journaled.');
+    processed++;
+  }
+  // GitHub has no delete for check runs: close any open one out as cancelled and say plainly that it is retained.
+  for(const o of objects.filter(x=>!x.cleaned&&x.object_type==='check_run')) {
+    let found=await inspectCheckRun(gh,run,owner,repo,o,before.run.status==='active');
+    if(found&&found.status!=='completed') {
+      await gh.request('PATCH /repos/{owner}/{repo}/check-runs/{check_run_id}',{owner,repo,check_run_id:found.id,status:'completed',conclusion:'cancelled'});
+      found=await inspectCheckRun(gh,run,owner,repo,o,false);
+      if(found&&found.status!=='completed')return {verified:false,remaining:true,run_id:runId};
+    }
+    if(found)retained.push({type:'check_run',id:o.object_id});
+    if(!(await db.markDevObjectCleaned({runId,account,connection,type:o.object_type,owner:o.owner,objectId:o.object_id})))
+      throw refusal('Check run close-out was not journaled.');
+    processed++;
+  }
   for(const o of objects.filter(x=>!x.cleaned&&x.object_type==='branch')) {
-    const live=await branchIsSafe(ctx,gh,run,owner,repo,o,before.run.status==='active');
+    const live=await branchIsSafe(ctx,gh,run,owner,repo,o,before.run.status==='active',objects);
     if(live)await gh.request('DELETE /repos/{owner}/{repo}/git/refs/{ref}',{owner,repo,ref:`heads/${o.object_id}`});
     if(await getBranch(gh,owner,repo,o.object_id))
       return {verified:false,remaining:true,run_id:runId};
     if(!(await db.markDevObjectCleaned({runId,account,connection,type:o.object_type,owner:o.owner,objectId:o.object_id})))
       throw refusal('Branch cleanup identity was not recorded.');
+    processed++;
+  }
+  // A fixture file lived only on its run-owned branch; it is gone once that branch is verified absent.
+  for(const o of objects.filter(x=>!x.cleaned&&x.object_type==='fixture_file')) {
+    const branch=fixtureBranch(objects,o);
+    if(await getBranch(gh,owner,repo,branch))return {verified:false,remaining:true,run_id:runId};
+    if(!(await db.markDevObjectCleaned({runId,account,connection,type:o.object_type,owner:o.owner,objectId:o.object_id})))
+      throw refusal('Fixture file cleanup was not journaled.');
     processed++;
   }
   // A label can be shared across non-run PRs/issues; scan current use again before deletion.
@@ -208,5 +281,6 @@ export async function cleanupTestResources(ctx,{owner,repo,runId,before}) {
   }
   if(!(await db.completeDevCleanup({runId,account,connection})))
     throw refusal('Not all exact run objects were cleaned; inspect before retry.');
-  return {verified:true,deleted_repository:false,objects_cleaned:processed,run_id:runId};
+  return {verified:true,deleted_repository:false,objects_cleaned:processed,run_id:runId,
+    ...(retained.length?{retained_by_github:retained,note:'GitHub offers no way to delete check runs; they were closed out and remain attached to the run-owned commit.'}:{})};
 }
