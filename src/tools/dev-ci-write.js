@@ -30,7 +30,7 @@ const dispatchWait = defineGithubWrite({
     return { owner: ownerOf(args, ctx), repo: args.repo, ref: branchOf(args.runId, args.name), scope: 'repo' };
   },
   read: (args, ctx, target) => deniable(async () => {
-    const { objects } = await readTestRun(ctx, { owner: target.owner, repo: args.repo, runId: args.runId });
+    const { host, objects } = await readTestRun(ctx, { owner: target.owner, repo: args.repo, runId: args.runId });
     if (!recorded(objects, 'branch', target.ref, target.repo)) throw refusal(`${target.ref} is not a recorded test branch of this run; workflows run only on run-owned refs.`);
     const gh = await octo(ctx, target.owner);
     const [branch, workflow] = await Promise.all([
@@ -39,6 +39,12 @@ const dispatchWait = defineGithubWrite({
     ]);
     if (!branch || !SHA.test(branch.commit?.sha ?? '') || branch.protected !== false) throw refusal('The test branch is missing or protected.');
     if (!workflow) throw refusal(`There is no workflow ${args.workflow} in ${slug(target.owner, target.repo)}.`, 404);
+    // Dispatch runs the workflow code found ON THE BRANCH with the repository's secrets: refuse a changed workflow file.
+    const [onBranch, onDefault] = await Promise.all([target.ref, host.default_branch].map((ref) => missing(async () =>
+      (await gh.request('GET /repos/{owner}/{repo}/contents/{path}', { ...p(target), path: workflow.path, ref })).data)));
+    if (typeof onBranch?.sha !== 'string' || onBranch.sha !== onDefault?.sha) {
+      throw refusal(`${workflow.path} on ${target.ref} differs from the default branch, and GitHub would run the changed code with this repository's secrets. Discard that change first.`);
+    }
     const intent = await ctx.db.getDevIntent({ runId: args.runId, account: target.owner, connection: ctx.connection.client_id, stepId: `dispatch-${workflow.id}-${args.name}` });
     return { branch, workflow, started: intent?.status === 'recorded' ? intent : null };
   }),

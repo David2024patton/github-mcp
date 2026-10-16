@@ -17,7 +17,7 @@ function arrangeDispatch(gh, outcome, { status = 'completed', content = yaml() }
   gh.when('GET /repos/{owner}/{repo}/rules/branches/{branch}').reply(200, []);
   gh.when('GET /repos/{owner}/{repo}/branches/{branch}').reply(200, { name: BRANCH, protected: false, commit: { sha: A } });
   gh.when('GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}').reply(200, { id: 77, name: 'CI', path: '.github/workflows/ci.yml' });
-  gh.when('GET /repos/{owner}/{repo}/contents/{path}').reply(200, { content, encoding: 'base64' });
+  gh.when('GET /repos/{owner}/{repo}/contents/{path}').reply(200, { content, encoding: 'base64', sha: 'c'.repeat(40) });
   gh.when('POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches').reply(200, { workflow_run_id: 555, run_url: 'https://api.github.com/x', html_url: 'https://github.com/x' });
   gh.when('GET /repos/{owner}/{repo}/actions/runs/{run_id}').reply(200, { id: 555, status, conclusion: status === 'completed' ? 'success' : null, head_branch: BRANCH, head_sha: outcome === 'mismatch' ? B : A, event: 'workflow_dispatch', html_url: 'https://github.com/x/runs/555' });
 }
@@ -77,6 +77,17 @@ describe('V-3 dispatch and bounded wait', () => {
     const out = await call(dispatch, prod, base);
     expect(out.status).toBe('refused_by_guard');
     expect(prod.gh.calls.filter((c) => c.method === 'POST')).toEqual([]);
+  });
+  it('refuses a workflow file that was changed on the test branch', async () => {
+    const w = await makeWorld();
+    arrangeDispatch(w.gh, 'ok');
+    w.gh.when('GET /repos/{owner}/{repo}/contents/{path}').replySequence([
+      { status: 200, body: { content: yaml(), encoding: 'base64', sha: 'd'.repeat(40) } },
+      { status: 200, body: { content: yaml(), encoding: 'base64', sha: 'c'.repeat(40) } }
+    ]);
+    await recordBranch(w);
+    expect((await call(dispatch, w, base)).error).toMatch(/differs from the default branch/);
+    expect(w.gh.calls.filter((c) => c.method === 'POST')).toEqual([]);
   });
   it('explains an unknown workflow and never dispatches', async () => {
     const w = await makeWorld();
