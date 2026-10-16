@@ -144,7 +144,7 @@ const apiWrite=defineGithubWrite({
   name:'github_api_write',area:'universal',audience:['B','O','Op'],
   description:'PRODUCTION: Apply a validated non-curated REST write through full safety gates and confirmed preview.',
   properties:queryProperties,required:['operation'],
-  declarations:{production:'when-target',accessWidening:true,notifies:true,spend:true,confirm:'always',profiles:['full']},
+  declarations:{production:'when-target',accessWidening:true,notifies:true,spend:true,confirm:'always',cred:'I,U',profiles:['full']},
   target:(a,c)=>resolve(a,c,['POST','PUT','PATCH','DELETE'],true).target,
   read:async(a,c)=>baseline(c,resolve(a,c,['POST','PUT','PATCH','DELETE'],true)),
   price:({args:a,ctx:c})=>universalPrice(resolve(a,c,['POST','PUT','PATCH','DELETE'],true).op),
