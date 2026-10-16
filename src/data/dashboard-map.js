@@ -1,4 +1,5 @@
 import { EXTRA_GUIDES } from './dashboard-sections.js';
+import { Y1_ADDED_PERMISSIONS } from '../github/app-manifest.js';
 // Settings GitHub gives no API for (B-8 seed; O-1 walks every settings page against the live dashboard and completes the map).
 // Each entry returns structured steps (contract section 11): `{ n, action, target, value? }`, the page `url` (with {org} / {user}
 // filled in when the account is known), what the owner should see afterwards, and, where GitHub lets the value be read, the
@@ -71,6 +72,17 @@ export const SETTINGS = Object.freeze([
       { action: 'Press the button', target: 'Save' }
     ],
     expected: 'The choice you made is shown under Settings.'
+  },
+  {
+    id: 'app-permissions-review', scope: 'org', title: 'Approve new permissions for the server\'s GitHub App', page: 'Developer settings → GitHub Apps → Permissions & events',
+    words: ['app permissions', 'github app permissions', 'accept new permissions', 'permissions & events', 'packages permission', 'runner permission', 'merge queue permission', 'upgrade app'], url: org('settings/apps'),
+    steps: [
+      { action: 'Open the page', target: 'Developer settings → GitHub Apps → this server\'s App → Permissions & events' },
+      { action: 'Raise each of these permissions, then save', target: Object.entries(Y1_ADDED_PERMISSIONS).map(([name, level]) => `${name}: ${level}`).join(', '), value: 'Save changes' },
+      { action: 'Open the installation page for each account and accept the new permissions', target: 'Settings → Installed GitHub Apps → Configure → Review request' }
+    ],
+    expected: 'Each installation shows the new permissions as accepted. GitHub does not let an API change an App\'s permissions, and nothing here claims a permission the installation has not accepted.',
+    verifyWith: { tool: 'github_check_permissions', args: { account: '{org}' }, field: 'accounts', note: 'status must read "all good" for the account' }
   },
   {
     id: 'org-transfer', scope: 'org', title: 'Transfer an organization to another owner', page: 'Organization settings → Danger zone',

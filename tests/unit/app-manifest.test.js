@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MANIFEST_PERMISSIONS, REPOSITORY_PERMISSIONS, ORGANIZATION_PERMISSIONS, appNameFor, buildManifest, installUrl, isValidLogin, manifestFormUrl } from '../../src/github/app-manifest.js';
+import { Y1_ADDED_PERMISSIONS, MANIFEST_PERMISSIONS, REPOSITORY_PERMISSIONS, ORGANIZATION_PERMISSIONS, appNameFor, buildManifest, installUrl, isValidLogin, manifestFormUrl } from '../../src/github/app-manifest.js';
 import { openApi } from '../../test/helpers/github-descriptions.js';
 
 // Names in GitHub's docs data (server-to-server-permissions.json @ github/docs be38ec5d, checked 2026-10-10) that the REST
@@ -24,6 +24,11 @@ describe('app manifest', () => {
     for (const account of ['emails', 'email_addresses', 'followers', 'gists', 'keys', 'git_ssh_keys', 'gpg_keys', 'profile', 'starring', 'watching', 'blocking', 'plan']) {
       expect(MANIFEST_PERMISSIONS[account], account).toBeUndefined();
     }
+  });
+
+  it('requests the Y-1 additions at the stated levels and still no account permissions', () => {
+    for (const [name, level] of Object.entries(Y1_ADDED_PERMISSIONS)) expect(MANIFEST_PERMISSIONS[name], name).toBe(level);
+    expect(MANIFEST_PERMISSIONS.repository_advisories).toBeUndefined();
   });
 
   it('builds a private App whose URLs all point at this server and which listens for no extra events', () => {

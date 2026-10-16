@@ -1,7 +1,7 @@
 // O-6: personal GitHub account, email, public key, block and invitation owner workflows.
 // A user grant is always identified with GET /user before personal data is read or changed.
 import {createHash} from 'node:crypto';
-import {githubFor,listAll} from '../github/client.js';
+import {githubFor,listAll,graphql} from '../github/client.js';
 import {defineRead} from './define-read.js';
 import {defineGithubWrite} from './define-github-write.js';
 import {plain} from './github-read.js';
@@ -372,6 +372,78 @@ const respondInvite=defineGithubWrite({
     ({action:a.action,invitation_id:a.invitationId,
       repository:b.invitation.repository})
 });
-const all=[...specs,profile,emailChange,addKey,deleteKey,setBlocked,respondInvite];
+
+// Y-1: personal status (the emoji and short message on the profile). GraphQL-only: REST has no status route.
+const statusQuery=`query{viewer{id login status{emoji message expiresAt indicatesLimitedAvailability}}}`;
+const statusMutation=`mutation($emoji:String,$message:String,$expiresAt:DateTime,$limited:Boolean,$org:ID){
+  changeUserStatus(input:{emoji:$emoji,message:$message,expiresAt:$expiresAt,limitedAvailability:$limited,organizationId:$org}){
+    status{emoji message expiresAt indicatesLimitedAvailability}
+  }
+}`;
+const statusView=s=>s?{emoji:s.emoji??null,message:s.message??null,
+  expiresAt:s.expiresAt??null,limitedAvailability:s.indicatesLimitedAvailability===true}:null;
+const sameTime=(a,b)=>(a??null)===(b??null)||
+  (a&&b&&Date.parse(a)===Date.parse(b));
+const viewerStatus=async(c,t)=>{
+  const gh=await githubFor(c,{owner:t.owner,cred:'U'});
+  const x=(await graphql(gh,statusQuery)).viewer;
+  if(!x?.id||!x?.login)
+    throw refusal('User authorization identity is not verified. Authorize the GitHub App as yourself on the setup page.');
+  return {gh,viewer:{id:x.id,login:x.login},status:statusView(x.status)};
+};
+const wantsClear=a=>!a.message&&!a.emoji;
+const wantedStatus=a=>wantsClear(a)?null:{emoji:a.emoji??null,message:a.message||null,
+  expiresAt:a.expiresAt??null,limitedAvailability:a.limitedAvailability===true};
+const setStatus=defineGithubWrite({
+  name:'github_account_set_status',area:'account',audience:['O'],
+  description:'Set or clear your GitHub profile status (emoji, short message, expiry, busy flag) and read it back field by field.',
+  properties:{owner:OWNER,emoji:{type:'string',maxLength:40,pattern:'^:[a-z0-9_+-]{1,38}:$',
+      description:'Emoji name with colons, e.g. :palm_tree:'},
+    message:{type:'string',maxLength:80,description:'Up to 80 characters; empty with no emoji clears the status'},
+    expiresAt:{type:'string',maxLength:40,description:'ISO 8601 time in the future; omit for no expiry'},
+    limitedAvailability:{type:'boolean',description:'Show the busy indicator'},
+    organizationId:{type:'string',maxLength:100,description:'Organization node ID to limit who sees the status'}},
+  declarations:{production:'never',confirm:'always',cred:'U',profiles:['full']},
+  target:accountTarget,
+  read:async(a,c,t)=>{
+    if(a.message&&[...a.message].length>80)throw refusal('A status message is at most 80 characters.');
+    if(wantsClear(a)&&(a.expiresAt||a.limitedAvailability||a.organizationId))
+      throw refusal('To clear the status leave message and emoji empty and give nothing else.');
+    if(a.expiresAt){
+      const t0=Date.parse(a.expiresAt);
+      if(!Number.isFinite(t0)||!/^\d{4}-\d\d-\d\dT/.test(a.expiresAt))throw refusal('expiresAt must be an ISO 8601 time.');
+      if(t0<=(c.now?c.now():Date.now()))throw refusal('expiresAt must be in the future.');
+    }
+    const {viewer,status}=await viewerStatus(c,t);
+    return {viewer,status};
+  },
+  classify:()=>({}),
+  summarize:({args:a,before:b})=>wantsClear(a)?'CLEAR the status of '+b.viewer.login:
+    'SET the status of '+b.viewer.login+' to '+(a.emoji??'')+' "'+(a.message??'')+'"'+
+    (a.expiresAt?' until '+a.expiresAt:'')+(a.limitedAvailability?' (busy)':''),
+  apply:async({args:a,ctx:c,target:t,before:b})=>{
+    const {gh,viewer}=await viewerStatus(c,t);
+    if(viewer.id!==b.viewer.id)throw refusal('Authenticated user identity changed.');
+    const w=wantedStatus(a);
+    const x=await graphql(gh,statusMutation,{emoji:w?.emoji??null,message:w?.message??null,
+      expiresAt:w?.expiresAt??null,limited:w?.limitedAvailability??false,org:a.organizationId??null});
+    return {data:x.changeUserStatus};
+  },
+  readAfter:async({ctx:c,target:t})=>{const {viewer,status}=await viewerStatus(c,t);return {viewer,status};},
+  verify:({args:a,before:b,after:x})=>{
+    if(x.viewer.id!==b.viewer.id)return false;
+    const w=wantedStatus(a);
+    if(!w)return x.status===null||!x.status.message&&!x.status.emoji;
+    const s=x.status;
+    return !!s&&s.emoji===w.emoji&&s.message===w.message&&
+      sameTime(s.expiresAt,w.expiresAt)&&s.limitedAvailability===w.limitedAvailability;
+  },
+  inverse:({before:b})=>({tool:'github_account_set_status',args:b.status?
+    {...(b.status.emoji?{emoji:b.status.emoji}:{}),...(b.status.message?{message:b.status.message}:{}),
+     ...(b.status.expiresAt?{expiresAt:b.status.expiresAt}:{}),
+     ...(b.status.limitedAvailability?{limitedAvailability:true}:{})}:{message:''}}),
+  present:({after:x})=>({status:x.status})
+});
+const all=[...specs,profile,setStatus,emailChange,addKey,deleteKey,setBlocked,respondInvite];
 export const tools=all.map(x=>x.tool);
 export const handlers=Object.fromEntries(all.map(x=>[x.tool.name,x.handler]));

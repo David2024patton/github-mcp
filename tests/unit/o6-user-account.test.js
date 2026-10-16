@@ -94,8 +94,8 @@ const direct=async(w,name,args={})=>{
   return d({registry,name,args,connection:w.connection,db:w.db});
 };
 describe('O-6 personal account boundaries',()=>{
-  it('registers exactly the nine intended personal-account catalog tools',()=>{
-    expect(account.tools).toHaveLength(9);
+  it('registers exactly the ten intended personal-account catalog tools',()=>{
+    expect(account.tools).toHaveLength(10);
     for(const t of account.tools)
       expect(registry.tools.some(r=>r.name===t.name)).toBe(true);
   });

@@ -15,7 +15,7 @@ const curated=new Map(Object.entries({
   addDiscussionComment:'github_discussion_comment',
   createCommitOnBranch:'github_content_push_files',
   updateRepository:'github_repo_update_settings',
-  changeUserStatus:'github_account_update_profile',
+  changeUserStatus:'github_account_set_status',
   updateBranchProtectionRule:'github_protection_set',
   createBranchProtectionRule:'github_protection_set',
   deleteBranchProtectionRule:'github_protection_remove',
@@ -24,6 +24,8 @@ const curated=new Map(Object.entries({
   deleteRepositoryRuleset:'github_ruleset_delete'
 }));
 export const curatedGraphqlMutation=name=>curated.get(name)??null;
+/** Read-only list of every curated tool name a GraphQL mutation points at (used by the registry consistency test). */
+export const curatedTargets=()=>Object.freeze([...new Set(curated.values())]);
 const money=/codespace|copilot|enterprise|billing|budget|sponsor|purchase|paid|marketplace|license|runner|securityFeature|storage|minutes|payment/i;
 const secretKey=/(?:token|secret|password|passphrase|private.?key|auth.?code|invitation.?code|webhook.?signature|credential)/i;
 const secretValue=/(github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9_]{18,}|rtc_pass_[A-Za-z0-9_-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)/;

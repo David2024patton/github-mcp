@@ -63,6 +63,16 @@ describe('github_check_permissions', () => {
     const full = await call('github_check_permissions', w, { account: 'example-org', area: 'issues', detail: 'full' });
     expect(full.accounts[0].areas[0]).toMatchObject({ area: 'issues', ok: false });
   });
+  it('names the packages, runner and merge-queue gaps for an installation created before Y-1, and never calls a missing permission ok', async () => {
+    const { packages, organization_packages, organization_self_hosted_runners, merge_queues, ...older } = MANIFEST_PERMISSIONS; // eslint-disable-line no-unused-vars
+    const w = await appWorld(older);
+    const out = await call('github_check_permissions', w, { account: 'example-org' });
+    const acct = out.accounts[0];
+    expect(acct.status).toBe('permissions missing');
+    expect(acct.add_these).toEqual(expect.arrayContaining(['packages: write (now none)', 'organization_packages: write (now none)', 'organization_self_hosted_runners: write (now none)', 'merge_queues: write (now none)']));
+    expect(acct.areas.map((a) => a.area)).toEqual(expect.arrayContaining(['packages', 'runners', 'merge-queue']));
+    expect((await call('github_check_permissions', w, { account: 'example-org', area: 'packages' })).accounts[0].status).toBe('permissions missing');
+  });
   it('explains fine-grained, not-installed, and unknown cases instead of guessing', async () => {
     const w = await appWorld({});
     const all = await call('github_check_permissions', w, {});

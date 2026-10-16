@@ -6,7 +6,7 @@ Restricted preview RTC successful replies revalidate service pass and scratch ow
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
-tool merges, its Card cell gains `built #<PR>`. Built so far: **all 310 tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
+tool merges, its Card cell gains `built #<PR>`. Built so far: **all 311 tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
 and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Since B-5 every result of these tools is shaped (`src/tools/util.js`) and failures are explained by `src/tools/errors.js`. Since B-6 a connection sees only the tools its profile allows (`tools/list` and by-name calls). Every write tool below is built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
@@ -464,7 +464,7 @@ Card(s): O-5. Source built in PR #203 with scoped metadata projections, U-creden
 | `github_tokenpolicy_list_tokens` | Fine-grained tokens that can reach the organization, with owner, repositories and expiry | — | N | I | O | R | O-5 built #203 |
 | `github_tokenpolicy_revoke_access` | Revoke a fine-grained token's access to the organization | C·Prod | N | I | O | F | O-5 built #203 |
 
-## Owner: personal account (`github_account_*`) — 9
+## Owner: personal account (`github_account_*`) — 10
 
 Card(s): O-6. Source built in PR #204 with verified user-auth principal, real profile/email/public-key/block/invitation operations and full guarded-write lifecycle. Needs a user authorization (`U`); installation tokens cannot reach personal settings. Raw public key material is accepted only for additions but never returned in inventory. Provider acceptance and real email confirmation remain separate.
 
@@ -479,6 +479,7 @@ Card(s): O-6. Source built in PR #204 with verified user-auth principal, real pr
 | `github_account_set_blocked` | Block or unblock a user; list blocked users | C·Prod | N | U | O | F | O-6 built #204 |
 | `github_account_list_invitations` | Repository invitations waiting for Chris | — | N | U | O | R | O-6 built #204 |
 | `github_account_respond_invitation` | Accept or decline a repository invitation | C·Prod·A* | N | U | O | F | O-6 built #204 |
+| `github_account_set_status` | Set or clear your profile status: emoji, message (80 characters), expiry and busy indicator; read back field by field | C | N | U | O | F | Y-1 built |
 
 ## Owner: notifications and gists (`github_notify_*, github_gist_*`) — 7
 
@@ -564,6 +565,17 @@ How `github_api_write` and `github_graphql_write` stay safe (`docs/designs/BATCH
 - **Hand-built tools win**: if a hand-built tool covers the operation, the universal tool refuses and names it.
 - **Never** `bypass_rules`, never a secret value in a request (secret endpoints are refused; use `github_secret_set`), never
   a raw credential in a result.
+- **What the universal tools cannot do (Y-1, stated plainly).** They act only on accounts this connection owns (a
+  person or organization that is not enrolled is refused; following, starring and reading other accounts are Y-3).
+  They send and receive JSON only: no raw/binary media types, custom headers, other base URLs or uploads (Y-8).
+  A write whose route text matches a spend word (runners, retention, deployments, pages, packages, codespaces, Copilot,
+  billing, code security, Marketplace) is refused with the spend message unless that exact route is in the reviewed
+  free list (`src/github/spend-classes.js`: self-hosted runner and runner-group administration, OIDC customisation,
+  deployment approvals, package delete/restore, Pages rebuild, artifact-metadata records). Hosted runners, retention
+  and storage limits, Codespaces, Copilot and code-security configurations stay blocked because their cost cannot be
+  computed. Gist routes (`/gists/*`) have no `/user` prefix, so they need the user credential (`cred: U`); the default
+  installation credential cannot reach them. GraphQL writes are limited to the shapes in `docs/designs/BATCH-Y.md` Y-2
+  until that card ships.
 - Same production guard, self-protection, profile ownership, change log, read-back (`confirmed: null` when nothing
   can be read back), passes need `allow_writes`, `full` profile only.
 
@@ -579,9 +591,9 @@ an organization; scheduled reminders; interaction limits beyond 6 months. The fu
 
 ## Totals
 
-**Totals:** 310 tools: 304 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 311 tools: 305 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 134, everyday adds 81
-(everyday lists 215), full adds 95 (full lists 310). In compact mode (`docs/designs/BATCH-C.md`) an agent
+(everyday lists 215), full adds 96 (full lists 311). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
 `github_search_tools` / `github_call`.
 
@@ -611,13 +623,13 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Owner: teams and roles | 9 |
 | Owner: billing, budgets, Copilot and Codespaces | 13 |
 | Owner: apps and fine-grained tokens | 7 |
-| Owner: personal account | 9 |
+| Owner: personal account | 10 |
 | Owner: notifications and gists | 7 |
 | Owner and administration: guided settings | 3 |
 | Project profiles | 3 |
 | Workflows | 17 |
 | Everything else on GitHub: the universal tools | 6 |
-| **Total** | **310** |
+| **Total** | **311** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 
