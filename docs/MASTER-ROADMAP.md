@@ -10,9 +10,8 @@ Written 2026-10-10 for an empty repository. [STATUS](STATUS.md) holds current st
 
 ## What is next
 
-Current engineering handoff: W-5/W-6 merged in #217; W-7 implements the remaining original workflow engineering in #218 (counts as merged only after exact-head checks/review/merge). All original W workflows are implemented at source; actual deployed/provider acceptance remains open. Next approved engineering is U-1/U-2; no new phase approval is needed. The historical snapshot below is reference; STATUS/index and the per-source acceptance queue govern unfinished V/H/O/RTC proof.
+**Next:** no original approved card is left (64/64 merged or complete). Open work is (1) the gap-closure Batch Y added 2026-10-16 (`docs/designs/BATCH-Y.md`, cards Y-1 … Y-9) and (2) owner-run acceptance that needs a release or a real account: the real-account read-only smoke report (`scripts/smoke-readonly.mjs`), OAuth-connected scratch write and cleanup acceptance, per-account production activation, and Hub route evidence for RTC. `npm run session:status` prints the live queue.
 
-**Next:** **Batch V**. V-1 has six executable scratch-only scenarios and durable run ownership; `webhook-target` is plan-only awaiting V-4. **The owner completed the IN-06 App/install/scratch-designation prerequisite on 2026-10-12, but custom OAuth-connected acceptance and V-2 run-owned cleanup are outstanding. No live scratch resources were created.** The informational `/` endpoint returned 404 in HTTP smoke. **Draft PR #83** was the carry-forward work unit at this historical checkpoint; reconcile its actual state before resuming. The current owner prompt sets session scope. See STATUS, V-1 and the index. Batch G is implementation-complete (#39–#64); its original snapshot remains in `docs/audits/G-BATCH-CLOSEOUT.md`.
 A-1 (repository, fake GitHub, CI, checks) merged in PR #1; A-2 (foundation schema) in PR #7; A-3 (connector login) in PRs #8 and #9; A-4 (GitHub client) in PR #10; A-5a (credential store) in PR #11; A-5b (setup page) in PR #12; A-5c (webhook, `github_whoami`, `github_list_accounts`) in PR #13; A-6 (`docs/DEPLOY.md`) in PR #15; B-1 (write safety layer) in PR #16; B-2 (production guard and switch) in PR #18; B-3 (protected list and project ownership) in PR #19; B-4 (people and spend guards) in PR #20; B-5 (errors and result shaping) in PR #21; B-6 (profiles and downscoped tokens) in PR #22. Plan approved by Chris
 (IN-00, 2026-10-10).
 
@@ -47,23 +46,24 @@ A-1 (repository, fake GitHub, CI, checks) merged in PR #1; A-2 (foundation schem
 
 `docs/pr-cards/work-index.json` is the machine-readable list (`python3 docs/pr-cards/validate-index.py`). **JIT** = covered
 by the approved design; write the card when its predecessor is real. Tool counts are from `docs/TOOL-CATALOG.md`
-(`python3 scripts/count-catalog.py`: 305 = 299 hand-built + 6 universal).
+(`python3 scripts/count-catalog.py`: 310 = 304 hand-built + 6 universal).
 
 | Batch | Cards | Tools | Card status |
 |---|---|---|---|
 | A Foundation | A-1 repo, CI, fake GitHub · A-2 schema · A-3 login · A-4 GitHub client, vendored descriptions, finders · A-5 setup page, Apps from manifests, credential store, one-time secrets · A-6 DEPLOY.md | 2 | A-1 MERGED (#1); A-2 MERGED (#7); A-3 MERGED (#8, #9); A-4 MERGED (#10); A-5 split: A-5a MERGED (#11), A-5b READY; A-6 onward JIT |
-| B Trust | B-1 safety layer · B-2 production guard · B-3 self-protection and ownership · B-4 access/message/spend · B-5 errors and shaping · B-6 profiles and downscoped tokens · B-7 check-writes · B-8 server tools | 11 | JIT |
-| C Context | C-1 small results · C-2 listing modes, meta-tools, budgets | 5 | JIT |
-| D Code | D-1 repositories · D-2 files, commits, git data · D-3 branches and tags | 44 | JIT |
-| E Pull requests | E-1 read/create/update · E-2 merge at exact head, auto-merge, stacks · E-3 reviews and threads | 24 | JIT |
-| G CI and delivery | G-1 Actions and log summaries · G-2 checks, statuses, artifacts, caches · G-3 secrets and variables · G-4 environments and deployments · G-5 releases · G-6 Pages and packages | 51 | JIT |
-| V Developer tools | V-1 scenarios, runs, scratch repos · V-2 cleanup · V-3 test branches, PRs, dispatch, check runs · V-4 test webhooks and forwarding · V-5 integration check | 15 | JIT |
-| F Issues and planning | F-1 issues · F-2 labels and milestones · F-3 discussions, projects, search | 32 | JIT |
-| H Governance and security | H-1 protection and rulesets · H-2 webhooks · H-3 collaborators and deploy keys · H-4 security features, alerts, Actions settings | 33 | JIT |
-| O Owner | O-1 admin overview, guided settings, dashboard map · O-2 org and members · O-3 teams and roles · O-4 billing, budgets, Copilot, Codespaces · O-5 apps and tokens · O-6 personal account · O-7 notifications and gists | 61 | JIT |
-| P Project profiles | P-1 `known_projects` + two seeds · P-2 app readiness · P-3 project setup + draft profile | 5 | JIT |
-| W Workflows | W-1 … W-7 (`designs/BATCH-W.md` §4 table) | 15 | JIT |
-| U Universal | U-1 REST · U-2 GraphQL | 6 | JIT |
+| B Trust | B-1 safety layer · B-2 production guard · B-3 self-protection and ownership · B-4 access/message/spend · B-5 errors and shaping · B-6 profiles and downscoped tokens · B-7 check-writes · B-8 server tools | 11 | MERGED |
+| C Context | C-1 small results · C-2 listing modes, meta-tools, budgets | 5 | MERGED |
+| D Code | D-1 repositories · D-2 files, commits, git data · D-3 branches and tags | 44 | MERGED |
+| E Pull requests | E-1 read/create/update · E-2 merge at exact head, auto-merge, stacks · E-3 reviews and threads | 24 | MERGED |
+| G CI and delivery | G-1 Actions and log summaries · G-2 checks, statuses, artifacts, caches · G-3 secrets and variables · G-4 environments and deployments · G-5 releases · G-6 Pages and packages | 51 | MERGED |
+| V Developer tools | V-1 scenarios, runs, scratch repos · V-2 cleanup · V-3 test branches, PRs, dispatch, check runs · V-4 test webhooks and forwarding · V-5 integration check | 15 | MERGED |
+| F Issues and planning | F-1 issues · F-2 labels and milestones · F-3 discussions, projects, search | 32 | MERGED |
+| H Governance and security | H-1 protection and rulesets · H-2 webhooks · H-3 collaborators and deploy keys · H-4 security features, alerts, Actions settings | 33 | MERGED |
+| O Owner | O-1 admin overview, guided settings, dashboard map · O-2 org and members · O-3 teams and roles · O-4 billing, budgets, Copilot, Codespaces · O-5 apps and tokens · O-6 personal account · O-7 notifications and gists | 61 | MERGED |
+| P Project profiles | P-1 `known_projects` + two seeds · P-2 app readiness · P-3 project setup + draft profile | 5 | MERGED |
+| W Workflows | W-1 … W-7 (`designs/BATCH-W.md` §4 table) | 15 | MERGED |
+| U Universal | U-1 REST · U-2 GraphQL | 6 | MERGED |
 | R Hub-ready doors (RTC 1) | R-1 passes · R-2 HTTPS API, manifest, OpenAPI, shared rate limit · R-3 conformance in CI | 1 | MERGED #225 |
-| X Close-out | X-1 undo · X-2 read-only smoke test | 1 | JIT |
-| **Total** | 64 cards | **305** | |
+| X Close-out | X-1 undo · X-2 read-only smoke test | 1 | MERGED |
+| Y Gap closure (designed 2026-10-16) | Y-1 unblock universal tools · Y-2 GraphQL write specs · Y-3 other people's data, follow, star lists · Y-4 Projects v2 lifecycle · Y-5 moderation, org issue types/fields · Y-6 runners, Actions admin · Y-7 security writes · Y-8 artifacts, archives, uploads, jobs, wiki · Y-9 org long tail, read-backs, guides | ~80 planned | APPROVED, not started |
+| **Total** | 73 cards (64 merged + 9 planned) | **310** | |

@@ -1,7 +1,6 @@
 # Owner guide — what you can ask for
 
-Plain-English things to say to Claude once each part is built. Each line names the batch that delivers it; until then
-it does not work yet. This file is updated as features ship. Anything that touches your real `main` branches, releases,
+Plain-English things to say to Claude once each part is built. Each line names the batch that delivered it; all of these are built now (live acceptance varies per line; see STATUS). This file is updated as features ship. Anything that touches your real `main` branches, releases,
 settings, access or spending always shows you a preview and waits for your OK.
 
 | Say something like… | What happens | Batch |
@@ -57,4 +56,4 @@ in chats, prompts, Git or shared artifacts. Initial provider consent or an expir
 underlying authorization can still require a new owner sign-in. Source/tests are not
 proof that the new deployed workflow has been exercised against the real provider.
 
-**October 15 source/deployment distinction:** W-5/W-6 source merged in #217; W-7 is implemented in #218 subject to its required merge gates. These new tools require the normal checked release before they are live. The restored custom OAuth can perform approved scratch reads; the original run journal belongs to the old connection and remains quarantined pending its exact preflight/owner disposal gate. No production activation, spending or disposal is implied.
+**October 15 source/deployment distinction:** W-5/W-6 source merged in #217; W-7 merged in #218. These new tools require the normal checked release before they are live. The restored custom OAuth can perform approved scratch reads; the original run journal belongs to the old connection and remains quarantined pending its exact preflight/owner disposal gate. No production activation, spending or disposal is implied.

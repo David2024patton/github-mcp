@@ -13,7 +13,7 @@ Current deployment (2026-10-12): the custom server has a READY Vercel production
    *You will see:* a deployment that finishes with a green "Ready".
 2. **Neon database.** A new, empty Neon project for this server only (never reuse Appliance Desk's or the Stripe server's
    database). Independent Neon project with fixed 0.25 CU and five-minute idle suspension. Copy its connection string (starts with `postgresql://`); you will paste it in Part 2.
-   *You will see:* a project with no tables yet. The current server initializes 20 application tables when first called.
+   *You will see:* a project with no tables yet. The current server initializes 27 application tables when first called (the 2026-10-12 live database had 20).
 
 ## Part 2 — The project's settings (names only; values are yours)
 
@@ -100,7 +100,7 @@ After GitHub App setup above, use the same setup page to create **this custom se
 2. Complete the custom OAuth sign-in in your browser. Select **only `robinson-ai-scratch`** as account/default, keep **Mode = preview**, use **Profile = read_only** for first live reads (switch to **everyday** only for guarded scratch writes), and enter the admin passphrase privately. Press **Authorize this connection**.
 3. Ask the custom-MCP-connected agent: *"Which GitHub accounts am I connected to?"* `github_list_accounts` should show `robinson-ai-scratch` with `scratch: true`; `github_whoami` should confirm PREVIEW, read-only profile and current rate limits.
 
-Production remains OFF for scratch. **Never create a real disposable test repository until run-owned cleanup/recovery is verified.** V-2's `github_dev_cleanup` is not yet implemented; a preview+everyday connection can create scratch writes only after that safety prerequisite and the owner's OAuth sign-in. Normal account production is a separate IN-07 decision.
+Production remains OFF for scratch. **Never create a real disposable test repository until run-owned cleanup/recovery is verified.** V-2's `github_dev_cleanup` is now built; a preview+everyday connection can create scratch writes after the owner's OAuth sign-in, with run-owned cleanup proven first on the scratch account. Normal account production is a separate IN-07 decision.
 
 ## Part 7 — What the Apps ask GitHub for
 
@@ -126,7 +126,7 @@ tried against real GitHub yet. If creating the App fails on one of them, the fix
 ## Connected-testing checkpoint, 2026-10-12 UTC
 
 - Custom GitHub App `robinson-mcp-robinson-ai-scratch` installed/active on `robinson-ai-scratch`, repository selection All; 41/41 stored permissions, scratch ON, production OFF, spend $0.
-- Live HTTP: `/.well-known/oauth-authorization-server` **200**, `/.well-known/oauth-protected-resource` **200**, `/api/github/setup` GET **200**, unauthenticated `/api/mcp` GET and JSON-RPC POST **401** with Bearer challenge. Informational `/` **404** despite the code's advertised landing page (needs routing fix/test).
+- Live HTTP: `/.well-known/oauth-authorization-server` **200**, `/.well-known/oauth-protected-resource` **200**, `/api/github/setup` GET **200**, unauthenticated `/api/mcp` GET and JSON-RPC POST **401** with Bearer challenge. (2026-10-12 snapshot) Informational `/` was **404**; `vercel.json` now rewrites `/` to the landing function — re-verify live; (needs routing fix/test).
 - Custom OAuth clients/tokens **zero**, `dev_runs` and `dev_run_objects` **zero**. The network-restricted temporary Vercel sandbox used for HTTP smoke was stopped. No live GitHub write or cleanup has been tested.
 - For the next agent: **do not use the environment's standard GitHub connector as evidence of the custom server's OAuth behavior.** Do not bypass the owner-authorized client grant, and do not rotate the encryption key. User stopped testing for today.
 
