@@ -1,3 +1,12 @@
+## 2026-10-16 — Y-5/Y-6: deletes never replay as errors, runner tokens only through the one-time page, limit increases count as spend
+
+1. Moderation deletes (comment, issue, discussion, issue type, issue field, runner group) are production-class and have no undo; the preview names what is lost and quotes other people's text as untrusted data. Org issue type/field deletes need the exact name typed.
+2. Runner registration, removal and just-in-time tokens are sealed in the one-time store (10 minutes, as for other secrets; the design said one hour and was not followed); the tool returns only the setup-page address. A token GitHub reports as already expired is reported as unconfirmed.
+3. Letting public repositories (or every repository) use a self-hosted runner group is off by default and is an access change with a plain warning. A runner that is online and busy is never removed.
+4. `github_actions_set_limits` is a new tool rather than an extension of `github_actions_set_settings`. Raising cache retention, cache size or artifact/log retention is priced at a one-cent placeholder because the real bill cannot be computed, so it is blocked while the spend limit is $0; keeping or lowering a value is free. The OIDC subject template is free.
+5. `github_deploy_review_pending` is not built: `github_actions_review_pending_deployment` and `github_actions_list_pending_deployments` already exist.
+6. `github_env_protection_rule_save` refuses an app GitHub does not list as available for that environment. `github_deploy_review_custom_rule` only works for the App that owns the rule; GitHub's refusal is surfaced.
+
 ## 2026-10-16 — Y-3/Y-4: public reads, user-credential social writes, project tools identify by owner and number
 
 1. Public reads (`public-read.js`) allow only GET on a fixed list of path roots and always give a private or a missing repository the identical "not found, or not publicly visible" answer. Free text is capped and marked untrusted.
