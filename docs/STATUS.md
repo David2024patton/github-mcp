@@ -1,3 +1,7 @@
+## October 16, 2026 — U-2 Universal GraphQL implementation (candidate)
+
+Approved U-2 source candidate on branch ai/u2-graphql-universal-20261016, frozen plan 0e4db1ac59d6cb5b77cc3bf90488d59ed4e521b9 against main a79f08643241d727b38da87b7713728baad39746. Runtime GraphQL schema parsing, typed variables, bounded point/node estimation, a full-profile one-mutation write with independent node/repo baseline, curated mutation precedence, fail-closed cost and secret classification, and synthetic three-door guard tests are engineering only until exact-head CI, review and merge. Runtime graphql is now a production dependency. U-1 source remains #219 and is not credited again. R-1 still approved and independent. New genuine-service GraphQL acceptance must await checked source-bearing READY deployment and the specific separate read/write authority; no new provider mutation, release, activation or spend is claimed. Source/CI outcome tracked in the PR permanent handoff.
+
 ### W source batch closeout — October 15
 
 ## 2026-10-15 — U-1 guarded REST candidate PR #219 (CI/review pending)
