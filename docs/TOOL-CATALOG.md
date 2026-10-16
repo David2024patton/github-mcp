@@ -479,7 +479,7 @@ Card(s): O-6. Source built in PR #204 with verified user-auth principal, real pr
 | `github_account_set_blocked` | Block or unblock a user; list blocked users | C·Prod | N | U | O | F | O-6 built #204 |
 | `github_account_list_invitations` | Repository invitations waiting for Chris | — | N | U | O | R | O-6 built #204 |
 | `github_account_respond_invitation` | Accept or decline a repository invitation | C·Prod·A* | N | U | O | F | O-6 built #204 |
-| `github_account_set_status` | Set or clear your profile status: emoji, message (80 characters), expiry and busy indicator; read back field by field | C | N | U | O | F | Y-1 built |
+| `github_account_set_status` | Set or clear your profile status: emoji, message (80 characters), expiry and busy indicator; read back field by field | C | N | U | O | F | Y-1 built #227 |
 
 ## Owner: notifications and gists (`github_notify_*, github_gist_*`) — 7
 
@@ -550,7 +550,7 @@ Card(s): U-1, U-2.
 | `github_api_read` | Any GET operation, with the same summaries, `fields`, size cap and handles as every other read | — | N | I,U | B,O,Op | R | U-1 built #219 |
 | `github_api_write` | Any POST/PUT/PATCH/DELETE operation through the full safety layer | C·Prod*·A*·M* | N | I,U | B,O,Op | F | U-1 built #219 |
 | `github_graphql_read` | Pinned-schema validated single GraphQL query, typed variables, scoped aliases/fragments/nodes and 500-point/500,000-node cap before sending | — | N | I,U | B,O,Op | R | U-2 built #220 |
-| `github_graphql_write` | Exactly one non-curated schema-valid GraphQL mutation with explicit repository/node baseline, production/access/notification guards, always-confirmed journal and independent readback | C·Prod·A·M | N | I,U | B,O,Op | F | U-2 built #220 |
+| `github_graphql_write` | One reviewed GraphQL mutation (24 specs: pins, locks, minimize, discussions, linked branches, issue comments and delete, draft state, team review assignment; plus the legacy title and project-field shapes) with ownership proof, before/after read, always-confirmed journal and a recorded undo where one exists | C·Prod·A·M | N | I,U | B,O,Op | F | U-2 built #220 |
 
 How `github_api_write` and `github_graphql_write` stay safe (`docs/designs/BATCH-U.md`):
 
@@ -574,8 +574,12 @@ How `github_api_write` and `github_graphql_write` stay safe (`docs/designs/BATCH
   deployment approvals, package delete/restore, Pages rebuild, artifact-metadata records). Hosted runners, retention
   and storage limits, Codespaces, Copilot and code-security configurations stay blocked because their cost cannot be
   computed. Gist routes (`/gists/*`) have no `/user` prefix, so they need the user credential (`cred: U`); the default
-  installation credential cannot reach them. GraphQL writes are limited to the shapes in `docs/designs/BATCH-Y.md` Y-2
-  until that card ships.
+  installation credential cannot reach them. GraphQL writes are limited to the reviewed mutation specs in `src/github/graphql-writes.js`
+  (Y-2: pinIssue/unpinIssue, pinIssueComment/unpinIssueComment, lockLockable/unlockLockable, minimizeComment/unminimizeComment,
+  closeDiscussion/reopenDiscussion, updateDiscussion, updateDiscussionComment, deleteDiscussion, deleteDiscussionComment,
+  markDiscussionCommentAsAnswer/unmark…, convertPullRequestToDraft/markPullRequestReadyForReview, createLinkedBranch/
+  deleteLinkedBranch, updateIssueComment, deleteIssueComment, deleteIssue, updateTeamReviewAssignment) and the two legacy shapes
+  (a string `title` change, one ProjectV2 field value). Any other mutation is refused with "use the specialised tool".
 - Same production guard, self-protection, profile ownership, change log, read-back (`confirmed: null` when nothing
   can be read back), passes need `allow_writes`, `full` profile only.
 

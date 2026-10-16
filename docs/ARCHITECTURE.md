@@ -163,6 +163,10 @@ A list that cannot be read refuses the change.
 `github-actions[bot]`, this server's App bots and extra names set on the setup page (`server_settings` key `own_people`). Tools call `notifyOutsiders` (mentions, assignees,
 reviewers, repositories of unconnected accounts), `accessChange`, `invitation` and `becomesPublic` from `classify`; access changes and outsiders always ask first.
 `src/tools/spend-guard.js` and `src/github/prices.js`: a spend tool's cost comes from the price table (each price has source URL and date), is refused at the default $0 limit,
+
+`src/github/spend-classes.js` (Y-1): `FREE_ROUTES`, the reviewed-free set of universal REST routes (self-hosted runner and runner-group administration, OIDC customisation, deployment approvals, package delete/restore, Pages rebuild, artifact-metadata records). `classifyUniversal` keeps `spendRisk` true for any write whose text matches a spend word unless its exact `METHOD /path` is listed; `tests/unit/spend-classes.test.js` checks every key against the vendored description and pins both counts (54 free routes, 100 still-blocked writes).
+
+`src/github/graphql-writes.js` (Y-2): `WRITE_SPECS`, one reviewed entry per GraphQL mutation (24): ownership scope (repo or org), the ID types each input may resolve to, the before/after selection, `already`/`verify` predicates, the inverse and the marks. `github_graphql_write` runs a spec-aware path (every ID resolved and type-checked into the enrolled account, spec read before and after, concurrent-change check, extra preflights: at most 3 pinned issues, repository admin for issue deletion); mutations without a spec keep the two legacy shapes or are refused. Specs never lower the generic access/notification marks. A spec with an inverse records `{tool: github_graphql_write, args}` for `github_undo_change`.
 and must fit the account's monthly limit (`gh_accounts.spend_limit_cents`) minus the month's spend (Denver calendar month, summed from `change_log.spend_cents`, rejected changes excluded).
 Only the setup page raises the limit; `github_set_spend_limit` only lowers it.
 
@@ -198,7 +202,7 @@ Read replies go through `readReply` in `src/tools/dispatch.js`: summary form (to
 
 ## GitHub App permissions
 
-The owner-installed custom scratch App has 41/41 recorded installation permissions matching its App permission record, active across All repositories (2026-10-12). No production write switch is enabled; other real-work account Apps are not yet installed. The desired manifest lives in `src/github/app-manifest.js` and `docs/DEPLOY.md`; do not conflate the ChatGPT standard GitHub connector's installation with this server.
+The owner-installed custom scratch App has 41/41 recorded installation permissions matching its App permission record as of 2026-10-12 (Y-1 added six more names to the manifest for Apps created later; the existing App gains them only when the owner approves them on github.com, see the GO-LIVE row and `github_where_is_setting` "app permissions"), active across All repositories (2026-10-12). No production write switch is enabled; other real-work account Apps are not yet installed. The desired manifest lives in `src/github/app-manifest.js` and `docs/DEPLOY.md`; do not conflate the ChatGPT standard GitHub connector's installation with this server.
 
 ## Developer scenario ledger (V-1 part 1, PR #65)
 

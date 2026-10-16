@@ -1510,7 +1510,7 @@
       "design": "docs/designs/BATCH-Y.md",
       "dependencies": [],
       "card": "docs/pr-cards/Y-1.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 600,
       "units": [
@@ -1520,7 +1520,9 @@
       "ownerInputs": [
         "IN-15"
       ],
-      "pr": []
+      "pr": [
+        227
+      ]
     },
     {
       "id": "Y-2",
@@ -1531,7 +1533,7 @@
         "Y-1"
       ],
       "card": "docs/pr-cards/Y-2.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 600,
       "units": [
@@ -1539,7 +1541,9 @@
       ],
       "readiness": "READY",
       "ownerInputs": [],
-      "pr": []
+      "pr": [
+        227
+      ]
     },
     {
       "id": "Y-3",

@@ -6,6 +6,8 @@ import {githubFor,graphql} from '../github/client.js';
 import {plain} from './github-read.js';
 import {inspectGraphql,graphqlSelectionFields,graphqlRootSelections} from '../github/graphql-schema.js';
 import {valueFromASTUntyped} from 'graphql';
+import {writeSpec,specReadQuery,specInput,inverseDocument,snapshotChanged} from '../github/graphql-writes.js';
+import {refusal} from './github-write.js';
 import {classifyGraphqlMutation,relevantGraphqlNodeId,assertSafeGraphqlArguments} from '../github/mutation-classes.js';
 
 const DOCUMENT={type:'string',minLength:5,maxLength:24000,description:'One validated GraphQL document, including typed variable definitions'};
@@ -15,7 +17,7 @@ const REPO={type:'string',minLength:1,maxLength:100,description:'Explicit reposi
 const CRED={type:'string',enum:['I','U'],description:'I installation or explicitly enrolled U user credential'};
 const common={variables:VARIABLES,owner:OWNER,cred:CRED};
 
-export const SCOPE_QUERY='query UniversalResourceScope($id: ID!) { node(id: $id) { __typename id ... on Repository { nameWithOwner } ... on Issue { title repository { nameWithOwner } } ... on PullRequest { title repository { nameWithOwner } } ... on Discussion { title repository { nameWithOwner } } ... on Release { releaseName:name repository { nameWithOwner } } ... on Milestone { title repository { nameWithOwner } } ... on Label { labelName:name repository { nameWithOwner } } ... on Commit { repository { nameWithOwner } } ... on DiscussionComment { discussion { repository { nameWithOwner } } } ... on IssueComment { issue { repository { nameWithOwner } } } ... on ProjectV2 { title owner { ... on Organization { login } ... on User { login } } } ... on ProjectV2Item { project { id owner { ... on Organization { login } ... on User { login } } } content { ... on Issue { repository { nameWithOwner } } ... on PullRequest { repository { nameWithOwner } } } } ... on ProjectV2Field { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2SingleSelectField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2IterationField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2MultiSelectField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } } }';
+export const SCOPE_QUERY='query UniversalResourceScope($id: ID!) { node(id: $id) { __typename id ... on Repository { nameWithOwner } ... on Issue { title repository { nameWithOwner } } ... on PullRequest { title repository { nameWithOwner } } ... on Discussion { title repository { nameWithOwner } } ... on Release { releaseName:name repository { nameWithOwner } } ... on Milestone { title repository { nameWithOwner } } ... on Label { labelName:name repository { nameWithOwner } } ... on Commit { repository { nameWithOwner } } ... on DiscussionComment { discussion { repository { nameWithOwner } } } ... on IssueComment { issue { repository { nameWithOwner } } } ... on ProjectV2 { title owner { ... on Organization { login } ... on User { login } } } ... on ProjectV2Item { project { id owner { ... on Organization { login } ... on User { login } } } content { ... on Issue { repository { nameWithOwner } } ... on PullRequest { repository { nameWithOwner } } } } ... on ProjectV2Field { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2SingleSelectField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2IterationField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2MultiSelectField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on Organization { login } ... on User { login } ... on Team { slug organization { login } } ... on DiscussionCategory { repository { nameWithOwner } } ... on PullRequestReviewComment { pullRequest { repository { nameWithOwner } } } ... on CommitComment { repository { nameWithOwner } } ... on LinkedBranch { ref { repository { nameWithOwner } } } } }';
 /** Exact field readback is separate from GitHub's mutation response. It also
  * carries its owning field's real ID, preventing a same-name field collision. */
 export const PROJECT_FIELD_QUERY='query UniversalFieldReadback($itemId: ID!, $fieldName: String!) { node(id:$itemId) { ... on ProjectV2Item { id fieldValueByName(name:$fieldName) { __typename ... on ProjectV2ItemFieldValueCommon { field { ... on Node { id } } } ... on ProjectV2ItemFieldTextValue { text } ... on ProjectV2ItemFieldNumberValue { number } ... on ProjectV2ItemFieldDateValue { date } ... on ProjectV2ItemFieldSingleSelectValue { optionId } ... on ProjectV2ItemFieldIterationValue { iterationId } ... on ProjectV2ItemFieldMultiSelectValue { options { id } } } } } }';
@@ -41,7 +43,8 @@ function scopedNode(node,owner,repo){
   if(!node?.id||typeof node.__typename!=='string')
     throw new TypeError('GraphQL ID could not be independently resolved.');
   const name=node.nameWithOwner??node.repository?.nameWithOwner??
-    node.discussion?.repository?.nameWithOwner??node.issue?.repository?.nameWithOwner;
+    node.discussion?.repository?.nameWithOwner??node.issue?.repository?.nameWithOwner??
+    node.pullRequest?.repository?.nameWithOwner??node.ref?.repository?.nameWithOwner;
   if(typeof name==='string'&&name.toLowerCase()===(owner+'/'+repo).toLowerCase())
     return {id:node.id,type:'repository',repo:name,projectId:null};
   const project=node.__typename==='ProjectV2'?node:node.project;
@@ -52,6 +55,15 @@ function scopedNode(node,owner,repo){
     return {id:node.id,type:'project',repo:owner+'/'+repo,projectId:project.id};
   }
   throw new TypeError('GraphQL resource is not proven to belong to the requested enrolled account and repository.');
+}
+/** Y-2 org scope: the node is the enrolled organization itself, or a team inside it. */
+function orgNode(node,owner){
+  if(!node?.id||typeof node.__typename!=='string')
+    throw new TypeError('GraphQL ID could not be independently resolved.');
+  const login=node.__typename==='Team'?node.organization?.login:node.__typename==='Organization'?node.login:null;
+  if(typeof login==='string'&&login.toLowerCase()===owner.toLowerCase())
+    return {id:node.id,type:'organization',repo:null,projectId:null};
+  throw new TypeError('GraphQL resource is not proven to belong to the requested enrolled organization.');
 }
 async function readScope(entry,owner,repo,ctx,cred){
   // A broad U credential must not turn the selected account into permission
@@ -120,14 +132,33 @@ function resolveRead(a,c){
 }
 function targetWrite(a,c){
   const owner=ownerFor(a,c),repo=a.repo;
-  if(typeof repo!=='string'||!/^[A-Za-z0-9_.-]{1,100}$/.test(repo))
-    throw new TypeError('GraphQL mutation requires an explicitly named, valid repository.');
   if(JSON.stringify(a.variables??{}).length>24_000)
     throw new TypeError('GraphQL variables exceed the safe request budget.');
   const entry=inspectGraphql(a.mutation,a.variables??{},'mutation');
   assertSafeGraphqlArguments(entry);
+  const spec=writeSpec(entry.mutation);
+  const repoOk=typeof repo==='string'&&/^[A-Za-z0-9_.-]{1,100}$/.test(repo);
+  if((!spec||spec.scope==='repo')&&!repoOk)
+    throw new TypeError('GraphQL mutation requires an explicitly named, valid repository.');
+  if(spec?.scope==='org'&&repo!==undefined)
+    throw new TypeError('This organization-level GraphQL mutation takes no repository.');
   const classification=classifyGraphqlMutation(entry.mutation,entry.input);
   const node=relevantGraphqlNodeId(entry.input,entry);
+  if(spec){
+    // GraphQL fills in schema defaults (for example `notifyTeam: false`). A default is not a request, so it is not "uncovered".
+    const arg=entry.schema.getMutationType().getFields()[entry.mutation].args.find(x=>x.name==='input');
+    let inputType=arg.type;while(inputType.ofType)inputType=inputType.ofType;
+    const fields=inputType.getFields();
+    const covered=new Set([...Object.keys(spec.ids),...spec.changes,'clientMutationId']);
+    const defaultOf=f=>f?.astNode?.defaultValue?valueFromASTUntyped(f.astNode.defaultValue):undefined;
+    const supplied=Object.fromEntries(Object.entries(entry.input.input).filter(([k,v])=>
+      covered.has(k)||defaultOf(fields[k])===undefined||JSON.stringify(defaultOf(fields[k]))!==JSON.stringify(v)));
+    const checked=specInput(spec,entry.mutation,supplied,node.ids);
+    const primary=node.ids.find(x=>x.name===spec.primary);
+    return {owner,repo:spec.scope==='org'?null:repo,scope:spec.scope,kind:spec.scope==='org'?'graphql-org':'graphql-repo',ref:null,
+      cred:credFor(a),entry,classification,spec,
+      node:{...primary,ids:node.ids,changes:checked.changes}};
+  }
   const keys=Object.keys(node.changes);
   const projectChange=entry.mutation==='updateProjectV2ItemFieldValue'&&keys.length===1&&keys[0]==='value';
   const titleChange=keys.length===1&&keys[0]==='title'&&typeof node.changes.title==='string';
@@ -164,7 +195,58 @@ function confirmedField(expected,snapshot){
   }
   return JSON.stringify(snapshot[expected.property])===JSON.stringify(expected.value);
 }
+const PIN_LIMIT_QUERY='query PinnedIssueLimit($owner: String!, $name: String!) { repository(owner:$owner, name:$name) { pinnedIssues(first: 4) { totalCount } } }';
+const ADMIN_QUERY='query RepositoryAdminCheck($owner: String!, $name: String!) { repository(owner:$owner, name:$name) { viewerPermission } }';
+async function readSpecNode(call,spec,id){
+  const value=await call(specReadQuery(spec),{id});
+  return value?.node??null;
+}
+/** Extra read-only checks some specs name; the answer is a plain sentence when the write must not go ahead. */
+async function specPreflight(call,target){
+  const [owner,name]=[target.owner,target.repo];
+  if(target.spec.preflight==='pinned-issue-limit'){
+    const x=await call(PIN_LIMIT_QUERY,{owner,name});
+    const count=x?.repository?.pinnedIssues?.totalCount;
+    if(!Number.isInteger(count))return 'The number of pinned issues could not be read, so the write was not allowed.';
+    if(count>=3)return 'This repository already has 3 pinned issues, the most GitHub allows. Unpin one first.';
+  }
+  if(target.spec.preflight==='repo-admin'){
+    const x=await call(ADMIN_QUERY,{owner,name});
+    if(x?.repository?.viewerPermission!=='ADMIN')
+      return 'Deleting an issue needs repository admin rights, and this credential could not be confirmed as admin on '+owner+'/'+name+'.';
+  }
+  return null;
+}
+async function specBaseline(c,target,{afterWrite=false}={}){
+  const call=await accountGraphql(c,target.owner,target.cred,target.repo??undefined);
+  const spec=target.spec,nodes=[];
+  if(!afterWrite){
+    // Every ID must resolve, be of an allowed type and sit inside the enrolled account (and repository for repo scope).
+    for(const identity of target.node.ids){
+      const value=await call(SCOPE_QUERY,{id:identity.value});
+      const node=value?.node;
+      if(!node||node.id!==identity.value)
+        throw new TypeError('GraphQL '+identity.name+' cannot be independently resolved.');
+      const allowed=spec.ids[identity.name];
+      if(!allowed.includes(node.__typename))
+        throw new TypeError('GraphQL '+identity.name+' must be a '+allowed.join(' or ')+', not a '+node.__typename+'.');
+      if(spec.scope==='org')orgNode(node,target.owner);else scopedNode(node,target.owner,target.repo);
+      nodes.push({name:identity.name,id:node.id,type:node.__typename});
+    }
+  }
+  const specNode=await readSpecNode(call,spec,target.node.value);
+  if(!afterWrite&&!specNode)throw new TypeError('GraphQL '+spec.primary+' node could not be read before the write.');
+  let blocked=null;
+  if(!afterWrite){
+    if(spec.already?.(target.entry.input.input,specNode))
+      blocked='Already in the requested state, so nothing would change.';
+    else blocked=await specPreflight(call,target);
+  }
+  return {verified:true,verifiable:true,id:target.node.value,type:specNode?.__typename??nodes.find(x=>x.name===spec.primary)?.type??null,
+    repo:target.repo?target.owner+'/'+target.repo:target.owner,node:specNode,specNode,blocked,targetIds:nodes};
+}
 async function baseline(a,c,target){
+  if(target.spec)return specBaseline(c,target);
   const call=await accountGraphql(c,target.owner,target.cred,target.repo);
   const nodes=[];const projectIds=new Set();
   for(const identity of target.node.ids){
@@ -238,7 +320,7 @@ const gqlRead=defineRead({
 const gqlWrite=defineGithubWrite({
   name:'github_graphql_write',area:'universal',audience:['B','O','Op'],
   description:'PRODUCTION: Confirm one schema-valid non-curated GraphQL mutation under full resource, access and replay guards.',
-  properties:{mutation:DOCUMENT,...common,repo:REPO},required:['mutation','repo'],
+  properties:{mutation:DOCUMENT,...common,repo:REPO},required:['mutation'],
   declarations:{production:'always',accessWidening:true,notifies:true,spend:false,confirm:'always',cred:'I,U',profiles:['full']},
   target:(a,c)=>targetWrite(a,c),
   read:async(a,c,t)=>baseline(a,c,t),
@@ -248,24 +330,42 @@ const gqlWrite=defineGithubWrite({
     return 0;
   },
   classify:({target:t,before})=>({
-    production:'GraphQL '+t.entry.mutation+' may change '+t.owner+'/'+t.repo,
-    accessWidening:'Unreviewed GraphQL mutations are access-sensitive until independently classified.',
+    // Reviewed specs never get LESS caution than the generic default (Batch Y decision Y4): access and notification
+    // marks stay on for every spec; a destructive spec only makes the production sentence stronger.
+    production:'GraphQL '+t.entry.mutation+(t.spec?.cls.destructive?' PERMANENTLY DELETES in ':' may change ')+(t.repo?t.owner+'/'+t.repo:t.owner),
+    accessWidening:(t.spec?'Reviewed GraphQL changes still count as access-sensitive until an owner decision lowers a mark.':
+      'Unreviewed GraphQL mutations are access-sensitive until independently classified.'),
     notifies:[t.owner+' (GraphQL recipients are not independently known)'],
     ...(before?.verified!==true?{production:'Unverified GraphQL resource ownership'}:{})
   }),
-  summarize:({target:t,before})=>'Single GraphQL '+t.entry.mutation+' on '+t.owner+'/'+t.repo+
+  summarize:({target:t,before})=>t.spec
+    ?(before?.blocked?'BLOCKED ('+before.blocked+') ':'')+'GraphQL '+t.entry.mutation+(t.spec.cls.destructive?' (permanent, '+(t.spec.undoHint??'cannot be undone')+')':'')+
+      ' on '+(t.repo?t.owner+'/'+t.repo:t.owner)+', verified '+(before?.type??'unknown')+' node'
+    :'Single GraphQL '+t.entry.mutation+' on '+t.owner+'/'+t.repo+
     ', verified '+(before?.type??'unknown')+' node; fields '+Object.keys(t.node.changes).join(',').slice(0,180),
-  apply:async({args:a,ctx:c,target:t})=>{
+  apply:async({args:a,ctx:c,target:t,before})=>{
     // The same parser and curated classifier must still accept the request at
     // dispatch, not just the preview; the write contract enforces one send.
     const checked=targetWrite(a,c);
     if(checked.node.value!==t.node.value||checked.entry.mutation!==t.entry.mutation)
       throw new TypeError('GraphQL mutation intent changed after its preview.');
-    const call=await accountGraphql(c,t.owner,t.cred,t.repo);
+    const call=await accountGraphql(c,t.owner,t.cred,t.repo??undefined);
+    if(t.spec){
+      if(before?.blocked)throw refusal(before.blocked);
+      // Concurrent-change protection: the node must still look exactly as it did in the preview.
+      const now=await readSpecNode(call,t.spec,t.node.value);
+      if(snapshotChanged(now,before?.specNode))
+        throw refusal('This item changed since the preview, so nothing was sent. Preview again.');
+    }
     const data=await call(checked.entry.source,checked.entry.variables);
     return {data,headers:{}};
   },
   readAfter:async({args:a,ctx:c,target:t,before,response})=>{
+    if(t.spec){
+      const after=await specBaseline(c,t,{afterWrite:true});
+      return {verified:true,verifiable:true,node:after.specNode,specNode:after.specNode,mutation:t.entry.mutation,
+        receipt:response?.data?.[t.entry.mutation]??null,before:before?.specNode??null};
+    }
     const after=await baseline(a,c,t);
     return {verified:after.verified,verifiable:after.verifiable,node:after.node,
       fieldSnapshot:after.fieldSnapshot??null,fieldExpected:after.fieldExpected??null,
@@ -275,7 +375,9 @@ const gqlWrite=defineGithubWrite({
   verify:({target:t,before,after})=>
     before?.verified===true&&before?.verifiable===true&&
     after?.verified===true&&after?.verifiable===true&&
-    (t.entry.mutation==='updateProjectV2ItemFieldValue'
+    (t.spec
+      ? t.spec.verify(t.entry.input.input,after.specNode,before.specNode)
+      : t.entry.mutation==='updateProjectV2ItemFieldValue'
       ? confirmedField(after.fieldExpected,after.fieldSnapshot)&&
         JSON.stringify(before.fieldSnapshot)!==JSON.stringify(after.fieldSnapshot)
       : changesMatch(t.node.changes,after.node)&&
@@ -283,10 +385,18 @@ const gqlWrite=defineGithubWrite({
   present:({target:t,after,response})=>({
     mutation:t.entry.mutation,account:t.owner,repository:t.repo,
     independentlyRead:after?.verified===true,
-    observed:after?.verified?after.node:null,
-    providerReceipt:response?.data?.[t.entry.mutation]??null
+    observed:after?.verified?(after.node??(t.spec?.deleted?'deleted':null)):null,
+    providerReceipt:response?.data?.[t.entry.mutation]??null,
+    ...(t.spec&&!t.spec.inverse?{undo:t.spec.undoHint??'This change has no automatic opposite.'}:{})
   }),
-  inverse:()=>null
+  inverse:({target:t,before,after})=>{
+    if(!t.spec?.inverse)return null;
+    const made=t.spec.inverse(t.entry.input.input,before?.specNode,after?.specNode);
+    if(!made)return null;
+    return {tool:'github_graphql_write',args:{
+      mutation:inverseDocument(made.mutation),variables:{input:made.input},owner:t.owner,
+      ...(t.repo?{repo:t.repo}:{}),...(t.cred==='U'?{cred:'U'}:{})}};
+  }
 });
 export const tools=[gqlRead.tool,gqlWrite.tool];
 export const handlers={github_graphql_read:gqlRead.handler,github_graphql_write:gqlWrite.handler};

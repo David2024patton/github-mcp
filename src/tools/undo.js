@@ -17,6 +17,7 @@ const NO_OPPOSITE = [
   [/^github_pr_(merge|update)|^github_workflow_merge/, 'A merge cannot be undone here. Open a revert pull request instead.'],
   [/^github_release_/, 'A published release has no clean opposite here. Delete the release or edit it.'],
   [/^github_repo_(delete|transfer)/, 'Deleting or transferring a repository cannot be undone here. Transfer it back from the new owner, or contact GitHub support about a recent deletion.'],
+  [/^github_graphql_write/, 'This GraphQL change has no recorded clean opposite (a delete cannot be restored). Recreate the item with its own tool, or read the change summary for the exact opposite action.'],
   [/secret/, 'Secret values are never stored here. Set the value again on the setup page.'],
   [/invit|collab_add|member_add|org_invite/, 'A sent invitation cannot be taken back by an undo. Cancel the invitation instead.'],
   [/billing|spend|budget|seat|copilot|codespace/, 'Money-related changes have no automatic opposite. Seats removed are billed to the end of the cycle; review the billing page.'],
