@@ -190,10 +190,16 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     ids.add(id);
   }
   await inspectScratchComments(github,{owner,repo,run,objects});
-  // V-4 webhook-target has not been implemented, so not even a run-marked
-  // webhook is safe to silently destroy with its parent scratch repository.
-  if(hooks.items.length>0)
-    throw refusal('A repository webhook exists. V-4 webhook cleanup is not verified; scratch deletion refused.');
+  // V-4 test webhooks are the only webhooks a scratch run may hold. Each live hook must be one the run recorded by exact
+  // ID; any other (an app, a person, a look-alike) is never destroyed with its parent repository.
+  const hookIds=new Set();
+  for(const hook of hooks.items) {
+    const saved=objects.filter(x=>x.object_type==='webhook'&&x.object_id===String(hook?.id)&&
+      x.owner.toLowerCase()===owner.toLowerCase()&&x.repo===repo);
+    if(!Number.isSafeInteger(hook?.id)||hook.id<=0||hookIds.has(hook.id)||saved.length!==1||hook.type!=='Repository')
+      throw refusal('An unrecorded or foreign repository webhook exists in the scratch repository. Deletion refused.');
+    hookIds.add(hook.id);
+  }
   const idsOfRules=new Set();
   for(const s of rulesets.items) {
     if(!Number.isSafeInteger(s?.id)||s.id<=0||idsOfRules.has(s.id)||
@@ -269,10 +275,11 @@ export async function inspectScratchArtifacts(github,{owner,repo,run,objects,def
     issue:issues.items.filter(x=>!x.pull_request).map(x=>String(x.number)),
     tag:tags.items.map(x=>x.name),
     release:releases.items.map(x=>String(x.id)),
-    ruleset:rulesets.items.map(x=>String(x.id))
+    ruleset:rulesets.items.map(x=>String(x.id)),
+    webhook:hooks.items.map(x=>String(x.id))
   }});
   return {branch_count:branches.items.length,pr_count:pulls.items.length,issue_count:issues.items.length,tag_count:tags.items.length,release_count:releases.items.length,
-    ruleset_count:rulesets.items.length,webhook_count:0,milestone_count:0,
+    ruleset_count:rulesets.items.length,webhook_count:hooks.items.length,milestone_count:0,
     deployment_count:0,environment_count:0,action_run_count:0,artifact_count:0,workflow_count:workflowIds.size,label_count:listedLabels.size,verified_pulls:verifiedPulls};
 }
 

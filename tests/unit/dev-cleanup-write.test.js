@@ -250,6 +250,18 @@ describe('V-2 protected run deletion',()=>{
       expect(w.gh.invalid).toEqual([]);
     }
   });
+  it('lets a recorded V-4 test webhook go with its scratch repository and refuses a changed or repeated one', async () => {
+    for (const live of [[{ id: 72, name: 'web', type: 'Repository' }], [{ id: 72, name: 'web', type: 'Organization' }], [{ id: 72, name: 'web', type: 'Repository' }, { id: 72, name: 'web', type: 'Repository' }]]) {
+      const w = await makeWorld({ scratchAccount: true }); await prepare(w); arrange(w.gh, 'ok');
+      await w.db.recordDevObject({ runId: RUN, account: OWNER, connection: 'client-1', type: 'webhook', owner: OWNER, repo: REPO, objectId: '72' });
+      w.gh.when('GET /repos/{owner}/{repo}/hooks').reply(200, live);
+      const out = parse(await def.handler({ runId: RUN, repo: REPO, confirm: true }, w.ctx));
+      const good = live.length === 1 && live[0].type === 'Repository';
+      expect(out.done).toBe(good);
+      expect(w.gh.calls.some((c) => c.route === 'DELETE /repos/{owner}/{repo}')).toBe(good);
+      expect(w.gh.invalid).toEqual([]);
+    }
+  });
   it('requires unchanged recorded required-ci scratch ruleset and refuses drift',async()=>{
     for(const altered of [false,true]){
       const w=await makeWorld({scratchAccount:true});await prepare(w,'protected-main');arrange(w.gh,'ok');

@@ -4,7 +4,7 @@ import {assertScratchJournalCoverage} from '../../src/dev/cleanup-inventory.js';
 const OWNER='example-org',REPO='fixture';
 const ids={
   branch:[`rtc/run-fixture-001/test`],pr:['101'],issue:['202'],
-  tag:['v0.1.0'],release:['301'],ruleset:['401']
+  tag:['v0.1.0'],release:['301'],ruleset:['401'],webhook:['501']
 };
 const tracked=Object.entries(ids).flatMap(([type,values])=>
   values.map(id=>({object_type:type,object_id:id,owner:OWNER,repo:REPO,cleaned:false})));
@@ -15,7 +15,7 @@ describe('scratch pre-delete two-way durable inventory proof',()=>{
   it('accepts a one-to-one exact tracked remote inventory, including the empty scenario',()=>{
     expect(()=>verify()).not.toThrow();
     expect(()=>verify([],
-      {branch:[],pr:[],issue:[],tag:[],release:[],ruleset:[]})).not.toThrow();
+      {branch:[],pr:[],issue:[],tag:[],release:[],ruleset:[],webhook:[]})).not.toThrow();
   });
   for(const type of Object.keys(ids)){
     it(`refuses a missing journaled ${type} even if every listed object is owned`,()=>{

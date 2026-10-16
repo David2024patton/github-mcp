@@ -33,6 +33,7 @@ export const SCHEMA_TABLES = Object.freeze([
   'dev_run_objects',
   'dev_run_intents',
   'dev_repo_birth_labels',
+  'dev_forwarders',
   'dev_cleanup_executions'
 ]);
 export const RESULT_HANDLE = /^res_[A-Za-z0-9_-]{20,64}$/;
@@ -402,6 +403,19 @@ export function createDb(sql = productionSql()) {
         captured_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         CHECK (jsonb_typeof(labels) = 'array')
       )`;
+      await sql`CREATE TABLE IF NOT EXISTS dev_forwarders (
+        id TEXT PRIMARY KEY CHECK (id ~ '^fwd_[A-Za-z0-9_-]{16}$'),
+        account TEXT NOT NULL,
+        connection TEXT NOT NULL,
+        url TEXT NOT NULL,
+        events TEXT[] NOT NULL DEFAULT '{}',
+        secret_enc TEXT NOT NULL,
+        run_id TEXT,
+        repo TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_used_at TIMESTAMPTZ
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS dev_forwarders_scope ON dev_forwarders (account, connection, created_at)`;
       await sql`CREATE TABLE IF NOT EXISTS dev_cleanup_executions (
         run_id TEXT PRIMARY KEY REFERENCES dev_runs(id),
         executor_id UUID NOT NULL,
