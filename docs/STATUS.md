@@ -551,8 +551,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Saved service-issued OAuth and enrolled org only; PREVIEW read-only, production OFF, no spend or destructive change; browser-only completion requires independent owner/browser confirmation",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Custom bounded overview/review, org/user/repo guide samples and exact 2FA check succeeded. 2FA observed false against true => differs, verified false. Repo page check requires manual confirmation. Next: Independent browser/owner confirmation for UI-only controls. Keep partial read evidence; owner validates exact UI controls when relevant, no blanket completion.",
-    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
+    "lastEvidence": "2026-10-16 verified Vercel READY live a79f086 includes required O-1 5a34577e (94 commits ahead). Genuine custom App-scope OAuth PREVIEW/full scratch admin overview returned 13 ok, 2 needs_attention, 3 not_readable and 2 not_available_on_plan: production OFF, spend $0, 2FA requirement false, no outside collaborators/invites, personal credential unavailable. Separate github_org_get and U-1 pinned orgs/get both agree on org 2FA false/plan free/default repo read. Remains PENDING for independent owner/browser verification of guided UI-only controls; provider 403/plan/absent U not treated as pass.",
+    "nextAction": "Independent owner/browser confirmation of the actual guided GitHub settings UI for the selected scratch account and supported control(s); then separately close eligible portions. Never infer browser completion from API reads or enable paid controls."
   },
   {
     "id": "GITHUB-O2-ORG-ADMIN",
@@ -825,9 +825,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/U-1.md; docs/designs/BATCH-U.md",
     "gates": "U-1 source present in independently verified serving READY live ancestry; genuine connected service principal with permitted scratch read scope, no production or spend activation, no mutation. Compare provider response to exact scope/method and retained pagination proof.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15: U-1 source candidate PR #219, independent production still READY at ecf190d; no deployed U-1 connected read or provider comparison. Synthetic source CI is not live acceptance.",
-    "nextAction": "After checked daily release serves requiredRevision, verify READY and custom connection, run representative pinned safe GET/search/describe/foreign-denial and independent provider comparison; retain sanitized evidence."
+    "status": "PASSED",
+    "lastEvidence": "2026-10-16 genuine connected custom GitHub Cloud MCP acceptance: production Vercel alias github-mcp-chris-projects-de6cd1bf.vercel.app independently resolved READY dpl_FfGNUDzo7vwjExCgD5YYWZZt47Rv, serving live revision a79f08643241d727b38da87b7713728baad39746; required U-1 cf09aab182c7bc6d5e80196adb03f605731201a5 verified as live ancestor (ahead 2/behind 0). Real enrolled OAuth principal PREVIEW/full, I-only robinson-ai-scratch, production OFF, spend $0. github_api_search discovered pinned GitHub REST v2026-03-10 orgs/get, github_api_describe showed GET /orgs/{org} required path only; github_api_read GET 200 returned scoped org login robinson-ai-scratch, numeric org identity 341263172, free plan, 2FA false, default repo read. Independently fetched through specialized github_org_get and confirmed same org identity, plan, 2FA, default permission. Explicit foreign org path under enrolled account refused BEFORE provider call; unknown path/query parameter refused before provider call. No mutation, production activation, spend, secret or cleanup.",
+    "nextAction": "ACCEPTED — genuine source-bearing READY custom-service pinned REST search/describe/read/negative-scope validation independently established. Any U-1 uncurated write still requires separate owner authority per GITHUB-U1-REST-WRITE."
   },
   {
     "id": "GITHUB-U1-REST-WRITE",
