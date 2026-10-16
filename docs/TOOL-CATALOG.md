@@ -547,7 +547,7 @@ Card(s): U-1, U-2.
 | `github_api_search` | Find REST operations by plain words: method, path, summary, and whether it reads, writes, is production, widens access, notifies people or spends | — | N | — | B,O,Op | R | U-1 |
 | `github_api_describe` | Parameters for one operation, trimmed, from GitHub's own description at the pinned version | — | N | — | B,O,Op | R | U-1 |
 | `github_api_read` | Any GET operation, with the same summaries, `fields`, size cap and handles as every other read | — | N | I,U | B,O,Op | R | U-1 |
-| `github_api_write` | Any POST/PUT/PATCH/DELETE operation through the full safety layer | C (always) | N | I,U | B,O,Op | F | U-1 |
+| `github_api_write` | Any POST/PUT/PATCH/DELETE operation through the full safety layer | C·Prod*·A*·M*·$* | N | I,U | B,O,Op | F | U-1 |
 | `github_graphql_read` | Any GraphQL query, validated against GitHub's published schema; cost estimated before sending | — | N | I,U | B,O,Op | R | U-2 |
 | `github_graphql_write` | Any GraphQL mutation, validated against the schema, through the full safety layer | C (always) | N | I,U | B,O,Op | F | U-2 |
 
