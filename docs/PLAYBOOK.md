@@ -87,7 +87,7 @@ private key or a connection string), docs check (`scripts/check-docs-updated.mjs
 | Any tool | `npx vitest run tests/unit/<area>.test.js tests/unit/write-contract.test.js` |
 | A GitHub call | `npm run test:shapes -- tests/shapes/<area>.test.js` (from A-4 the fake GitHub validates method, path, parameters and body against `vendor/github-openapi/`, GraphQL documents against `vendor/github-graphql/`; before A-4 it matches the route list in `test/helpers/fake-github.js`) |
 | SQL / `src/db.js` | `npm run test:db -- tests/db/<file>.test.js` (`scripts/local-postgres-test.sh`: disposable **localhost** Postgres, never Neon). If no Postgres binaries exist in your workspace, push and let CI run it; say so in the PR |
-| A door (HTTPS API, `github_call`) | `npx vitest run tests/doors/` |
+| A door (HTTPS API, `github_call`) | `npm run test:rtc` and `npx vitest run tests/unit/rtc-*.test.js` |
 | Listing or descriptions | `node scripts/check-budgets.mjs --print` |
 
 ### 4c. Registries that break CI when you forget them

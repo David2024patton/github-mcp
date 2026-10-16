@@ -24,48 +24,58 @@ next bounded implementation. Every line below maps to evidence named in its desi
 - The PR description carries the card's acceptance checklist with evidence and a "Self-review" (AI-PR-READ-FIRST).
 
 ## Batch A — Foundation (`designs/BATCH-A.md`)
+
+*Docs audit 2026-10-16: every card in this batch is MERGED (see `pr-cards/work-index.json`); boxes below are ticked on that basis plus the named test files in `tests/`. Anything needing a live account stays an owner-run step in `GO-LIVE-CHECKLIST.md`.*
 - [x] Node 24.x in `package.json` and every CI job; CI runs check, unit, database and request-shape jobs on every PR with a
   single `ci` gate; a deliberately failing test turned it red once. — A-1, PR #1 (red proof: https://github.com/Robinson-AI-Systems/github-mcp/actions/runs/38077330755; green run linked in the PR).
-- [ ] Connector login with default account, allowed accounts, mode (preview unless the account has production enabled),
+- [x] Connector login with default account, allowed accounts, mode (preview unless the account has production enabled),
   profile and listing; lockout after 5 tries in 15 minutes; tokens stored hashed; a refresh keeps every setting.
-- [ ] GitHub Apps created from manifests on the setup page; credentials stored only encrypted; nothing copied by hand;
+- [x] GitHub Apps created from manifests on the setup page; credentials stored only encrypted; nothing copied by hand;
   credential steps and production refused on non-production deployments; key-scan test passes.
-- [ ] One GitHub client: pinned `2026-03-10`, Octokit encodes every path (audit G8), request keys and replay, write slots
+- [x] One GitHub client: pinned `2026-03-10`, Octokit encodes every path (audit G8), request keys and replay, write slots
   shared across instances, rate state honoured inside the time budget (audit G19, G20).
-- [ ] OpenAPI description and GraphQL schema vendored with `SOURCE.md`; `scripts/openapi-find.mjs` and
+- [x] OpenAPI description and GraphQL schema vendored with `SOURCE.md`; `scripts/openapi-find.mjs` and
   `scripts/graphql-find.mjs` answer in ≤20 lines.
-- [ ] One-time-secret page works (shown once, then gone); App webhooks verified and narrow.
-- [ ] `docs/DEPLOY.md` followable by Chris without a question.
+- [x] One-time-secret page works (shown once, then gone); App webhooks verified and narrow.
+- [x] `docs/DEPLOY.md` followable by Chris without a question.
 
 ## Batch B — Trust layer (`designs/BATCH-B.md`)
-- [ ] `defineWrite` with target/classify hooks, preview first line in plain English, confirm, read-back, change log,
+
+*Docs audit 2026-10-16: every card in this batch is MERGED (see `pr-cards/work-index.json`); boxes below are ticked on that basis plus the named test files in `tests/`. Anything needing a live account stays an owner-run step in `GO-LIVE-CHECKLIST.md`.*
+- [x] `defineWrite` with target/classify hooks, preview first line in plain English, confirm, read-back, change log,
   request-key replay, inverse; the nine write-contract checks exist and run.
-- [ ] Production guard (eight rules, failed read = production) and two-step production enable (tool + passphrase).
-- [ ] Self-protection (`pr-only`, `locked`) seeded per IN-08 and edited only on the setup page; project ownership with
+- [x] Production guard (eight rules, failed read = production) and two-step production enable (tool + passphrase).
+- [x] Self-protection (`pr-only`, `locked`) seeded per IN-08 and edited only on the setup page; project ownership with
   `outsideProject` and a profile's `agentMay` steps.
-- [ ] Access, message (own people per IN-13) and spend guards (monthly limit per account, default $0, IN-09).
-- [ ] Plain-English GitHub errors (permissions header, rule violations, 404 "or no access", stale head); result shaping
+- [x] Access, message (own people per IN-13) and spend guards (monthly limit per account, default $0, IN-09).
+- [x] Plain-English GitHub errors (permissions header, rule violations, 404 "or no access", stale head); result shaping
   hides secrets and marks untrusted text; profiles and downscoped installation tokens.
-- [ ] `check-writes` fails on undeclared writes, missing `dryRun`, missing price function, or a mismatch with TOOL-CATALOG.
-- [ ] Server tools (B-8 rows of TOOL-CATALOG) built and marked.
+- [x] `check-writes` fails on undeclared writes, missing `dryRun`, missing price function, or a mismatch with TOOL-CATALOG.
+- [x] Server tools (B-8 rows of TOOL-CATALOG) built and marked.
 
 ## Batch C — Cheap on context (`designs/BATCH-C.md`)
-- [ ] Summaries, `fields`, `detail`, text caps, handles (24 h, same connection only), annotations, structured output.
-- [ ] Catalog and compact listing; meta-tools dispatch into the wrapped handlers, so every guard applies (write-contract
+
+*Docs audit 2026-10-16: every card in this batch is MERGED (see `pr-cards/work-index.json`); boxes below are ticked on that basis plus the named test files in `tests/`. Anything needing a live account stays an owner-run step in `GO-LIVE-CHECKLIST.md`.*
+- [x] Summaries, `fields`, `detail`, text caps, handles (24 h, same connection only), annotations, structured output.
+- [x] Catalog and compact listing; meta-tools dispatch into the wrapped handlers, so every guard applies (write-contract
   through `github_call`).
-- [ ] Budgets enforced in CI: compact <5,000 tokens, everyday catalog <22,000, descriptions ≤160 characters, schemas
+- [x] Budgets enforced in CI: compact <5,000 tokens, everyday catalog <22,000, descriptions ≤160 characters, schemas
   <1,500 tokens, default results ≤8 KB or a handle.
 
 ## Batch D — Repositories, code, branches and tags (`designs/BATCH-D.md`)
-- [ ] Every D-1 … D-3 tool in TOOL-CATALOG built and marked `built #n`.
-- [ ] No literal default branch (audit G4); file writes and ref moves are compare-and-swap; force moves previewed with
+
+*Docs audit 2026-10-16: every card in this batch is MERGED (see `pr-cards/work-index.json`); boxes below are ticked on that basis plus the named test files in `tests/`. Anything needing a live account stays an owner-run step in `GO-LIVE-CHECKLIST.md`.*
+- [x] Every D-1 … D-3 tool in TOOL-CATALOG built and marked `built #n`.
+- [x] No literal default branch (audit G4); file writes and ref moves are compare-and-swap; force moves previewed with
   the commits dropped.
 
 ## Batch E — Pull requests, merges, stacks, reviews (`designs/BATCH-E.md`)
-- [ ] Every E-1 … E-3 tool built and marked.
-- [ ] Merges only at the exact head and only when every required check is green there (`src/github/ci-state.js`);
+
+*Docs audit 2026-10-16: every card in this batch is MERGED (see `pr-cards/work-index.json`); boxes below are ticked on that basis plus the named test files in `tests/`. Anything needing a live account stays an owner-run step in `GO-LIVE-CHECKLIST.md`.*
+- [x] Every E-1 … E-3 tool built and marked.
+- [x] Merges only at the exact head and only when every required check is green there (`src/github/ci-state.js`);
   merge commits by default; `bypass_rules` never sent (grep test over the fake-GitHub request log).
-- [ ] Review threads listed, replied to and resolved (GraphQL validated); PR creation idempotent.
+- [x] Review threads listed, replied to and resolved (GraphQL validated); PR creation idempotent.
 
 ## Batch G — CI and delivery (`designs/BATCH-G.md`)
 
@@ -77,55 +87,80 @@ next bounded implementation. Every line below maps to evidence named in its desi
   public HTTPS URLs only (audit G15).
 
 ## Batch V — Developer tools (`designs/BATCH-V.md`)
-- [ ] Every `github_dev_*` tool refuses production (a test per tool); scratch repositories only in the scratch account.
-- [ ] Runs record every created object; cleanup touches only recorded objects and reports per object.
-- [ ] Dispatch-and-wait stays inside the time budget; simulated check runs; forwarded deliveries verify like real GitHub
+
+*Docs audit 2026-10-16: every card in this batch is MERGED (see `pr-cards/work-index.json`); boxes below are ticked on that basis plus the named test files in `tests/`. Anything needing a live account stays an owner-run step in `GO-LIVE-CHECKLIST.md`.*
+- [x] Every `github_dev_*` tool refuses production (a test per tool); scratch repositories only in the scratch account.
+- [x] Runs record every created object; cleanup touches only recorded objects and reports per object.
+- [x] Dispatch-and-wait stays inside the time budget; simulated check runs; forwarded deliveries verify like real GitHub
   deliveries; private and metadata addresses refused.
-- [ ] Integration check reports ok / missing with the exact tool call or guided steps.
+- [x] Integration check reports ok / missing with the exact tool call or guided steps.
 
 ## Batch F — Issues, labels, discussions, projects, search (`designs/BATCH-F.md`)
-- [ ] Every F-1 … F-3 tool built and marked.
-- [ ] Audit G7 (rows dropped after paging) and G18 (cannot clear a field) cannot recur (regression tests).
-- [ ] Message guard on outsider mentions and assignees; user-owned projects explain the credential they need.
+
+*Docs audit 2026-10-16: every card in this batch is MERGED (see `pr-cards/work-index.json`); boxes below are ticked on that basis plus the named test files in `tests/`. Anything needing a live account stays an owner-run step in `GO-LIVE-CHECKLIST.md`.*
+- [x] Every F-1 … F-3 tool built and marked.
+- [x] Audit G7 (rows dropped after paging) and G18 (cannot clear a field) cannot recur (regression tests).
+- [x] Message guard on outsider mentions and assignees; user-owned projects explain the credential they need.
 
 ## Batch H — Governance and security (`designs/BATCH-H.md`)
-- [ ] Every H-1 … H-4 tool built and marked.
-- [ ] Protection and ruleset changes never drop other settings (audit G2, G3); bypass actors are access-widening.
-- [ ] Webhook secrets server-generated and shown once (audit G14); deploy keys public only.
-- [ ] Secret-scanning secrets never returned; paid security features on private repositories priced and spend-guarded.
+
+*Docs audit 2026-10-16: every card in this batch is MERGED (see `pr-cards/work-index.json`); boxes below are ticked on that basis plus the named test files in `tests/`. Anything needing a live account stays an owner-run step in `GO-LIVE-CHECKLIST.md`.*
+- [x] Every H-1 … H-4 tool built and marked.
+- [x] Protection and ruleset changes never drop other settings (audit G2, G3); bypass actors are access-widening.
+- [x] Webhook secrets server-generated and shown once (audit G14); deploy keys public only.
+- [x] Secret-scanning secrets never returned; paid security features on private repositories priced and spend-guarded.
 
 ## Batch O — Owner and administration (`designs/BATCH-O.md`)
-- [ ] Admin overview well-formed (contract §9/§11): each item ok / needs_attention / not_readable / not_available_on_plan.
-- [ ] Every settings page of a repository, an organization and the personal account in the dashboard map with structured
+
+*Docs audit 2026-10-16: every card in this batch is MERGED (see `pr-cards/work-index.json`); boxes below are ticked on that basis plus the named test files in `tests/`. Anything needing a live account stays an owner-run step in `GO-LIVE-CHECKLIST.md`.*
+- [x] Admin overview well-formed (contract §9/§11): each item ok / needs_attention / not_readable / not_available_on_plan.
+- [x] Every settings page of a repository, an organization and the personal account in the dashboard map with structured
   steps; read-back wherever GitHub exposes the value; never reported done without it.
-- [ ] Members, teams, roles, apps, tokens, billing, Copilot, Codespaces, personal account and notifications tools built;
+- [x] Members, teams, roles, apps, tokens, billing, Copilot, Codespaces, personal account and notifications tools built;
   owner changes confirmed and logged; spend guarded; prices recorded with source and date.
 
 ## Batch P — Project profiles (`designs/BATCH-P.md`)
-- [ ] `known_projects` with the Appliance Desk and Robinson-server profiles, each item traceable to the project's files.
-- [ ] Production guard and project ownership read profiles and name the owning workflow; `agentMay` steps honoured.
-- [ ] `github_workflow_app_readiness` covers every row G1–G20 of `docs/APP-NEEDS-APPLIANCE-DESK.md` and works with an
+
+*Docs audit 2026-10-16: every card in this batch is MERGED (see `pr-cards/work-index.json`); boxes below are ticked on that basis plus the named test files in `tests/`. Anything needing a live account stays an owner-run step in `GO-LIVE-CHECKLIST.md`.*
+- [x] `known_projects` with the Appliance Desk and Robinson-server profiles, each item traceable to the project's files.
+- [x] Production guard and project ownership read profiles and name the owning workflow; `agentMay` steps honoured.
+- [x] `github_workflow_app_readiness` covers every row G1–G20 of `docs/APP-NEEDS-APPLIANCE-DESK.md` and works with an
   inline spec; fixes previewed and confirmed; never edits a project's workflow files or moves an owned ref.
-- [ ] `github_workflow_project_setup` for new projects, idempotent; `github_profile_draft` from codebase findings.
+- [x] `github_workflow_project_setup` for new projects, idempotent; `github_profile_draft` from codebase findings.
 
 ## Batch W — Workflows (`designs/BATCH-W.md`)
-- [ ] All W-1 … W-7 workflows built; merge on green exactly as W3; stacks as W4.
-- [ ] Review threads verified at the current head before resolving.
-- [ ] No waiting loops; the 50-second budget is respected (a test per workflow); second automatic rerun refused.
-- [ ] All writes confirmed and logged (write-contract via `github_call` for each write workflow); branch cleanup by PR
+
+*Docs audit 2026-10-16: every card in this batch is MERGED (see `pr-cards/work-index.json`); boxes below are ticked on that basis plus the named test files in `tests/`. Anything needing a live account stays an owner-run step in `GO-LIVE-CHECKLIST.md`.*
+- [x] All W-1 … W-7 workflows built; merge on green exactly as W3; stacks as W4.
+- [x] Review threads verified at the current head before resolving.
+- [x] No waiting loops; the 50-second budget is respected (a test per workflow); second automatic rerun refused.
+- [x] All writes confirmed and logged (write-contract via `github_call` for each write workflow); branch cleanup by PR
   state (audit G16).
 
 ## Batch U — Universal tools (`designs/BATCH-U.md`)
-- [ ] Six tools; every request validated against the vendored description or schema; unknown → refused in words.
-- [ ] Classification tables with the safe default for unclassified operations and mutations; hand-built tools win;
+
+*Docs audit 2026-10-16: every card in this batch is MERGED (see `pr-cards/work-index.json`); boxes below are ticked on that basis plus the named test files in `tests/`. Anything needing a live account stays an owner-run step in `GO-LIVE-CHECKLIST.md`.*
+- [x] Six tools; every request validated against the vendored description or schema; unknown → refused in words.
+- [x] Classification tables with the safe default for unclassified operations and mutations; hand-built tools win;
   `bypass_rules` and secret writes refused.
-- [ ] Same guards as hand-built tools (write-contract through `github_api_write` and `github_graphql_write`).
+- [x] Same guards as hand-built tools (write-contract through `github_api_write` and `github_graphql_write`).
 
 ## Batch R — Hub-ready doors, RTC 1 (`designs/BATCH-R.md`)
 - [x] Passes per RTC §2 with narrow defaults; production + writes needs the passphrase. (R-1 #225: mode, profile, areas, repositories, writes, access changes, spend, lifetime, request limit; production and spending passes only on the setup page)
 - [x] HTTPS tool API, manifest and OpenAPI per RTC §1/§7; same nine checks through MCP, `github_call` and HTTPS. (R-2 #225: scoped passes run writes through the same write layer; batch stays read-only)
 - [x] Per-pass rate limit stored per pass and counted in Postgres (overlapping-request test across two instances). (`tests/db/rtc-passes.test.js`, and the pinned runner's two-instance probe)
 - [x] RTC 1 conformance run in CI against this server's real handler with a fixture registry. (R-3 #225: every probe passes except `reads`, an honest recorded difference; the public manifest stays `rtc: 0` until real Hub route evidence exists)
+
+## Batch Y — Gap closure (`designs/BATCH-Y.md`)
+- [ ] Y-1: universal REST no longer blocks reviewed-free routes (`FREE_ROUTES`, pinned blocked count); permission checklist and `github_check_permissions` report missing App permissions; `github_account_set_status` exists; every curated/hand-built-map target is a real tool (test).
+- [ ] Y-2: `github_graphql_write` supports at least 24 spec-driven mutations with independent read-back and undo where an opposite exists; unknown mutations still refused.
+- [ ] Y-3: public reads of other accounts, follow/unfollow, star lists, repository watching and social links work through hand-built tools; universal tools unchanged.
+- [ ] Y-4: Projects v2 create/update/copy/delete/link, fields, views, drafts, archive, move, clear and status updates; option merge never drops existing option ids.
+- [ ] Y-5: pin, delete and hide comments/issues, discussion management, linked branches, org issue types and fields, interaction limits, autolinks.
+- [ ] Y-6: runners and groups (tokens only through the one-time page), Actions retention/OIDC settings with spend rules, deployment protection rules and pending-deployment reviews, Pages build request.
+- [ ] Y-7: security advisories (publish irreversible and confirmed), code-scanning default setup, secret-scanning patterns, Dependabot org settings, org code-security configurations priced and spend-guarded.
+- [ ] Y-8: async jobs, artifact and archive reading (bomb-safe), release upload from artifacts, wiki (only if IN-17 approved).
+- [ ] Y-9: remaining org tools, read-backs for guided settings, missing web-only guides; money tools only if IN-16 approved.
 
 ## Batch X — Undo, smoke test (`designs/BATCH-X.md`)
 - [x] Undo for every clean opposite (audit G17 fixed); every other change says what the right opposite is.

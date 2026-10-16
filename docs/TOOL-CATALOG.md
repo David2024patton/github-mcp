@@ -6,8 +6,8 @@ Restricted preview RTC successful replies revalidate service pass and scratch ow
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
-tool merges, its Card cell gains `built #<PR>`. Built so far: **119 tools** (`github_search_tools`, `github_describe_tool`, `github_call`, `github_batch`, `github_get_result`, `github_check_permissions`, `github_rate_status`, `github_where_is_setting`, `github_whoami`, `github_list_accounts`, `github_list_protected_resources`, `github_list_connections`, `github_recent_changes`, `github_enable_production`, `github_disable_production`, `github_set_spend_limit`, `github_set_default_account`, `github_revoke_connection`, `github_repo_list`, `github_repo_get`, `github_repo_find`, `github_repo_get_insights`, `github_repo_get_traffic`, `github_repo_list_activity`, `github_repo_get_custom_properties`, `github_repo_create`, `github_repo_create_from_template`, `github_repo_update_settings`, `github_repo_set_visibility`, `github_repo_set_default_branch`, `github_repo_rename`, `github_repo_set_archived`, `github_repo_transfer`, `github_repo_delete`, `github_repo_fork`, `github_repo_sync_fork`, `github_repo_set_custom_properties`, `github_repo_star`, `github_content_get`, `github_content_get_tree`, `github_content_get_archive_link`, `github_content_check_codeowners`, `github_commit_list`, `github_commit_get`, `github_commit_compare`, `github_commit_list_prs`, `github_git_get_ref`, `github_git_get_commit`, `github_content_put_file`, `github_content_delete_file`, `github_content_push_files`, `github_commit_comment`, `github_git_update_ref`, `github_branch_list`, `github_branch_get`, `github_branch_create`, `github_branch_rename`, `github_branch_delete`, `github_branch_merge`, `github_tag_list`, `github_tag_create`, `github_tag_delete`, `github_pr_list`, `github_pr_get`, `github_pr_get_diff`, `github_pr_list_files`, `github_pr_list_commits`, `github_review_list`, `github_review_list_threads`, `github_review_list_comments`, `github_review_create`, `github_review_submit`, `github_review_dismiss`, `github_review_reply`, `github_review_resolve_thread`, `github_review_request_reviewers`, `github_actions_list_workflows`, `github_actions_list_runs`, `github_actions_get_run`, `github_actions_get_job_log`, `github_actions_get_run_logs_summary`, `github_actions_list_pending_deployments`, `github_actions_set_workflow_enabled`, `github_actions_dispatch`, `github_actions_rerun`, `github_actions_cancel_run`, `github_actions_delete_run`, `github_actions_review_pending_deployment`, `github_check_get_ci_state`, `github_check_get_run`, `github_artifact_list`, `github_artifact_get_link`, `github_cache_list`, `github_check_create_run`, `github_check_update_run`, `github_status_create`, `github_artifact_delete`, `github_cache_delete`, `github_variable_list`, `github_secret_list`, `github_variable_set`, `github_variable_delete`, `github_pr_create`, `github_pr_update`, `github_pr_close`, `github_pr_set_draft`, `github_pr_update_branch`, `github_pr_merge`, `github_pr_merge_async`, `github_pr_set_auto_merge`, `github_secret_set`, `github_secret_delete`, `github_secret_set_repo_access`, `github_pr_list_stacks`, `github_pr_stack_manage`, `github_env_list`, `github_env_get`, `github_env_save`, `github_env_delete`, `github_undo_change`, `github_create_pass`) — the registry (`src/tools/index.js`) exists
-and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Since B-5 every result of these tools is shaped (`src/tools/util.js`) and failures are explained by `src/tools/errors.js`. Since B-6 a connection sees only the tools its profile allows (`tools/list` and by-name calls). Every write tool below will be built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
+tool merges, its Card cell gains `built #<PR>`. Built so far: **all 310 tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
+and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Since B-5 every result of these tools is shaped (`src/tools/util.js`) and failures are explained by `src/tools/errors.js`. Since B-6 a connection sees only the tools its profile allows (`tools/list` and by-name calls). Every write tool below is built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
 `—` reads only · `P` preview available (`dryRun`), no confirmation needed for ordinary targets · `C` always needs
@@ -56,7 +56,7 @@ Card(s): A-5, B-2, B-3, B-8, C-1, C-2, R-1, O-1, X-1. Meta-tools, connection and
 | `github_get_result` | Page through a big result kept on the server behind a handle | — | N | — | B,O,Op | R | C-1 built #25; RTC scoped single read #148 |
 | `github_create_pass` | Make a short-lived preview pass for the HTTPS API and Robinson's Toolkit (read-only unless changes are allowed; $0; no access changes; shown once on the setup page) | C | N | — | O | F | R-1 built #225 |
 | `github_where_is_setting` | Structured steps (link, numbered actions, expected result, read-back check) for any GitHub setting with no API | — | N | — | O | R | B-8 built #24 |
-| `github_admin_overview` | Bounded owner account and organization security review; explicit unreadable/plan-limited statuses and no invented billing figures | — | N | I,U | O | R | O-1 |
+| `github_admin_overview` | Bounded owner account and organization security review; explicit unreadable/plan-limited statuses and no invented billing figures | — | N | I,U | O | R | O-1 built #197/#224 |
 
 ## Repositories (`github_repo_*`) — 22
 
@@ -66,8 +66,8 @@ Card(s): D-1.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_repo_list` | Repositories of an org or user (type, visibility, sort, archived filter) | — | C | I | B,Op | R | D-1 built #27 |
 | `github_repo_get` | One repo: visibility, default branch, merge settings, protection summary, security features, custom properties | — | C | I | B,O,Op | R | D-1 built #27 |
-| `github_repo_get_vulnerability_alerts` | Independently read Dependabot vulnerability-alert enabled state, not alert count | — | N | I | B,O | R | W-7 prerequisite |
-| `github_repo_set_vulnerability_alerts` | Enable or disable free Dependabot alerts with identity and independent readback | C·Prod | N | I | B,O | F | W-7 prerequisite |
+| `github_repo_get_vulnerability_alerts` | Independently read Dependabot vulnerability-alert enabled state, not alert count | — | N | I | B,O | R | W-7 built #218 |
+| `github_repo_set_vulnerability_alerts` | Enable or disable free Dependabot alerts with identity and independent readback | C·Prod | N | I | B,O | F | W-7 built #218 |
 | `github_repo_find` | Plain-words search across Chris's accounts (name, topic, description) | — | N | I | Op | R | D-1 built #27 |
 | `github_repo_create` | New repository in an org or user account (private by default; public is access-widening) | P·A* | F | I | B | E | D-1 built #29 |
 | `github_repo_create_from_template` | New repository from a template repository | P·A* | C | I | B | E | D-1 built #29 |
@@ -319,7 +319,7 @@ Card(s): V-1 … V-5. The owner alone can enable an exact Organization as `is_sc
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_dev_list_scenarios` | Named scenarios github_dev_seed can build (e.g. repo-with-failing-ci, open-pr-with-review-threads, release-train) | — | N | — | B | R | V-1 built #68 |
 | `github_dev_seed` | Build a scenario in the scratch account or on test branches: repos, branches, commits, PRs, issues, labels, workflow files; preview lists every object | P | N | I | B | E | V-1 built #70–#80; initial scratch SHA #102; exact marker #90; resume commit provenance #124; first-create label evidence #126 (no deletion authority; six scratch scenarios; webhook-target pending V-4) |
-| `github_dev_list_runs` | Connection-scoped runs and birth labels, plus opt-in remote cleanup/first-label identity drift diagnostics (no deletion authority), and paged previews | — | N | — | B | R | V-1 #68; V-2 #93; truthful scenario and preview #123 |
+| `github_dev_list_runs` | Connection-scoped runs and birth labels, plus opt-in remote cleanup/first-label identity drift diagnostics (no deletion authority), and paged previews | — | N | — | B | R | V-1 built #65/#223; V-2 built #84/#223 |
 <!-- #106: all-runs cleanup preview includes at-most-five run proposals; each still needs fresh verification and explicit per-run confirmation. -->
 | `github_dev_create_scratch_repo` | Throwaway repository in the scratch account, tagged with the run | P | N | I | B | E | V-1 built #69; initial scratch SHA #102; exact verified same-run replay #125; origin label evidence #126 (not deletion authority); delayed-default-label stabilization with zero-default support #174 |
 | `github_dev_cleanup` | Clean confirmed run-owned scratch repositories, or exact unprotected standalone test PRs/branches; reject foreign scratch resources, enforce a single executable scenario's finite resource types/counts, then independently verify ownership before deletion; never delete host repositories | C | N | I | B | E | V-2 built #85–#90; two-way resource inventory #121; finite scenario limits #122; exclusive executor #132; connected scratch acceptance pending |
@@ -385,15 +385,15 @@ Card(s): H-4.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_security_get_settings` | Repository security features: secret scanning, push protection, Dependabot alerts/updates, code security, private vulnerability reporting | — | F | I | O,B | R | H-4 settings source implementation under CI |
-| `github_security_set_feature` | Turn a security feature on or off, including private vulnerability reporting (paid features on private repositories raise spend) | C·Prod | F | I | O | F | H-4 settings source implementation under CI |
-| `github_security_list_alerts` | Dependabot, code scanning or secret scanning alerts for a repo or org (kind chosen by argument) | — | C | I | O,B,Op | R | H-4 security-triage source, CI pending |
-| `github_security_get_alert` | One alert in plain words (secret scanning: the secret itself is never returned) | — | F | I | O,B | R | H-4 security-triage source, CI pending |
-| `github_security_update_alert` | Dismiss, resolve or reopen an alert with a reason | C·Prod | C | I | O,B | E | H-4 security-triage source, CI pending |
-| `github_security_list_advisories` | Repository security advisories, or global advisories by package | — | C | I | O,B | R | H-4 security-triage source, CI pending |
-| `github_security_compare_dependencies` | Dependencies added, removed or changed between two commits or branches (a PR), with known vulnerabilities and licences | — | N | I | B,O | R | H-4 security-triage source, CI pending |
-| `github_actions_get_settings` | Repository Actions settings: allowed actions, default token permissions, fork PR approval, retention | — | N | I | O,B | R | H-4 settings source implementation under CI |
-| `github_actions_set_settings` | Change repository Actions settings | C·Prod·A | N | I | O | F | H-4 settings source implementation under CI |
+| `github_security_get_settings` | Repository security features: secret scanning, push protection, Dependabot alerts/updates, code security, private vulnerability reporting | — | F | I | O,B | R | H-4 built #195/#196/#224 |
+| `github_security_set_feature` | Turn a security feature on or off, including private vulnerability reporting (paid features on private repositories raise spend) | C·Prod | F | I | O | F | H-4 built #195/#196/#224 |
+| `github_security_list_alerts` | Dependabot, code scanning or secret scanning alerts for a repo or org (kind chosen by argument) | — | C | I | O,B,Op | R | H-4 built #195/#196/#224 |
+| `github_security_get_alert` | One alert in plain words (secret scanning: the secret itself is never returned) | — | F | I | O,B | R | H-4 built #195/#196/#224 |
+| `github_security_update_alert` | Dismiss, resolve or reopen an alert with a reason | C·Prod | C | I | O,B | E | H-4 built #195/#196/#224 |
+| `github_security_list_advisories` | Repository security advisories, or global advisories by package | — | C | I | O,B | R | H-4 built #195/#196/#224 |
+| `github_security_compare_dependencies` | Dependencies added, removed or changed between two commits or branches (a PR), with known vulnerabilities and licences | — | N | I | B,O | R | H-4 built #195/#196/#224 |
+| `github_actions_get_settings` | Repository Actions settings: allowed actions, default token permissions, fork PR approval, retention | — | N | I | O,B | R | H-4 built #195/#196/#224 |
+| `github_actions_set_settings` | Change repository Actions settings | C·Prod·A | N | I | O | F | H-4 built #195/#196/#224 |
 
 ## Owner: organization and members (`github_org_*`) — 12
 
@@ -401,18 +401,18 @@ Card(s): O-2.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_org_get` | Organization profile, plan, seats, settings (default permission, who may create repos/pages/forks, 2FA requirement state) | — | C built #199 | I | O | R | O-2 |
-| `github_org_update_settings` | Change organization profile and member privileges (each field previewed; widening privileges is access-widening) | C·Prod·A* | N built #199 | I | O | F | O-2 |
-| `github_org_list_members` | Members with role and 2FA state; outside collaborators on request | — | C built #199 | I | O | R | O-2 |
-| `github_org_invite_member` | Invite someone by username or email with a role and teams | C·A·M | N built #199 | I | O | F | O-2 |
-| `github_org_list_invitations` | Pending and failed invitations | — | N built #199 | I | O | R | O-2 |
-| `github_org_cancel_invitation` | Cancel a pending invitation | C·M | N built #199 | I | O | F | O-2 |
-| `github_org_set_member_role` | Make a member an owner or a member | C·A* | N built #199 | I | O | F | O-2 |
-| `github_org_remove_member` | Remove a member (they lose access to private repositories) | C·D | N built #199 | I | O | F | O-2 |
-| `github_org_set_outside_collaborator` | Convert a member to outside collaborator, or remove an outside collaborator | C | N built #199 | I | O | F | O-2 |
-| `github_org_set_blocked` | Block or unblock a user for the organization; list blocked users | P | N built #199 | I | O | F | O-2 |
-| `github_org_custom_properties` | Read or define the organization's custom properties (schema) | P | N built #199 | I | O | F | O-2 |
-| `github_org_set_immutable_releases` | Require immutable releases for all or selected repositories | C·Prod | N built #199 | I | O | F | O-2 |
+| `github_org_get` | Organization profile, plan, seats, settings (default permission, who may create repos/pages/forks, 2FA requirement state) | — | C built #199 | I | O | R | O-2 built #199 |
+| `github_org_update_settings` | Change organization profile and member privileges (each field previewed; widening privileges is access-widening) | C·Prod·A* | N built #199 | I | O | F | O-2 built #199 |
+| `github_org_list_members` | Members with role and 2FA state; outside collaborators on request | — | C built #199 | I | O | R | O-2 built #199 |
+| `github_org_invite_member` | Invite someone by username or email with a role and teams | C·A·M | N built #199 | I | O | F | O-2 built #199 |
+| `github_org_list_invitations` | Pending and failed invitations | — | N built #199 | I | O | R | O-2 built #199 |
+| `github_org_cancel_invitation` | Cancel a pending invitation | C·M | N built #199 | I | O | F | O-2 built #199 |
+| `github_org_set_member_role` | Make a member an owner or a member | C·A* | N built #199 | I | O | F | O-2 built #199 |
+| `github_org_remove_member` | Remove a member (they lose access to private repositories) | C·D | N built #199 | I | O | F | O-2 built #199 |
+| `github_org_set_outside_collaborator` | Convert a member to outside collaborator, or remove an outside collaborator | C | N built #199 | I | O | F | O-2 built #199 |
+| `github_org_set_blocked` | Block or unblock a user for the organization; list blocked users | P | N built #199 | I | O | F | O-2 built #199 |
+| `github_org_custom_properties` | Read or define the organization's custom properties (schema) | P | N built #199 | I | O | F | O-2 built #199 |
+| `github_org_set_immutable_releases` | Require immutable releases for all or selected repositories | C·Prod | N built #199 | I | O | F | O-2 built #199 |
 
 ## Owner: teams and roles (`github_team_*, github_role_*`) — 9
 
@@ -420,15 +420,15 @@ Card(s): O-3.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_team_list` | Teams with privacy, parent and member counts | — | C built #200 | I | O | R | O-3 |
-| `github_team_get` | One team: members and roles, repositories and permissions | — | C built #200 | I | O | R | O-3 |
-| `github_team_save` | Create or update a team (name, description, privacy, parent) | P | C built #200 | I | O | F | O-3 |
-| `github_team_delete` | Delete a team | C·D | C built #200 | I | O | F | O-3 |
-| `github_team_set_member` | Add a member, change member/maintainer role, or remove | C·A*·M | C built #200 | I | O | F | O-3 |
-| `github_team_set_repo_access` | Give, change or remove a team's access to a repository | C·A* | C built #200 | I | O | F | O-3 |
-| `github_role_list` | Organization roles and custom repository roles (where the plan has them), with who holds each | — | N built #200 | I | O | R | O-3 |
-| `github_role_assign` | Give a user or team an organization role | C·A | N built #200 | I | O | F | O-3 |
-| `github_role_remove` | Take an organization role away from a user or team | C | N built #200 | I | O | F | O-3 |
+| `github_team_list` | Teams with privacy, parent and member counts | — | C built #200 | I | O | R | O-3 built #200 |
+| `github_team_get` | One team: members and roles, repositories and permissions | — | C built #200 | I | O | R | O-3 built #200 |
+| `github_team_save` | Create or update a team (name, description, privacy, parent) | P | C built #200 | I | O | F | O-3 built #200 |
+| `github_team_delete` | Delete a team | C·D | C built #200 | I | O | F | O-3 built #200 |
+| `github_team_set_member` | Add a member, change member/maintainer role, or remove | C·A*·M | C built #200 | I | O | F | O-3 built #200 |
+| `github_team_set_repo_access` | Give, change or remove a team's access to a repository | C·A* | C built #200 | I | O | F | O-3 built #200 |
+| `github_role_list` | Organization roles and custom repository roles (where the plan has them), with who holds each | — | N built #200 | I | O | R | O-3 built #200 |
+| `github_role_assign` | Give a user or team an organization role | C·A | N built #200 | I | O | F | O-3 built #200 |
+| `github_role_remove` | Take an organization role away from a user or team | C | N built #200 | I | O | F | O-3 built #200 |
 
 ## Owner: billing, budgets, Copilot and Codespaces (`github_billing_*, github_copilot_*, github_codespace_*`) — 13
 
@@ -436,19 +436,19 @@ Card(s): O-4. Spend guard (`docs/designs/BATCH-B.md` B-4): `$` tools show a doll
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_billing_get_usage` | Usage and cost for an org or user by product (Actions, Packages, Codespaces, Copilot, LFS) and period, in dollars; premium requests on request | — | N built #201 | I,U | O | R | O-4 |
-| `github_billing_list_budgets` | Organization budgets with amount, spent so far and whether usage stops at the limit | — | N built #201 | I | O | R | O-4 |
-| `github_billing_save_budget` | Create or change a budget (raising or removing a limit raises spend) | C·$*·Prod | N built #201 | I | O | F | O-4 |
-| `github_billing_delete_budget` | Guide exact budget deletion after identifying an enforceable replacement spending limit; no automated budget deletion | — | N built #201 | I | O | R | O-4 |
-| `github_billing_list_marketplace` | Marketplace apps Chris pays for (plan, price, next billing date); buying is guided only | — | N built #201 | U | O | R | O-4 |
-| `github_copilot_get_billing` | Copilot plan, seat counts and seat assignments with last activity | — | C built #201 | I | O | R | O-4 |
-| `github_copilot_add_seats` | Give users or teams Copilot seats (about $19 per seat per month, prorated) | C·$·A·M·Prod | F built #201 | I | O | F | O-4 |
-| `github_copilot_remove_seats` | Remove Copilot seats (effective at the end of the billing cycle) | C·Prod | C built #201 | I | O | F | O-4 |
-| `github_codespace_list` | Codespaces of the user or org with machine, state and who pays | — | C built #201 | I,U | O,B | R | O-4 |
-| `github_codespace_create` | Create a codespace for a repo and branch (hourly compute plus storage) | C·$·Prod | C built #201 | U | O,B | F | O-4 |
-| `github_codespace_set_state` | Start (billed) or stop (saves money) a codespace | C·$*·Prod* | C built #201 | U | O,B | F | O-4 |
-| `github_codespace_delete` | Delete a codespace (unpushed work is lost) | C·D·Prod | C built #201 | U | O,B | F | O-4 |
-| `github_codespace_set_org_access` | Guide organization-paid Codespaces access changes with explicit owner UI readback; no API policy GET or automated write | — | N built #201 | I | O | R | O-4 |
+| `github_billing_get_usage` | Usage and cost for an org or user by product (Actions, Packages, Codespaces, Copilot, LFS) and period, in dollars; premium requests on request | — | N built #201 | I,U | O | R | O-4 built #201 |
+| `github_billing_list_budgets` | Organization budgets with amount, spent so far and whether usage stops at the limit | — | N built #201 | I | O | R | O-4 built #201 |
+| `github_billing_save_budget` | Create or change a budget (raising or removing a limit raises spend) | C·$*·Prod | N built #201 | I | O | F | O-4 built #201 |
+| `github_billing_delete_budget` | Guide exact budget deletion after identifying an enforceable replacement spending limit; no automated budget deletion | — | N built #201 | I | O | R | O-4 built #201 |
+| `github_billing_list_marketplace` | Marketplace apps Chris pays for (plan, price, next billing date); buying is guided only | — | N built #201 | U | O | R | O-4 built #201 |
+| `github_copilot_get_billing` | Copilot plan, seat counts and seat assignments with last activity | — | C built #201 | I | O | R | O-4 built #201 |
+| `github_copilot_add_seats` | Give users or teams Copilot seats (about $19 per seat per month, prorated) | C·$·A·M·Prod | F built #201 | I | O | F | O-4 built #201 |
+| `github_copilot_remove_seats` | Remove Copilot seats (effective at the end of the billing cycle) | C·Prod | C built #201 | I | O | F | O-4 built #201 |
+| `github_codespace_list` | Codespaces of the user or org with machine, state and who pays | — | C built #201 | I,U | O,B | R | O-4 built #201 |
+| `github_codespace_create` | Create a codespace for a repo and branch (hourly compute plus storage) | C·$·Prod | C built #201 | U | O,B | F | O-4 built #201 |
+| `github_codespace_set_state` | Start (billed) or stop (saves money) a codespace | C·$*·Prod* | C built #201 | U | O,B | F | O-4 built #201 |
+| `github_codespace_delete` | Delete a codespace (unpushed work is lost) | C·D·Prod | C built #201 | U | O,B | F | O-4 built #201 |
+| `github_codespace_set_org_access` | Guide organization-paid Codespaces access changes with explicit owner UI readback; no API policy GET or automated write | — | N built #201 | I | O | R | O-4 built #201 |
 
 ## Owner: apps and fine-grained tokens (`github_app_*, github_tokenpolicy_*`) — 7
 
@@ -500,9 +500,9 @@ Card(s): O-1. Every GitHub settings page is in the dashboard map (`src/data/dash
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_admin_list_guided_settings` | Paginate structured repository, organization and user dashboard guides with explicit manual or provider verification | — | N | — | O | R | O-1 |
-| `github_admin_check_setting` | Verify supported organization 2FA directly; unsupported settings explicitly require manual confirmation | — | N | I,U | O | R | O-1 |
-| `github_admin_review_security` | Review bounded enrolled organization access and security findings without misclassifying denied reads as passing | — | N | I,U | O | R | O-1 |
+| `github_admin_list_guided_settings` | Paginate structured repository, organization and user dashboard guides with explicit manual or provider verification | — | N | — | O | R | O-1 built #197/#224 |
+| `github_admin_check_setting` | Verify supported organization 2FA directly; unsupported settings explicitly require manual confirmation | — | N | I,U | O | R | O-1 built #197/#224 |
+| `github_admin_review_security` | Review bounded enrolled organization access and security findings without misclassifying denied reads as passing | — | N | I,U | O | R | O-1 built #197/#224 |
 
 ## Project profiles (`github_profile_*`) — 3
 
@@ -512,7 +512,7 @@ Card(s): P-1 … P-3. P-1 implementation in PR #206: additive, versioned known_p
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_profile_list` | Project profiles the server knows (Appliance Desk, the Robinson servers, drafts) | — | N | — | B,O | R | P-1 built #206 |
 | `github_profile_get` | One profile: repos, production branches and environments, required checks, workflows with write access, owned settings | — | N | — | B,O | R | P-1 built #206 |
-| `github_profile_draft` | Turn what an agent found in a codebase (workflows, branches, environments, required checks) into a draft profile and APP-NEEDS text | — | N | — | B,O | R | P-3 implementation |
+| `github_profile_draft` | Turn what an agent found in a codebase (workflows, branches, environments, required checks) into a draft profile and APP-NEEDS text | — | N | — | B,O | R | P-3 built #209 |
 
 ## Workflows (`github_workflow_*`) — 17
 
@@ -520,23 +520,23 @@ Card(s): P-2, P-3, W-1 … W-7. P-2 built in PR #207 as a non-read-only composed
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_workflow_pr_status` | Everything about a PR in one answer: CI at head (required vs optional), mergeable, review decision, unresolved threads, stack position, next action | — | N | I | B,Op | R | W-1 |
-| `github_workflow_open_pr` | Push nothing; stage an idempotent PR open from an existing branch, then separately apply requested missing labels and recheck its status | P·M | N | I | B | E | W-1 |
-| `github_workflow_merge_when_green` | Merge at the exact head SHA only when required checks are green there and no review thread is unresolved; otherwise says what is missing | C·Prod* | F | I | B | E | W-2 |
-| `github_workflow_merge_stack` | Merge a stack bottom-up: retarget each PR to the default branch, require fresh green CI at its head, merge; stops at the first PR that is not ready | C·Prod* | N | I | B | E | W-2 |
-| `github_workflow_review_threads` | Unresolved review threads with file context; after fixes, reply and resolve each one verified at the current head | P·M | N | I | B | E | W-3 |
-| `github_workflow_ci_failure_summary` | Why CI failed: failed jobs and steps, error lines, annotations, likely cause, same failure on the default branch? | — | N | I | B,Op | R | W-4 |
-| `github_workflow_rerun_failed_ci` | Re-run only failed jobs once; refuses a second automatic re-run of the same failure (two-strikes rule) | P | N | I | B,Op | E | W-4 |
-| `github_workflow_repo_health` | Protection and rules, CI pass rate, open PRs and staleness, security alerts, secret scanning/push protection, Actions settings | — | F | I | O,Op | R | W-5 implementation |
-| `github_workflow_security_review` | Open alerts across an org or account by severity, features off, push protection bypasses | — | F | I | O | R | W-5 implementation |
-| `github_workflow_access_review` | Who can reach what: members, outside collaborators, teams, deploy keys, apps, fine-grained tokens; flags anything unusual | — | N | I | O | R | W-5 implementation |
-| `github_workflow_release` | Cut a release from a tag or branch head with generated notes; draft first, publish with confirm | C·Prod·M | F | I | B | F | W-6 implementation |
-| `github_workflow_cleanup_branches` | Branches whose PR merged or closed (merge-commit and squash both detected), never default/protected/profile branches; preview then confirm | C | F | I | B,Op | E | W-6 implementation |
-| `github_workflow_new_repo` | Create a repository the standard way: default branch, ruleset requiring `ci`, secret scanning and push protection, merge commits only, delete branch on merge | C·A* | N | I | B,O | F | W-7 implementation |
-| `github_workflow_find` | Find anything from plain words: repo, PR, issue, run, release, commit | — | N | I | Op | R | W-7 implementation |
-| `github_workflow_weekly_digest` | Last 7 days across accounts: merged PRs, CI failure rate, open alerts, Actions/Copilot spend, pending invitations | — | N | I,U | O,Op | R | W-7 implementation |
+| `github_workflow_pr_status` | Everything about a PR in one answer: CI at head (required vs optional), mergeable, review decision, unresolved threads, stack position, next action | — | N | I | B,Op | R | W-1 built #210 |
+| `github_workflow_open_pr` | Push nothing; stage an idempotent PR open from an existing branch, then separately apply requested missing labels and recheck its status | P·M | N | I | B | E | W-1 built #210 |
+| `github_workflow_merge_when_green` | Merge at the exact head SHA only when required checks are green there and no review thread is unresolved; otherwise says what is missing | C·Prod* | F | I | B | E | W-2 built #210 |
+| `github_workflow_merge_stack` | Merge a stack bottom-up: retarget each PR to the default branch, require fresh green CI at its head, merge; stops at the first PR that is not ready | C·Prod* | N | I | B | E | W-2 built #210 |
+| `github_workflow_review_threads` | Unresolved review threads with file context; after fixes, reply and resolve each one verified at the current head | P·M | N | I | B | E | W-3 built #214 |
+| `github_workflow_ci_failure_summary` | Why CI failed: failed jobs and steps, error lines, annotations, likely cause, same failure on the default branch? | — | N | I | B,Op | R | W-4 built #214 |
+| `github_workflow_rerun_failed_ci` | Re-run only failed jobs once; refuses a second automatic re-run of the same failure (two-strikes rule) | P | N | I | B,Op | E | W-4 built #214 |
+| `github_workflow_repo_health` | Protection and rules, CI pass rate, open PRs and staleness, security alerts, secret scanning/push protection, Actions settings | — | F | I | O,Op | R | W-5 built #217 |
+| `github_workflow_security_review` | Open alerts across an org or account by severity, features off, push protection bypasses | — | F | I | O | R | W-5 built #217 |
+| `github_workflow_access_review` | Who can reach what: members, outside collaborators, teams, deploy keys, apps, fine-grained tokens; flags anything unusual | — | N | I | O | R | W-5 built #217 |
+| `github_workflow_release` | Cut a release from a tag or branch head with generated notes; draft first, publish with confirm | C·Prod·M | F | I | B | F | W-6 built #217 |
+| `github_workflow_cleanup_branches` | Branches whose PR merged or closed (merge-commit and squash both detected), never default/protected/profile branches; preview then confirm | C | F | I | B,Op | E | W-6 built #217 |
+| `github_workflow_new_repo` | Create a repository the standard way: default branch, ruleset requiring `ci`, secret scanning and push protection, merge commits only, delete branch on merge | C·A* | N | I | B,O | F | W-7 built #218 |
+| `github_workflow_find` | Find anything from plain words: repo, PR, issue, run, release, commit | — | N | I | Op | R | W-7 built #218 |
+| `github_workflow_weekly_digest` | Last 7 days across accounts: merged PRs, CI failure rate, open alerts, Actions/Copilot spend, pending invitations | — | N | I,U | O,Op | R | W-7 built #218 |
 | `github_workflow_app_readiness` | Is GitHub set up for a profiled project (or an inline spec)? Each row done / fixed with confirm / needs you (steps) / needs a decision | P | N | I | B,O | R | P-2 built #207 |
-| `github_workflow_project_setup` | Set up GitHub for a new project from a short description: repo, rules, environments, labels, security features; idempotent | C·A* | N | I | B,O | F | P-3 implementation |
+| `github_workflow_project_setup` | Set up GitHub for a new project from a short description: repo, rules, environments, labels, security features; idempotent | C·A* | N | I | B,O | F | P-3 built #209 |
 
 ## Everything else on GitHub: the universal tools (`github_api_*, github_graphql_*`) — 6
 
@@ -544,12 +544,12 @@ Card(s): U-1, U-2.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_api_search` | Find REST operations by plain words: method, path, summary, and whether it reads, writes, is production, widens access, notifies people or spends | — | N | — | B,O,Op | R | U-1 |
-| `github_api_describe` | Parameters for one operation, trimmed, from GitHub's own description at the pinned version | — | N | — | B,O,Op | R | U-1 |
-| `github_api_read` | Any GET operation, with the same summaries, `fields`, size cap and handles as every other read | — | N | I,U | B,O,Op | R | U-1 |
-| `github_api_write` | Any POST/PUT/PATCH/DELETE operation through the full safety layer | C·Prod*·A*·M* | N | I,U | B,O,Op | F | U-1 |
-| `github_graphql_read` | Pinned-schema validated single GraphQL query, typed variables, scoped aliases/fragments/nodes and 500-point/500,000-node cap before sending | — | N | I,U | B,O,Op | R | U-2 |
-| `github_graphql_write` | Exactly one non-curated schema-valid GraphQL mutation with explicit repository/node baseline, production/access/notification guards, always-confirmed journal and independent readback | C·Prod·A·M | N | I,U | B,O,Op | F | U-2 |
+| `github_api_search` | Find REST operations by plain words: method, path, summary, and whether it reads, writes, is production, widens access, notifies people or spends | — | N | — | B,O,Op | R | U-1 built #219 |
+| `github_api_describe` | Parameters for one operation, trimmed, from GitHub's own description at the pinned version | — | N | — | B,O,Op | R | U-1 built #219 |
+| `github_api_read` | Any GET operation, with the same summaries, `fields`, size cap and handles as every other read | — | N | I,U | B,O,Op | R | U-1 built #219 |
+| `github_api_write` | Any POST/PUT/PATCH/DELETE operation through the full safety layer | C·Prod*·A*·M* | N | I,U | B,O,Op | F | U-1 built #219 |
+| `github_graphql_read` | Pinned-schema validated single GraphQL query, typed variables, scoped aliases/fragments/nodes and 500-point/500,000-node cap before sending | — | N | I,U | B,O,Op | R | U-2 built #220 |
+| `github_graphql_write` | Exactly one non-curated schema-valid GraphQL mutation with explicit repository/node baseline, production/access/notification guards, always-confirmed journal and independent readback | C·Prod·A·M | N | I,U | B,O,Op | F | U-2 built #220 |
 
 How `github_api_write` and `github_graphql_write` stay safe (`docs/designs/BATCH-U.md`):
 

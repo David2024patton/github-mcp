@@ -3,7 +3,7 @@
 This file describes what **exists**, and is updated in the same PR that ships it (DRIFT-PROTOCOL checklist B). What the
 system is designed to become is in `docs/designs/`; do not copy design text here before it is built.
 
-**Current live overlay (2026-10-12 UTC; reviewed main #82):** Deployed to Vercel with a dedicated Neon database and the owner's custom GitHub App for `robinson-ai-scratch` installed, all-repositories and owner-designated scratch. Twenty SQL tables initialized. The foundation paragraph formerly here described the A-3b historical state; check STATUS and the V-1 card for current implementation and pending custom OAuth-connected acceptance. Production writes remain disabled.
+**Current live overlay (2026-10-12 UTC; reviewed main #82):** Deployed to Vercel with a dedicated Neon database and the owner's custom GitHub App for `robinson-ai-scratch` installed, all-repositories and owner-designated scratch. The code creates 27 tables (`SCHEMA_TABLES`); 20 were verified on the live database at this date and the rest are created by `initSchema()` on first use after each release. The foundation paragraph formerly here described the A-3b historical state; check STATUS and the V-1 card for current implementation and pending custom OAuth-connected acceptance. Production writes remain disabled.
 
 ## Infrastructure
 
@@ -11,12 +11,12 @@ system is designed to become is in `docs/designs/`; do not copy design text here
 |---|---|
 | GitHub repository `Robinson-AI-Systems/github-mcp` | Public; plan and A-1 on `main`; changes only through `ai/*` PRs |
 | Runtime | Node **24.x** (DECISIONS 2026-10-10; Vercel disabled Node 20 for new deployments on 2026-10-01): `package.json` `engines` `24.x`, `"type": "module"`, `actions/setup-node` `node-version: 24` in every CI job |
-| Dependencies | Pinned exactly, `package-lock.json` committed; `npm ci`. Runtime: `@modelcontextprotocol/sdk` 1.32.1, `@neondatabase/serverless` 1.2.0, `@octokit/core` 7.0.8, `@octokit/plugin-paginate-rest` 16.0.0, `@octokit/plugin-throttling` 11.0.5, `@octokit/plugin-retry` 8.1.1, `@octokit/auth-app` 8.3.1, `@octokit/webhooks` 14.2.0, `libsodium-wrappers` 0.8.4. Dev: `vitest` 5.0.3, `pg` 8.23.1, `eslint` 10.12.0, `ajv` 8.20.0, `ajv-formats` 3.0.1, `graphql` 17.0.2 |
+| Dependencies | Pinned exactly, `package-lock.json` committed; `npm ci`. Runtime: `@modelcontextprotocol/sdk` 1.32.1, `@neondatabase/serverless` 1.2.0, `@octokit/core` 7.0.8, `@octokit/plugin-paginate-rest` 16.0.0, `@octokit/plugin-throttling` 11.0.5, `@octokit/plugin-retry` 8.1.1, `@octokit/auth-app` 8.3.1, `@octokit/webhooks` 14.2.0, `libsodium-wrappers` 0.8.4, `ajv` 8.20.0, `ajv-formats` 3.0.1, `graphql` 17.0.2. Dev: `vitest` 5.0.3, `pg` 8.23.1, `eslint` 10.12.0, `gpt-tokenizer` 3.4.0 |
 | GitHub Actions CI | `.github/workflows/ci.yml` on PR and main; read-only token, no secrets or pull_request_target. Independent `check`, two `unit` shards, disposable `db`, `shapes` and `rtc` families; aggregate **ci** requires all families. Both **ci** and **release-policy** are mandatory at the exact head. Current matrix, pins, timeouts and 180-second root phase budgets are guarded by `scripts/check-ci-layout.mjs`. |
-| Test harness | `test/helpers/fake-github.js` (`makeFakeGitHub()` → `{ fetch, calls, unmatched, graphql, when, routes }`, passed to Octokit as `request.fetch`; A-1 route list, A-4 adds the vendored description and validation); `test/helpers/fake-db.js` (`createFakeDb({ clock })`: key/value rows, `initSchema()`/`listTables()`, and the login store; `seedAccounts()` is its test seam for `gh_accounts`); `test/contract/oauth-contract.js` (one login-store contract run against the fake and real Postgres); `test/helpers/pg-neon-adapter.js` (isolated `github_mcp_test_*` schema, Neon-shaped tagged queries); `test/contract/db-contract.js`; `scripts/local-postgres-test.sh` (CI service via `TEST_DATABASE_URL`, else a temporary local cluster; localhost only) |
-| Tool registry | `src/tools/index.js` exports the current registry and delegates to `createDispatch`; all read and write tool exposure follows profile and safety policies. Many additional batches have shipped since the initial two read-only foundation tools; see `docs/TOOL-CATALOG.md` and source/CI for exact current counts. |
+| Test harness | `test/helpers/fake-github.js` (`makeFakeGitHub()` → `{ fetch, calls, unmatched, graphql, when, routes }`, passed to Octokit as `request.fetch`; A-1 route list, A-4 adds the vendored description and validation); `test/helpers/write-contract.js` (the nine write-contract checks through every door), `test/helpers/rtc-fixture.js` (a fixture registry served by the real RTC HTTPS handler for the pinned conformance runner), `test/helpers/http-harness.js`, `sample-writes.js`, `dev-ledger-fake.js`, `fixture-gates.js`; `test/helpers/fake-db.js` (`createFakeDb({ clock })`: key/value rows, `initSchema()`/`listTables()`, and the login store; `seedAccounts()` is its test seam for `gh_accounts`); `test/contract/oauth-contract.js` (one login-store contract run against the fake and real Postgres); `test/helpers/pg-neon-adapter.js` (isolated `github_mcp_test_*` schema, Neon-shaped tagged queries); `test/contract/db-contract.js`; `scripts/local-postgres-test.sh` (CI service via `TEST_DATABASE_URL`, else a temporary local cluster; localhost only) |
+| Tool registry | `src/tools/index.js` exports the current registry and delegates to `createDispatch`; all read and write tool exposure follows profile and safety policies. 310 tools (304 hand-built + 6 universal) have shipped since the initial two read-only foundation tools; see `docs/TOOL-CATALOG.md` and source/CI for exact current counts. |
 | Vercel project | `github-mcp` on existing paid team; READY production from reviewed main `343b26777af1f57f6e98fdbf625e496ebb1c8800`; canonical URL `https://github-mcp-chris-projects-de6cd1bf.vercel.app` |
-| Neon database | Independent project `green-surf-51243848` / database `github_mcp`, fixed 0.25 CU and 5-minute autosuspend; 20 application tables verified initialized |
+| Neon database | Independent project `green-surf-51243848` / database `github_mcp`, fixed 0.25 CU and 5-minute autosuspend; 20 application tables verified initialized on 2026-10-12; the code now declares 27 (see Database tables) |
 | GitHub Apps | Custom `robinson-mcp-robinson-ai-scratch` App installed on `robinson-ai-scratch`, active All repositories with 41 matching stored permission entries. Separate normal organization/personal Apps still pending |
 | GitHub credentials | Custom scratch GitHub App credentials held encrypted by the server. No custom OAuth clients or active connection tokens at live checkpoint. Never disclose/rotate `TOKEN_ENCRYPTION_KEY` without deliberate migration. |
 
@@ -26,14 +26,14 @@ Never record values here. Vercel itself provides `VERCEL_ENV`.
 
 | Variable | Read by | Meaning | Environments |
 |---|---|---|---|
-| `DATABASE_URL` | `productionSql()` in `src/db.js`, on first database use (never at import) | This server's own Neon database (IN-02) | Production, Preview |
+| `DATABASE_URL` | `productionSql()` in `src/db.js`, on first database use (never at import) | This server's own Neon database (IN-02) | Production only (DEPLOY.md Part 2; previews share the database and never offer production mode) |
 | `PUBLIC_BASE_URL` | `publicOrigin()` in `src/core/http.js` | The server's HTTPS origin with no path, used for the OAuth issuer and the MCP resource; never taken from a request header. Missing or malformed → the OAuth endpoints answer 503 | Production, Preview |
 | `ADMIN_PASSPHRASE` | the authorize handler in `src/core/oauth-handlers.js` | The login passphrase (IN-03). Missing → sign-in fails closed with 503 | Production, Preview |
 | `TOKEN_ENCRYPTION_KEY` | `readEncryptionKey()` in `src/core/crypto.js`, through `createCredentials` (`src/github/credentials.js`) | A base64 32-byte key (AES-256-GCM) that encrypts every GitHub credential at rest (IN-03). Missing or malformed → nothing can be stored or read, and the message says what to set | Production |
 | `VERCEL_ENV` (Vercel) | `src/oauth/policy.js` | `production` is the only value that allows production mode (A10) | set by Vercel |
+| `VERCEL_GIT_COMMIT_SHA` (Vercel) | `rtcIdentity()` in `src/rtc/scope.js`; `api/index.js` | Build SHA shown by `/`, `/api/contract` and `/api/whoami`; self-reported, not independent deployment evidence | set by Vercel |
 
-CI uses only `TEST_DATABASE_URL` (db job, localhost) and `BASE_SHA` (check job,
-from the PR event).
+CI uses `TEST_DATABASE_URL` (db job, localhost) and `BASE_SHA` (check job, from the PR event). The owner-run acceptance scripts read `RTC_PUBLIC_ORIGIN`, `RTC_AUTH_PASS`, `RTC_PROVIDER_DEPLOYED_SHA`, `GITHUB_MCP_ORIGIN`, `GITHUB_MCP_ACCESS_TOKEN`, `GITHUB_MCP_DEPLOYED_SHA`, `GITHUB_MCP_SCRATCH_ACCOUNT`, `GITHUB_MCP_RUN_ID` and `GITHUB_MCP_RUN_REPO` (never committed, never printed).
 
 ## Database tables
 
@@ -61,6 +61,12 @@ secret-looking column name.
 | `secret_entry_requests` | A secret Chris will type on the setup page (G-3): who it is for and where it goes, 30-minute life, used once; never the value |
 | `result_store` | Big results kept 24 hours behind a `res_…` handle for one connection (C-1); expired rows are cleared on the next write |
 | `server_settings` | Owner settings as key and JSON value (B-2: the extra production names; later cards add theirs) |
+| `known_projects` | Project profiles (P-1): what each project needs from GitHub |
+| `rtc_pass_scopes` | A service pass's legacy scope row plus its stored `rate_limit_per_minute` (R-1) |
+| `rtc_pass_grants` | A scoped pass's profile, mode, areas, repositories, change / access-change / spend permissions and Hub flag (R-1) |
+| `rtc_pass_rate` | Per-pass request counting window shared by every server instance |
+| `dev_runs`, `dev_run_objects`, `dev_run_intents` | Developer runs, every object a run created, and write intents for crash-safe cleanup (Batch V) |
+| `dev_repo_birth_labels`, `dev_forwarders`, `dev_cleanup_executions` | Scratch-repo birth labels, webhook forwarders, cleanup execution ledger (Batch V) |
 
 Login store (A-3a, `createDb(sql)` in `src/db.js`): codes, access tokens, refresh credentials and client secrets are stored
 as SHA-256 hashes only; a code is deleted as it is consumed (single use); refresh is one atomic `UPDATE` on the same row for
@@ -79,10 +85,16 @@ always `IF NOT EXISTS`, and list them here when they exist. The production Neon 
 | `/api/oauth/register` | `api/oauth/register.js` | Client registration (1–8 distinct HTTPS or localhost redirect URIs); the secret is returned once, stored hashed |
 | `/api/oauth/authorize` | `api/oauth/authorize.js` | GET: account checkboxes + default, mode, profile, listing, passphrase. POST: passphrase (5 wrong in 15 minutes lock the address), then the choices; `production` only on the production deployment and only when every selected account has `production_enabled` |
 | `/api/oauth/token` | `api/oauth/token.js` | `authorization_code` (single-use code, PKCE, copies every connection setting from the code) and `refresh_token` (atomic rotation on the same row, same client) |
-| `/api/mcp` | `api/mcp.js` | Streamable HTTP MCP: bearer check (production token on a non-production deployment → 403), `tools/list` from the registry (2 tools), `tools/call` through the read-only dispatcher (anything not marked read-only is refused until Batch B) |
-| `/` | `api/index.js` | Name, status and the registry's tool count; nothing secret |
+| `/api/mcp` | `api/mcp.js` | Streamable HTTP MCP: bearer check (production token on a non-production deployment → 403), `tools/list` from the registry (310 tools, filtered by the connection's profile and listing), `tools/call` through the guarded dispatcher (production, protected-resource, people and spend gates; the write layer previews, confirms, reads back and logs) |
+| `/` | `api/index.js` via `vercel.json` rewrite | Name, status, the registry's tool count and the build SHA; nothing secret |
+| `/api/contract` | `api/contract.js` | Public RTC manifest (`rtc: 0`, not certified), self-reported build evidence |
+| `/api/openapi.json` | `api/openapi.js` via `vercel.json` rewrite | Public OpenAPI 3.1 description of the HTTPS door (at most 30 operations) |
+| `/api/whoami` | `api/whoami.js` | Pass-authenticated: profile, mode, areas, repositories, change/access/spend permissions |
+| `/api/tools`, `/api/tools/{name}`, `/api/tools/_batch` | `api/tools/index.js`, `api/tools/[name].js` | Pass-authenticated tool listing, description, run (reads and, for passes that allow them, changes through the write layer) and read-only batch |
+| `/api/results/{handle}` | `api/results/[handle].js` | Pages a retained large result; the handle belongs to one connection |
+| `/api/developer/connect` | `api/developer/connect.js` | Developer-connection helper for the implementing agent (see `docs/pr-cards/DEVELOPER-CONNECTION.md`) |
 
-Every OAuth or MCP failure that is not a clean refusal answers 503 `temporarily_unavailable` with no detail. Planned: the HTTPS tool API and manifest (Batch R).
+Every OAuth or MCP failure that is not a clean refusal answers 503 `temporarily_unavailable` with no detail. The HTTPS tool API (Batch R, #225) is below.
 
 | Path | File | What it does |
 |---|---|---|
@@ -92,7 +104,7 @@ Every OAuth or MCP failure that is not a clean refusal answers 503 `temporarily_
 
 | `/api/github/webhook` | `api/github/webhook.js` | GitHub App deliveries (A-5c). Raw body; `X-Hub-Signature-256` checked against the stored webhook secret of the App named in `X-GitHub-Hook-Installation-Target-ID` (bad or unknown → 401, nothing stored). Handles `installation` (created, deleted, suspend, unsuspend, new_permissions_accepted), `installation_repositories` and `github_app_authorization` (revoked → owner sign-in dropped); anything else is acknowledged and ignored. Installations on accounts that do not own the App are ignored |
 
-One dynamic function serves the three (`src/github/routes.js`) because Vercel Hobby allows 12 functions; unknown names answer 404, failures 503 without detail.
+One dynamic function serves the three (`src/github/routes.js`) to keep the setup surface in one place (the project is on a paid Vercel team; there are 16 function files); unknown names answer 404, failures 503 without detail.
 
 ## GitHub API version and descriptions
 

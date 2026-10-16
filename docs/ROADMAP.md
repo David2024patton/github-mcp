@@ -30,3 +30,6 @@ for hand-building something is repeated `github_api_*` / `github_graphql_*` call
 - **More project profiles** (YardSync, Cortiware) when their repositories exist; `github_profile_draft` drafts them.
 
 - Show a server-generated secret value once on the one-time-secret page when Chris asks (G-3 follow-up; today a generated value is never visible).
+
+
+**2026-10-16:** the items in this file that Batch Y now plans (self-hosted/larger runners, merge queue, Copilot agent and Spaces, org issue types and fields, autolinks, interaction limits, SBOM/attestations, migrations) are scheduled in `docs/designs/BATCH-Y.md`; money-related ones wait for IN-16.

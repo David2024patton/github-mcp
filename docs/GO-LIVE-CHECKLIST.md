@@ -13,12 +13,12 @@ Legend: **Owner** = only Chris · **Agent** = Claude can do it once you say go.
 
 | Done | Item | Where / how | Today | How you know it worked |
 |---|---|---|---|---|
-| [x] | Vercel project `github-mcp` and own Neon database created on existing paid plans (IN-02) | Vercel / Neon | READY and 20 tables verified | Live production deployment; home-page `/` still 404 |
+| [x] | Vercel project `github-mcp` and own Neon database created on existing paid plans (IN-02) | Vercel / Neon | READY; 27 tables created by `initSchema()` (20 were live on 2026-10-12) | Live production deployment; `/` now rewrites to the landing function (re-verify live) |
 | [x] | Node 24.x runtime | Vercel project / package engines | Deployed | Vercel deployment metadata |
-| [x] | `DATABASE_URL` for isolated Neon database only (IN-02) | Vercel production variables | Encrypted and configured | 20 live application tables in dedicated DB |
+| [x] | `DATABASE_URL` for isolated Neon database only (IN-02) | Vercel production variables | Encrypted and configured | Application tables in dedicated DB (27 in code; 20 verified live on 2026-10-12) |
 | [x] | `PUBLIC_BASE_URL` configured to the canonical HTTPS origin | Vercel production variables | Set | Live OAuth issuer matches domain |
 | [x] | `ADMIN_PASSPHRASE` and `TOKEN_ENCRYPTION_KEY` set (IN-03) | Vercel production variables | Both configured; owner private backup unverified | App credentials are encrypted; no casual encryption-key rotation |
-| [ ] | Repository settings for this repo: ruleset on `main` requiring `ci`, merge commits, secret scanning and push protection on (IN-01) | github.com (Owner) or, once Batch H exists, ask Claude (Agent with your confirm) | Not set | `github_workflow_repo_health` on `Robinson-AI-Systems/github-mcp` shows all ok |
+| [ ] | Repository settings for this repo: ruleset on `main` requiring `ci`, merge commits, secret scanning and push protection on (IN-01) | github.com (Owner) or, ask Claude (`github_workflow_repo_health`, with your confirm) | Not set | `github_workflow_repo_health` on `Robinson-AI-Systems/github-mcp` shows all ok |
 
 ## 2. Signing in to GitHub, per account
 
@@ -47,7 +47,7 @@ Per-account onboarding for `Robinson-AI-Systems` and `christcr2012` is still pen
 | Done | Item | Where / how | Today | How you know it worked |
 |---|---|---|---|---|
 | [x] | Owner completed scratch Organization, custom GitHub App and scratch designation (IN-06 setup stage) | Protected setup page | Verified active All repositories, 41/41 permissions, scratch ON, production OFF, $0 spend | Neon account + owner audit |
-| [ ] | Custom OAuth connection and connected scratch read/write/cleanup acceptance | Custom `/api/mcp` preview-only connection | No OAuth client/token; zero runs/objects; V-2 cleanup not built | `github_list_accounts` says scratch true; after cleanup is safe, verify isolated run-owned seed and exact-object cleanup |
+| [ ] | Custom OAuth connection and connected scratch read/write/cleanup acceptance | Custom `/api/mcp` preview-only connection | OAuth connected and scratch reads verified (Oct 15); V-2 cleanup built; live write/cleanup acceptance pending | `github_list_accounts` says scratch true; after cleanup is safe, verify isolated run-owned seed and exact-object cleanup |
 
 ## 5. Projects (one section per profiled project)
 
@@ -70,7 +70,7 @@ explanations is `docs/APP-NEEDS-APPLIANCE-DESK.md`; the app's own checklist stay
 | Done | Item | Today |
 |---|---|---|
 | [ ] | Each repo (`github-mcp`, `stripe-mcp`, `google-workspace-mcp`, `robinsons-toolkit-hub`, `vercel-mcp`, `neon-mcp`) has a `main` ruleset requiring `ci`, merge commits, secret scanning and push protection | Not verified |
-| [ ] | All of them are `pr-only` protected resources in this server (IN-08) | Not built (B-3) |
+| [ ] | All of them are `pr-only` protected resources in this server (IN-08) | Built (B-3, #19); seeded default per IN-08, owner confirms the list on the setup page |
 
 ## Daily deployment cost controls (2026-10-12)
 

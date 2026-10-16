@@ -16,9 +16,10 @@
     "W",
     "U",
     "R",
-    "X"
+    "X",
+    "Y"
   ],
-  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split \u2014 A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00). Owner-approved execution: adjacent small roadmap slices are grouped into cohesive outcome-sized PRs; session PR count comes only from the current owner prompt. See docs/SESSION-START.md. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain.",
+  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split — A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00). Owner-approved execution: adjacent small roadmap slices are grouped into cohesive outcome-sized PRs; session PR count comes only from the current owner prompt. See docs/SESSION-START.md. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain.",
   "cards": [
     {
       "id": "A-1",
@@ -479,7 +480,7 @@
       "units": [
         "E-2"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [],
       "pr": [
         46,
@@ -567,7 +568,7 @@
       "units": [
         "G-3"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [],
       "pr": [
         44,
@@ -589,7 +590,7 @@
       "units": [
         "G-4"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [],
       "pr": [
         49,
@@ -614,7 +615,7 @@
       "units": [
         "G-5"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [],
       "pr": [
         54,
@@ -1092,8 +1093,11 @@
       "units": [
         "O-5"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "ownerInputs": []
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": [
+        203
+      ]
     },
     {
       "id": "O-6",
@@ -1110,8 +1114,11 @@
       "units": [
         "O-6"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "ownerInputs": []
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": [
+        204
+      ]
     },
     {
       "id": "O-7",
@@ -1128,9 +1135,12 @@
       "units": [
         "O-7"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [
         "IN-11"
+      ],
+      "pr": [
+        205
       ]
     },
     {
@@ -1148,8 +1158,11 @@
       "units": [
         "P-1"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "ownerInputs": []
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": [
+        206
+      ]
     },
     {
       "id": "P-2",
@@ -1166,8 +1179,11 @@
       "units": [
         "P-2"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "ownerInputs": []
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": [
+        207
+      ]
     },
     {
       "id": "P-3",
@@ -1247,8 +1263,11 @@
       "units": [
         "W-3"
       ],
-      "readiness": "CARD_WRITTEN",
-      "ownerInputs": []
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": [
+        214
+      ]
     },
     {
       "id": "W-4",
@@ -1265,8 +1284,11 @@
       "units": [
         "W-4"
       ],
-      "readiness": "CARD_WRITTEN",
-      "ownerInputs": []
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": [
+        214
+      ]
     },
     {
       "id": "W-5",
@@ -1284,7 +1306,10 @@
         "W-5"
       ],
       "readiness": "READY",
-      "ownerInputs": []
+      "ownerInputs": [],
+      "pr": [
+        217
+      ]
     },
     {
       "id": "W-6",
@@ -1302,7 +1327,10 @@
         "W-6"
       ],
       "readiness": "READY",
-      "ownerInputs": []
+      "ownerInputs": [],
+      "pr": [
+        217
+      ]
     },
     {
       "id": "W-7",
@@ -1320,7 +1348,10 @@
         "W-7"
       ],
       "readiness": "READY",
-      "ownerInputs": []
+      "ownerInputs": [],
+      "pr": [
+        218
+      ]
     },
     {
       "id": "U-1",
@@ -1338,7 +1369,10 @@
         "U-1"
       ],
       "readiness": "READY",
-      "ownerInputs": []
+      "ownerInputs": [],
+      "pr": [
+        219
+      ]
     },
     {
       "id": "U-2",
@@ -1356,7 +1390,10 @@
         "U-2"
       ],
       "readiness": "READY",
-      "ownerInputs": []
+      "ownerInputs": [],
+      "pr": [
+        220
+      ]
     },
     {
       "id": "R-1",
@@ -1465,6 +1502,186 @@
       "pr": [
         224
       ]
+    },
+    {
+      "id": "Y-1",
+      "title": "Unblock the universal tools; permissions checklist; status tool; consistency test",
+      "batch": "Y",
+      "design": "docs/designs/BATCH-Y.md",
+      "dependencies": [],
+      "card": "docs/pr-cards/Y-1.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 600,
+      "units": [
+        "Y-1"
+      ],
+      "readiness": "READY",
+      "ownerInputs": [
+        "IN-15"
+      ],
+      "pr": []
+    },
+    {
+      "id": "Y-2",
+      "title": "Spec-driven GraphQL writes (at least 24 mutations)",
+      "batch": "Y",
+      "design": "docs/designs/BATCH-Y.md",
+      "dependencies": [
+        "Y-1"
+      ],
+      "card": "docs/pr-cards/Y-2.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 600,
+      "units": [
+        "Y-2"
+      ],
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": []
+    },
+    {
+      "id": "Y-3",
+      "title": "Other people's data, follow, star lists, watching, social links",
+      "batch": "Y",
+      "design": "docs/designs/BATCH-Y.md",
+      "dependencies": [
+        "Y-1",
+        "Y-2"
+      ],
+      "card": "docs/pr-cards/Y-3.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 600,
+      "units": [
+        "Y-3"
+      ],
+      "readiness": "READY",
+      "ownerInputs": [
+        "IN-15"
+      ],
+      "pr": []
+    },
+    {
+      "id": "Y-4",
+      "title": "Projects v2 lifecycle",
+      "batch": "Y",
+      "design": "docs/designs/BATCH-Y.md",
+      "dependencies": [
+        "Y-2"
+      ],
+      "card": "docs/pr-cards/Y-4.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 600,
+      "units": [
+        "Y-4"
+      ],
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": []
+    },
+    {
+      "id": "Y-5",
+      "title": "Moderation, org issue types/fields, interaction limits, autolinks",
+      "batch": "Y",
+      "design": "docs/designs/BATCH-Y.md",
+      "dependencies": [
+        "Y-2"
+      ],
+      "card": "docs/pr-cards/Y-5.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 600,
+      "units": [
+        "Y-5"
+      ],
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": []
+    },
+    {
+      "id": "Y-6",
+      "title": "Self-hosted runners, Actions administration, deployment rules",
+      "batch": "Y",
+      "design": "docs/designs/BATCH-Y.md",
+      "dependencies": [
+        "Y-1"
+      ],
+      "card": "docs/pr-cards/Y-6.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 600,
+      "units": [
+        "Y-6"
+      ],
+      "readiness": "READY",
+      "ownerInputs": [
+        "IN-15"
+      ],
+      "pr": []
+    },
+    {
+      "id": "Y-7",
+      "title": "Security writes: advisories, code scanning, secret patterns, org security configs",
+      "batch": "Y",
+      "design": "docs/designs/BATCH-Y.md",
+      "dependencies": [
+        "Y-1"
+      ],
+      "card": "docs/pr-cards/Y-7.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 600,
+      "units": [
+        "Y-7"
+      ],
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": []
+    },
+    {
+      "id": "Y-8",
+      "title": "Binary data, artifacts, archives, release upload, wiki and async jobs",
+      "batch": "Y",
+      "design": "docs/designs/BATCH-Y.md",
+      "dependencies": [
+        "Y-1"
+      ],
+      "card": "docs/pr-cards/Y-8.md",
+      "status": "APPROVED",
+      "migration": "gh_async_jobs (additive)",
+      "budget": 600,
+      "units": [
+        "Y-8"
+      ],
+      "readiness": "READY",
+      "ownerInputs": [
+        "IN-17"
+      ],
+      "pr": []
+    },
+    {
+      "id": "Y-9",
+      "title": "Org long tail, read-backs, missing guides, owner-gated money tools",
+      "batch": "Y",
+      "design": "docs/designs/BATCH-Y.md",
+      "dependencies": [
+        "Y-2"
+      ],
+      "card": "docs/pr-cards/Y-9.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 600,
+      "units": [
+        "Y-9"
+      ],
+      "readiness": "READY",
+      "ownerInputs": [
+        "IN-16"
+      ],
+      "pr": []
     }
   ],
   "gatewayBoundary": {
@@ -1508,7 +1725,7 @@
       "docs/pr-cards/RESULT-OWN-KEYS.md",
       "docs/pr-cards/RESULT-OFFSET-METADATA.md"
     ],
-    "sourceAndAutomated": "All five #151\u2013#155 source implementations accepted by the complete seven exact-head CI/release gates; #155 merger/final-main CI must still be observed independently.",
+    "sourceAndAutomated": "All five #151–#155 source implementations accepted by the complete seven exact-head CI/release gates; #155 merger/final-main CI must still be observed independently.",
     "deployedExactRevision": "UNVERIFIED for this batch; last independently observed production source #146",
     "authenticatedCustomMcp": "UNVERIFIED",
     "directOAuth": "UNVERIFIED",
