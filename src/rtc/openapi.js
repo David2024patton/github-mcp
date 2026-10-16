@@ -16,7 +16,7 @@ const body=s=>({required:true,description:'UTF-8 JSON: at most 32768 bytes.',
   content:json(s)});
 export function rtcOpenApi(){
   return {openapi:'3.1.0',info:{title:'Robinson GitHub RTC preview API',version:'0.1.0',
-    description:'Restricted preview reads; independent OAuth MCP retained. RTC1/hosted acceptance unverified.'},
+    description:'Scoped service passes; OAuth MCP retained. RTC1 unverified.'},
     paths:{
       '/api/contract':{get:{operationId:'rtcContract',summary:'Public capability and self-reported build evidence',
         security:[],responses:{200:{description:'Non-certified RTC0 manifest',content:json({type:'object'})}}}},
@@ -45,7 +45,7 @@ export function rtcOpenApi(){
       description:'Scoped service pass; no OAuth/provider credentials.'}},
       schemas:{
         Success:{type:'object',required:['ok','result'],additionalProperties:false,
-          properties:{ok:{const:true},result:{},handle:HANDLE,summary:{type:'string'},mode:{const:'preview'}}},
+          properties:{ok:{const:true},result:{},handle:HANDLE,summary:{type:'string'},mode:{enum:['preview','production']}}},
         Error:{type:'object',required:['ok','error'],additionalProperties:false,properties:{ok:{const:false},
           error:{type:'object',required:['code','what','cause','todo','technical'],additionalProperties:false,
             properties:{code:{type:'string',enum:['permission','pass_expired','pass_revoked','refused_by_guard',
@@ -58,7 +58,7 @@ export function rtcOpenApi(){
       responses:{ReadSuccess:{description:'RTC envelope; large reads include a connection-owned handle.',content:json(schema('Success'))},
         InvalidRequest:{description:'Malformed, oversized or schema-invalid arguments',content:json(schema('Error'))},
         Unauthorized:{description:'Missing, unknown, expired or revoked service pass',content:json(schema('Error'))},
-        Forbidden:{description:'Scope or scratch designation refused',content:json(schema('Error'))},
+        Forbidden:{description:'Pass scope or guard refused',content:json(schema('Error'))},
         NotFound:{description:'Tool is outside the permitted surface or result is absent',content:json(schema('Error'))},
         RateLimited:{description:'Shared per-pass database rate exhausted',content:json(schema('Error')),
           headers:{'Retry-After':{description:'Seconds before retry',schema:{type:'integer',const:60}}}},

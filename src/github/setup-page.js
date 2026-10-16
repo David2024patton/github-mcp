@@ -18,6 +18,7 @@ import { matchingEntries, protectedList } from '../tools/protect-guard.js';
 import { OWN_PEOPLE_KEY, cleanLogins, extraOwnPeople } from '../tools/people-guard.js';
 import { spendStatus } from '../tools/spend-guard.js';
 import { dollars as money } from '../github/prices.js';
+import { validateGrant } from '../rtc/pass-scope.js';
 
 const HTML = 'text/html; charset=utf-8';
 const CSP = "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://github.com; base-uri 'none'; frame-ancestors 'none'";
@@ -134,19 +135,51 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'create-rtc-pass') {
       if(!isProduction())return page(403,{blocked:NOT_PRODUCTION});
       if(!oneTimeStore)return page(503,{keyHelp:'Set TOKEN_ENCRYPTION_KEY before issuing a pass.'});
-      const account=String(p.login||''),days=Number(p.days||1);
+      const account=String(p.login||''),days=Number(p.days||1),rate=Number(p.rate||120);
       if(!isValidLogin(account)||!Number.isInteger(days)||days<1||days>30)
         return page(400,{result:'Choose an approved scratch organization and an expiry of 1–30 days.'});
+      if(!Number.isInteger(rate)||rate<1||rate>600)
+        return page(400,{result:'Choose a request limit from 1 to 600 per minute (the default is 120).'});
       const pass='rtc_pass_'+randomBytes(32).toString('base64url');
       const passId=randomBytes(12).toString('hex');
-      const created=await db.createRtcPass({pass,passId,account,expiresAt:new Date(Date.now()+days*86400000)});
+      const created=await db.createRtcPass({pass,passId,account,expiresAt:new Date(Date.now()+days*86400000),rateLimitPerMinute:rate});
       if(!created)return page(403,{result:'Pass creation refused: account must be an active, all-repositories, production-disabled scratch Organization.'});
       try {
         const one=await oneTimeStore.issue({account,kind:'rtc-read-only-pass',secret:pass});
         await db.recordChange({account,mode:'setup',tool:'setup_create_rtc_pass',
           target:passId,summary:'Issued one-day to 30-day preview/read-only RTC test pass',
           confirmed:true,production:false}).catch(()=>{});
-        return page(200,{result:`Read-only preview RTC pass ${passId} created (expires in ${days} day(s)). Open ${one.setupPath} in this browser, then reveal it once. Revoke it here after testing.`});
+        return page(200,{result:`Read-only preview RTC pass ${passId} created (expires in ${days} day(s); ${rate} requests per minute). Open ${one.setupPath} in this browser, then reveal it once. Revoke it here after testing.`});
+      }catch {
+        await db.revokeRtcPass(passId);
+        return page(503,{result:'Pass reveal could not be prepared. The newly issued pass was revoked.'});
+      }
+    }
+    if (action === 'create-scoped-pass') {
+      // R-1: a pass with its own limits. Only this passphrase-protected page can issue production or spending passes.
+      if(!isProduction())return page(403,{blocked:NOT_PRODUCTION});
+      if(!oneTimeStore)return page(503,{keyHelp:'Set TOKEN_ENCRYPTION_KEY before issuing a pass.'});
+      const account=String(p.login||'');
+      if(!isValidLogin(account))return page(400,{result:'Choose a connected account.'});
+      const list=(value)=>{const t=String(value??'').split(/[,\s]+/).map((x)=>x.trim()).filter(Boolean);return t.length?t:null;};
+      const dollarsText=String(p.spend??'0').trim();
+      if(!/^\d{1,6}(\.\d{1,2})?$/.test(dollarsText))return page(400,{result:'Enter the spend allowance in dollars, such as 0 or 25.50.'});
+      let grant;
+      try {
+        grant=validateGrant({profile:p.profile||'read_only',mode:p.mode||'preview',allowWrites:p.writes==='true',
+          allowAccessChanges:p.access==='true',moneyLimitCents:Math.round(Number(dollarsText)*100),forHub:p.hub==='true',
+          days:Number(p.days||1),ratePerMinute:Number(p.rate||120),areas:list(p.areas),repos:list(p.repos)},account);
+      } catch(error) { return page(400,{result:error instanceof TypeError?error.message:'Those pass settings are not valid.'}); }
+      const pass='rtc_pass_'+randomBytes(32).toString('base64url');
+      const passId=randomBytes(12).toString('hex');
+      const created=await db.createRtcPassGrant({pass,passId,account,expiresAt:new Date(Date.now()+grant.days*86400000),grant});
+      if(!created)return page(403,{result:'Pass creation refused: the account must be connected and active, and production passes need production switched on for it.'});
+      try {
+        const one=await oneTimeStore.issue({account,kind:'rtc-scoped-pass',secret:pass});
+        await db.recordChange({account,mode:'setup',tool:'setup_create_scoped_pass',target:passId,
+          summary:`Issued ${grant.mode} ${grant.profile} pass (writes ${grant.allowWrites?'on':'off'}, access changes ${grant.allowAccessChanges?'on':'off'}, spend ${grant.moneyLimitCents} cents, ${grant.days} day(s)${grant.forHub?', for Robinson\'s Toolkit':''})`,
+          confirmed:true,production:grant.mode==='production'}).catch(()=>{});
+        return page(200,{result:`Pass ${passId} created: ${grant.mode}, ${grant.profile} profile, writes ${grant.allowWrites?'allowed':'not allowed'}, access changes ${grant.allowAccessChanges?'allowed':'not allowed'}, spend allowance $${(grant.moneyLimitCents/100).toFixed(2)}, ${grant.ratePerMinute} requests per minute, ${grant.days} day(s). Open ${one.setupPath} in this browser, then reveal it once. Revoke it here when finished.`});
       }catch {
         await db.revokeRtcPass(passId);
         return page(503,{result:'Pass reveal could not be prepared. The newly issued pass was revoked.'});

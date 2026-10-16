@@ -100,3 +100,7 @@ or response data, and uses only fixed service-owned HTTP routes. No live pass is
 available in this agent session; CI uses fake transport exclusively. Thus
 source implementation is available but deployed/authenticated custom RTC,
 OAuth MCP, Toolkit Hub and cleanup acceptance remain separately unverified.
+
+## #225 — scoped service passes and the conformance run (R-1, R-2, R-3)
+
+Source now supports passes with owner-chosen scope over the same HTTPS contract (preview or production, profile, changes, access changes, spend allowance, areas, repositories, lifetime up to 30 days or a year for the Hub, 1–600 requests per minute, default 120). The pinned upstream runner (`test/upstream/rtc`) runs against this server's real handler and dispatcher with a fixture registry and a fake database; all probes pass except `reads` (the runner expects a >8 KB string to be recoverable in full; this server never replies with more than 8 KB, so long text is paged by offset). The production manifest therefore stays `rtc: 0`. No deployed revision, real pass, real Hub route or OAuth refresh against production was exercised; those remain owner/release-queue acceptance.

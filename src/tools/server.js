@@ -9,6 +9,8 @@ import { publicOrigin } from '../core/http.js';
 import { protectedList } from './protect-guard.js';
 import { dollars as money } from '../github/prices.js';
 import { spendStatus } from './spend-guard.js';
+import { oneTimeStore } from '../dev/forwarders.js';
+import { validateGrant } from '../rtc/pass-scope.js';
 import { RULES, capText, fitToBudget, listKeyOf, pageOfBody, projectFields } from '../core/result-rules.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
@@ -111,9 +113,11 @@ async function listConnections(args, ctx) {
   const entries = [...byClient.values()].map((r) => ({
     connection_id: r.client_id, name: r.client_name ?? r.client_id, is_this_connection: r.client_id === ctx.connection.client_id, mode: r.mode.toUpperCase(), profile: r.profile,
     default_account: r.default_account, accounts: r.accounts, access_expires: when(r.expires_at), last_used: when(r.last_used_at) ?? 'never', can_revoke_here: r.canRevoke,
+    kind: r.kind === 'pass' ? 'service pass' : 'login',
+    ...(r.kind === 'pass' && r.pass ? { pass_scope: { areas: r.pass.areas, repositories: r.pass.repos ?? 'all', writes_allowed: r.pass.allow_writes, access_changes_allowed: r.pass.allow_access_changes === true, production_allowed: r.pass.production_access, spend_allowance: dollars(r.pass.spend_allowance_cents), requests_per_minute: r.pass.rate_limit_per_minute } } : {}),
     ...(args.detail === 'full' ? { listing: r.listing, connected_since: when(r.created_at) } : {})
   }));
-  return { count: entries.length, note: 'Passes appear here once they exist. A login renews itself while it is used; switching it off ends it at once.', connections: pick(entries, args.fields, 'connection_id') };
+  return { count: entries.length, note: 'Logins and service passes both appear here. A login renews itself while it is used; switching either off ends it at once.', connections: pick(entries, args.fields, 'connection_id') };
 }
 
 async function recentChanges(args, ctx) {
@@ -306,6 +310,60 @@ const setSpendLimit = defineGithubWrite({
   present: ({ args, after }) => ({ spend_limit: money(after), spend_limit_cents: after, raising_it: `Only the setup page can raise it (account ${args.account}).` })
 });
 
+
+// R-1: an agent may mint a PREVIEW pass with no spending and no access changes. Production, spending and access-changing passes
+// exist only on the passphrase-protected setup page. The pass itself is shown once on that page, never in this reply.
+const createPass = defineGithubWrite({
+  name: 'github_create_pass',
+  area: 'server', audience: ['O'],
+  description: 'Make a short-lived preview pass for the HTTPS API or Robinson\'s Toolkit. No spending or access changes. Shown once on the setup page.',
+  properties: {
+    account: { type: 'string', maxLength: 39 },
+    profile: { type: 'string', enum: ['read_only', 'everyday'], description: 'read_only (default) or everyday' },
+    allowWrites: { type: 'boolean', description: 'Let the pass make ordinary preview changes (everyday profile only)' },
+    areas: { type: 'array', items: { type: 'string', maxLength: 31 }, maxItems: 40, description: 'Limit to these areas, such as pr or issue' },
+    repos: { type: 'array', items: { type: 'string', maxLength: 140 }, maxItems: 50, description: 'Limit to these repositories, written owner/name' },
+    days: { type: 'integer', minimum: 1, maximum: 30, description: 'Lifetime in days (default 1)' },
+    ratePerMinute: { type: 'integer', minimum: 1, maximum: 600, description: 'Requests per minute (default 120)' }
+  },
+  required: ['account'],
+  declarations: { production: 'never', confirm: 'always', cred: '—', profiles: ['full'] },
+  target: accountTarget,
+  read: async (args, ctx) => {
+    const account = await ctx.db.getAccount(args.account);
+    let grant = null; let problem = null;
+    try { grant = validateGrant({ profile: args.profile ?? 'read_only', mode: 'preview', allowWrites: args.allowWrites === true, areas: args.areas, repos: args.repos, days: args.days, ratePerMinute: args.ratePerMinute }, args.account); } catch (error) { problem = error instanceof TypeError ? error.message : 'Those pass settings are not valid.'; }
+    return { known: account != null && account.installation_status === 'active', grant, problem };
+  },
+  classify: () => ({}),
+  summarize: ({ args, before }) => {
+    if (!before.known) return `There is no connected, active account called "${args.account}"`;
+    if (before.problem) return `Cannot make this pass: ${before.problem}`;
+    const g = before.grant;
+    return `Make a preview ${g.profile} pass for ${args.account} (changes ${g.allowWrites ? 'allowed' : 'not allowed'}; no spending; no access changes; ${g.days} day(s); ${g.ratePerMinute} requests per minute${g.areas ? `; areas ${g.areas.join(', ')}` : ''}${g.repos ? `; repositories ${g.repos.join(', ')}` : ''}). It is revealed once on the setup page.`;
+  },
+  apply: async ({ args, ctx, before }) => {
+    if (!before.known) throw noAccount(args.account);
+    if (before.problem) throw new GithubClientError('outside_scope', before.problem, { account: args.account });
+    const g = before.grant;
+    const pass = `rtc_pass_${randomBytes(32).toString('base64url')}`;
+    const passId = randomBytes(12).toString('hex');
+    const created = await ctx.db.createRtcPassGrant({ pass, passId, account: args.account, expiresAt: new Date(Date.now() + g.days * 86400000), grant: g });
+    if (!created) throw new GithubClientError('outside_scope', 'The account could not carry this pass.', { account: args.account });
+    try {
+      const one = await oneTimeStore(ctx).issue({ account: args.account, kind: 'rtc-scoped-pass', secret: pass });
+      return { passId, reveal: one.setupPath };
+    } catch (error) {
+      await ctx.db.revokeRtcPass(passId).catch(() => {});
+      throw error;
+    }
+  },
+  readAfter: async ({ ctx, response }) => (await ctx.db.listConnections()).filter((c) => c.client_id === `rtc-${response.passId}`).map((c) => ({ kind: c.kind })),
+  verify: ({ after }) => after.length > 0 && after.every((c) => c.kind === 'pass'),
+  inverse: ({ response }) => ({ tool: 'github_revoke_connection', args: { connection: `rtc-${response.passId}` } }),
+  present: ({ args, response }) => ({ pass_id: response.passId, connection_id: `rtc-${response.passId}`, account: args.account, reveal: response.reveal, note: 'Open the reveal link in your browser and sign in with your passphrase. The pass is shown once.' })
+});
+
 // ---- Connection tools (B-8): the default account of this login, and switching a login off. ----
 const connectionTarget = (args, ctx) => ({ owner: ctx.connection.default_account, scope: 'server' });
 const thisClient = (ctx) => ctx.connection.client_id;
@@ -335,7 +393,7 @@ const setDefaultAccount = defineGithubWrite({
 const revokeConnection = defineGithubWrite({
   name: 'github_revoke_connection',
   area: 'server', audience: ['O'],
-  description: 'Switch one connector login off at once (find its id with github_list_connections). It must sign in again to come back.',
+  description: 'Switch one connector login or service pass off at once (find its id with github_list_connections). A login signs in again; a pass is gone for good.',
   properties: { connection: { type: 'string', maxLength: 200, description: 'The connection_id from github_list_connections' } },
   required: ['connection'],
   declarations: { production: 'never', confirm: 'always', cred: '—', profiles: ['full'] },
@@ -361,6 +419,6 @@ const revokeConnection = defineGithubWrite({
   present: ({ args }) => ({ switched_off: args.connection, note: 'It has to sign in again to be used.' })
 });
 
-export const tools = [...readTools, enableProduction.tool, disableProduction.tool, setSpendLimit.tool, setDefaultAccount.tool, revokeConnection.tool];
+export const tools = [...readTools, enableProduction.tool, disableProduction.tool, setSpendLimit.tool, setDefaultAccount.tool, revokeConnection.tool, createPass.tool];
 export const handlers = { ...readHandlers, [enableProduction.tool.name]: enableProduction.handler, [disableProduction.tool.name]: disableProduction.handler, [setSpendLimit.tool.name]: setSpendLimit.handler,
-  [setDefaultAccount.tool.name]: setDefaultAccount.handler, [revokeConnection.tool.name]: revokeConnection.handler };
+  [setDefaultAccount.tool.name]: setDefaultAccount.handler, [revokeConnection.tool.name]: revokeConnection.handler, [createPass.tool.name]: createPass.handler };

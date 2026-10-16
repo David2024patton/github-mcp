@@ -8,6 +8,15 @@ import { protectedResourceGate } from './protect-guard.js';
 import { peopleGate } from './people-guard.js';
 import { spendGate } from './spend-guard.js';
 
+// R-1: a service pass changes who has access only when its owner said so when issuing it.
+export function passAccessGate() {
+  return async ({ ctx, classification, declarations }) => {
+    if (ctx.connection?.pass !== true || ctx.connection.allow_access_changes === true) return null;
+    if (classification.accessWidening || declarations?.accessWidening) return { refuse: 'This pass was not allowed to change who has access. Issue a pass with access changes allowed, or make this change yourself.', by: 'pass access permission' };
+    return null;
+  };
+}
+
 export function createGates() {
-  return [productionEnabledGate(), protectedResourceGate(), peopleGate(), spendGate()];
+  return [passAccessGate(), productionEnabledGate(), protectedResourceGate(), peopleGate(), spendGate()];
 }

@@ -8,6 +8,8 @@ import { areaOf } from '../core/meta.js';
 import {validateArgs} from '../core/validate.js';
 import { rtcMetadata,rtcManifest,rtcOpenApi } from './contract.js';
 import {RTC_HTTP_AREAS,rtcHttpTools,rtcIdentity} from './scope.js';
+import {toolsForProfile} from '../core/registry.js';
+import {connectionFromPass,passRefusal,passTools} from './pass-scope.js';
 
 const MAX_REQUEST_BYTES=32768;
 // JSON has already been parsed by the HTTP door. Bound the complete wire
@@ -33,7 +35,7 @@ const messages={
   rate_limited:'Rate limit reached.',invalid_args:'Invalid request.',
   not_found:'Tool or result not found.',service_error:'RTC service unavailable.'
 };
-export const rtcError=code=>({ok:false,error:{code,what:messages[code]??'Request refused.',
+export const rtcError=(code,what)=>({ok:false,error:{code,what:what??messages[code]??'Request refused.',
   cause:code,todo:code==='rate_limited'?'Retry after Retry-After.':'Check authorization and input.',technical:''}});
 const send=(res,status,value)=>{
   res.setHeader('Cache-Control','no-store');
@@ -95,6 +97,26 @@ async function authenticate(req,res,db,{consumeRate=true,expectedAuthority=null}
   if(!row)return deny(res,401,rtcError('permission'));
   if(row.revoked_at)return deny(res,401,rtcError('pass_revoked'));
   if(!(Date.parse(row.expires_at)>Date.now()))return deny(res,401,rtcError('pass_expired'));
+  if(row.grant){
+    // A scoped pass: its own stored restrictions decide, and the account must still be able to carry them.
+    if(!/^rtc-[a-f0-9]{24}$/.test(row.client_id??'')||!['preview','production'].includes(row.mode)||
+      !['read_only','everyday','full'].includes(row.profile)||
+      (row.profile==='read_only'&&row.grant.allow_writes===true))
+      return deny(res,403,rtcError('refused_by_guard'));
+    const owner=await db.getAccount(row.default_account);
+    if(!owner||owner.login!==row.default_account||owner.installation_status!=='active'||
+      (row.mode==='production'&&owner.production_enabled!==true))
+      return deny(res,403,rtcError('refused_by_guard'));
+    const scoped=connectionFromPass(row);
+    if(expectedAuthority&&(scoped.client_id!==expectedAuthority.client_id||
+      scoped.default_account!==expectedAuthority.default_account))
+      return deny(res,403,rtcError('refused_by_guard'));
+    if(consumeRate&&!await db.consumeRtcPassRate(bearer[1])){
+      res.setHeader('Retry-After','60');
+      return deny(res,429,rtcError('rate_limited'));
+    }
+    return scoped;
+  }
   if(row.mode!=='preview'||row.profile!=='read_only'||row.listing!=='compact'||
     !/^rtc-[a-f0-9]{24}$/.test(row.client_id??'')||
     !Array.isArray(row.accounts)||row.accounts.length!==1||
@@ -166,19 +188,43 @@ async function readEnvelope({tool,args,value,connection,db}){
     mode:connection.mode};
 }
 
+
+// A change has already happened (or been previewed/refused) by the time we answer, so the reply is sent as it is: it must not be
+// withheld because the pass was revoked a moment later. The canonical write layer has screened and shaped the body.
+async function writeReply({output,connection}){
+  const body=output?.structuredContent;
+  if(!body||typeof body!=='object')return {status:503,body:rtcError('service_error'),final:true};
+  const status=body.status;
+  if(status==='refused'||status==='refused_by_guard'){
+    const what=typeof body.error==='string'?body.error.slice(0,300):undefined;
+    return {status:403,body:rtcError('refused_by_guard',what),final:true};
+  }
+  if(status==='rejected'||status==='uncertain'||output.isError===true)
+    return {status:503,body:rtcError('service_error',status==='uncertain'?'The result of this change is not known. Check it before trying again.':undefined),final:true};
+  const wire={ok:true,result:body,mode:connection.mode};
+  if(containsCredential(JSON.stringify(wire))||sizeOf(wire)>RULES.maxBytes)
+    return {status:503,body:rtcError('service_error'),final:true};
+  return {status:200,body:wire,final:true};
+}
+
 export function createRtcHttpHandler({db,registry,dispatch}){
   if(!db||!registry||typeof dispatch!=='function')
     throw new TypeError('RTC HTTP needs the existing guarded dispatcher.');
-  const allowed=()=>rtcHttpTools(registry);
+  const allowed=connection=>connection?.pass===true
+    ?passTools(toolsForProfile(registry,connection.profile),connection):rtcHttpTools(registry);
+  const changes=tool=>tool?.writes===true||(Array.isArray(tool?.delegatedWrites)&&tool.delegatedWrites.length>0);
   const run=async(tool,args,connection)=>{
-    const selected=allowed().find(t=>t.name===tool);
+    const selected=allowed(connection).find(t=>t.name===tool);
     if(!selected)return {status:403,body:rtcError('refused_by_guard')};
     // The same validator as the canonical MCP dispatcher distinguishes a
     // caller's malformed arguments from an unavailable upstream service.
     // Never label a provider failure as a request-validation error.
     if(validateArgs(selected.inputSchema,args))
       return {status:400,body:rtcError('invalid_args')};
+    const outside=passRefusal({tool:selected,args,connection});
+    if(outside)return {status:403,body:rtcError('refused_by_guard',outside)};
     const output=await dispatch({registry,name:tool,args,connection,db});
+    if(changes(selected))return await writeReply({output,connection});
     if(tool==='github_get_result' && output?.isError===true &&
       output.failureCode==='retained_result_not_found')
       return {status:404,body:rtcError('not_found')};
@@ -208,14 +254,16 @@ export function createRtcHttpHandler({db,registry,dispatch}){
         return send(res,200,body);
       };
       if(route==='whoami'&&req.method==='GET')
-        return await sendCurrent({ok:true,result:{profile:'read_only',mode:'preview',
-          areas:connection.areas,accounts:connection.accounts,allow_writes:false,
-          production_access:false,money_limit_cents:0,service_identity:rtcIdentity()}});
+        return await sendCurrent({ok:true,result:{profile:connection.profile,mode:connection.mode,
+          areas:connection.areas??null,accounts:connection.accounts,repositories:connection.repos??null,
+          allow_writes:connection.allow_writes===true,allow_access_changes:connection.allow_access_changes===true,
+          production_access:connection.mode==='production',money_limit_cents:connection.spend_limit_cents??0,
+          service_identity:rtcIdentity()}});
       if(route==='tools'&&req.method==='GET'){
         const query=parseToolsQuery(req.query);
         if(!query)return send(res,400,rtcError('invalid_args'));
         const {limit,page,q,area,audience,listing}=query;
-        let tools=allowed().filter(t=>(!area||areaOf(t)===area)&&
+        let tools=allowed(connection).filter(t=>(!area||areaOf(t)===area)&&
           (!audience||rtcMetadata(t).audience.includes(audience))&&
           (!q||t.name.toLowerCase().includes(q)||t.description.toLowerCase().includes(q)));
         if(listing==='compact')tools=tools.filter(t=>t.compact===true);
@@ -227,18 +275,22 @@ export function createRtcHttpHandler({db,registry,dispatch}){
       }
       if(route==='tool'){
         const tool=name(req,'name');
-        if(!tool||!allowed().some(t=>t.name===tool))
+        if(!tool||!allowed(connection).some(t=>t.name===tool)){
+          // A scoped pass that asks for a real tool outside its scope is refused, not told the tool does not exist.
+          if(tool&&connection.pass===true&&req.method==='POST'&&registry.tools.some(t=>t.name===tool))
+            return send(res,403,rtcError('refused_by_guard','This pass is not allowed to use that tool.'));
           return send(res,404,rtcError('not_found'));
+        }
         if(req.method==='GET'){
           const reply=await readEnvelope({tool:'rtc_describe_metadata',args:{},
-            value:rtcMetadata(allowed().find(t=>t.name===tool)),connection,db});
+            value:rtcMetadata(allowed(connection).find(t=>t.name===tool)),connection,db});
           return await sendCurrent(reply);
         }
         if(req.method!=='POST'||!req.body||typeof req.body!=='object'||
           Array.isArray(req.body)||!boundedRequest(req.body,req.headers))
           return send(res,400,rtcError('invalid_args'));
         const result=await run(tool,req.body,connection);
-        return result.status===200?await sendCurrent(result.body)
+        return result.status===200&&!result.final?await sendCurrent(result.body)
           :send(res,result.status,result.body);
       }
       if(route==='batch'){
@@ -254,9 +306,9 @@ export function createRtcHttpHandler({db,registry,dispatch}){
           (c.args!==undefined&&(!c.args||typeof c.args!=='object'||Array.isArray(c.args)))||
           Object.keys(c).some(key=>key!=='name'&&key!=='args')))
           return send(res,400,rtcError('invalid_args'));
-        const tools=allowed();
-        if(calls.some(c=>!tools.some(t=>t.name===c.name)))
-          return send(res,403,rtcError('refused_by_guard'));
+        const tools=allowed(connection);
+        if(calls.some(c=>!tools.some(t=>t.name===c.name)||changes(tools.find(t=>t.name===c.name))))
+          return send(res,403,rtcError('refused_by_guard','A batch runs reads only; call a change on its own.'));
         // Schema-check every item before the first read or additional rate unit.
         if(calls.some(c=>validateArgs(tools.find(t=>t.name===c.name).inputSchema,c.args??{})))
           return send(res,400,rtcError('invalid_args'));

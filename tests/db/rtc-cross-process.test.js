@@ -40,11 +40,11 @@ async function startWorker(){
 }
 async function issue(){
   const pass='rtc_pass_'+randomBytes(32).toString('base64url'),passId=randomBytes(12).toString('hex');
-  await db.createRtcPass({pass,passId,account:'rate-scratch',expiresAt:new Date(Date.now()+600000)});
+  await db.createRtcPass({pass,passId,account:'rate-scratch',expiresAt:new Date(Date.now()+600000),rateLimitPerMinute:60});
   return {pass,passId};
 }
 const call=(url,pass)=>fetch(url,{headers:{authorization:'Bearer '+pass},signal:AbortSignal.timeout(10000)});
-it('enforces exactly sixty shared HTTP reads across two separate server processes and connections',async()=>{
+it('enforces exactly the stored limit (60) of shared HTTP reads across two separate server processes and connections',async()=>{
   const [a,b]=await Promise.all([startWorker(),startWorker()]);
   expect(a.pid).not.toBe(b.pid);expect(a.pid).not.toBe(process.pid);
   const {pass,passId}=await issue();

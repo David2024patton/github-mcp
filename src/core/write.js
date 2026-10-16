@@ -166,8 +166,8 @@ export function defineWrite(spec) {
     const preview = { done: false, preview: line, needsConfirmation: needsConfirm && args.confirm !== true, ...(forcedConfirm ? { because: forcedConfirm } : {}) };
 
     if (args.dryRun === true) {
-      await log({ summary: line, dryRun: true, ...recordFields() });
-      return out({ ...preview, status: 'preview' });
+      const previewId = await log({ summary: line, dryRun: true, ...recordFields() });
+      return out({ ...preview, status: 'preview', ...(Number.isSafeInteger(previewId) ? { logged: { id: previewId } } : {}) });
     }
     if (readFailed) return refuse('read', 'The current state could not be read, so nothing was sent. Try again in a moment.');
     if (needsConfirm && args.confirm !== true) return out({ ...preview, status: 'needs_confirmation', prompt: 'Read the preview, then call again with confirm: true.' });
@@ -212,7 +212,7 @@ export function defineWrite(spec) {
     await ctx.db.finishChange(claim.id, { summary: confirmed ? line : `UNCONFIRMED: ${line}`, after, confirmed, githubRequestId, inverse: inv }).catch(() => {});
     let shaped;
     try { shaped = present({ args, ctx, target: tgt, before, after, response }); } catch { shaped = null; }
-    return out({ done: confirmed, status: confirmed ? 'applied' : 'unconfirmed', confirmed, requestKey: key, summary: line, ...(shaped !== null && shaped !== undefined ? { result: shaped } : {}),
+    return out({ done: confirmed, status: confirmed ? 'applied' : 'unconfirmed', confirmed, requestKey: key, logged: { id: claim.id }, summary: line, ...(shaped !== null && shaped !== undefined ? { result: shaped } : {}),
       ...(note ? { warning: note } : {}) });
   }
 

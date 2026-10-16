@@ -22,5 +22,5 @@ export function rtcHttpCapabilities(registry){
   return {authentication:'service_issued_pass',modes:['preview'],profiles:['read_only'],
     areas:[...RTC_HTTP_AREAS],counts:{tools:rtcHttpTools(registry).length,writes:0,money:0},
     allow_writes:false,production_access:false,money_limit_cents:0,
-    full_conformance_verified:false,authenticated_acceptance_verified:false};
+    scoped_passes:true,full_conformance_verified:false,authenticated_acceptance_verified:false};
 }

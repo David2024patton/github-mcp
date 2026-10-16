@@ -30,7 +30,7 @@ export function rtcManifest(registry) {
     modes:['preview','production'],devTools:true,adoption:'in_progress',
     service_identity:rtcIdentity(),https_subset:rtcHttpCapabilities(registry),
     standalone_mcp:{authentication:'oauth',independent:true},
-    note:'Safe read-only HTTP integration in progress. RTC 1 conformance and real D-4 acceptance are not certified.'
+    note:'Service passes with owner-chosen scope (read-only by default) over HTTPS. RTC 1 conformance and real D-4 acceptance are not certified.'
   };
 }
 export {rtcOpenApi} from './openapi.js';

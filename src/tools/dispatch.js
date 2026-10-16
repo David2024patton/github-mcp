@@ -11,6 +11,7 @@ import {RetainedResultNotFound} from '../core/result-errors.js';
 import { capText, describeBody, fitToBudget, projectFields } from '../core/result-rules.js';
 import { summarize } from './summaries.js';
 import { isToolVisible } from '../core/registry.js';
+import { passRefusal } from '../rtc/pass-scope.js';
 import { shapeResult, redact, containsCredential } from './util.js';
 
 const fail = (text) => ({ isError: true, content: [{ type: 'text', text: redact(text) }] });
@@ -74,6 +75,9 @@ export function createDispatch({ env = process.env, now = Date.now, fetch = glob
     if (!handler || (!isWrite && !isRead && !isRunner) || !isToolVisible(tool, connection?.profile)) return fail(`Unknown or unavailable tool: ${String(name).slice(0, 80)}`);
     const problem = validateArgs(tool.inputSchema, args);
     if (problem) return fail(problem);
+    // A service pass is narrower than its profile. This is the one place every call passes, so a workflow's nested calls are held to it too.
+    const outside = passRefusal({ tool, args: args ?? {}, connection });
+    if (outside) return fail(outside);
     let result;
     try {
       const callTool = (innerName, innerArgs) => dispatch({ registry, name: innerName, args: innerArgs, connection, db });

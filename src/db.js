@@ -18,6 +18,7 @@ export const SCHEMA_TABLES = Object.freeze([
   'oauth_tokens',
   'rtc_pass_rate',
   'rtc_pass_scopes',
+  'rtc_pass_grants',
   'login_attempts',
   'change_log',
   'one_time_secrets',
@@ -251,6 +252,25 @@ export function createDb(sql = productionSql()) {
         CHECK (money_limit_cents = 0),
         CHECK (array_length(areas,1) = 2 AND areas @> ARRAY['server','meta']::text[])
       )`;
+      // R-2: the request budget is stored per pass and read from the pass row on every call (never hard-coded).
+      // R-1: what a scoped pass may do. Its profile and mode are copied here so the database itself refuses a read-only pass that can
+      // write, an access/spend allowance without writes, or a production pass that cannot change anything.
+      await sql`CREATE TABLE IF NOT EXISTS rtc_pass_grants (
+        token_hash TEXT PRIMARY KEY,
+        profile TEXT NOT NULL CHECK (profile IN ('read_only','everyday','full')),
+        mode TEXT NOT NULL CHECK (mode IN ('preview','production')),
+        areas TEXT[],
+        repos TEXT[],
+        allow_writes BOOLEAN NOT NULL DEFAULT FALSE,
+        allow_access_changes BOOLEAN NOT NULL DEFAULT FALSE,
+        money_limit_cents BIGINT NOT NULL DEFAULT 0 CHECK (money_limit_cents >= 0),
+        for_hub BOOLEAN NOT NULL DEFAULT FALSE,
+        CHECK (profile <> 'read_only' OR (allow_writes = FALSE AND allow_access_changes = FALSE AND money_limit_cents = 0)),
+        CHECK (allow_writes OR (allow_access_changes = FALSE AND money_limit_cents = 0)),
+        CHECK (mode <> 'production' OR allow_writes)
+      )`;
+      await sql`ALTER TABLE rtc_pass_scopes ADD COLUMN IF NOT EXISTS rate_limit_per_minute INTEGER NOT NULL DEFAULT 120
+        CHECK (rate_limit_per_minute BETWEEN 1 AND 600)`;
       await sql`CREATE TABLE IF NOT EXISTS login_attempts (
         id BIGSERIAL PRIMARY KEY,
         ip TEXT NOT NULL,
@@ -546,7 +566,9 @@ export function createDb(sql = productionSql()) {
     },
 
     /** Owner-only RTC pass issuance: existing OAuth table, distinct kind and preview/read_only only. */
-    async createRtcPass({pass,account,passId,expiresAt}) {
+    async createRtcPass({pass,account,passId,expiresAt,rateLimitPerMinute=120}) {
+      if(!Number.isInteger(rateLimitPerMinute)||rateLimitPerMinute<1||rateLimitPerMinute>600)
+        throw new TypeError('The request limit must be a whole number from 1 to 600 per minute.');
       if(!/^rtc_pass_[A-Za-z0-9_-]{43}$/.test(pass)||!/^[a-f0-9]{24}$/.test(passId)||
         typeof account!=='string'||!account||!(expiresAt instanceof Date)||
         !Number.isFinite(expiresAt.getTime())||expiresAt<=new Date()||
@@ -564,20 +586,63 @@ export function createDb(sql = productionSql()) {
           AND a.installation_status='active' AND a.repository_selection='all'
         RETURNING token_hash,client_id
       ), scoped AS (
-        INSERT INTO rtc_pass_scopes(token_hash,areas,allow_writes,production_access,money_limit_cents)
-        SELECT token_hash,ARRAY['server','meta'],FALSE,FALSE,0 FROM created
+        INSERT INTO rtc_pass_scopes(token_hash,areas,allow_writes,production_access,money_limit_cents,rate_limit_per_minute)
+        SELECT token_hash,ARRAY['server','meta'],FALSE,FALSE,0,${rateLimitPerMinute} FROM created
         RETURNING token_hash
       ) SELECT created.client_id FROM created JOIN scoped USING(token_hash)`;
+      return rows[0]?.client_id??null;
+    },
+    /**
+     * Owner-only issuance of a scoped service pass. One statement: the bearer, its legacy read-only scope row (so an older server
+     * still treats it as read-only), and its grant exist together or not at all. The account must have an active installation;
+     * a production pass also needs production turned on for that account. `grant` comes from validateGrant in src/rtc/pass-scope.js.
+     */
+    async createRtcPassGrant({pass,passId,account,expiresAt,grant}) {
+      if(!/^rtc_pass_[A-Za-z0-9_-]{43}$/.test(pass)||!/^[a-f0-9]{24}$/.test(passId)||
+        typeof account!=='string'||!account||!(expiresAt instanceof Date)||
+        !Number.isFinite(expiresAt.getTime())||expiresAt<=new Date()||
+        expiresAt>new Date(Date.now()+(grant?.forHub===true?365:30)*86400000)||!grant||
+        !['read_only','everyday','full'].includes(grant.profile)||!['preview','production'].includes(grant.mode)||
+        !Number.isInteger(grant.ratePerMinute)||grant.ratePerMinute<1||grant.ratePerMinute>600||
+        !Number.isSafeInteger(grant.moneyLimitCents)||grant.moneyLimitCents<0)
+        throw new TypeError('Invalid RTC pass grant or expiry.');
+      const rows=await sql`WITH created AS (
+        INSERT INTO oauth_tokens
+          (token_hash,client_id,default_account,accounts,mode,profile,listing,kind,expires_at)
+        SELECT ${hashToken(pass)}, ${'rtc-'+passId}, a.login, ARRAY[a.login], ${grant.mode},
+          ${grant.profile},'compact','pass',${expiresAt}
+        FROM gh_accounts a WHERE a.login=${account} AND a.installation_status='active'
+          AND (${grant.mode==='preview'} OR a.production_enabled=TRUE)
+        RETURNING token_hash,client_id
+      ), legacy AS (
+        INSERT INTO rtc_pass_scopes(token_hash,areas,allow_writes,production_access,money_limit_cents,rate_limit_per_minute)
+        SELECT token_hash,ARRAY['server','meta'],FALSE,FALSE,0,${grant.ratePerMinute} FROM created
+        RETURNING token_hash
+      ), granted AS (
+        INSERT INTO rtc_pass_grants(token_hash,profile,mode,areas,repos,allow_writes,allow_access_changes,money_limit_cents,for_hub)
+        SELECT token_hash,${grant.profile},${grant.mode},${grant.areas}::text[],${grant.repos}::text[],
+          ${grant.allowWrites},${grant.allowAccessChanges},${grant.moneyLimitCents},${grant.forHub===true} FROM created
+        RETURNING token_hash
+      ) SELECT created.client_id FROM created JOIN legacy USING(token_hash) JOIN granted USING(token_hash)`;
       return rows[0]?.client_id??null;
     },
     /** Unknown, expired and revoked are distinct but no token bytes are returned. */
     async getRtcPass(pass) {
       if(!/^rtc_pass_[A-Za-z0-9_-]{43}$/.test(pass))return null;
       const rows=await sql`SELECT t.client_id,t.default_account,t.accounts,t.mode,t.profile,t.listing,
-        t.expires_at,t.revoked_at,s.areas,s.allow_writes,s.production_access,s.money_limit_cents
+        t.expires_at,t.revoked_at,s.areas,s.allow_writes,s.production_access,s.money_limit_cents,
+        s.rate_limit_per_minute,
+        g.token_hash IS NOT NULL AS has_grant,g.areas AS grant_areas,g.repos AS grant_repos,
+        g.allow_writes AS grant_allow_writes,g.allow_access_changes AS grant_allow_access_changes,
+        g.money_limit_cents AS grant_money_limit_cents,g.for_hub AS grant_for_hub
         FROM oauth_tokens t JOIN rtc_pass_scopes s ON s.token_hash=t.token_hash
+        LEFT JOIN rtc_pass_grants g ON g.token_hash=t.token_hash
         WHERE t.token_hash=${hashToken(pass)} AND t.kind='pass'`;
-      return rows[0]??null;
+      const row=rows[0];
+      if(!row)return null;
+      const {has_grant,grant_areas,grant_repos,grant_allow_writes,grant_allow_access_changes,grant_money_limit_cents,grant_for_hub,...rest}=row;
+      return has_grant?{...rest,grant:{areas:grant_areas,repos:grant_repos,allow_writes:grant_allow_writes,
+        allow_access_changes:grant_allow_access_changes,money_limit_cents:grant_money_limit_cents,for_hub:grant_for_hub}}:rest;
     },
     async revokeRtcPass(passId) {
       if(!/^[a-f0-9]{24}$/.test(passId))throw new TypeError('Invalid pass identifier.');
@@ -586,19 +651,25 @@ export function createDb(sql = productionSql()) {
         RETURNING client_id`;
       return rows.length===1;
     },
-    /** Atomic per-pass budget across serverless instances, never a process counter. */
-    async consumeRtcPassRate(pass,{max=60}={}) {
-      if(!/^rtc_pass_[A-Za-z0-9_-]{43}$/.test(pass)||max!==60)
+    /**
+     * Atomic per-pass budget across serverless instances, never a process counter. The limit is read from the pass's own
+     * scope row inside the same statement that counts the call, so a changed limit applies at once and a read-then-update
+     * race cannot admit extra calls. A pass without a scope row gets the 120 per minute default.
+     */
+    async consumeRtcPassRate(pass) {
+      if(!/^rtc_pass_[A-Za-z0-9_-]{43}$/.test(pass))
         throw new TypeError('Invalid RTC pass rate check.');
+      const hash=hashToken(pass);
       const rows=await sql`INSERT INTO rtc_pass_rate (token_hash,window_start,hit_count)
-        VALUES (${hashToken(pass)},now(),1)
+        VALUES (${hash},now(),1)
         ON CONFLICT (token_hash) DO UPDATE SET
           window_start=CASE WHEN rtc_pass_rate.window_start<=now()-interval '1 minute'
             THEN now() ELSE rtc_pass_rate.window_start END,
           hit_count=CASE WHEN rtc_pass_rate.window_start<=now()-interval '1 minute'
             THEN 1 ELSE rtc_pass_rate.hit_count+1 END
-        RETURNING hit_count`;
-      return rows[0].hit_count<=max;
+        RETURNING hit_count,
+          COALESCE((SELECT rate_limit_per_minute FROM rtc_pass_scopes WHERE token_hash=${hash}),120) AS allowed`;
+      return rows[0].hit_count<=rows[0].allowed;
     },
     async getAccessToken(accessToken) {
       if (typeof accessToken !== 'string' || !accessToken) return null;
@@ -611,18 +682,24 @@ export function createDb(sql = productionSql()) {
       return { client_id: row.client_id, kind: row.kind, expires_at: row.expires_at, ...connectionSettings(row) };
     },
 
-    /** Every live connector login, newest first, without any token or hash. */
+    /** Every live connector login and service pass, newest first, without any token or hash. */
     async listConnections() {
-      const rows = await sql`SELECT t.client_id, c.data->>'client_name' AS client_name, t.default_account, t.accounts, t.mode, t.profile, t.listing,
-          t.expires_at, t.last_used_at, t.created_at
+      const rows = await sql`SELECT t.client_id, c.data->>'client_name' AS client_name, t.kind, t.default_account, t.accounts, t.mode, t.profile, t.listing,
+          t.expires_at, t.last_used_at, t.created_at, COALESCE(g.areas, s.areas) AS pass_areas, g.repos AS pass_repos,
+          COALESCE(g.allow_writes, s.allow_writes) AS pass_allow_writes, g.allow_access_changes AS pass_allow_access_changes,
+          COALESCE(g.mode = 'production', s.production_access) AS pass_production_access, g.money_limit_cents AS pass_money_limit,
+          s.rate_limit_per_minute AS pass_rate_limit
         FROM oauth_tokens t LEFT JOIN oauth_clients c ON c.client_id = t.client_id
-        WHERE t.kind = 'connector' AND t.revoked_at IS NULL AND t.expires_at > now() ORDER BY t.created_at DESC`;
-      return rows.map((r) => ({ client_id: r.client_id, client_name: r.client_name ?? null, default_account: r.default_account, accounts: r.accounts ?? [], mode: r.mode, profile: r.profile,
-        listing: r.listing, expires_at: r.expires_at, last_used_at: r.last_used_at ?? null, created_at: r.created_at }));
+        LEFT JOIN rtc_pass_scopes s ON s.token_hash = t.token_hash AND t.kind = 'pass'
+        LEFT JOIN rtc_pass_grants g ON g.token_hash = t.token_hash AND t.kind = 'pass'
+        WHERE t.kind IN ('connector','pass') AND t.revoked_at IS NULL AND t.expires_at > now() ORDER BY t.created_at DESC`;
+      return rows.map((r) => ({ client_id: r.client_id, client_name: r.client_name ?? null, kind: r.kind, default_account: r.default_account, accounts: r.accounts ?? [], mode: r.mode, profile: r.profile,
+        listing: r.listing, expires_at: r.expires_at, last_used_at: r.last_used_at ?? null, created_at: r.created_at,
+        ...(r.kind === 'pass' ? { pass: { areas: r.pass_areas ?? [], repos: r.pass_repos ?? null, allow_writes: r.pass_allow_writes === true, allow_access_changes: r.pass_allow_access_changes === true, production_access: r.pass_production_access === true, spend_allowance_cents: r.pass_money_limit == null ? 0 : Number(r.pass_money_limit), rate_limit_per_minute: r.pass_rate_limit ?? null } } : {}) }));
     },
     /** Switches off every live token of one connector login. Returns how many were switched off. */
     async revokeConnection(clientId) {
-      const rows = await sql`UPDATE oauth_tokens SET revoked_at = now() WHERE client_id = ${clientId} AND kind = 'connector' AND revoked_at IS NULL RETURNING token_hash`;
+      const rows = await sql`UPDATE oauth_tokens SET revoked_at = now() WHERE client_id = ${clientId} AND kind IN ('connector','pass') AND revoked_at IS NULL RETURNING token_hash`;
       return rows.length;
     },
     /** Changes the default account of one connector login's live tokens (the account must already be in each token's list). Returns how many changed. */
@@ -879,9 +956,9 @@ export function createDb(sql = productionSql()) {
       return rows.length === 1;
     },
     /** Cents this account's real (not preview) changes have committed since `since`: everything sent except a change GitHub definitely rejected. In-flight and uncertain ones count. */
-    async sumSpendCents(account, since) {
+    async sumSpendCents(account, since, connection = null) {
       const rows = await sql`SELECT COALESCE(SUM(spend_cents), 0) AS total FROM change_log
-        WHERE lower(account) = lower(${account}) AND dry_run = FALSE AND spend_cents > 0 AND at >= ${new Date(since).toISOString()}::timestamptz AND summary NOT LIKE 'REJECTED:%'`;
+        WHERE lower(account) = lower(${account}) AND (${connection}::text IS NULL OR connection = ${connection}) AND dry_run = FALSE AND spend_cents > 0 AND at >= ${new Date(since).toISOString()}::timestamptz AND summary NOT LIKE 'REJECTED:%'`;
       return Number(rows[0].total);
     },
 
