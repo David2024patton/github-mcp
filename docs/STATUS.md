@@ -1,10 +1,20 @@
+## October 16, 2026 — Bundle 10: Y-8d wiki, Y-9a organization extras, Y-9b read-backs, Y-9c web-only guides (PR #232)
+
+Chris answered yes to IN-15, IN-16 and IN-17 (recorded in `docs/OWNER-INPUTS.md`). **Wiki (Y-8d, 3 tools, 394 in total):** list, read and write repository wiki pages. GitHub has no wiki API, so the server talks git to the wiki in memory (two new pinned libraries, `isomorphic-git` and `memfs`); only the wiki address on github.com is reachable and the token never appears anywhere. The first page of a brand-new wiki must still be saved in the browser. **Organization extras (Y-9a, 5 tools):** security manager role for a team, hosted-compute network configurations (Enterprise Cloud only), and organization migrations (start and status; the archive holds private data so it is never fetched, status points to the browser download). **Read-backs (Y-9b):** `github_admin_check_setting` can now read back 9 more settings pages from GitHub (Actions permissions and retention, interaction limits, repository general flags, security features, Pages, member privileges and more) and only says "verified" when the value matches. **Guides (Y-9c):** 12 more browser-only settings (profile and organization pictures, social preview, pins, profile README, contribution visibility, recovery codes, project workflows, discussion categories, announcement banner, revoking a leaked token, tag protection).
+
+Not built on purpose: reporting a leaked credential through a tool (the endpoint takes the secret itself).
+
+Not claimed: no live acceptance of any Y tool; Chris still has to add the new App permissions on github.com (IN-15) before the user- and runner-permission tools can work.
+
+Next: Y-9d, the money tools (Sponsors, larger hosted runners, Copilot administration), each with a price check, the spend limit and confirmation.
+
 ## October 16, 2026 — Bundle 9: Y-8 background jobs, artifacts, archives, SBOM, autofix (PR #231)
 
 Y-8 of the gap-closure Batch Y (8 new tools, 386 in total). **Jobs:** slow GitHub work returns a job id; `github_job_status` checks once and never waits; `github_job_cancel` stops tracking. **Reading:** look inside a build artifact or a repository snapshot (list files, read one text file; binary files show size and SHA-256 only; zip bombs, unsafe names and links refused), and read a repository's software parts list (SBOM), directly or as a background report. **Autofix:** ask GitHub for a suggested fix for a code scanning alert, then commit it to a named branch (default branch counts as production). **Release upload** can now take a build artifact (whole zip or one file) as its source. **Wiki:** a browser-steps guide only, because GitHub has no wiki API and the two extra libraries need your approval (IN-17, default kept).
 
 Not claimed: no live acceptance of any Y tool. The owner-inputs file still shows IN-15, IN-16 and IN-17 as open; Chris says he answered them, but the answers are not recorded anywhere this server can read, so defaults are used until he restates them.
 
-Next: Y-9 (organization long tail, read-backs, guides; money tools stay guided unless IN-16 says otherwise).
+Next: see Bundle 10 above.
 
 ## October 16, 2026 — Bundle 8: Y-7 security writes (PR #230)
 
@@ -14,7 +24,7 @@ Not built on purpose: push-protection bypass review and advisory private forks (
 
 Not claimed: no live acceptance of any Y tool; the App's security permissions need your approval on github.com (IN-15).
 
-Next: see Bundle 9 above.
+Next: see Bundle 10 above.
 
 ## October 16, 2026 — Bundle 7: Y-5 moderation and organization planning objects, Y-6 runners and Actions administration (PR #229)
 

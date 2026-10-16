@@ -159,7 +159,7 @@ next bounded implementation. Every line below maps to evidence named in its desi
 - [x] Y-5 (#229): pin, delete and hide comments/issues, discussion management, linked branches, org issue types and fields, interaction limits, autolinks.
 - [x] Y-6 (#229): runners and groups (tokens only through the one-time page), Actions retention/OIDC settings with spend rules, deployment protection rules and pending-deployment reviews, Pages build request.
 - [x] Y-7 (#230): security advisories (publish irreversible and confirmed), code-scanning default setup, secret-scanning patterns, Dependabot org settings, org code-security configurations priced and spend-guarded.
-- [x] Y-8 (#231): async jobs, artifact and archive reading (bomb-safe), SBOM, autofix, release upload from artifacts; wiki is a browser-steps guide (IN-17 default).
+- [x] Y-8 (#231): async jobs, artifact and archive reading (bomb-safe), SBOM, autofix, release upload from artifacts; wiki tools built after IN-17 = yes (Bundle 10).
 - [ ] Y-9: remaining org tools, read-backs for guided settings, missing web-only guides; money tools only if IN-16 approved.
 
 ## Batch X — Undo, smoke test (`designs/BATCH-X.md`)

@@ -6,7 +6,7 @@ Restricted preview RTC successful replies revalidate service pass and scratch ow
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
-tool merges, its Card cell gains `built #<PR>`. Built so far: **all 386 tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
+tool merges, its Card cell gains `built #<PR>`. Built so far: **all 394 tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
 and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Since B-5 every result of these tools is shaped (`src/tools/util.js`) and failures are explained by `src/tools/errors.js`. Since B-6 a connection sees only the tools its profile allows (`tools/list` and by-name calls). Every write tool below is built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
@@ -697,7 +697,7 @@ Card(s): Y-7. Advisory text never appears in a result or the change log (only a 
 
 ## Background jobs, archives and autofix (`github_job_*, github_artifact_read, github_content_read_archive, github_security_*sbom*, github_code_scanning_autofix_*`) — 8
 
-Card(s): Y-8. A slow GitHub operation returns a `job_id` at once; `github_job_status` asks GitHub once per call (not more than every 10 seconds) and never waits, and the finished result is kept as an ordinary result handle. Artifacts and repository snapshots are opened on the server (50 MB zipped, 200 MB unpacked, 500 files, no unsafe names or links); binary files show only name, size and SHA-256 and the signed download address is never returned. `github_release_upload_asset` also accepts a build artifact (`artifactId`, optional `entry`) as its source. Not built: wiki editing (waits for IN-17; a guide entry covers it).
+Card(s): Y-8. A slow GitHub operation returns a `job_id` at once; `github_job_status` asks GitHub once per call (not more than every 10 seconds) and never waits, and the finished result is kept as an ordinary result handle. Artifacts and repository snapshots are opened on the server (50 MB zipped, 200 MB unpacked, 500 files, no unsafe names or links); binary files show only name, size and SHA-256 and the signed download address is never returned. `github_release_upload_asset` also accepts a build artifact (`artifactId`, optional `entry`) as its source. Wiki editing is in its own section below.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -710,9 +710,31 @@ Card(s): Y-8. A slow GitHub operation returns a `job_id` at once; `github_job_st
 | `github_code_scanning_autofix_start` | Ask GitHub to suggest a fix for a code scanning alert (job) | P | N | I | B,Op | F | Y-8 |
 | `github_code_scanning_autofix_commit` | Commit a ready suggested fix to a named branch | C·Prod* | N | I | B,Op | F | Y-8 |
 
+## Wiki (`github_wiki_*`) — 3
+
+Card(s): Y-8 (WU-Y8d), owner decision IN-17 = yes (2026-10-16). GitHub has no wiki API, so the server speaks git to `<repo>.wiki.git` in memory only (`isomorphic-git` + `memfs`, pinned), through the injected fetch: only that path on github.com is reachable, redirects are refused, the installation token is the HTTP password and never appears in a URL, result or log. Limits: 200 pages, 5 MB, 1 MB per page, 20 MB transfer. The first page of a new wiki must be saved in the browser (guide `repo-wiki-edit`).
+
+| Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `github_wiki_list` | List the pages of a repository wiki with sizes | — | N | I | B,Op | R | Y-8 |
+| `github_wiki_read` | Read one wiki page (text capped, SHA-256 of the whole) | — | N | I | B,Op | R | Y-8 |
+| `github_wiki_write` | Create or replace a wiki page (one commit pushed; result shows size and hash, not text) | C | N | I | B,Op | F | Y-8 |
+
+## Organization administration extras (`github_org_security_manager_set, github_org_network_config_*, github_org_migration_*`) — 5
+
+Card(s): Y-9 (WU-Y9a). Organization-level, so every write is production-class and confirmed. Network configurations need Enterprise Cloud and answer `not_available_on_plan` otherwise. A migration archive holds private data: the server never downloads or relays it (status points to the browser download). `github_credential_report_leak` is not built (the endpoint receives the secret itself; a guide covers revoking on github.com).
+
+| Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `github_org_security_manager_set` | Give a team the organization security manager role, or remove it | C·Prod·A | N | I | O | F | Y-9 |
+| `github_org_network_config_list` | List hosted-compute network configurations (Enterprise Cloud) | — | N | I | O,Op | R | Y-9 |
+| `github_org_network_config_save` | Create or edit a hosted-compute network configuration | C·Prod | N | I | O | F | Y-9 |
+| `github_org_migration_start` | Start exporting organization repositories (locking is opt-in) | C·Prod | N | I | O | F | Y-9 |
+| `github_org_migration_status` | State of an organization migration and where to download the archive | — | N | I | O,Op | R | Y-9 |
+
 ## Totals
 
-**Totals:** 386 tools: 380 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 394 tools: 388 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 134, everyday adds 81
 (everyday lists 215), full adds 96 (full lists 354). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
@@ -751,12 +773,14 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Self-hosted runners and Actions administration | 12 |
 | Security writes | 12 |
 | Background jobs, archives and autofix | 8 |
+| Wiki | 3 |
+| Organization administration extras | 5 |
 | Projects v2 lifecycle | 15 |
 | Public profiles, following and star lists | 12 |
 | Project profiles | 3 |
 | Workflows | 17 |
 | Everything else on GitHub: the universal tools | 6 |
-| **Total** | **386** |
+| **Total** | **394** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 

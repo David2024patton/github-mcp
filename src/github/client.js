@@ -83,7 +83,7 @@ function resolveAccount(connection, owner) {
  *   `credentials.token({ account, cred, scope })` returns the token string (A-5 supplies it).
  * @param {{ owner?: string, cred?: 'I'|'U'|'K', scope?: object }} target the account to act as and the credential kind
  */
-export async function githubFor(ctx, { owner, cred = 'I', scope } = {}) {
+export async function credentialFor(ctx, { owner, cred = 'I', scope } = {}) {
   if (!CREDENTIAL_KINDS.includes(cred)) throw new TypeError(`Unknown credential kind "${cred}".`);
   const account = resolveAccount(ctx.connection, owner);
   // A pass limited to repositories gets installation tokens limited to them, whatever the tool asked for.
@@ -95,6 +95,11 @@ export async function githubFor(ctx, { owner, cred = 'I', scope } = {}) {
   if (typeof token !== 'string' || !token) {
     throw new GithubClientError('no_credentials', `No GitHub credential is set up for ${account}. Open the setup page to add one.`, { account });
   }
+  return { account, token };
+}
+
+export async function githubFor(ctx, { owner, cred = 'I', scope } = {}) {
+  const { account, token } = await credentialFor(ctx, { owner, cred, scope });
   const now = ctx.now ?? Date.now;
   const deadline = now() + (ctx.budgetMs ?? DEFAULT_BUDGET_MS);
   const withinBudget = (retryAfterSeconds, retryCount) => retryCount < 1 && now() + retryAfterSeconds * 1000 <= deadline;

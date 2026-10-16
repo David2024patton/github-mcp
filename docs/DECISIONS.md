@@ -1,3 +1,11 @@
+## 2026-10-16 — Bundle 10: owner answered IN-15/16/17 yes; wiki over git in memory; no leaked-credential tool
+
+1. IN-15, IN-16, IN-17 were all answered "yes" by Chris (2026-10-16). Y-8's earlier "guide only" wiki default is replaced by real tools.
+2. Wiki: `isomorphic-git` and `memfs` (exact versions pinned). Nothing touches disk; only `https://github.com/<owner>/<repo>.wiki.git/...` is reachable through the injected fetch; redirects refused; token is the HTTP password only; limits 200 pages / 5 MB / 1 MB per page / 20 MB transfer. `credentialFor` was split out of `githubFor` so the wiki uses the same pass narrowing and error messages.
+3. Organization migrations never relay the archive (private data); status points to the browser download.
+4. `github_credential_report_leak` is not built: the GitHub endpoint receives the secret itself, which breaks "secrets never pass through a tool". A guide covers revoking on github.com.
+5. Read-backs live in one table (`src/data/readbacks.js`); a test checks every route and value pointer against the vendored GitHub description.
+
 ## 2026-10-16 — Y-8: jobs never wait, archives are opened in memory only, wiki stays a guide
 
 1. A slow GitHub operation returns a job id; `github_job_status` makes one GitHub call and returns, so no request is held open and no loop exists. Jobs belong to the connection that started them and expire after 24 hours.
