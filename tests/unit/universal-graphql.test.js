@@ -3,7 +3,7 @@ import {createDispatch} from '../../src/tools/dispatch.js';
 import {registry} from '../../src/tools/index.js';
 import * as g from '../../src/tools/universal-graphql.js';
 import {inspectGraphql,githubGraphqlSchema} from '../../src/github/graphql-schema.js';
-import {classifyGraphqlMutation} from '../../src/github/mutation-classes.js';
+import {classifyGraphqlMutation,relevantGraphqlNodeId} from '../../src/github/mutation-classes.js';
 import {makeWorld,parse,runWriteContract} from '../../test/helpers/write-contract.js';
 
 const query='query OwnerRepo($owner: String!, $name: String!) { repository(owner:$owner, name:$name) { nameWithOwner } }';
@@ -32,6 +32,7 @@ describe('U-2 pinned GraphQL schema, AST and cost',()=>{
     for(const tool of g.tools)expect(registry.tools.find(x=>x.name===tool.name)).toBeTruthy();
     expect(githubGraphqlSchema().getMutationType().getFields().mergePullRequest).toBeTruthy();
     expect(inspectGraphql(g.SCOPE_QUERY,{id:'D_kgDO12345'},'query').operation.operation).toBe('query');
+    expect(inspectGraphql(g.PROJECT_FIELD_QUERY,{itemId:'PV2_ITEM',fieldName:'Status'},'query').operation.operation).toBe('query');
   });
   it('validates names, variables and parsed document using real pinned GraphQL schema',()=>{
     expect(inspectGraphql(query,queryArgs.variables).points).toBeGreaterThanOrEqual(1);
@@ -152,12 +153,63 @@ describe('U-2 reviewed GraphQL security and broad resource shape regressions',()
     const nodes={
       PV2_PROJECT:{__typename:'ProjectV2',...owned},
       PV2_ITEM:{__typename:'ProjectV2Item',id:'PV2_ITEM',project:owned},
-      PV2_FIELD:{__typename:'ProjectV2Field',id:'PV2_FIELD',project:owned}
+      PV2_FIELD:{__typename:'ProjectV2Field',id:'PV2_FIELD',fieldName:'Status',project:owned}
     };
-    w.gh.when('POST /graphql').reply(200,request=>({data:{node:nodes[request.body.variables?.id]??null}}));
+    w.gh.when('POST /graphql').reply(200,request=>({data:{node:request.body.query.includes('UniversalFieldReadback')
+      ? {id:'PV2_ITEM',fieldValueByName:null} : nodes[request.body.variables?.id]??null}}));
     const result=parse(await dispatch(w,'github_graphql_write',{mutation,variables:vars,repo:'hello'}));
     expect(result.status,JSON.stringify(result)+' invalid '+JSON.stringify(w.gh.invalid.map(x=>x.invalid))).toBe('needs_confirmation');
     expect(w.gh.calls.filter(x=>/^\s*mutation\b/.test(x.body?.query??''))).toHaveLength(0);
+    expect(w.gh.invalid).toEqual([]);
+  });
+});
+describe('U-2 reviewed secret selections, typed IDs and independently confirmed field updates',()=>{
+  it('refuses aliased temporary repository auth tokens before GitHub is called',async()=>{
+    const w=await makeWorld({profile:'read_only'});
+    const query='query{repository(owner:"example-org",name:"hello"){safe:tempCloneToken}}';
+    const result=await dispatch(w,'github_graphql_read',{query});
+    expect(result.isError).toBe(true);
+    expect(w.gh.calls).toEqual([]);
+  });
+  it('extracts schema-typed IDs from list inputs but excludes String option identifiers',()=>{
+    const doc='mutation Assign($input:AddAssigneesToAssignableInput!){addAssigneesToAssignable(input:$input){assignable{__typename}}}';
+    const entry=inspectGraphql(doc,{input:{assignableId:'I_ONE',assigneeIds:['U_A','U_B']}},'mutation');
+    expect(relevantGraphqlNodeId(entry.input,entry).ids.map(x=>x.value)).toEqual(['I_ONE','U_A','U_B']);
+    const pdoc='mutation Project($input:UpdateProjectV2ItemFieldValueInput!){updateProjectV2ItemFieldValue(input:$input){projectV2Item{id}}}';
+    const entry2=inspectGraphql(pdoc,{input:{projectId:'PV2_PROJECT',itemId:'PV2_ITEM',fieldId:'PV2_FIELD',value:{singleSelectOptionId:'option—not-a-node'}}},'mutation');
+    expect(relevantGraphqlNodeId(entry2.input,entry2).ids.map(x=>x.name)).toEqual(['fieldId','itemId','projectId']);
+  });
+  it('refuses unreviewed list-recipient mutations without independent recipient/readback proof',async()=>{
+    const w=await makeWorld({profile:'full',mode:'production'});
+    const mutation='mutation Assign($input:AddAssigneesToAssignableInput!){addAssigneesToAssignable(input:$input){assignable{__typename}}}';
+    const result=await dispatch(w,'github_graphql_write',{mutation,repo:'hello',
+      variables:{input:{assignableId:'I_ONE',assigneeIds:['U_FOREIGN']}}});
+    expect(result.isError).toBe(true);
+    expect(w.gh.calls).toEqual([]);
+  });
+  it('confirms a changed ProjectV2 field only after independent typed field/value reread',async()=>{
+    const w=await makeWorld({profile:'full',mode:'production',advanceClockOnSleep:true});
+    const mutation='mutation Project($input:UpdateProjectV2ItemFieldValueInput!){updateProjectV2ItemFieldValue(input:$input){projectV2Item{id}}}';
+    const owned={id:'PV2_PROJECT',owner:{login:'example-org'}};
+    const nodes={
+      PV2_PROJECT:{__typename:'ProjectV2',...owned},
+      PV2_ITEM:{__typename:'ProjectV2Item',id:'PV2_ITEM',project:owned},
+      PV2_FIELD:{__typename:'ProjectV2Field',id:'PV2_FIELD',fieldName:'Status',project:owned}
+    };
+    let sent=0;
+    w.gh.when('POST /graphql').reply(200,request=>{
+      const q=request.body?.query??'';
+      if(q.includes('UniversalFieldReadback'))return {data:{node:{id:'PV2_ITEM',
+        fieldValueByName:sent?{__typename:'ProjectV2ItemFieldTextValue',field:{id:'PV2_FIELD'},text:'New value'}:null}}};
+      if(/^\s*mutation\b/.test(q)){sent++;return {data:{updateProjectV2ItemFieldValue:{projectV2Item:{id:'PV2_ITEM'}}}};}
+      return {data:{node:nodes[request.body.variables?.id]??null}};
+    });
+    const result=parse(await dispatch(w,'github_graphql_write',{mutation,repo:'hello',
+      variables:{input:{projectId:'PV2_PROJECT',itemId:'PV2_ITEM',fieldId:'PV2_FIELD',value:{text:'New value'}}},
+      confirm:true}));
+    expect(result.status,JSON.stringify(result)+' invalid '+JSON.stringify(w.gh.invalid.map(x=>x.invalid))).toBe('applied');
+    expect(result.confirmed).toBe(true);
+    expect(sent).toBe(1);
     expect(w.gh.invalid).toEqual([]);
   });
 });

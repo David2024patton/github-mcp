@@ -1,4 +1,4 @@
-import {visit,Kind,valueFromASTUntyped} from 'graphql';
+import {visit,Kind,valueFromASTUntyped,getNamedType,isInputObjectType,isListType,isNonNullType} from 'graphql';
 // U-2: policy belongs outside the schema parser. A valid mutation is not proof
 // that it is permitted, belongs to the account, is free, or is reversible.
 const curated=new Map(Object.entries({
@@ -56,6 +56,8 @@ export function assertSafeGraphqlArguments(entry){
       // Credentials supplied as aliased output fields are still handled by the
       // dispatcher's redaction; provider text is never treated as instructions.
       if(node.kind!==Kind.FIELD)throw new TypeError('Unknown GraphQL AST field.');
+      if(secretKey.test(node.name.value))
+        throw new TypeError('GraphQL secret-bearing provider output field is forbidden, even behind an alias.');
     }
   });
 }
@@ -73,24 +75,46 @@ export function classifyGraphqlMutation(name,input){
 /** Derive all existing resource IDs, not just a six-name allowlist.
  * Every ID must independently resolve into the enrolled account before dispatch.
  * Unknown node families fail closed until a typed ownership proof is added. */
-export function relevantGraphqlNodeId(input){
+export function relevantGraphqlNodeId(input,entry){
   const source=input?.input;
   if(!source||typeof source!=='object'||Array.isArray(source))
     throw new TypeError('Universal GraphQL mutation needs one typed input object.');
+  const mutationField=entry?.schema?.getMutationType()?.getFields()?.[entry.mutation];
+  const arg=mutationField?.args?.find(x=>x.name==='input');
+  if(!arg)throw new TypeError('GraphQL mutation has no independently typed input.');
   const ids=[];
-  const collect=(obj,depth=0)=>{
-    if(depth>12)throw new TypeError('GraphQL resource IDs are nested too deeply.');
-    for(const [name,value] of Object.entries(obj)){
-      if(name==='clientMutationId')continue;
-      if(/(?:Id|ID)$/.test(name)||name==='id'){
-        if(typeof value!=='string'||!value)throw new TypeError('GraphQL resource '+name+' must be a nonempty existing node ID.');
-        ids.push({name,value});
-      }else if(value&&typeof value==='object'&&!Array.isArray(value))collect(value,depth+1);
+  const walk=(value,type,key,depth=0)=>{
+    if(depth>12)throw new TypeError('GraphQL ID input nesting exceeds safe bound.');
+    while(isNonNullType(type))type=type.ofType;
+    if(isListType(type)){
+      if(!Array.isArray(value)||value.length>12)
+        throw new TypeError('GraphQL resource ID array must be bounded.');
+      value.forEach(v=>walk(v,type.ofType,key,depth+1));
+      return;
     }
+    const named=getNamedType(type);
+    if(named?.name==='ID'){
+      if(typeof value!=='string'||!value)
+        throw new TypeError('GraphQL '+key+' must be an existing node ID.');
+      ids.push({name:key,value});
+      return;
+    }
+    if(isInputObjectType(named)){
+      if(value===null||typeof value!=='object'||Array.isArray(value))
+        throw new TypeError('GraphQL resource input is not an object.');
+      for(const [name,val] of Object.entries(value)){
+        const field=named.getFields()[name];
+        if(!field)throw new TypeError('Unknown typed GraphQL input '+name+'.');
+        walk(val,field.type,name,depth+1);
+      }
+    }
+    // String-typed option identifiers (iterationId,
+    // singleSelectOptionId, multiSelectOptionIds) are NOT node IDs.
   };
-  collect(source);
+  walk(source,arg.type,'input');
   if(ids.length<1||ids.length>12||new Set(ids.map(x=>x.value)).size!==ids.length)
-    throw new TypeError('Universal GraphQL mutation requires one to twelve distinct, independently verifiable resource IDs.');
+    throw new TypeError('Universal GraphQL mutation requires one to twelve distinct schema-typed node IDs.');
   const primary=ids.find(x=>x.name==='projectId')??ids.find(x=>/discussionId|issueId|pullRequestId|repositoryId|subjectId/.test(x.name))??ids[0];
-  return {...primary,ids,changes:Object.fromEntries(Object.entries(source).filter(([k])=>k!=='clientMutationId'&&!ids.some(x=>x.name===k)))};
+  const keys=new Set(ids.map(x=>x.name));
+  return {...primary,ids,changes:Object.fromEntries(Object.entries(source).filter(([name])=>name!=='clientMutationId'&&!keys.has(name)))};
 }

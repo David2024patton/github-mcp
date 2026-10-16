@@ -15,7 +15,11 @@ const REPO={type:'string',minLength:1,maxLength:100,description:'Explicit reposi
 const CRED={type:'string',enum:['I','U'],description:'I installation or explicitly enrolled U user credential'};
 const common={variables:VARIABLES,owner:OWNER,cred:CRED};
 
-export const SCOPE_QUERY='query UniversalResourceScope($id: ID!) { node(id: $id) { __typename id ... on Repository { nameWithOwner } ... on Issue { title repository { nameWithOwner } } ... on PullRequest { title repository { nameWithOwner } } ... on Discussion { title repository { nameWithOwner } } ... on Release { releaseName:name repository { nameWithOwner } } ... on Milestone { title repository { nameWithOwner } } ... on Label { labelName:name repository { nameWithOwner } } ... on Commit { repository { nameWithOwner } } ... on DiscussionComment { discussion { repository { nameWithOwner } } } ... on IssueComment { issue { repository { nameWithOwner } } } ... on ProjectV2 { title owner { ... on Organization { login } ... on User { login } } } ... on ProjectV2Item { project { id owner { ... on Organization { login } ... on User { login } } } content { ... on Issue { repository { nameWithOwner } } ... on PullRequest { repository { nameWithOwner } } } } ... on ProjectV2Field { project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2SingleSelectField { project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2IterationField { project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2MultiSelectField { project { id owner { ... on Organization { login } ... on User { login } } } } } }';
+export const SCOPE_QUERY='query UniversalResourceScope($id: ID!) { node(id: $id) { __typename id ... on Repository { nameWithOwner } ... on Issue { title repository { nameWithOwner } } ... on PullRequest { title repository { nameWithOwner } } ... on Discussion { title repository { nameWithOwner } } ... on Release { releaseName:name repository { nameWithOwner } } ... on Milestone { title repository { nameWithOwner } } ... on Label { labelName:name repository { nameWithOwner } } ... on Commit { repository { nameWithOwner } } ... on DiscussionComment { discussion { repository { nameWithOwner } } } ... on IssueComment { issue { repository { nameWithOwner } } } ... on ProjectV2 { title owner { ... on Organization { login } ... on User { login } } } ... on ProjectV2Item { project { id owner { ... on Organization { login } ... on User { login } } } content { ... on Issue { repository { nameWithOwner } } ... on PullRequest { repository { nameWithOwner } } } } ... on ProjectV2Field { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2SingleSelectField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2IterationField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2MultiSelectField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } } }';
+/** Exact field readback is separate from GitHub's mutation response. It also
+ * carries its owning field's real ID, preventing a same-name field collision. */
+export const PROJECT_FIELD_QUERY='query UniversalFieldReadback($itemId: ID!, $fieldName: String!) { node(id:$itemId) { ... on ProjectV2Item { id fieldValueByName(name:$fieldName) { __typename ... on ProjectV2ItemFieldValueCommon { field { ... on Node { id } } } ... on ProjectV2ItemFieldTextValue { text } ... on ProjectV2ItemFieldNumberValue { number } ... on ProjectV2ItemFieldDateValue { date } ... on ProjectV2ItemFieldSingleSelectValue { optionId } ... on ProjectV2ItemFieldIterationValue { iterationId } ... on ProjectV2ItemFieldMultiSelectValue { options { id } } } } } }';
+
 function ownerFor(a,c){
   const requested=a.owner??c.connection?.default_account;
   if(typeof requested!=='string'||!c.connection?.accounts?.some(x=>x.toLowerCase()===requested.toLowerCase()))
@@ -123,11 +127,43 @@ function targetWrite(a,c){
   const entry=inspectGraphql(a.mutation,a.variables??{},'mutation');
   assertSafeGraphqlArguments(entry);
   const classification=classifyGraphqlMutation(entry.mutation,entry.input);
-  const node=relevantGraphqlNodeId(entry.input);
+  const node=relevantGraphqlNodeId(entry.input,entry);
+  const keys=Object.keys(node.changes);
+  const projectChange=entry.mutation==='updateProjectV2ItemFieldValue'&&keys.length===1&&keys[0]==='value';
+  const titleChange=keys.length===1&&keys[0]==='title'&&typeof node.changes.title==='string';
+  if(!projectChange&&!titleChange)
+    throw new TypeError('GraphQL write has no independently verifiable readback for this mutation/input; use the specialized guarded tool.');
   return {owner,repo,scope:'repo',kind:'graphql-repo',ref:null,cred:credFor(a),entry,classification,node};
 }
 // No provider write is attempted unless this exact node can be independently
 // resolved to the caller's enrolled account AND requested repository.
+const valueFields=new Map([
+  ['text',['ProjectV2ItemFieldTextValue','text']],
+  ['number',['ProjectV2ItemFieldNumberValue','number']],
+  ['date',['ProjectV2ItemFieldDateValue','date']],
+  ['singleSelectOptionId',['ProjectV2ItemFieldSingleSelectValue','optionId']],
+  ['iterationId',['ProjectV2ItemFieldIterationValue','iterationId']],
+  ['multiSelectOptionIds',['ProjectV2ItemFieldMultiSelectValue','options']]
+]);
+function expectedProjectValue(target){
+  const value=target.entry.input?.input?.value;
+  if(!value||typeof value!=='object'||Array.isArray(value))
+    throw new TypeError('Project field change needs an exact typed value for independent readback.');
+  const keys=Object.keys(value).filter(k=>value[k]!==undefined&&value[k]!==null);
+  if(keys.length!==1||!valueFields.has(keys[0]))
+    throw new TypeError('Project field change requires one supported, independently verifiable value.');
+  return {key:keys[0],value:value[keys[0]],type:valueFields.get(keys[0])[0],property:valueFields.get(keys[0])[1]};
+}
+function confirmedField(expected,snapshot){
+  if(!expected||!snapshot||snapshot.__typename!==expected.type)return false;
+  if(expected.key==='multiSelectOptionIds'){
+    const actual=snapshot.options?.map(x=>x?.id);
+    return Array.isArray(actual)&&Array.isArray(expected.value)&&actual.length===expected.value.length&&
+      actual.every(x=>typeof x==='string')&&
+      [...actual].sort().join('|')===[...expected.value].sort().join('|');
+  }
+  return JSON.stringify(snapshot[expected.property])===JSON.stringify(expected.value);
+}
 async function baseline(a,c,target){
   const call=await accountGraphql(c,target.owner,target.cred,target.repo);
   const nodes=[];const projectIds=new Set();
@@ -144,10 +180,37 @@ async function baseline(a,c,target){
   }
   if(projectIds.size>1)throw new TypeError('GraphQL mutation references unrelated projects.');
   const primary=nodes.find(x=>x.identity.value===target.node.value)??nodes[0];
-  return {verified:true,id:primary.node.id,type:primary.node.__typename,
+  const result={verified:true,id:primary.node.id,type:primary.node.__typename,
     repo:target.owner+'/'+target.repo,node:primary.node,
     targetIds:nodes.map(x=>({name:x.identity.name,id:x.node.id,type:x.node.__typename,projectId:x.ownership.projectId}))};
+  if(target.entry.mutation==='updateProjectV2ItemFieldValue'){
+    const project=nodes.find(x=>x.identity.name==='projectId');
+    const item=nodes.find(x=>x.identity.name==='itemId');
+    const field=nodes.find(x=>x.identity.name==='fieldId');
+    if(!project||!item||!field||!field.node.fieldName||
+      project.ownership.projectId!==item.ownership.projectId||
+      project.ownership.projectId!==field.ownership.projectId)
+      throw new TypeError('Project, field, item and exact field name cannot be independently verified.');
+    const expected=expectedProjectValue(target);
+    const value=await call(PROJECT_FIELD_QUERY,{itemId:item.node.id,fieldName:field.node.fieldName});
+    if(value?.node?.id!==item.node.id)
+      throw new TypeError('Project field readback returned an unverified item.');
+    const snapshot=value.node.fieldValueByName??null;
+    if(snapshot&&snapshot.field?.id!==field.node.id)
+      throw new TypeError('Project field readback refers to a different field.');
+    return {...result,verifiable:true,fieldSnapshot:snapshot,fieldExpected:expected};
+  }
+  const changes=Object.entries(target.node.changes);
+  if(changes.length!==1||changes[0][0]!=='title'||!Object.hasOwn(primary.node,'title'))
+    throw new TypeError('GraphQL change lacks an exact independently readable target field.');
+  return {...result,verifiable:true};
 }
+function changesMatch(changes,node){
+  const entries=Object.entries(changes);
+  return entries.length>0&&entries.every(([key,value])=>
+    key==='title'&&Object.hasOwn(node??{},key)&&JSON.stringify(node[key])===JSON.stringify(value));
+}
+
 /** All GraphQL response objects can contain alias-renamed outsider text. The
  * graph carries a conservative provenance mark on every object, not only REST
  * author_association keys. No user-supplied GraphQL body is trusted as instructions. */
@@ -184,7 +247,8 @@ const gqlWrite=defineGithubWrite({
   target:(a,c)=>targetWrite(a,c),
   read:async(a,c,t)=>baseline(a,c,t),
   price:({before})=>{
-    if(before?.verified!==true)throw new TypeError('A verified scoped GraphQL baseline is required before any write.');
+    if(before?.verified!==true||before?.verifiable!==true)
+      throw new TypeError('An independently verifiable scoped GraphQL baseline is required before any write.');
     return 0;
   },
   classify:({target:t,before})=>({
@@ -207,13 +271,19 @@ const gqlWrite=defineGithubWrite({
   },
   readAfter:async({args:a,ctx:c,target:t,before,response})=>{
     const after=await baseline(a,c,t);
-    return {verified:after.verified,node:after.node,mutation:t.entry.mutation,
-      receipt:response?.data?.[t.entry.mutation]??null,before:before?.node??null};
+    return {verified:after.verified,verifiable:after.verifiable,node:after.node,
+      fieldSnapshot:after.fieldSnapshot??null,fieldExpected:after.fieldExpected??null,
+      mutation:t.entry.mutation,receipt:response?.data?.[t.entry.mutation]??null,
+      before:before?.node??null};
   },
   verify:({target:t,before,after})=>
-    before?.verified===true&&after?.verified===true&&
-    changesMatch(t.node.changes,after.node)&&
-    JSON.stringify(after.node)!==JSON.stringify(before.node),
+    before?.verified===true&&before?.verifiable===true&&
+    after?.verified===true&&after?.verifiable===true&&
+    (t.entry.mutation==='updateProjectV2ItemFieldValue'
+      ? confirmedField(after.fieldExpected,after.fieldSnapshot)&&
+        JSON.stringify(before.fieldSnapshot)!==JSON.stringify(after.fieldSnapshot)
+      : changesMatch(t.node.changes,after.node)&&
+        JSON.stringify(after.node)!==JSON.stringify(before.node)),
   present:({target:t,after,response})=>({
     mutation:t.entry.mutation,account:t.owner,repository:t.repo,
     independentlyRead:after?.verified===true,
