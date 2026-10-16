@@ -1,3 +1,11 @@
+## 2026-10-16 — Y-7: paid security features are refused, not priced; advisory text is never stored
+
+1. Turning on code scanning, secret protection or push protection for a private repository is billed per active committer. There is no verified price source, so the tools refuse instead of guessing (same as `github_security_set_feature`): `github_security_code_scanning_default_setup` refuses private repositories; a configuration with paid settings is attached only with scope `public` (or named public repositories) and cannot be the default for private or all new repositories; turning on paid settings of a configuration already attached to a private repository is refused. The design's "priced and blocked at $0" is therefore stricter: blocked at every limit until a real price table exists.
+2. Advisory text (description) is sensitive: results and the change log keep only ids, state, severity, package names, a 200-character summary, and the SHA-256 and length of the description. No inverse is recorded for advisory changes. Publishing needs the GHSA id typed again, is production-class and cannot be undone; a CVE request cannot be withdrawn.
+3. A report to another project's repository goes out as the signed-in user (credential U), always asks first and names the receiving owner.
+4. Not built: `github_security_bypass_review` (the pinned description only has "create a push protection bypass", which would weaken protection) and advisory private forks (no route; `startPrivateFork` is offered on create instead). Autofix moves to Y-8 with the async jobs table.
+5. Custom secret patterns are regular expressions, not credentials; they are sent only as `pattern` and the log keeps a hash. Pattern lists read only the first page (the description's list route is cursor-paged).
+
 ## 2026-10-16 — Y-5/Y-6: deletes never replay as errors, runner tokens only through the one-time page, limit increases count as spend
 
 1. Moderation deletes (comment, issue, discussion, issue type, issue field, runner group) are production-class and have no undo; the preview names what is lost and quotes other people's text as untrusted data. Org issue type/field deletes need the exact name typed.

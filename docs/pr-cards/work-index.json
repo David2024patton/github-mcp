@@ -1643,7 +1643,7 @@
         "Y-1"
       ],
       "card": "docs/pr-cards/Y-7.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 600,
       "units": [
@@ -1651,7 +1651,9 @@
       ],
       "readiness": "READY",
       "ownerInputs": [],
-      "pr": []
+      "pr": [
+        230
+      ]
     },
     {
       "id": "Y-8",

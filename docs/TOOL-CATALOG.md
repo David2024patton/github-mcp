@@ -6,7 +6,7 @@ Restricted preview RTC successful replies revalidate service pass and scratch ow
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
-tool merges, its Card cell gains `built #<PR>`. Built so far: **all 366 tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
+tool merges, its Card cell gains `built #<PR>`. Built so far: **all 378 tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
 and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Since B-5 every result of these tools is shaped (`src/tools/util.js`) and failures are explained by `src/tools/errors.js`. Since B-6 a connection sees only the tools its profile allows (`tools/list` and by-name calls). Every write tool below is built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
@@ -676,9 +676,28 @@ Card(s): Y-6. Runner registration, removal and just-in-time tokens are sealed in
 | `github_deploy_review_custom_rule` | Approve or reject a deployment waiting on a custom rule (only the owning App) | C·Prod | N | I | O | F | Y-6 |
 | `github_pages_build_request` | Request a Pages rebuild | P | N | I | Op,O | F | Y-6 |
 
+## Security writes (`github_security_advisory_*, github_security_config_*`) — 12
+
+Card(s): Y-7. Advisory text never appears in a result or the change log (only a SHA-256); publishing is public and irreversible and needs the GHSA id typed twice. Paid security features on private repositories are refused, not priced: code scanning default setup refuses private repositories and a configuration with paid settings only attaches to public repositories (`docs/DECISIONS.md` 2026-10-16). Not built: push-protection bypass review and advisory private forks (no route in the pinned description), and autofix (waits for the Y-8 jobs table).
+
+| Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `github_security_advisory_save` | Create a draft security advisory or edit one (text stays private; results show only a hash) | P·Prod*·M* | N | I | O | F | Y-7 |
+| `github_security_advisory_publish` | Publish a draft advisory: PUBLIC, no undo, GHSA id typed twice | C·Prod | N | I | O | F | Y-7 |
+| `github_security_advisory_request_cve` | Request a CVE for an advisory (cannot be withdrawn) | C·Prod | N | I | O | F | Y-7 |
+| `github_security_report_vulnerability` | Privately report a vulnerability to another repository as you | C·M | N | U | O | F | Y-7 |
+| `github_security_code_scanning_default_setup` | Turn code scanning default setup on or off (private repositories refused) | C·Prod | N | I | O | F | Y-7 |
+| `github_security_secret_pattern_save` | Create, edit or delete a custom secret-scanning pattern for an organization or repository | C·Prod* | N | I | O | F | Y-7 |
+| `github_security_dependabot_org_settings` | Set which repositories Dependabot may read and the default access level | C·A | N | I | O | F | Y-7 |
+| `github_security_config_save` | Create or edit an organization code-security configuration | C·Prod* | N | I | O | F | Y-7 |
+| `github_security_config_attach` | Attach a configuration to repositories (paid ones only to public) | C·Prod | N | I | O | F | Y-7 |
+| `github_security_config_default` | Choose the configuration new repositories start with | C·Prod | N | I | O | F | Y-7 |
+| `github_security_config_detach` | Detach the configuration from named repositories | C·Prod | N | I | O | F | Y-7 |
+| `github_security_config_delete` | Delete a configuration (name typed; no undo) | C·Prod | N | I | O | F | Y-7 |
+
 ## Totals
 
-**Totals:** 366 tools: 360 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 378 tools: 372 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 134, everyday adds 81
 (everyday lists 215), full adds 96 (full lists 354). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
@@ -715,12 +734,13 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Owner and administration: guided settings | 3 |
 | Moderation and organization planning objects | 16 |
 | Self-hosted runners and Actions administration | 12 |
+| Security writes | 12 |
 | Projects v2 lifecycle | 15 |
 | Public profiles, following and star lists | 12 |
 | Project profiles | 3 |
 | Workflows | 17 |
 | Everything else on GitHub: the universal tools | 6 |
-| **Total** | **366** |
+| **Total** | **378** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 

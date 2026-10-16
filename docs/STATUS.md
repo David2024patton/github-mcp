@@ -1,10 +1,20 @@
+## October 16, 2026 — Bundle 8: Y-7 security writes (PR #230)
+
+Y-7 of the gap-closure Batch Y (12 new tools, 378 in total). **Advisories:** create or edit a draft security advisory, publish it (public, cannot be undone, GHSA id typed twice), request a CVE, and privately report a vulnerability to another project as you. The advisory text never appears in a result or the change log, only a fingerprint (SHA-256). **Scanning:** turn code scanning default setup on or off, create/edit/delete custom secret-scanning patterns for an organization or repository, and choose which repositories Dependabot may read. **Organization configurations:** create/edit a code-security configuration, attach it, make it the default for new repositories, detach it, delete it. Anything that would switch on paid security features for private repositories is refused (the cost cannot be calculated), so paid configurations only reach public repositories.
+
+Not built on purpose: push-protection bypass review and advisory private forks (GitHub's pinned description has no such route) and autofix (waits for the Y-8 jobs table).
+
+Not claimed: no live acceptance of any Y tool; the App's security permissions need your approval on github.com (IN-15).
+
+Next: Y-8 (artifacts, archives, uploads, async jobs, wiki), then Y-9.
+
 ## October 16, 2026 — Bundle 7: Y-5 moderation and organization planning objects, Y-6 runners and Actions administration (PR #229)
 
 Y-5 and Y-6 of the gap-closure Batch Y, delivered as one PR (28 new tools, 366 in total). **Y-5 (16 tools):** pin and unpin issues and comments, delete or hide comments, edit review comments, delete issues (number typed twice), close/reopen/edit/delete discussions and mark answers, link or unlink branches, organization issue types and fields (select options keep their ids), issue field values, interaction limits and autolinks. Deletes always ask first, show the author and text as untrusted data and have no undo. **Y-6 (12 tools):** list and read self-hosted runners and groups; remove a runner (a busy one is refused), set labels, create/edit/delete runner groups (letting public repositories use a group is off by default and asks first with a warning), set group access; runner registration, removal and just-in-time tokens are sealed and revealed once on the private setup page (never in a chat or log); one tool to set cache retention, cache size, artifact/log retention and the OIDC subject template (raising a storage limit counts as spend and is blocked while the spend limit is $0); add or disable custom deployment protection rules (only apps GitHub lists), answer a waiting custom rule, and request a Pages rebuild. Not built on purpose: `github_deploy_review_pending` (an existing tool already does it).
 
 Not claimed: no live acceptance of any Y tool. Answering a custom protection rule only works if this server's App owns that rule; new App permissions still need your approval on github.com (IN-15).
 
-Next: Y-7 (security writes), then Y-8 and Y-9.
+Next: see Bundle 8 above.
 
 ## October 16, 2026 — Bundle 6: Y-3 other people's data, follow, star lists; Y-4 Projects v2 lifecycle (PR #228)
 

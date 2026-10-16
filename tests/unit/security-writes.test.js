@@ -1,0 +1,214 @@
+import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
+import { runWriteContract, makeWorld, parse } from '../../test/helpers/write-contract.js';
+import { spendGate } from '../../test/helpers/fixture-gates.js';
+import * as advisories from '../../src/tools/advisories.js';
+import * as scanning from '../../src/tools/security-scanning-writes.js';
+import * as config from '../../src/tools/security-config.js';
+import { turnsOnPaid } from '../../src/tools/security-config.js';
+import { createDispatch } from '../../src/tools/dispatch.js';
+import { registry } from '../../src/tools/index.js';
+
+const def = (ns, name) => ({ tool: ns.tools.find((t) => t.name === name), handler: ns.handlers[name] });
+const O = 'example-org';
+const R = { owner: O, repo: 'app' };
+const ok = (outcome) => outcome === 'ok';
+const GHSA = 'GHSA-2222-3333-4444';
+const ADV = '/repos/{owner}/{repo}/security-advisories';
+const TEXT = 'SECRET DETAILS OF THE HOLE';
+const adv = (over = {}) => ({ ghsa_id: GHSA, state: 'draft', severity: 'high', summary: 'Bad bug', description: TEXT, cve_id: null, html_url: 'https://example.test/advisory', vulnerabilities: [{ package: { ecosystem: 'npm', name: 'pkg' } }], ...over });
+const sha = (t) => createHash('sha256').update(t).digest('hex');
+
+// ---- advisories ------------------------------------------------------------------------------------------------------
+runWriteContract({ label: 'github_security_advisory_save', definition: def(advisories, 'github_security_advisory_save'), needsConfirm: false, profile: 'full',
+  args: { ...R, summary: 'Bad bug', description: TEXT, severity: 'high', vulnerabilities: [{ ecosystem: 'npm', name: 'pkg' }] },
+  arrange: (gh, o) => {
+    gh.when(`GET ${ADV}/{ghsa_id}`).reply(404, { message: 'Not Found' });
+    gh.when(`POST ${ADV}`).reply(201, (req) => { gh.when(`GET ${ADV}/{ghsa_id}`).reply(200, adv({ summary: ok(o) ? req.body.summary : 'something else', description: req.body.description })); return adv({ summary: req.body.summary, description: req.body.description }); });
+  } });
+runWriteContract({ label: 'github_security_advisory_publish', definition: def(advisories, 'github_security_advisory_publish'), needsConfirm: true, production: true, profile: 'full',
+  args: { ...R, ghsa: GHSA, confirmGhsa: GHSA },
+  arrange: (gh, o) => {
+    gh.when(`GET ${ADV}/{ghsa_id}`).reply(200, adv());
+    gh.when(`PATCH ${ADV}/{ghsa_id}`).reply(200, () => { if (ok(o)) gh.when(`GET ${ADV}/{ghsa_id}`).reply(200, adv({ state: 'published' })); return adv({ state: 'published' }); });
+  } });
+runWriteContract({ label: 'github_security_advisory_request_cve', definition: def(advisories, 'github_security_advisory_request_cve'), needsConfirm: true, production: true, profile: 'full',
+  args: { ...R, ghsa: GHSA },
+  arrange: (gh, o) => {
+    gh.when(`GET ${ADV}/{ghsa_id}`).reply(200, adv());
+    gh.when(`POST ${ADV}/{ghsa_id}/cve`).reply(202, () => { if (!ok(o)) gh.when(`GET ${ADV}/{ghsa_id}`).reply(404, { message: 'Not Found' }); return null; });
+  } });
+runWriteContract({ label: 'github_security_report_vulnerability', definition: def(advisories, 'github_security_report_vulnerability'), needsConfirm: true, notifies: ['upstream-org'], profile: 'full',
+  args: { owner: 'upstream-org', repo: 'lib', summary: 'Bad bug', description: TEXT },
+  arrange: (gh, o) => {
+    gh.when(`GET ${ADV}/{ghsa_id}`).reply(404, { message: 'Not Found' });
+    gh.when(`POST ${ADV}/reports`).reply(201, (req) => { if (ok(o)) gh.when(`GET ${ADV}/{ghsa_id}`).reply(200, adv({ state: 'triage', description: req.body.description })); return adv({ state: 'triage' }); });
+  } });
+
+// ---- code scanning, secret patterns, Dependabot ----------------------------------------------------------------------------
+const SETUP = '/repos/{owner}/{repo}/code-scanning/default-setup';
+const setupRoutes = (gh, o, isPrivate = false) => {
+  gh.when('GET /repos/{owner}/{repo}').reply(200, { id: 1, name: 'app', private: isPrivate, visibility: isPrivate ? 'private' : 'public' });
+  gh.when(`GET ${SETUP}`).reply(200, { state: 'not-configured', languages: [] });
+  gh.when(`PATCH ${SETUP}`).reply(202, () => { if (ok(o)) gh.when(`GET ${SETUP}`).reply(200, { state: 'configured', languages: ['javascript-typescript'], query_suite: 'default' }); return { run_id: 1, run_url: 'https://example.test/run' }; });
+};
+runWriteContract({ label: 'github_security_code_scanning_default_setup', definition: def(scanning, 'github_security_code_scanning_default_setup'), needsConfirm: true, production: true, profile: 'full',
+  args: { ...R, state: 'configured', languages: ['javascript-typescript'] }, arrange: (gh, o) => setupRoutes(gh, o) });
+
+const PAT = '/orgs/{org}/secret-scanning/custom-patterns';
+const pattern = (over = {}) => ({ id: 31, name: 'Internal key', pattern: 'ACME_[A-Z0-9]{16}', slug: 'internal_key', state: 'published', push_protection_enabled: false, custom_pattern_version: 'v1', ...over });
+runWriteContract({ label: 'github_security_secret_pattern_save', definition: def(scanning, 'github_security_secret_pattern_save'), needsConfirm: true, profile: 'full',
+  args: { owner: O, action: 'create', name: 'Internal key', pattern: 'ACME_[A-Z0-9]{16}' },
+  arrange: (gh, o) => {
+    gh.when(`GET ${PAT}`).reply(200, []);
+    gh.when(`POST ${PAT}`).reply(201, (req) => { const made = pattern({ pattern: ok(o) ? req.body.patterns[0].pattern : 'other' }); gh.when(`GET ${PAT}`).reply(200, [made]); return { created_patterns: [made], errors: [] }; });
+  } });
+runWriteContract({ label: 'github_security_secret_pattern_save (delete)', definition: def(scanning, 'github_security_secret_pattern_save'), needsConfirm: true, production: true, profile: 'full',
+  args: { owner: O, action: 'delete', patternId: 31, name: 'Internal key', afterDelete: 'resolve_alerts' },
+  arrange: (gh, o) => {
+    gh.when(`GET ${PAT}`).reply(200, [pattern()]);
+    gh.when(`DELETE ${PAT}`).reply(204, () => { if (ok(o)) gh.when(`GET ${PAT}`).reply(200, []); return null; });
+  } });
+
+const DEP = '/orgs/{org}/dependabot/repository-access';
+runWriteContract({ label: 'github_security_dependabot_org_settings', definition: def(scanning, 'github_security_dependabot_org_settings'), needsConfirm: true, accessWidening: true, profile: 'full',
+  args: { org: O, addRepositoryIds: [5] },
+  arrange: (gh, o) => {
+    gh.when(`GET ${DEP}`).reply(200, { default_level: 'public', accessible_repositories: [{ id: 1 }] });
+    gh.when(`PATCH ${DEP}`).reply(204, () => { if (ok(o)) gh.when(`GET ${DEP}`).reply(200, { default_level: 'public', accessible_repositories: [{ id: 1 }, { id: 5 }] }); return null; });
+  } });
+
+// ---- code-security configurations -------------------------------------------------------------------------------------------
+const CFG = '/orgs/{org}/code-security/configurations';
+const cfg = (over = {}) => ({ id: 9, name: 'Baseline', description: 'Org baseline', target_type: 'organization', advanced_security: 'disabled', dependabot_alerts: 'enabled', secret_scanning: 'disabled', enforcement: 'enforced', ...over });
+const repoRow = (id, name, isPrivate = false, status = 'attached') => ({ status, repository: { id, name, private: isPrivate } });
+runWriteContract({ label: 'github_security_config_save', definition: def(config, 'github_security_config_save'), needsConfirm: true, profile: 'full',
+  args: { org: O, name: 'Strict', description: 'Stricter', settings: { dependabot_alerts: 'enabled' } },
+  arrange: (gh, o) => {
+    gh.when(`GET ${CFG}`).reply(200, [cfg()]);
+    gh.when(`POST ${CFG}`).reply(201, (req) => { const made = cfg({ id: 10, name: ok(o) ? req.body.name : 'Other', dependabot_alerts: req.body.dependabot_alerts }); gh.when(`GET ${CFG}/{configuration_id}`).reply(200, made); return made; });
+  } });
+const attachArrange = (paid) => (gh, o) => {
+  gh.when(`GET ${CFG}/{configuration_id}`).reply(200, cfg(paid ? { secret_scanning: 'enabled' } : {}));
+  gh.when(`GET ${CFG}/{configuration_id}/repositories`).reply(200, []);
+  gh.when(`POST ${CFG}/{configuration_id}/attach`).reply(202, () => { if (ok(o)) gh.when(`GET ${CFG}/{configuration_id}/repositories`).reply(200, [repoRow(1, 'app')]); return null; });
+};
+runWriteContract({ label: 'github_security_config_attach', definition: def(config, 'github_security_config_attach'), needsConfirm: true, production: true, profile: 'full', args: { org: O, configurationId: 9, scope: 'public' }, arrange: attachArrange(false) });
+runWriteContract({ label: 'github_security_config_default', definition: def(config, 'github_security_config_default'), needsConfirm: true, production: true, profile: 'full', args: { org: O, configurationId: 9, newRepos: 'public' },
+  arrange: (gh, o) => {
+    gh.when(`GET ${CFG}/{configuration_id}`).reply(200, cfg());
+    gh.when(`GET ${CFG}/defaults`).reply(200, []);
+    gh.when(`PUT ${CFG}/{configuration_id}/defaults`).reply(200, () => { if (ok(o)) gh.when(`GET ${CFG}/defaults`).reply(200, [{ default_for_new_repos: 'public', configuration: cfg() }]); return { default_for_new_repos: 'public', configuration: cfg() }; });
+  } });
+runWriteContract({ label: 'github_security_config_detach', definition: def(config, 'github_security_config_detach'), needsConfirm: true, production: true, profile: 'full', args: { org: O, repositories: ['app'] },
+  arrange: (gh, o) => {
+    gh.when('GET /repos/{owner}/{repo}').reply(200, { id: 1, name: 'app', private: false, visibility: 'public' });
+    gh.when('GET /repos/{owner}/{repo}/code-security-configuration').reply(200, { state: 'attached', configuration: cfg() });
+    gh.when(`DELETE ${CFG}/detach`).reply(204, () => { if (ok(o)) gh.when('GET /repos/{owner}/{repo}/code-security-configuration').reply(404, { message: 'Not Found' }); return null; });
+  } });
+runWriteContract({ label: 'github_security_config_delete', definition: def(config, 'github_security_config_delete'), needsConfirm: true, production: true, profile: 'full', args: { org: O, configurationId: 9, name: 'Baseline' },
+  arrange: (gh, o) => {
+    gh.when(`GET ${CFG}/{configuration_id}`).reply(200, cfg());
+    gh.when(`GET ${CFG}/{configuration_id}/repositories`).reply(200, [repoRow(1, 'app')]);
+    gh.when(`DELETE ${CFG}/{configuration_id}`).reply(204, () => { if (ok(o)) gh.when(`GET ${CFG}/{configuration_id}`).reply(404, { message: 'Not Found' }); return null; });
+  } });
+
+describe('Y-7 rules', () => {
+  const run = async (w, name, args, gates = []) => parse(await createDispatch({ env: w.ctx.env, credentials: w.credentials, gates, fetch: w.gh.fetch, now: w.ctx.now, sleep: w.ctx.sleep })({ registry, name, args, connection: w.connection, db: w.db }));
+  const mutations = (w) => w.gh.calls.filter((c) => !['GET', 'HEAD'].includes(c.method));
+  it('all twelve tools are registered, full profile only, descriptions short', () => {
+    const names = [...advisories.tools, ...scanning.tools, ...config.tools].map((t) => t.name);
+    expect(names).toHaveLength(12);
+    for (const n of names) { const t = registry.tools.find((x) => x.name === n); expect(t, n).toBeTruthy(); expect(t.description.length, n).toBeLessThanOrEqual(160); expect(t.declarations.profiles, n).toEqual(['full']); }
+  });
+  it('publishing needs the GHSA id typed twice and sends nothing otherwise', async () => {
+    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    w.gh.when(`GET ${ADV}/{ghsa_id}`).reply(200, adv());
+    const r = await run(w, 'github_security_advisory_publish', { ...R, ghsa: GHSA, confirmGhsa: 'GHSA-2222-3333-5555', confirm: true }).catch(() => ({ done: false }));
+    expect(r.done).not.toBe(true);
+    expect(mutations(w)).toHaveLength(0);
+  });
+  it('the advisory description never reaches a result or the change log, only its hash', async () => {
+    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    gh_create(w.gh);
+    const r = await run(w, 'github_security_advisory_save', { ...R, summary: 'Bad bug', description: TEXT, severity: 'high', vulnerabilities: [{ ecosystem: 'npm', name: 'pkg' }], confirm: true });
+    expect(JSON.stringify(r)).not.toContain(TEXT);
+    expect(JSON.stringify(r)).toContain(sha(TEXT));
+    const log = await w.db.listChanges({ includePreviews: true, limit: 50 });
+    expect(log.length).toBeGreaterThan(0);
+    expect(JSON.stringify(log)).not.toContain(TEXT);
+  });
+  it('an already published advisory is not published twice', async () => {
+    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    w.gh.when(`GET ${ADV}/{ghsa_id}`).reply(200, adv({ state: 'published' }));
+    const r = await run(w, 'github_security_advisory_publish', { ...R, ghsa: GHSA, confirmGhsa: GHSA, confirm: true }).catch(() => ({ done: false }));
+    expect(r.done).not.toBe(true);
+    expect(mutations(w)).toHaveLength(0);
+  });
+  it('code scanning on a private repository is refused (paid, cost unknown)', async () => {
+    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    setupRoutes(w.gh, 'ok', true);
+    const r = await run(w, 'github_security_code_scanning_default_setup', { ...R, state: 'configured', confirm: true }).catch(() => ({ done: false }));
+    expect(r.done).not.toBe(true);
+    expect(mutations(w)).toHaveLength(0);
+  });
+  it('turnsOnPaid recognises paid settings', () => {
+    expect(turnsOnPaid({ secret_scanning: 'enabled' })).toBe(true);
+    expect(turnsOnPaid({ advanced_security: 'code_security' })).toBe(true);
+    expect(turnsOnPaid({ dependabot_alerts: 'enabled', dependency_graph: 'enabled', secret_scanning: 'disabled' })).toBe(false);
+  });
+  it('a configuration with paid settings is refused for private repositories and for "all"', async () => {
+    for (const scope of ['all', 'private_or_internal']) {
+      const w = await makeWorld({ mode: 'production', profile: 'full' });
+      attachArrange(true)(w.gh, 'ok');
+      const r = await run(w, 'github_security_config_attach', { org: O, configurationId: 9, scope, confirm: true }, [spendGate({ limitCents: 100000 })]).catch(() => ({ done: false }));
+      expect(r.done, scope).not.toBe(true);
+      expect(mutations(w), scope).toHaveLength(0);
+    }
+  });
+  it('a paid configuration may be attached to public repositories', async () => {
+    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    attachArrange(true)(w.gh, 'ok');
+    const r = await run(w, 'github_security_config_attach', { org: O, configurationId: 9, scope: 'public', confirm: true });
+    expect(r.done).toBe(true);
+    expect(mutations(w)).toHaveLength(1);
+  });
+  it('a paid configuration cannot be the default for new private repositories', async () => {
+    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    w.gh.when(`GET ${CFG}/{configuration_id}`).reply(200, cfg({ secret_scanning: 'enabled' }));
+    w.gh.when(`GET ${CFG}/defaults`).reply(200, []);
+    const r = await run(w, 'github_security_config_default', { org: O, configurationId: 9, newRepos: 'all', confirm: true }).catch(() => ({ done: false }));
+    expect(r.done).not.toBe(true);
+    expect(mutations(w)).toHaveLength(0);
+  });
+  it('turning on paid settings of a configuration attached to a private repository is refused', async () => {
+    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    w.gh.when(`GET ${CFG}/{configuration_id}`).reply(200, cfg());
+    w.gh.when(`GET ${CFG}/{configuration_id}/repositories`).reply(200, [repoRow(2, 'secret-app', true)]);
+    const r = await run(w, 'github_security_config_save', { org: O, configurationId: 9, settings: { secret_scanning: 'enabled' }, confirm: true }).catch(() => ({ done: false }));
+    expect(r.done).not.toBe(true);
+    expect(mutations(w)).toHaveLength(0);
+  });
+  it('a configuration cannot be deleted without its exact name', async () => {
+    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    w.gh.when(`GET ${CFG}/{configuration_id}`).reply(200, cfg());
+    w.gh.when(`GET ${CFG}/{configuration_id}/repositories`).reply(200, []);
+    const r = await run(w, 'github_security_config_delete', { org: O, configurationId: 9, name: 'baseline', confirm: true }).catch(() => ({ done: false }));
+    expect(r.done).not.toBe(true);
+    expect(mutations(w)).toHaveLength(0);
+  });
+  it('the pattern text is kept out of the change log (only its hash)', async () => {
+    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    w.gh.when(`GET ${PAT}`).reply(200, []);
+    w.gh.when(`POST ${PAT}`).reply(201, (req) => { const made = pattern({ pattern: req.body.patterns[0].pattern }); w.gh.when(`GET ${PAT}`).reply(200, [made]); return { created_patterns: [made] }; });
+    const r = await run(w, 'github_security_secret_pattern_save', { owner: O, action: 'create', name: 'Internal key', pattern: 'ACME_[A-Z0-9]{16}', confirm: true });
+    expect(r.done).toBe(true);
+    const log = await w.db.listChanges({ includePreviews: true, limit: 50 });
+    expect(JSON.stringify(log)).not.toContain('ACME_[A-Z0-9]{16}');
+  });
+});
+
+function gh_create(gh) {
+  gh.when(`GET ${ADV}/{ghsa_id}`).reply(404, { message: 'Not Found' });
+  gh.when(`POST ${ADV}`).reply(201, (req) => { gh.when(`GET ${ADV}/{ghsa_id}`).reply(200, adv({ summary: req.body.summary, description: req.body.description })); return adv({ summary: req.body.summary, description: req.body.description }); });
+}
