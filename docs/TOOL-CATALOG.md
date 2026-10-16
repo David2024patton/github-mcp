@@ -6,7 +6,7 @@ Restricted preview RTC successful replies revalidate service pass and scratch ow
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
-tool merges, its Card cell gains `built #<PR>`. Built so far: **all 378 tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
+tool merges, its Card cell gains `built #<PR>`. Built so far: **all 386 tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
 and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Since B-5 every result of these tools is shaped (`src/tools/util.js`) and failures are explained by `src/tools/errors.js`. Since B-6 a connection sees only the tools its profile allows (`tools/list` and by-name calls). Every write tool below is built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
@@ -695,9 +695,24 @@ Card(s): Y-7. Advisory text never appears in a result or the change log (only a 
 | `github_security_config_detach` | Detach the configuration from named repositories | C·Prod | N | I | O | F | Y-7 |
 | `github_security_config_delete` | Delete a configuration (name typed; no undo) | C·Prod | N | I | O | F | Y-7 |
 
+## Background jobs, archives and autofix (`github_job_*, github_artifact_read, github_content_read_archive, github_security_*sbom*, github_code_scanning_autofix_*`) — 8
+
+Card(s): Y-8. A slow GitHub operation returns a `job_id` at once; `github_job_status` asks GitHub once per call (not more than every 10 seconds) and never waits, and the finished result is kept as an ordinary result handle. Artifacts and repository snapshots are opened on the server (50 MB zipped, 200 MB unpacked, 500 files, no unsafe names or links); binary files show only name, size and SHA-256 and the signed download address is never returned. `github_release_upload_asset` also accepts a build artifact (`artifactId`, optional `entry`) as its source. Not built: wiki editing (waits for IN-17; a guide entry covers it).
+
+| Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `github_job_status` | Check a slow job you started (pending, ready with a result handle, or failed) | — | N | — | B,Op | R | Y-8 |
+| `github_job_cancel` | Stop tracking a pending slow job | P | N | — | B,Op | F | Y-8 |
+| `github_artifact_read` | List the files of a build artifact or read one text file | — | N | I | B,Op | R | Y-8 |
+| `github_content_read_archive` | List or read files inside a repository snapshot at a ref | — | N | I | B,Op | R | Y-8 |
+| `github_security_export_sbom` | The software parts list (SBOM) of a repository | — | N | I | B,Op | R | Y-8 |
+| `github_security_sbom_report_start` | Ask GitHub to build an SBOM report in the background (job) | — | N | I | B,Op | R | Y-8 |
+| `github_code_scanning_autofix_start` | Ask GitHub to suggest a fix for a code scanning alert (job) | P | N | I | B,Op | F | Y-8 |
+| `github_code_scanning_autofix_commit` | Commit a ready suggested fix to a named branch | C·Prod* | N | I | B,Op | F | Y-8 |
+
 ## Totals
 
-**Totals:** 378 tools: 372 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 386 tools: 380 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 134, everyday adds 81
 (everyday lists 215), full adds 96 (full lists 354). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
@@ -735,12 +750,13 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Moderation and organization planning objects | 16 |
 | Self-hosted runners and Actions administration | 12 |
 | Security writes | 12 |
+| Background jobs, archives and autofix | 8 |
 | Projects v2 lifecycle | 15 |
 | Public profiles, following and star lists | 12 |
 | Project profiles | 3 |
 | Workflows | 17 |
 | Everything else on GitHub: the universal tools | 6 |
-| **Total** | **378** |
+| **Total** | **386** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 

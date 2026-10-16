@@ -2,7 +2,8 @@
 import { defineGithubWrite } from './define-github-write.js';
 import { missing, octo, ownerOf, refusal, slug } from './github-write.js';
 import { productionReason } from './production-guard.js';
-import { publicHttpsUrl, downloadPublicAsset } from '../github/public-url.js';
+import { publicHttpsUrl, downloadPublicAsset, MAX_ASSET_BYTES } from '../github/public-url.js';
+import { artifactBytes } from './artifacts-read.js';
 
 const ID = { type: 'integer', minimum: 1 };
 const OWNER = { type: 'string', maxLength: 39 };
@@ -65,16 +66,20 @@ const del = defineGithubWrite({
 
 const uploaded = defineGithubWrite({
   name: 'github_release_upload_asset', area: 'release', audience: ['B'],
-  description: 'Upload a bounded public HTTPS file to a release without showing file bytes.',
+  description: 'Upload a public HTTPS file or a build artifact (whole or one file) to a release, without showing file bytes.',
   properties: { owner: OWNER, repo: REPO, releaseId: ID,
     name: { type: 'string', minLength: 1, maxLength: 255 },
-    sourceUrl: { type: 'string', minLength: 9, maxLength: 2048 },
+    sourceUrl: { type: 'string', minLength: 9, maxLength: 2048, description: 'Public HTTPS file to upload (use this OR artifactId)' },
+    artifactId: { type: 'integer', minimum: 1, description: 'A build artifact of this repository to upload (use this OR sourceUrl)' },
+    entry: { type: 'string', maxLength: 500, description: 'With artifactId: one file inside the artifact; leave out to upload the whole artifact zip' },
     label: { type: 'string', maxLength: 255 } },
-  required: ['repo', 'releaseId', 'name', 'sourceUrl'],
+  required: ['repo', 'releaseId', 'name'],
   declarations: { production: 'when-target', confirm: 'when-needed', profiles: ['full'] },
   target: (args, ctx) => ({ owner: ownerOf(args, ctx), repo: args.repo, scope: 'repo' }),
   read: async (args, ctx, t) => {
-    publicHttpsUrl(args.sourceUrl);
+    if ((args.sourceUrl === undefined) === (args.artifactId === undefined)) throw refusal('Give exactly one source: sourceUrl or artifactId.');
+    if (args.entry !== undefined && args.artifactId === undefined) throw refusal('entry only works together with artifactId.');
+    if (args.sourceUrl !== undefined) publicHttpsUrl(args.sourceUrl);
     if (args.name.includes('/') || args.name.includes('\\') || args.name === '.' || args.name === '..') {
       throw refusal('Asset filename must be a plain filename without directory segments.');
     }
@@ -90,7 +95,7 @@ const uploaded = defineGithubWrite({
   }),
   summarize: ({ args, target: t, before }) => before.duplicate
     ? `Asset "${args.name}" already exists on release "${before.release.tag_name}" in ${slug(t.owner, t.repo)}; it will not be overwritten.`
-    : `Upload "${args.name}" from public HTTPS host ${publicHttpsUrl(args.sourceUrl).hostname} (up to 100 MB) to ${before.release.draft ? 'draft' : 'published'} release "${before.release.tag_name}" in ${slug(t.owner, t.repo)}. Source bytes stay on the server.`,
+    : `Upload "${args.name}" from ${args.artifactId !== undefined ? `build artifact ${args.artifactId}${args.entry ? ` (file ${args.entry})` : ' (the whole zip)'}` : `public HTTPS host ${publicHttpsUrl(args.sourceUrl).hostname}`} (up to 100 MB) to ${before.release.draft ? 'draft' : 'published'} release "${before.release.tag_name}" in ${slug(t.owner, t.repo)}. Source bytes stay on the server.`,
   apply: async ({ args, before, ctx, target: t }) => {
     const current = await getRelease(ctx, t, args.releaseId);
     if (!current || current.draft !== before.release.draft || current.immutable ||
@@ -98,7 +103,12 @@ const uploaded = defineGithubWrite({
         (current.assets ?? []).some((a) => a.name === args.name) || before.duplicate) {
       throw refusal('Release changed, became immutable or contains this filename; request a new preview.');
     }
-    const { bytes, size, contentType } = await downloadPublicAsset(args.sourceUrl);
+    let source;
+    if (args.artifactId !== undefined) {
+      const got = await artifactBytes(await octo(ctx, t.owner), { owner: t.owner, repo: t.repo, artifactId: args.artifactId, entry: args.entry ?? null, maxBytes: MAX_ASSET_BYTES });
+      source = { bytes: got.bytes, size: got.bytes.length, contentType: args.entry ? 'application/octet-stream' : 'application/zip' };
+    } else source = await downloadPublicAsset(args.sourceUrl);
+    const { bytes, size, contentType } = source;
     if (!size) throw refusal('Empty file cannot be uploaded.');
     const response = await (await octo(ctx, t.owner)).request(`POST ${current.upload_url}`, {
       name: args.name, ...(args.label ? { label: args.label } : {}),

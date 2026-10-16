@@ -1664,7 +1664,7 @@
         "Y-1"
       ],
       "card": "docs/pr-cards/Y-8.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "gh_async_jobs (additive)",
       "budget": 600,
       "units": [
@@ -1674,7 +1674,9 @@
       "ownerInputs": [
         "IN-17"
       ],
-      "pr": []
+      "pr": [
+        231
+      ]
     },
     {
       "id": "Y-9",
