@@ -96,6 +96,71 @@ describe('U-2 pinned GraphQL schema, AST and cost',()=>{
     expect(p.gh.calls.filter(x=>/^mutation/.test(x.body?.query??''))).toEqual([]);
   });
 });
+describe('U-2 reviewed GraphQL security and broad resource shape regressions',()=>{
+  it('never transmits credential variables or literal invitation tokens in a read',async()=>{
+    const w=await makeWorld({profile:'read_only'});
+    const q='query Token($text:String!){search(query:$text,type:ISSUE,first:2){nodes{... on Issue{id}}}}';
+    const bad=await dispatch(w,'github_graphql_read',{query:q,repo:'hello',variables:{text:'repo:example-org/hello github_pat_REDACTED0123456789abc'}});
+    expect(bad.isError).toBe(true);
+    expect(w.gh.calls).toEqual([]);
+    const q2='query {enterpriseAdministratorInvitationByToken(invitationToken:"secretValue") {id}}';
+    const invalid=await dispatch(w,'github_graphql_read',{query:q2});
+    expect(invalid.isError).toBe(true);
+    expect(w.gh.calls).toEqual([]);
+  });
+  it('rejects foreign user and repositoryOwner roots and unscoped viewer traversals',async()=>{
+    const w=await makeWorld({profile:'read_only'});
+    for(const query of [
+      'query{user(login:"other-org"){login}}',
+      'query{repositoryOwner(login:"foreign"){login}}',
+      'query{viewer{repositories(first:2){nodes{id}}}}',
+      'query{unknownRootWithoutScope{id}}'
+    ]){
+      expect((await dispatch(w,'github_graphql_read',{query})).isError,query).toBe(true);
+    }
+    expect(w.gh.calls).toEqual([]);
+  });
+  it('rejects OR/foreign repository broadeners on scoped search',async()=>{
+    const w=await makeWorld({profile:'read_only'});
+    const query='query Seek($q:String!){search(query:$q,type:ISSUE,first:2){nodes{... on Issue{id}}}}';
+    const response=await dispatch(w,'github_graphql_read',{query,repo:'hello',variables:{q:'repo:example-org/hello OR repo:foreign/repo'}});
+    expect(response.isError).toBe(true);
+    expect(w.gh.calls).toEqual([]);
+  });
+  it('conservatively marks even alias-renamed outsider authored GraphQL text untrusted',async()=>{
+    const w=await makeWorld({profile:'read_only'});
+    w.gh.when('POST /graphql').reply(200,{data:{repository:{issue:{aliasTitle:'Read me',body:'External instructions',authorAssociation:'NONE'}}}});
+    const query='query{repository(owner:"example-org",name:"hello"){issue(number:1){aliasTitle:title body authorAssociation}}}';
+    const response=await dispatch(w,'github_graphql_read',{query});
+    expect(response.isError).not.toBe(true);
+    expect(parse(response).data.untrusted).toBe(true);
+    expect(parse(response).data.repository.issue.untrusted).toBe(true);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('does not multiply the nodes list by 100 twice after a bounded connection',()=>{
+    const bounded='query Hundred($n:Int!){viewer{repositories(first:$n){nodes{issues(first:$n){nodes{id}}}}}}';
+    const result=inspectGraphql(bounded,{n:100});
+    expect(result.nodes).toBeLessThan(100000);
+    expect(result.points).toBeLessThan(500);
+    expect(result.connections).toBe(2);
+  });
+  it('previews multiple independently scoped ProjectV2 IDs without mutation dispatch',async()=>{
+    const w=await makeWorld({profile:'full',mode:'production'});
+    const mutation='mutation Project($input:UpdateProjectV2ItemFieldValueInput!){updateProjectV2ItemFieldValue(input:$input){projectV2Item{id}}}';
+    const vars={input:{projectId:'PV2_PROJECT',itemId:'PV2_ITEM',fieldId:'PV2_FIELD',value:{text:'New value'}}};
+    const owned={id:'PV2_PROJECT',owner:{login:'example-org'}};
+    const nodes={
+      PV2_PROJECT:{__typename:'ProjectV2',...owned},
+      PV2_ITEM:{__typename:'ProjectV2Item',id:'PV2_ITEM',project:owned},
+      PV2_FIELD:{__typename:'ProjectV2Field',id:'PV2_FIELD',project:owned}
+    };
+    w.gh.when('POST /graphql').reply(200,request=>({data:{node:nodes[request.body.variables?.id]??null}}));
+    const result=parse(await dispatch(w,'github_graphql_write',{mutation,variables:vars,repo:'hello'}));
+    expect(result.status,JSON.stringify(result)+' invalid '+JSON.stringify(w.gh.invalid.map(x=>x.invalid))).toBe('needs_confirmation');
+    expect(w.gh.calls.filter(x=>/^\s*mutation\b/.test(x.body?.query??''))).toHaveLength(0);
+    expect(w.gh.invalid).toEqual([]);
+  });
+});
 runWriteContract({
   label:'U-2 updateDiscussion verified scoped GraphQL mutation',
   definition:{tool:g.tools[1],handler:g.handlers.github_graphql_write},

@@ -113,9 +113,12 @@ export function estimateGraphql(entry){
       const conn=/Connection$/.test(named.name);
       let t=def.type;while(isNonNullType(t))t=t.ofType;
       const list=isListType(t);
+      // A connection's edges/nodes list materializes its already-bounded page;
+      // multiplying by 100 again makes legitimate nested reads impossible.
+      const pageNodes=/(?:Connection)$/.test(type?.name??'')&&['nodes','edges'].includes(item.name.value);
       const args=Object.fromEntries(item.arguments?.map(a=>[a.name.value,evaluate(a.value,variables)])??[]);
       let multiplier=parentCount;
-      if(conn||list){
+      if(conn||(list&&!pageNodes)){
         const first=args.first,last=args.last;
         if(conn && ((first===undefined)===(last===undefined)))
           refuse('connections require exactly one first or last page bound.');
