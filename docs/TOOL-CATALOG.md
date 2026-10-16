@@ -6,7 +6,7 @@ Restricted preview RTC successful replies revalidate service pass and scratch ow
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
-tool merges, its Card cell gains `built #<PR>`. Built so far: **all 311 tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
+tool merges, its Card cell gains `built #<PR>`. Built so far: **all 338 tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
 and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Since B-5 every result of these tools is shaped (`src/tools/util.js`) and failures are explained by `src/tools/errors.js`. Since B-6 a connection sees only the tools its profile allows (`tools/list` and by-name calls). Every write tool below is built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
@@ -505,6 +505,47 @@ Card(s): O-1. Every GitHub settings page is in the dashboard map (`src/data/dash
 | `github_admin_check_setting` | Verify supported organization 2FA directly; unsupported settings explicitly require manual confirmation | — | N | I,U | O | R | O-1 built #197/#224 |
 | `github_admin_review_security` | Review bounded enrolled organization access and security findings without misclassifying denied reads as passing | — | N | I,U | O | R | O-1 built #197/#224 |
 
+## Projects v2 lifecycle (`github_project_*`) — 15
+
+Card(s): Y-4. GraphQL only. A project is named by owner and number; GitHub must confirm it belongs to a connected account. Organizations use the installation credential, personal accounts the user sign-in. Deletes need the exact title or are production-class and have no undo. Select-option edits resend every existing option with its id.
+
+| Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `github_project_create` | Create an empty private project board for a connected account, optionally linked to a repository | C | N | I,U | Op,O | F | Y-4 |
+| `github_project_update` | Change a project's title, description, readme, visibility or closed state | P·A* | N | I,U | Op,O | F | Y-4 |
+| `github_project_copy` | Copy a project (fields, views, optionally draft items) under a new title | C | N | I,U | Op,O | F | Y-4 |
+| `github_project_delete` | Delete a project with all items (exact title required; no restore) | C·D·Prod | N | I,U | O | F | Y-4 |
+| `github_project_link` | Link or unlink a project to a repository or team | C | N | I,U | Op,O | F | Y-4 |
+| `github_project_field_save` | Create or edit a project field; select options keep their ids unless removed by name | C | N | I,U | Op,O | F | Y-4 |
+| `github_project_field_delete` | Delete a custom field and its values (preview counts items holding a value) | C·D·Prod | N | I,U | O | F | Y-4 |
+| `github_project_view_save` | Add a table, board or roadmap view, or delete a view | C·Prod* | N | I,U | Op,O | F | Y-4 |
+| `github_project_add_draft` | Add a draft item, optionally assigned | C·M* | N | I,U | Op,O | F | Y-4 |
+| `github_project_convert_draft` | Turn a draft item into an issue in a connected repository | C | N | I,U | Op,O | F | Y-4 |
+| `github_project_archive_item` | Archive or restore a project item | P | N | I,U | Op,O | F | Y-4 |
+| `github_project_move_item` | Move an item to the top or after another item | P | N | I,U | Op,O | F | Y-4 |
+| `github_project_clear_field` | Clear one field value on an item | P | N | I,U | Op,O | F | Y-4 |
+| `github_project_delete_item` | Remove an item from a project (values lost; no undo) | C·D·Prod | N | I,U | Op,O | F | Y-4 |
+| `github_project_status_update` | Post a project status update (on track, at risk, ...) | C·M | N | I,U | Op,O | F | Y-4 |
+
+## Public profiles, following and star lists (`github_user_*, github_public_*, github_repo_watch, github_star_*`) — 12
+
+Card(s): Y-3. Reads are GET-only through an allowlist, use the user sign-in when present, mark free text untrusted and answer the same for private and missing repositories. Writes act as the signed-in user (`U`).
+
+| Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `github_user_get` | Read any public user or organization profile: name, bio, counts, links (free text untrusted) | — | N | I,U | B,O,Op | R | Y-3 |
+| `github_user_list_repos` | List a user's or organization's public repositories | — | N | I,U | B,O,Op | R | Y-3 |
+| `github_user_list_social` | Social links on a public profile | — | N | I,U | B,O,Op | R | Y-3 |
+| `github_user_list_followers` | Public followers of a user or organization | — | N | I,U | B,O,Op | R | Y-3 |
+| `github_user_list_following` | People a user publicly follows | — | N | I,U | B,O,Op | R | Y-3 |
+| `github_public_repo_get` | A public repository of any account with a capped README excerpt | — | N | I,U | B,O,Op | R | Y-3 |
+| `github_public_repo_list` | Contents, releases, issues or pull requests of any public repository (untrusted text) | — | N | I,U | B,O,Op | R | Y-3 |
+| `github_star_list_get` | Your own star lists with their repositories | — | N | U | Op,O | R | Y-3 |
+| `github_user_follow` | Follow or unfollow a user or organization as you | P·M* | N | U | Op,O | E | Y-3 |
+| `github_repo_watch` | Watch, ignore or stop watching a repository as you | P | N | U | Op | E | Y-3 |
+| `github_user_set_social` | Add or remove https links on your public profile (max 4) | C·Prod·A | N | U | O | F | Y-3 |
+| `github_star_list_manage` | Create, edit or delete a star list, or put a repository into lists | C·D | N | U | Op,O | F | Y-3 |
+
 ## Project profiles (`github_profile_*`) — 3
 
 Card(s): P-1 … P-3. P-1 implementation in PR #206: additive, versioned known_projects persistence, two seeded policies and actual guard integration. These are read-only user tools, not granted GitHub write authority. Optional (docs/designs/BATCH-P.md). The readiness and setup workflows are listed under Workflows.
@@ -595,9 +636,9 @@ an organization; scheduled reminders; interaction limits beyond 6 months. The fu
 
 ## Totals
 
-**Totals:** 311 tools: 305 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 338 tools: 332 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 134, everyday adds 81
-(everyday lists 215), full adds 96 (full lists 311). In compact mode (`docs/designs/BATCH-C.md`) an agent
+(everyday lists 215), full adds 96 (full lists 338). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
 `github_search_tools` / `github_call`.
 
@@ -630,10 +671,12 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Owner: personal account | 10 |
 | Owner: notifications and gists | 7 |
 | Owner and administration: guided settings | 3 |
+| Projects v2 lifecycle | 15 |
+| Public profiles, following and star lists | 12 |
 | Project profiles | 3 |
 | Workflows | 17 |
 | Everything else on GitHub: the universal tools | 6 |
-| **Total** | **311** |
+| **Total** | **338** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 

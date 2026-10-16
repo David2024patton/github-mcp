@@ -1,3 +1,11 @@
+## 2026-10-16 — Y-3/Y-4: public reads, user-credential social writes, project tools identify by owner and number
+
+1. Public reads (`public-read.js`) allow only GET on a fixed list of path roots and always give a private or a missing repository the identical "not found, or not publicly visible" answer. Free text is capped and marked untrusted.
+2. Follow, watch, profile links and star lists use the signed-in user (credential U) and prove the user with `GET /user` before and after. Following a stranger needs confirmation (people guard); changing profile links is a production, access-widening change because the links become public.
+3. Project tools take `owner` + `number`, never trust the owner from the arguments (GitHub must report the same owner login), and use the installation credential for organizations and the user sign-in for personal accounts. Deleting a project needs the exact title; deleting a project, a field or an item is production-class and has no undo; making a project public always asks first.
+4. Select-option edits resend every existing option with its id; options are removed only when named in `removeOptions`. Iteration schedules are not edited through the tool (GitHub replaces all iterations at once); they stay on the web page.
+5. "Nothing to do" and "already exists" refusals happen in the apply step, not the read step, so a repeated identical call is reported as replayed instead of as an error.
+
 ## 2026-10-16 — Y-1/Y-2: free-route table, account permissions kept out of the manifest, specs never lower guard marks
 
 1. Universal REST spend is decided per exact route (`FREE_ROUTES`), not by a smarter regex; hosted runners, retention/storage limits, Codespaces, Copilot, billing, code-security configurations and Marketplace stay blocked because their cost cannot be computed. Pinned counts: 54 free routes, 100 blocked writes (the design's "about 128" was measured before reading the vendored description).
