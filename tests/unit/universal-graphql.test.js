@@ -31,6 +31,7 @@ describe('U-2 pinned GraphQL schema, AST and cost',()=>{
     expect(g.tools[1].profiles).toEqual(['full']);
     for(const tool of g.tools)expect(registry.tools.find(x=>x.name===tool.name)).toBeTruthy();
     expect(githubGraphqlSchema().getMutationType().getFields().mergePullRequest).toBeTruthy();
+    expect(inspectGraphql(g.SCOPE_QUERY,{id:'D_kgDO12345'},'query').operation.operation).toBe('query');
   });
   it('validates names, variables and parsed document using real pinned GraphQL schema',()=>{
     expect(inspectGraphql(query,queryArgs.variables).points).toBeGreaterThanOrEqual(1);
@@ -91,7 +92,7 @@ describe('U-2 pinned GraphQL schema, AST and cost',()=>{
     const p=await makeWorld({profile:'full',mode:'production'});
     stubMutation(p.gh,'ok');
     const preview=parse(await dispatch(p,'github_graphql_write',writeArgs));
-    expect(preview.status).toBe('needs_confirmation');
+    expect(preview.status,'Verified GraphQL write preflight: '+JSON.stringify(preview)+'; fake invalid: '+JSON.stringify(p.gh.invalid.map(x=>x.invalid))+'; calls: '+JSON.stringify(p.gh.calls.map(x=>({route:x.route,query:x.body?.query})))).toBe('needs_confirmation');
     expect(p.gh.calls.filter(x=>/^mutation/.test(x.body?.query??''))).toEqual([]);
   });
 });
