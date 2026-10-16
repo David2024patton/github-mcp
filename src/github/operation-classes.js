@@ -2,7 +2,7 @@
 // A miss cannot become a non-production, non-access-widening, or free operation.
 const productionWords=/(create|delete|transfer|invite|enable|assign|approve|revoke|purchase|upgrade|grant|publish|set|change|update settings|remove)/i;
 const accessWords=/(collaborat|member|team|role|permission|visibility|public|invitation|access|token|key|secret|bypass|rule|organization|security)/i;
-const spendWords=/(copilot|codespace|hosted.runner|larger.runner|billing|budget|license|paid.feature|secret.protection|code.security|advanced.security)/i;
+const spendWords=/(copilot|codespace|runner|billing|budget|licen[cs]e|paid.feature|secret.protection|code.security|advanced.security|marketplace|package|pages|artifact|cache|deployment|actions.workflows|storage|build.minutes)/i;
 const protectedPaths=/(^\/orgs\/|^\/enterprises\/|\/(rulesets|branches\/\{branch\}\/protection|actions\/permissions|hooks|keys|environments|pages|releases|git\/refs|settings|security-and-analysis))/i;
 export function classifyUniversal(op) {
   if (!op || !op.method || op.method==='GET') return Object.freeze({production:false,accessWidening:false,notifies:false,spendRisk:false});

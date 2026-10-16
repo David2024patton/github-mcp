@@ -6,6 +6,7 @@ import {classifyUniversal,assertUniversalAuthority,universalPrice} from '../../s
 import {curatedTool} from '../../src/github/hand-built-map.js';
 import * as u from '../../src/tools/universal.js';
 import {makeWorld,parse,runWriteContract} from '../../test/helpers/write-contract.js';
+import {spendGate} from '../../src/tools/spend-guard.js';
 
 const api=(operation,params={},body)=>({operation,params,...(body?{body}:{})});
 const route='PUT /repos/{owner}/{repo}/interaction-limits';
@@ -115,5 +116,19 @@ describe('U-1 refusal and effect uncertainty',()=>{
     const second=parse(await dispatch(w,'github_api_write',{...a,confirm:true}));
     expect(second.status).toBe('replayed');
     expect(w.gh.calls.filter(c=>c.method==='PUT')).toHaveLength(1);
+  });
+});
+
+describe('U-1 genuine zero-spend boundary',()=>{
+  it('allows a confirmed free operation to reach the confirmation phase at an actual zero spend limit',async()=>{
+    const w=await makeWorld({profile:'full',mode:'production',gates:[spendGate()]});
+    setRead(w,'GET /repos/{owner}/{repo}/interaction-limits',{limit:'existing',expiry:'one_day'});
+    const out=parse(await dispatch(w,'github_api_write',api(route,scope,payload)));
+    expect(out.status).toBe('needs_confirmation');
+    expect(out.needsConfirmation).toBe(true);
+    expect(noChange(w.gh)).toBe(true);
+  });
+  it('refuses cost-uncertain write operations before acquiring a provider credential',()=>{
+    expect(()=>universalPrice({method:'POST',path:'/repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches',summary:'Trigger a run'})).toThrow(/Cost/);
   });
 });

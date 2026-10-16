@@ -41,14 +41,18 @@ describe('U-1 pinned GitHub request shape sample',()=>{
     expect(deletes).toHaveLength(9);
     const topic=restOperations().find(op=>op.route==='PUT /repos/{owner}/{repo}/topics');
     expect(topic).toBeDefined();
-    const {gh,octokit}=await client();
+    const routes=[];
     for(const op of [...deletes,topic]){
+      // Each request gets a fresh fake identity/journal. Never override the real
+      // client write queue, which correctly spaces writes by account.
+      const {gh,octokit}=await client();
       const body=op===topic?{names:['universal']}:undefined;
       validateRest(op,p,body);
       gh.when(op.route).reply(op===topic?200:204,null);
       await octokit.request(op.route,{...p,...(body??{})});
+      expect(gh.invalid).toEqual([]);
+      routes.push(gh.calls[0].route);
     }
-    expect(gh.invalid).toEqual([]);
-    expect(new Set(gh.calls.map(x=>x.route)).size).toBe(10);
+    expect(new Set(routes).size).toBe(10);
   });
 });
