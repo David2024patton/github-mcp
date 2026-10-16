@@ -86,7 +86,12 @@ function resolveAccount(connection, owner) {
 export async function githubFor(ctx, { owner, cred = 'I', scope } = {}) {
   if (!CREDENTIAL_KINDS.includes(cred)) throw new TypeError(`Unknown credential kind "${cred}".`);
   const account = resolveAccount(ctx.connection, owner);
-  const token = await ctx.credentials?.token({ account, cred, scope, profile: ctx.connection?.profile });
+  // A pass limited to repositories gets installation tokens limited to them, whatever the tool asked for.
+  const passRepos = Array.isArray(ctx.connection?.repos) ? ctx.connection.repos.map((slug) => slug.split('/')[1]) : null;
+  const asked = passRepos && scope?.repositories?.length ? scope.repositories.filter((r) => passRepos.includes(String(r).toLowerCase())) : [];
+  // Never wider than the pass: a request that names nothing inside the pass gets the pass's whole list, not "all repositories".
+  const narrowed = passRepos ? { ...(scope ?? {}), repositories: asked.length ? asked : passRepos } : scope;
+  const token = await ctx.credentials?.token({ account, cred, scope: narrowed, profile: ctx.connection?.profile });
   if (typeof token !== 'string' || !token) {
     throw new GithubClientError('no_credentials', `No GitHub credential is set up for ${account}. Open the setup page to add one.`, { account });
   }

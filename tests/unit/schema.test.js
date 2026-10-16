@@ -58,7 +58,9 @@ describe('createDb', () => {
     };
     await createDb(sql).initSchema();
     const indexes = statements.filter((s) => /^CREATE (?:UNIQUE )?INDEX IF NOT EXISTS /.test(s));
-    expect(statements).toHaveLength(SCHEMA_TABLES.length + indexes.length);
+    // Additive column additions (ADD COLUMN IF NOT EXISTS, never a drop or a rewrite) are the only ALTER allowed.
+    const columns = statements.filter((s) => /^ALTER TABLE \w+ ADD COLUMN IF NOT EXISTS /.test(s));
+    expect(statements).toHaveLength(SCHEMA_TABLES.length + indexes.length + columns.length);
     const created = statements.filter((s) => /^CREATE TABLE IF NOT EXISTS /.test(s)).map((s) => s.match(/^CREATE TABLE IF NOT EXISTS (\w+)/)[1]);
     expect(created).toEqual([...SCHEMA_TABLES]);
     expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS change_log_request_key /.test(s))).toHaveLength(1);
@@ -67,7 +69,7 @@ describe('createDb', () => {
     expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS dev_run_objects_pending /.test(s))).toHaveLength(1);
     expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS dev_forwarders_scope /.test(s))).toHaveLength(1);
     expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS result_store_expires /.test(s))).toHaveLength(1);
-    for (const statement of statements) expect(statement).not.toMatch(/\b(DROP|DELETE|TRUNCATE|INSERT|UPDATE)\b|ALTER\s/i);
+    for (const statement of statements) expect(statement.replace(/^ALTER TABLE \w+ ADD COLUMN IF NOT EXISTS /, '')).not.toMatch(/\b(DROP|DELETE|TRUNCATE|INSERT|UPDATE)\b|ALTER\s/i);
   });
 
   it('listTables returns the table names the database reports', async () => {

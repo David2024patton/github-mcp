@@ -122,10 +122,10 @@ next bounded implementation. Every line below maps to evidence named in its desi
 - [ ] Same guards as hand-built tools (write-contract through `github_api_write` and `github_graphql_write`).
 
 ## Batch R — Hub-ready doors, RTC 1 (`designs/BATCH-R.md`)
-- [ ] Passes per RTC §2 with narrow defaults; production + writes needs the passphrase.
-- [ ] HTTPS tool API, manifest and OpenAPI per RTC §1/§7; same nine checks through MCP, `github_call` and HTTPS.
-- [ ] Per-pass rate limit stored per pass and counted in Postgres (overlapping-request test across two instances).
-- [ ] RTC 1 conformance green in CI once the hub's package exists (never a blocker before).
+- [x] Passes per RTC §2 with narrow defaults; production + writes needs the passphrase. (R-1 #225: mode, profile, areas, repositories, writes, access changes, spend, lifetime, request limit; production and spending passes only on the setup page)
+- [x] HTTPS tool API, manifest and OpenAPI per RTC §1/§7; same nine checks through MCP, `github_call` and HTTPS. (R-2 #225: scoped passes run writes through the same write layer; batch stays read-only)
+- [x] Per-pass rate limit stored per pass and counted in Postgres (overlapping-request test across two instances). (`tests/db/rtc-passes.test.js`, and the pinned runner's two-instance probe)
+- [x] RTC 1 conformance run in CI against this server's real handler with a fixture registry. (R-3 #225: every probe passes except `reads`, an honest recorded difference; the public manifest stays `rtc: 0` until real Hub route evidence exists)
 
 ## Batch X — Undo, smoke test (`designs/BATCH-X.md`)
 - [x] Undo for every clean opposite (audit G17 fixed); every other change says what the right opposite is.

@@ -53,6 +53,12 @@ export function spendGate() {
     if (status.usedCents + cost > status.limitCents) {
       return { refuse: `This would cost about ${dollars(cost)}; ${dollars(status.usedCents)} of the ${dollars(status.limitCents)} monthly limit for ${status.login} is already used this month (${dollars(status.remainingCents)} left). Raise the limit on the setup page if you want this.`, by: 'spend limit' };
     }
+    if (ctx.connection?.pass === true) {
+      const cap = Number(ctx.connection.spend_limit_cents) || 0;
+      const used = await ctx.db.sumSpendCents(status.login, status.since, ctx.connection.client_id);
+      if (cap <= 0) return { refuse: 'This pass has no spend allowance, so it cannot make a change that costs money.', by: 'pass spend allowance' };
+      if (used + cost > cap) return { refuse: `This pass may spend ${dollars(cap)} in total this month and has used ${dollars(used)}; this would cost about ${dollars(cost)}.`, by: 'pass spend allowance' };
+    }
     return { confirm: `This costs about ${dollars(cost)}; ${dollars(status.usedCents)} of ${dollars(status.limitCents)} is used this month for ${status.login}.` };
   };
 }

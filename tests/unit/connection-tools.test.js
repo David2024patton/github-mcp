@@ -16,6 +16,28 @@ async function world(accounts = ['example-org', 'example-user'], extra = {}) {
 }
 const call = (name, w, args) => Promise.resolve(handlers[name](args, w.ctx)).then((r) => (r?.content ? parse(r) : r));
 
+describe('github_list_connections: service passes', () => {
+  it('lists a pass with its scope and request limit, never a token, and switches it off with the same tool as a login', async () => {
+    const w = await world(['example-org']);
+    w.db.seedRtcPass({ clientId: 'rtc-' + 'a'.repeat(24), account: 'example-org', rateLimitPerMinute: 5 });
+    const out = await call('github_list_connections', w, {});
+    const pass = out.connections.find((c) => c.connection_id === 'rtc-' + 'a'.repeat(24));
+    expect(pass).toMatchObject({ kind: 'service pass', is_this_connection: false, can_revoke_here: true,
+      pass_scope: { areas: ['server', 'meta'], writes_allowed: false, production_allowed: false, requests_per_minute: 5 } });
+    expect(out.connections.find((c) => c.connection_id === 'client-1').kind).toBe('login');
+    expect(JSON.stringify(out)).not.toMatch(/rtc_pass_/);
+    const revoke = (extra) => call('github_revoke_connection', w, { connection: 'rtc-' + 'a'.repeat(24), ...extra });
+    expect(await revoke({})).toMatchObject({ status: 'needs_confirmation' });
+    expect(await revoke({ confirm: true })).toMatchObject({ status: 'applied', confirmed: true });
+    expect((await call('github_list_connections', w, {})).connections.some((c) => c.kind === 'service pass')).toBe(false);
+  });
+  it('a pass for an account this connection cannot use stays hidden', async () => {
+    const w = await world(['example-org']);
+    w.db.seedRtcPass({ clientId: 'rtc-' + 'b'.repeat(24), account: 'unrelated-org' });
+    expect((await call('github_list_connections', w, {})).connections.some((c) => c.kind === 'service pass')).toBe(false);
+  });
+});
+
 describe('github_list_connections', () => {
   it('shows the logins that use only your accounts, marks this one, and shows no token', async () => {
     const w = await world();

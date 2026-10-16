@@ -139,14 +139,54 @@ export function createFakeDb({ clock = Date.now } = {}) {
       if (!row.last_used_at || row.last_used_at < clock() - 60_000) row.last_used_at = clock();
       return { client_id: row.client_id, kind: row.kind, expires_at: new Date(row.expires_at), ...settingsOf(row) };
     },
+    /** Fixture only: a live service pass row as the PostgreSQL store lists it (no token bytes are kept). */
+    seedRtcPass({ clientId, account, ttlMs = 3600_000, rateLimitPerMinute = 60, allowWrites = false }) {
+      tokens.set(`pass-${clientId}`, { token_hash: `pass-${clientId}`, client_id: clientId, default_account: account, accounts: [account], mode: 'preview', profile: 'read_only', listing: 'compact',
+        kind: 'pass', expires_at: clock() + ttlMs, last_used_at: null, revoked_at: null, created_at: clock(),
+        pass: { areas: ['server', 'meta'], allow_writes: allowWrites, production_access: false, rate_limit_per_minute: rateLimitPerMinute } });
+    },
+    /** Same contract as the PostgreSQL store: one scoped pass with its grant; the account must be active (production needs production on). */
+    async createRtcPassGrant({ pass, passId, account, expiresAt, grant }) {
+      const acct = accountRows.get(String(account).toLowerCase());
+      if (!acct || acct.installation_status !== 'active' || (grant.mode === 'production' && acct.production_enabled !== true)) return null;
+      const hash = hashToken(pass);
+      tokens.set(hash, { token_hash: hash, client_id: `rtc-${passId}`, default_account: acct.login, accounts: [acct.login], mode: grant.mode, profile: grant.profile, listing: 'compact',
+        kind: 'pass', expires_at: expiresAt.getTime(), last_used_at: null, revoked_at: null, created_at: clock(),
+        pass: { areas: ['server', 'meta'], allow_writes: false, production_access: false, rate_limit_per_minute: grant.ratePerMinute },
+        grant: { areas: grant.areas, repos: grant.repos, allow_writes: grant.allowWrites, allow_access_changes: grant.allowAccessChanges, money_limit_cents: grant.moneyLimitCents, for_hub: grant.forHub === true } });
+      return `rtc-${passId}`;
+    },
+    async getRtcPass(pass) {
+      const row = tokens.get(hashToken(pass));
+      if (!row || row.kind !== 'pass') return null;
+      return { client_id: row.client_id, default_account: row.default_account, accounts: [...row.accounts], mode: row.mode, profile: row.profile, listing: row.listing,
+        expires_at: new Date(row.expires_at), revoked_at: row.revoked_at ? new Date(row.revoked_at) : null, ...row.pass, ...(row.grant ? { grant: structuredClone(row.grant) } : {}),
+        areas: row.pass.areas, allow_writes: row.pass.allow_writes, production_access: row.pass.production_access, money_limit_cents: 0 };
+    },
+    /** Fixture only: age a pass past its expiry. */
+    expireRtcPass(passId) { for (const r of tokens.values()) if (r.client_id === `rtc-${passId}`) r.expires_at = 1; },
+    async revokeRtcPass(passId) {
+      const row = [...tokens.values()].find((r) => r.client_id === `rtc-${passId}` && r.kind === 'pass' && r.revoked_at == null);
+      if (row) row.revoked_at = clock();
+      return row != null;
+    },
+    /** Fixture only: a whole-minute window shared by every server instance that uses this fake database. */
+    async consumeRtcPassRate(pass) {
+      const row = tokens.get(hashToken(pass));
+      if (!row) throw new TypeError('Invalid RTC pass rate check.');
+      const now = clock();
+      if (!row.rate || row.rate.start <= now - 60_000) row.rate = { start: now, hits: 0 };
+      row.rate.hits += 1;
+      return row.rate.hits <= (row.pass?.rate_limit_per_minute ?? 120);
+    },
     async listConnections() {
-      return [...tokens.values()].filter((r) => r.kind === 'connector' && live(r) && r.expires_at > clock()).sort((a, b) => b.created_at - a.created_at)
-        .map((r) => ({ client_id: r.client_id, client_name: clients.get(r.client_id)?.client_name ?? null, default_account: r.default_account, accounts: [...r.accounts], mode: r.mode,
+      return [...tokens.values()].filter((r) => ['connector', 'pass'].includes(r.kind) && r.revoked_at == null && r.expires_at > clock()).sort((a, b) => b.created_at - a.created_at)
+        .map((r) => ({ client_id: r.client_id, kind: r.kind, ...(r.pass ? { pass: { ...r.pass } } : {}), client_name: clients.get(r.client_id)?.client_name ?? null, default_account: r.default_account, accounts: [...r.accounts], mode: r.mode,
           profile: r.profile, listing: r.listing, expires_at: new Date(r.expires_at), last_used_at: r.last_used_at ? new Date(r.last_used_at) : null, created_at: new Date(r.created_at) }));
     },
     async revokeConnection(clientId) {
       let n = 0;
-      for (const r of tokens.values()) if (r.client_id === clientId && r.kind === 'connector' && live(r)) { r.revoked_at = clock(); n += 1; }
+      for (const r of tokens.values()) if (r.client_id === clientId && ['connector', 'pass'].includes(r.kind) && r.revoked_at == null) { r.revoked_at = clock(); n += 1; }
       return n;
     },
     async setConnectionDefaultAccount(clientId, login) {
@@ -353,9 +393,9 @@ export function createFakeDb({ clock = Date.now } = {}) {
       r.spend_limit_cents = cents;
       return true;
     },
-    async sumSpendCents(account, since) {
+    async sumSpendCents(account, since, connection = null) {
       const from = new Date(since).getTime();
-      return changes.filter((r) => String(r.account).toLowerCase() === String(account).toLowerCase() && r.dryRun === false && r.spendCents > 0 && r.at.getTime() >= from && !String(r.summary).startsWith('REJECTED:'))
+      return changes.filter((r) => String(r.account).toLowerCase() === String(account).toLowerCase() && (connection === null || r.connection === connection) && r.dryRun === false && r.spendCents > 0 && r.at.getTime() >= from && !String(r.summary).startsWith('REJECTED:'))
         .reduce((sum, r) => sum + r.spendCents, 0);
     },
     async setProductionEnabled(login, enabled) {
