@@ -221,10 +221,6 @@ function markGraphqlUntrusted(value,depth=0){
   if(typeof value.authorAssociation==='string')result.author_association=value.authorAssociation;
   return {...result,untrusted:true};
 }
-function changesMatch(changes,node){
-  const entries=Object.entries(changes).filter(([key])=>['title','body','name'].includes(key));
-  return entries.length>0&&entries.every(([key,value])=>Object.hasOwn(node??{},key)&&JSON.stringify(node[key])===JSON.stringify(value));
-}
 const gqlRead=defineRead({
   name:'github_graphql_read',area:'universal',audience:['B','O','Op'],
   description:'Read a single pinned-schema GitHub GraphQL query after validating variables, connection bounds, points and account scope.',
