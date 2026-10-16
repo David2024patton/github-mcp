@@ -1,0 +1,292 @@
+// U-2 universal GraphQL: pinned schema, AST-aware read/mutation separation,
+// explicit scoped node preflight and the existing journaled GitHub write lifecycle.
+import {defineRead} from './define-read.js';
+import {defineGithubWrite} from './define-github-write.js';
+import {githubFor,graphql} from '../github/client.js';
+import {plain} from './github-read.js';
+import {inspectGraphql,graphqlSelectionFields,graphqlRootSelections} from '../github/graphql-schema.js';
+import {valueFromASTUntyped} from 'graphql';
+import {classifyGraphqlMutation,relevantGraphqlNodeId,assertSafeGraphqlArguments} from '../github/mutation-classes.js';
+
+const DOCUMENT={type:'string',minLength:5,maxLength:24000,description:'One validated GraphQL document, including typed variable definitions'};
+const VARIABLES={type:'object',additionalProperties:true,maxProperties:48,description:'Typed GraphQL input variables; no credentials'};
+const OWNER={type:'string',minLength:1,maxLength:39,description:'Already-enrolled account; defaults to this connection'};
+const REPO={type:'string',minLength:1,maxLength:100,description:'Explicit repository for guarded GraphQL mutations'};
+const CRED={type:'string',enum:['I','U'],description:'I installation or explicitly enrolled U user credential'};
+const common={variables:VARIABLES,owner:OWNER,cred:CRED};
+
+export const SCOPE_QUERY='query UniversalResourceScope($id: ID!) { node(id: $id) { __typename id ... on Repository { nameWithOwner } ... on Issue { title repository { nameWithOwner } } ... on PullRequest { title repository { nameWithOwner } } ... on Discussion { title repository { nameWithOwner } } ... on Release { releaseName:name repository { nameWithOwner } } ... on Milestone { title repository { nameWithOwner } } ... on Label { labelName:name repository { nameWithOwner } } ... on Commit { repository { nameWithOwner } } ... on DiscussionComment { discussion { repository { nameWithOwner } } } ... on IssueComment { issue { repository { nameWithOwner } } } ... on ProjectV2 { title owner { ... on Organization { login } ... on User { login } } } ... on ProjectV2Item { project { id owner { ... on Organization { login } ... on User { login } } } content { ... on Issue { repository { nameWithOwner } } ... on PullRequest { repository { nameWithOwner } } } } ... on ProjectV2Field { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2SingleSelectField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2IterationField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2MultiSelectField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } } }';
+/** Exact field readback is separate from GitHub's mutation response. It also
+ * carries its owning field's real ID, preventing a same-name field collision. */
+export const PROJECT_FIELD_QUERY='query UniversalFieldReadback($itemId: ID!, $fieldName: String!) { node(id:$itemId) { ... on ProjectV2Item { id fieldValueByName(name:$fieldName) { __typename ... on ProjectV2ItemFieldValueCommon { field { ... on Node { id } } } ... on ProjectV2ItemFieldTextValue { text } ... on ProjectV2ItemFieldNumberValue { number } ... on ProjectV2ItemFieldDateValue { date } ... on ProjectV2ItemFieldSingleSelectValue { optionId } ... on ProjectV2ItemFieldIterationValue { iterationId } ... on ProjectV2ItemFieldMultiSelectValue { options { id } } } } } }';
+
+function ownerFor(a,c){
+  const requested=a.owner??c.connection?.default_account;
+  if(typeof requested!=='string'||!c.connection?.accounts?.some(x=>x.toLowerCase()===requested.toLowerCase()))
+    throw new TypeError('GraphQL account is not enrolled in this connection.');
+  return c.connection.accounts.find(x=>x.toLowerCase()===requested.toLowerCase());
+}
+function credFor(a){
+  const cred=a.cred??'I';
+  if(!['I','U'].includes(cred))throw new TypeError('GraphQL credential must be an enrolled I or U credential.');
+  return cred;
+}
+async function accountGraphql(ctx,owner,cred,repo){
+  const account=await ctx.db.getAccount(owner);
+  const client=await githubFor(ctx,{owner,cred,
+    ...(repo&&cred==='I'&&account?.credential_kind==='app'?{scope:{repositories:[repo]}}:{})});
+  return (document,variables)=>graphql(client,document,variables);
+}
+function scopedNode(node,owner,repo){
+  if(!node?.id||typeof node.__typename!=='string')
+    throw new TypeError('GraphQL ID could not be independently resolved.');
+  const name=node.nameWithOwner??node.repository?.nameWithOwner??
+    node.discussion?.repository?.nameWithOwner??node.issue?.repository?.nameWithOwner;
+  if(typeof name==='string'&&name.toLowerCase()===(owner+'/'+repo).toLowerCase())
+    return {id:node.id,type:'repository',repo:name,projectId:null};
+  const project=node.__typename==='ProjectV2'?node:node.project;
+  if(project?.owner?.login?.toLowerCase()===owner.toLowerCase()&&project.id){
+    const contentRepo=node.content?.repository?.nameWithOwner;
+    if(contentRepo&&contentRepo.toLowerCase()!==(owner+'/'+repo).toLowerCase())
+      throw new TypeError('GraphQL project item links to a repository outside the selected account/repository.');
+    return {id:node.id,type:'project',repo:owner+'/'+repo,projectId:project.id};
+  }
+  throw new TypeError('GraphQL resource is not proven to belong to the requested enrolled account and repository.');
+}
+async function readScope(entry,owner,repo,ctx,cred){
+  // A broad U credential must not turn the selected account into permission
+  // to query unrelated organization, enterprise, user or repository roots.
+  const named=entry.variables,roots=graphqlRootSelections(entry);
+  const permitted=new Set(['organization','repository','enterprise','user','repositoryOwner','node','nodes','search','viewer','rateLimit','__typename']);
+  for(const field of roots){
+    const operation=field.name.value;
+    if(!permitted.has(operation))
+      throw new TypeError('GraphQL root '+operation+' has no independently verified enrolled-account scope.');
+    if(['organization','repository','enterprise','user','repositoryOwner'].includes(operation)){
+      const key=operation==='repository'?'owner':'login';
+      const arg=field.arguments?.find(x=>x.name.value===key);
+      const value=valueFromASTUntyped(arg?.value,named);
+      if(typeof value!=='string'||value.toLowerCase()!==owner.toLowerCase())
+        throw new TypeError('GraphQL query names an account outside the enrolled connection.');
+      if(operation==='repository'&&repo){
+        const repoArg=field.arguments?.find(x=>x.name.value==='name');
+        if(valueFromASTUntyped(repoArg?.value,named)?.toLowerCase()!==repo.toLowerCase())
+          throw new TypeError('GraphQL query repository differs from the exact selected scope.');
+      }
+    }
+    if(operation==='viewer'){
+      // viewer grants a U credential access to other memberships and repos.
+      // Only current-principal identity scalars can be returned this way.
+      const identity=new Set(['login','id','name','avatarUrl','url','__typename']);
+      const nested=graphqlRootSelections({operation:{selectionSet:field.selectionSet},fragments:entry.fragments});
+      if(nested.some(x=>!identity.has(x.name.value)||x.selectionSet))
+        throw new TypeError('GraphQL viewer traversal is not scoped. Use organization or repository roots instead.');
+    }
+    if(['node','nodes'].includes(operation)){
+      if(typeof repo!=='string'||!/^[A-Za-z0-9_.-]{1,100}$/.test(repo))
+        throw new TypeError('Opaque GraphQL nodes require an explicit repository for independent ID verification.');
+      const arg=field.arguments?.find(x=>x.name.value===(operation==='node'?'id':'ids'));
+      const ids=valueFromASTUntyped(arg?.value,named);
+      const list=operation==='node'?[ids]:ids;
+      if(!Array.isArray(list)||list.length<1||list.length>10||
+        list.some(x=>typeof x!=='string'||!x))
+        throw new TypeError('Opaque GraphQL node queries need one to ten valid IDs.');
+      const call=await accountGraphql(ctx,owner,cred,repo);
+      for(const id of list){
+        const result=await call(SCOPE_QUERY,{id});
+        if(result?.node?.id!==id)throw new TypeError('GraphQL ID could not be verified.');
+        scopedNode(result.node,owner,repo);
+      }
+    }
+    if(operation==='search'){
+      if(typeof repo!=='string'||!/^[A-Za-z0-9_.-]{1,100}$/.test(repo))
+        throw new TypeError('GraphQL search requires the explicit selected repository.');
+      const arg=field.arguments?.find(x=>x.name.value==='query');
+      const value=valueFromASTUntyped(arg?.value,named);
+      const tokens=typeof value==='string'?value.split(/\s+/).filter(Boolean):[];
+      const qualifiers=tokens.filter(x=>/^-?(?:repo|org|user):/i.test(x));
+      if(qualifiers.length!==1||qualifiers[0].toLowerCase()!=='repo:'+(owner+'/'+repo).toLowerCase()||
+        tokens.some(x=>/^(?:OR|NOT)$/i.test(x)||/^-repo:/i.test(x)))
+        throw new TypeError('GraphQL search must be limited to one exact repo:owner/repo without alternate accounts.');
+    }
+  }
+}
+
+function resolveRead(a,c){
+  const owner=ownerFor(a,c),cred=credFor(a);
+  const entry=inspectGraphql(a.query,a.variables??{},'query');
+  assertSafeGraphqlArguments(entry);
+  return {owner,cred,repo:a.repo??null,entry};
+}
+function targetWrite(a,c){
+  const owner=ownerFor(a,c),repo=a.repo;
+  if(typeof repo!=='string'||!/^[A-Za-z0-9_.-]{1,100}$/.test(repo))
+    throw new TypeError('GraphQL mutation requires an explicitly named, valid repository.');
+  if(JSON.stringify(a.variables??{}).length>24_000)
+    throw new TypeError('GraphQL variables exceed the safe request budget.');
+  const entry=inspectGraphql(a.mutation,a.variables??{},'mutation');
+  assertSafeGraphqlArguments(entry);
+  const classification=classifyGraphqlMutation(entry.mutation,entry.input);
+  const node=relevantGraphqlNodeId(entry.input,entry);
+  const keys=Object.keys(node.changes);
+  const projectChange=entry.mutation==='updateProjectV2ItemFieldValue'&&keys.length===1&&keys[0]==='value';
+  const titleChange=keys.length===1&&keys[0]==='title'&&typeof node.changes.title==='string';
+  if(!projectChange&&!titleChange)
+    throw new TypeError('GraphQL write has no independently verifiable readback for this mutation/input; use the specialized guarded tool.');
+  return {owner,repo,scope:'repo',kind:'graphql-repo',ref:null,cred:credFor(a),entry,classification,node};
+}
+// No provider write is attempted unless this exact node can be independently
+// resolved to the caller's enrolled account AND requested repository.
+const valueFields=new Map([
+  ['text',['ProjectV2ItemFieldTextValue','text']],
+  ['number',['ProjectV2ItemFieldNumberValue','number']],
+  ['date',['ProjectV2ItemFieldDateValue','date']],
+  ['singleSelectOptionId',['ProjectV2ItemFieldSingleSelectValue','optionId']],
+  ['iterationId',['ProjectV2ItemFieldIterationValue','iterationId']],
+  ['multiSelectOptionIds',['ProjectV2ItemFieldMultiSelectValue','options']]
+]);
+function expectedProjectValue(target){
+  const value=target.entry.input?.input?.value;
+  if(!value||typeof value!=='object'||Array.isArray(value))
+    throw new TypeError('Project field change needs an exact typed value for independent readback.');
+  const keys=Object.keys(value).filter(k=>value[k]!==undefined&&value[k]!==null);
+  if(keys.length!==1||!valueFields.has(keys[0]))
+    throw new TypeError('Project field change requires one supported, independently verifiable value.');
+  return {key:keys[0],value:value[keys[0]],type:valueFields.get(keys[0])[0],property:valueFields.get(keys[0])[1]};
+}
+function confirmedField(expected,snapshot){
+  if(!expected||!snapshot||snapshot.__typename!==expected.type)return false;
+  if(expected.key==='multiSelectOptionIds'){
+    const actual=snapshot.options?.map(x=>x?.id);
+    return Array.isArray(actual)&&Array.isArray(expected.value)&&actual.length===expected.value.length&&
+      actual.every(x=>typeof x==='string')&&
+      [...actual].sort().join('|')===[...expected.value].sort().join('|');
+  }
+  return JSON.stringify(snapshot[expected.property])===JSON.stringify(expected.value);
+}
+async function baseline(a,c,target){
+  const call=await accountGraphql(c,target.owner,target.cred,target.repo);
+  const nodes=[];const projectIds=new Set();
+  for(const identity of target.node.ids){
+    const value=await call(SCOPE_QUERY,{id:identity.value});
+    const node=value?.node;
+    if(!node||node.id!==identity.value)
+      throw new TypeError('GraphQL '+identity.name+' cannot be independently resolved.');
+    const ownership=scopedNode(node,target.owner,target.repo);
+    if(ownership.projectId)projectIds.add(ownership.projectId);
+    if(identity.name==='projectId'&&ownership.projectId!==node.id)
+      throw new TypeError('GraphQL projectId does not refer to an owned project.');
+    nodes.push({identity,ownership,node});
+  }
+  if(projectIds.size>1)throw new TypeError('GraphQL mutation references unrelated projects.');
+  const primary=nodes.find(x=>x.identity.value===target.node.value)??nodes[0];
+  const result={verified:true,id:primary.node.id,type:primary.node.__typename,
+    repo:target.owner+'/'+target.repo,node:primary.node,
+    targetIds:nodes.map(x=>({name:x.identity.name,id:x.node.id,type:x.node.__typename,projectId:x.ownership.projectId}))};
+  if(target.entry.mutation==='updateProjectV2ItemFieldValue'){
+    const project=nodes.find(x=>x.identity.name==='projectId');
+    const item=nodes.find(x=>x.identity.name==='itemId');
+    const field=nodes.find(x=>x.identity.name==='fieldId');
+    if(!project||!item||!field||!field.node.fieldName||
+      project.ownership.projectId!==item.ownership.projectId||
+      project.ownership.projectId!==field.ownership.projectId)
+      throw new TypeError('Project, field, item and exact field name cannot be independently verified.');
+    const expected=expectedProjectValue(target);
+    const value=await call(PROJECT_FIELD_QUERY,{itemId:item.node.id,fieldName:field.node.fieldName});
+    if(value?.node?.id!==item.node.id)
+      throw new TypeError('Project field readback returned an unverified item.');
+    const snapshot=value.node.fieldValueByName??null;
+    if(snapshot&&snapshot.field?.id!==field.node.id)
+      throw new TypeError('Project field readback refers to a different field.');
+    return {...result,verifiable:true,fieldSnapshot:snapshot,fieldExpected:expected};
+  }
+  const changes=Object.entries(target.node.changes);
+  if(changes.length!==1||changes[0][0]!=='title'||!Object.hasOwn(primary.node,'title'))
+    throw new TypeError('GraphQL change lacks an exact independently readable target field.');
+  return {...result,verifiable:true};
+}
+function changesMatch(changes,node){
+  const entries=Object.entries(changes);
+  return entries.length>0&&entries.every(([key,value])=>
+    key==='title'&&Object.hasOwn(node??{},key)&&JSON.stringify(node[key])===JSON.stringify(value));
+}
+
+/** All GraphQL response objects can contain alias-renamed outsider text. The
+ * graph carries a conservative provenance mark on every object, not only REST
+ * author_association keys. No user-supplied GraphQL body is trusted as instructions. */
+function markGraphqlUntrusted(value,depth=0){
+  if(depth>22||value===null||typeof value!=='object')return value;
+  if(Array.isArray(value))return value.map(x=>markGraphqlUntrusted(x,depth+1));
+  const result=Object.fromEntries(Object.entries(value).map(([k,v])=>[k,markGraphqlUntrusted(v,depth+1)]));
+  if(typeof value.authorAssociation==='string')result.author_association=value.authorAssociation;
+  return {...result,untrusted:true};
+}
+const gqlRead=defineRead({
+  name:'github_graphql_read',area:'universal',audience:['B','O','Op'],
+  description:'Read a single pinned-schema GitHub GraphQL query after validating variables, connection bounds, points and account scope.',
+  properties:{query:DOCUMENT,...common,repo:REPO},required:['query'],
+  handler:(a,c)=>plain(async()=>{
+    const chosen=resolveRead(a,c);
+    await readScope(chosen.entry,chosen.owner,chosen.repo,c,chosen.cred);
+    const call=await accountGraphql(c,chosen.owner,chosen.cred,chosen.repo);
+    const data=await call(chosen.entry.source,chosen.entry.variables);
+    return {account:chosen.owner,pointsEstimate:chosen.entry.points,
+      maximumNodes:chosen.entry.nodes,connections:chosen.entry.connections,
+      rootFields:graphqlSelectionFields(chosen.entry),data:markGraphqlUntrusted(data)};
+  })
+});
+const gqlWrite=defineGithubWrite({
+  name:'github_graphql_write',area:'universal',audience:['B','O','Op'],
+  description:'PRODUCTION: Confirm one schema-valid non-curated GraphQL mutation under full resource, access and replay guards.',
+  properties:{mutation:DOCUMENT,...common,repo:REPO},required:['mutation','repo'],
+  declarations:{production:'always',accessWidening:true,notifies:true,spend:false,confirm:'always',cred:'I,U',profiles:['full']},
+  target:(a,c)=>targetWrite(a,c),
+  read:async(a,c,t)=>baseline(a,c,t),
+  price:({before})=>{
+    if(before?.verified!==true||before?.verifiable!==true)
+      throw new TypeError('An independently verifiable scoped GraphQL baseline is required before any write.');
+    return 0;
+  },
+  classify:({target:t,before})=>({
+    production:'GraphQL '+t.entry.mutation+' may change '+t.owner+'/'+t.repo,
+    accessWidening:'Unreviewed GraphQL mutations are access-sensitive until independently classified.',
+    notifies:[t.owner+' (GraphQL recipients are not independently known)'],
+    ...(before?.verified!==true?{production:'Unverified GraphQL resource ownership'}:{})
+  }),
+  summarize:({target:t,before})=>'Single GraphQL '+t.entry.mutation+' on '+t.owner+'/'+t.repo+
+    ', verified '+(before?.type??'unknown')+' node; fields '+Object.keys(t.node.changes).join(',').slice(0,180),
+  apply:async({args:a,ctx:c,target:t})=>{
+    // The same parser and curated classifier must still accept the request at
+    // dispatch, not just the preview; the write contract enforces one send.
+    const checked=targetWrite(a,c);
+    if(checked.node.value!==t.node.value||checked.entry.mutation!==t.entry.mutation)
+      throw new TypeError('GraphQL mutation intent changed after its preview.');
+    const call=await accountGraphql(c,t.owner,t.cred,t.repo);
+    const data=await call(checked.entry.source,checked.entry.variables);
+    return {data,headers:{}};
+  },
+  readAfter:async({args:a,ctx:c,target:t,before,response})=>{
+    const after=await baseline(a,c,t);
+    return {verified:after.verified,verifiable:after.verifiable,node:after.node,
+      fieldSnapshot:after.fieldSnapshot??null,fieldExpected:after.fieldExpected??null,
+      mutation:t.entry.mutation,receipt:response?.data?.[t.entry.mutation]??null,
+      before:before?.node??null};
+  },
+  verify:({target:t,before,after})=>
+    before?.verified===true&&before?.verifiable===true&&
+    after?.verified===true&&after?.verifiable===true&&
+    (t.entry.mutation==='updateProjectV2ItemFieldValue'
+      ? confirmedField(after.fieldExpected,after.fieldSnapshot)&&
+        JSON.stringify(before.fieldSnapshot)!==JSON.stringify(after.fieldSnapshot)
+      : changesMatch(t.node.changes,after.node)&&
+        JSON.stringify(after.node)!==JSON.stringify(before.node)),
+  present:({target:t,after,response})=>({
+    mutation:t.entry.mutation,account:t.owner,repository:t.repo,
+    independentlyRead:after?.verified===true,
+    observed:after?.verified?after.node:null,
+    providerReceipt:response?.data?.[t.entry.mutation]??null
+  }),
+  inverse:()=>null
+});
+export const tools=[gqlRead.tool,gqlWrite.tool];
+export const handlers={github_graphql_read:gqlRead.handler,github_graphql_write:gqlWrite.handler};

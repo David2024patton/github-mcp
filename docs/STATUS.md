@@ -1,3 +1,7 @@
+## October 16, 2026 — U-2 Universal GraphQL implementation (candidate)
+
+Approved U-2 source candidate on branch ai/u2-graphql-universal-20261016, frozen plan 0e4db1ac59d6cb5b77cc3bf90488d59ed4e521b9 against main a79f08643241d727b38da87b7713728baad39746. Runtime GraphQL schema parsing, typed variables, bounded point/node estimation, a full-profile one-mutation write with independent node/repo baseline, curated mutation precedence, fail-closed cost and secret classification, and synthetic three-door guard tests are engineering only until exact-head CI, review and merge. Runtime graphql is now a production dependency. U-1 source remains #219 and is not credited again. R-1 still approved and independent. New genuine-service GraphQL acceptance must await checked source-bearing READY deployment and the specific separate read/write authority; no new provider mutation, release, activation or spend is claimed. Source/CI outcome tracked in the PR permanent handoff.
+
 ### W source batch closeout — October 15
 
 ## 2026-10-15 — U-1 guarded REST candidate PR #219 (CI/review pending)
@@ -547,8 +551,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Saved service-issued OAuth and enrolled org only; PREVIEW read-only, production OFF, no spend or destructive change; browser-only completion requires independent owner/browser confirmation",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Custom bounded overview/review, org/user/repo guide samples and exact 2FA check succeeded. 2FA observed false against true => differs, verified false. Repo page check requires manual confirmation. Next: Independent browser/owner confirmation for UI-only controls. Keep partial read evidence; owner validates exact UI controls when relevant, no blanket completion.",
-    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
+    "lastEvidence": "2026-10-16 verified Vercel READY live a79f086 includes required O-1 5a34577e (94 commits ahead). Genuine custom App-scope OAuth PREVIEW/full scratch admin overview returned 13 ok, 2 needs_attention, 3 not_readable and 2 not_available_on_plan: production OFF, spend $0, 2FA requirement false, no outside collaborators/invites, personal credential unavailable. Separate github_org_get and U-1 pinned orgs/get both agree on org 2FA false/plan free/default repo read. Remains PENDING for independent owner/browser verification of guided UI-only controls; provider 403/plan/absent U not treated as pass.",
+    "nextAction": "Independent owner/browser confirmation of the actual guided GitHub settings UI for the selected scratch account and supported control(s); then separately close eligible portions. Never infer browser completion from API reads or enable paid controls."
   },
   {
     "id": "GITHUB-O2-ORG-ADMIN",
@@ -821,9 +825,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/U-1.md; docs/designs/BATCH-U.md",
     "gates": "U-1 source present in independently verified serving READY live ancestry; genuine connected service principal with permitted scratch read scope, no production or spend activation, no mutation. Compare provider response to exact scope/method and retained pagination proof.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15: U-1 source candidate PR #219, independent production still READY at ecf190d; no deployed U-1 connected read or provider comparison. Synthetic source CI is not live acceptance.",
-    "nextAction": "After checked daily release serves requiredRevision, verify READY and custom connection, run representative pinned safe GET/search/describe/foreign-denial and independent provider comparison; retain sanitized evidence."
+    "status": "PASSED",
+    "lastEvidence": "2026-10-16 genuine connected custom GitHub Cloud MCP acceptance: production Vercel alias github-mcp-chris-projects-de6cd1bf.vercel.app independently resolved READY dpl_FfGNUDzo7vwjExCgD5YYWZZt47Rv, serving live revision a79f08643241d727b38da87b7713728baad39746; required U-1 cf09aab182c7bc6d5e80196adb03f605731201a5 verified as live ancestor (ahead 2/behind 0). Real enrolled OAuth principal PREVIEW/full, I-only robinson-ai-scratch, production OFF, spend $0. github_api_search discovered pinned GitHub REST v2026-03-10 orgs/get, github_api_describe showed GET /orgs/{org} required path only; github_api_read GET 200 returned scoped org login robinson-ai-scratch, numeric org identity 341263172, free plan, 2FA false, default repo read. Independently fetched through specialized github_org_get and confirmed same org identity, plan, 2FA, default permission. Explicit foreign org path under enrolled account refused BEFORE provider call; unknown path/query parameter refused before provider call. No mutation, production activation, spend, secret or cleanup.",
+    "nextAction": "ACCEPTED — genuine source-bearing READY custom-service pinned REST search/describe/read/negative-scope validation independently established. Any U-1 uncurated write still requires separate owner authority per GITHUB-U1-REST-WRITE."
   },
   {
     "id": "GITHUB-U1-REST-WRITE",
@@ -838,6 +842,32 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "status": "PENDING",
     "lastEvidence": "2026-10-15: New implementation source from PR #219 has fake all-door write contracts only. Current custom connection PREVIEW, production disabled and spend $0; no genuine uncurated provider mutation, replay or cleanup authorized.",
     "nextAction": "Obtain exact isolated zero-charge scratch operation, owner production/notification/fixture and cleanup authorization, then confirm preview/denial/write/readback/replay and journal through genuine custom service; never silently switch or spend."
+  },
+  {
+    "id": "GITHUB-U2-GRAPHQL-READ",
+    "priority": 2,
+    "requiredRevision": "02df1aab0edcd8b6eee483dff39532a3ecb883c4",
+    "task": "Independently exercise the deployed custom service github_graphql_read against pinned schema with genuine scoped provider query, typed variables, fragment/alias and foreign-scope denial and bounded point/node results.",
+    "procedure": "docs/pr-cards/U-2.md; docs/designs/BATCH-U.md",
+    "gates": "Merged U-2 source in independently verified READY serving deployment, genuine service-issued OAuth and owner-authorized read-only scratch scope. No real mutation, account widening, production or spend activation.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-16: U-2 implementation branch fake schema/shape fixture evidence only. Independent READY live ecf190d7 predates U-2. No live GraphQL custom-service read evidence.",
+    "nextAction": "After checked deployment serving U-2, verify origin and source revision, run constrained GraphQL query and denied mutation-as-read, compare provider-scope/identity and retain sanitized evidence."
+  },
+  {
+    "id": "GITHUB-U2-GRAPHQL-WRITE",
+    "priority": 2,
+    "requiredRevision": "02df1aab0edcd8b6eee483dff39532a3ecb883c4",
+    "task": "Independently exercise genuine approved scoped single non-curated zero-spend GraphQL mutation through full preview, guard, confirmation, durable replay and independent node readback; dispose fixture only under separate owner approval.",
+    "procedure": "docs/pr-cards/U-2.md; docs/designs/BATCH-U.md",
+    "gates": "Depends on U-2 genuine read and eligible READY source. Requires independently exact disposable node/repo ownership, owner-selected zero-charge mutation, separate production/access/notification approval as applicable, isolated saved principal and cleanup authority. Current PREVIEW production OFF remains untouched.",
+    "dependsOn": [
+      "GITHUB-U2-GRAPHQL-READ"
+    ],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-16: Source tests on fake GitHub only; no owner-authorized genuine GraphQL mutation or fixture cleanup. Production remains off.",
+    "nextAction": "After U-2 deployed read proof, obtain exact mutation/target approval and appropriate protected production and cleanup permissions; perform preview/deny/confirmed write/readback/replay; never silently activate/spend."
   }
 ]
 ```
