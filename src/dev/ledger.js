@@ -33,6 +33,21 @@ export function validateScratchBirthLabels(labels) {
     return {id,name,color:color.toLowerCase(),description};
   });
 }
+// V-4 forwarders: account- and connection-scoped, secret stored only as ciphertext, never listed.
+export const FORWARDER_ID = /^fwd_[A-Za-z0-9_-]{16}$/;
+export const MAX_FORWARDERS = 20;
+export function validateForwarder({ id, account, connection }) {
+  if (!FORWARDER_ID.test(id ?? '')) throw new TypeError('Invalid forwarder ID.');
+  if (typeof account !== 'string' || !account.trim() || typeof connection !== 'string' || !connection.trim()) throw new TypeError('Account and connection are required.');
+}
+export function validateNewForwarder({ id, account, connection, url, events, secretEnc, runId = null, repo = null }) {
+  validateForwarder({ id, account, connection });
+  if (typeof url !== 'string' || url.length < 12 || url.length > 2048) throw new TypeError('A forwarder URL is required.');
+  if (!Array.isArray(events) || events.length > 50 || events.some((e) => typeof e !== 'string' || !/^[a-zA-Z_*][a-zA-Z0-9_*-]{0,99}$/.test(e))) throw new TypeError('Invalid forwarder events.');
+  if (typeof secretEnc !== 'string' || secretEnc.length < 20 || secretEnc.length > 2048) throw new TypeError('An encrypted signing secret is required.');
+  if (runId !== null && !RUN_ID.test(runId)) throw new TypeError('Invalid forwarder run.');
+  if (repo !== null && (typeof repo !== 'string' || !repo.trim() || repo.length > 100)) throw new TypeError('Invalid forwarder repository.');
+}
 export function boundedRunLimit(limit) {
   if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new TypeError('Limit must be 1–50.');
   return limit;
@@ -270,6 +285,38 @@ export function createDevLedger(sql) {
         AND NOT EXISTS (SELECT 1 FROM dev_run_intents i WHERE i.run_id=r.id AND i.status<>'recorded')
         RETURNING r.id`;
       return rows.length===1;
+    },
+    async createDevForwarder(f) {
+      validateNewForwarder(f);
+      const { id, account, connection, url, events, secretEnc, runId = null, repo = null } = f;
+      // The cap is checked in the same statement that inserts, so concurrent creates cannot exceed it.
+      const rows = await sql`INSERT INTO dev_forwarders (id, account, connection, url, events, secret_enc, run_id, repo)
+        SELECT ${id}, ${account}, ${connection}, ${url}, ${events}, ${secretEnc}, ${runId}, ${repo}
+        WHERE (SELECT COUNT(*) FROM dev_forwarders WHERE account = ${account} AND connection = ${connection}) < ${MAX_FORWARDERS}
+        ON CONFLICT (id) DO NOTHING RETURNING id`;
+      return rows.length === 1;
+    },
+    async getDevForwarder({ id, account, connection }) {
+      validateForwarder({ id, account, connection });
+      const rows = await sql`SELECT id, account, connection, url, events, secret_enc, run_id, repo, created_at, last_used_at
+        FROM dev_forwarders WHERE id = ${id} AND account = ${account} AND connection = ${connection}`;
+      return rows[0] ?? null;
+    },
+    async listDevForwarders({ account, connection, limit = 50 }) {
+      validateForwarder({ id: 'fwd_aaaaaaaaaaaaaaaa', account, connection }); boundedRunLimit(limit);
+      return await sql`SELECT id, url, events, run_id, repo, created_at, last_used_at FROM dev_forwarders
+        WHERE account = ${account} AND connection = ${connection} ORDER BY created_at, id LIMIT ${limit}`;
+    },
+    async touchDevForwarder({ id, account, connection }) {
+      validateForwarder({ id, account, connection });
+      const rows = await sql`UPDATE dev_forwarders SET last_used_at = now()
+        WHERE id = ${id} AND account = ${account} AND connection = ${connection} RETURNING id`;
+      return rows.length === 1;
+    },
+    async deleteDevForwarder({ id, account, connection }) {
+      validateForwarder({ id, account, connection });
+      const rows = await sql`DELETE FROM dev_forwarders WHERE id = ${id} AND account = ${account} AND connection = ${connection} RETURNING id`;
+      return rows.length === 1;
     },
     async listDevObjects({ runId, account, connection, limit = 50 }) {
       validateRun({ id: runId, account, connection }); boundedRunLimit(limit);

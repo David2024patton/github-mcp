@@ -1,7 +1,7 @@
 // Fake V-1 ledger behind the same contract as PostgreSQL. No global run visibility.
-import { validateRun, validateRunObject, boundedRunLimit, validateScratchBirthLabels, validateCleanupExecutor } from '../../src/dev/ledger.js';
+import { validateRun, validateRunObject, boundedRunLimit, validateScratchBirthLabels, validateCleanupExecutor, validateForwarder, validateNewForwarder, MAX_FORWARDERS } from '../../src/dev/ledger.js';
 export function createFakeDevLedger({ clock = Date.now } = {}) {
-  const runs = new Map(), objects = new Map(), intents = new Map(), births = new Map(), executions = new Map();
+  const runs = new Map(), objects = new Map(), intents = new Map(), births = new Map(), executions = new Map(), forwarders = new Map();
   const scoped = ({ id, account, connection }) => {
     validateRun({ id, account, connection });
     const row = runs.get(id);
@@ -146,6 +146,37 @@ export function createFakeDevLedger({ clock = Date.now } = {}) {
       if(run?.status!=='cleaning'||[...objects.values()].some(o=>o.run_id===runId&&!o.cleaned)||
         [...intents].some(([k,i])=>JSON.parse(k)[0]===runId&&i.status!=='recorded'))return false;
       run.status='cleaned';run.cleaned_at=new Date(clock());return true;
+    },
+    async createDevForwarder(f) {
+      validateNewForwarder(f);
+      const { id, account, connection, url, events, secretEnc, runId = null, repo = null } = f;
+      if (forwarders.has(id)) return false;
+      if ([...forwarders.values()].filter(x => x.account === account && x.connection === connection).length >= MAX_FORWARDERS) return false;
+      forwarders.set(id, { id, account, connection, url, events: [...events], secret_enc: secretEnc, run_id: runId, repo, created_at: new Date(clock()), last_used_at: null });
+      return true;
+    },
+    async getDevForwarder({ id, account, connection }) {
+      validateForwarder({ id, account, connection });
+      const v = forwarders.get(id);
+      return v && v.account === account && v.connection === connection ? structuredClone(v) : null;
+    },
+    async listDevForwarders({ account, connection, limit = 50 }) {
+      validateForwarder({ id: 'fwd_aaaaaaaaaaaaaaaa', account, connection }); boundedRunLimit(limit);
+      return [...forwarders.values()].filter(x => x.account === account && x.connection === connection)
+        .sort((a, b) => a.created_at - b.created_at || a.id.localeCompare(b.id)).slice(0, limit)
+        .map(({ secret_enc: _omitted, account: _a, connection: _c, ...rest }) => structuredClone(rest));
+    },
+    async touchDevForwarder({ id, account, connection }) {
+      validateForwarder({ id, account, connection });
+      const v = forwarders.get(id);
+      if (!v || v.account !== account || v.connection !== connection) return false;
+      v.last_used_at = new Date(clock()); return true;
+    },
+    async deleteDevForwarder({ id, account, connection }) {
+      validateForwarder({ id, account, connection });
+      const v = forwarders.get(id);
+      if (!v || v.account !== account || v.connection !== connection) return false;
+      forwarders.delete(id); return true;
     },
     async listDevObjects({ runId, account, connection, limit=50 }) {
       boundedRunLimit(limit);

@@ -327,12 +327,12 @@ Card(s): V-1 … V-5. The owner alone can enable an exact Organization as `is_sc
 | `github_dev_open_test_pr` | Draft PR from a test branch, labelled with the run | P | N | I | B | E | V-3 built #221 (commits one run file; recorded label; never merges) |
 | `github_dev_dispatch_and_wait` | Start a workflow on a test ref and wait up to 45 s; returns the run, or a handle to check later | P | N | I | B | E | V-3 built #221 (resume never re-dispatches; production workflows refused) |
 | `github_dev_set_check_run` | Create or complete a check run on a run-created commit to simulate a passing/failing check | P | N | I | B | E | V-3 built #221 (App credential only; cleanup closes it out, GitHub cannot delete it) |
-| `github_dev_create_test_webhook` | Webhook in a scratch repo pointing at an app under development (public HTTPS only; secret shown once on the setup page) | P | N | I | B | E | V-4 |
-| `github_dev_create_forwarder` | Register an app-under-development URL and a signing secret (shown once) to replay GitHub deliveries into | P | N | — | B | E | V-4 |
-| `github_dev_list_forwarders` | Forwarders with target and last use | — | N | — | B | R | V-4 |
-| `github_dev_delete_forwarder` | Remove a forwarder | C | N | — | B | E | V-4 |
-| `github_dev_forward_deliveries` | Send real past webhook deliveries to a forwarder with a valid `X-Hub-Signature-256`; reports each status code | P | N | I | B | E | V-4 |
-| `github_dev_check_integration` | Is GitHub set up for an app being built (app permissions, webhook events, secrets present, workflows, rules)? Exact steps for anything missing | — | N | I | B | R | V-5 |
+| `github_dev_create_test_webhook` | Webhook in a scratch repo pointing at an app under development (public HTTPS only; secret shown once on the setup page) | P | N | I | B | E | V-4 built (scratch repositories only, at most three per run; recorded for cleanup; signs with the forwarder secret or a new one shown once) |
+| `github_dev_create_forwarder` | Register an app-under-development URL and a signing secret (shown once) to replay GitHub deliveries into | P | N | I | B | E | V-4 built (target re-checked after DNS and at every send; 20 per connection; secret shown once, kept encrypted) |
+| `github_dev_list_forwarders` | Forwarders with target and last use | — | N | — | B | R | V-4 built (host names only) |
+| `github_dev_delete_forwarder` | Remove a forwarder | C | N | I | B | E | V-4 built |
+| `github_dev_forward_deliveries` | Send real past webhook deliveries to a forwarder with a valid `X-Hub-Signature-256`; reports each status code | P | N | I | B | E | V-4 built (up to 10 per call; fresh delivery ID; redirects refused; a timeout is reported, never repeated) |
+| `github_dev_check_integration` | Is GitHub set up for an app being built (app permissions, webhook events, secrets present, workflows, rules)? Exact steps for anything missing | — | N | I | B | R | V-5 built (read-only; names only, never secret values; unreadable is never reported as missing) |
 
 ## Branch protection and rulesets (`github_protection_*, github_ruleset_*`) — 9
 

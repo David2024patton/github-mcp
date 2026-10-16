@@ -65,6 +65,7 @@ describe('createDb', () => {
     expect(statements.filter((s) => /^CREATE UNIQUE INDEX IF NOT EXISTS change_log_request_once .*WHERE dry_run = FALSE AND request_key IS NOT NULL/.test(s))).toHaveLength(1);
     expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS dev_runs_scope /.test(s))).toHaveLength(1);
     expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS dev_run_objects_pending /.test(s))).toHaveLength(1);
+    expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS dev_forwarders_scope /.test(s))).toHaveLength(1);
     expect(statements.filter((s) => /^CREATE INDEX IF NOT EXISTS result_store_expires /.test(s))).toHaveLength(1);
     for (const statement of statements) expect(statement).not.toMatch(/\b(DROP|DELETE|TRUNCATE|INSERT|UPDATE)\b|ALTER\s/i);
   });

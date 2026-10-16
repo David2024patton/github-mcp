@@ -3,6 +3,31 @@ import { describe, expect, it } from 'vitest';
 export function runDevLedgerContract(label, makeDb) {
   const a={account:'example-org',connection:'client-one'};
   describe(`V-1 run ledger: ${label}`,()=>{
+    it('stores forwarders per account and connection, caps them at 20 and never lists the secret', async () => {
+      const db = await makeDb();
+      const f = (n, extra = {}) => ({ ...a, id: `fwd_${String(n).padStart(16, 'a')}`, url: 'https://app.example.net/hooks/github?x=1', events: ['push', 'pull_request'], secretEnc: 'v1.' + 'x'.repeat(40), ...extra });
+      expect(await db.createDevForwarder(f(1, { runId: 'run-fwd-001', repo: 'scratch' }))).toBe(true);
+      expect(await db.createDevForwarder(f(1))).toBe(false);
+      expect(await db.getDevForwarder({ ...a, id: f(1).id })).toMatchObject({ url: 'https://app.example.net/hooks/github?x=1', events: ['push', 'pull_request'], secret_enc: expect.any(String), run_id: 'run-fwd-001', repo: 'scratch', last_used_at: null });
+      expect(await db.getDevForwarder({ account: 'other-org', connection: a.connection, id: f(1).id })).toBeNull();
+      expect(await db.getDevForwarder({ ...a, connection: 'client-two', id: f(1).id })).toBeNull();
+      const listed = await db.listDevForwarders(a);
+      expect(listed).toHaveLength(1);
+      expect(JSON.stringify(listed)).not.toContain('secret_enc');
+      expect(JSON.stringify(listed)).not.toContain('v1.');
+      expect(await db.touchDevForwarder({ ...a, id: f(1).id })).toBe(true);
+      expect((await db.getDevForwarder({ ...a, id: f(1).id })).last_used_at).not.toBeNull();
+      expect(await db.touchDevForwarder({ ...a, connection: 'client-two', id: f(1).id })).toBe(false);
+      for (let n = 2; n <= 20; n += 1) expect(await db.createDevForwarder(f(n))).toBe(true);
+      expect(await db.createDevForwarder(f(21))).toBe(false);
+      expect(await db.createDevForwarder(f(22, { connection: 'client-two' }))).toBe(true);
+      expect(await db.deleteDevForwarder({ ...a, connection: 'client-two', id: f(1).id })).toBe(false);
+      expect(await db.deleteDevForwarder({ ...a, id: f(1).id })).toBe(true);
+      expect(await db.deleteDevForwarder({ ...a, id: f(1).id })).toBe(false);
+      await expect(db.createDevForwarder(f(30, { url: 'x' }))).rejects.toThrow(/URL/);
+      await expect(db.createDevForwarder(f(31, { events: ['bad event'] }))).rejects.toThrow(/events/);
+      await expect(db.getDevForwarder({ ...a, id: 'nope' })).rejects.toThrow(/forwarder/i);
+    });
     it('permits one cleanup executor, isolates scopes and never expires or lets another executor release it',async()=>{
       const db=await makeDb(),runId='run-exclusive-cleanup';
       await db.createDevRun({...a,id:runId});

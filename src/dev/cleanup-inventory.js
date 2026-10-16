@@ -3,7 +3,7 @@
 // an independently complete and validated remote collection.
 import { refusal } from '../tools/github-write.js';
 
-const TYPES=Object.freeze(['branch','pr','issue','tag','release','ruleset']);
+const TYPES=Object.freeze(['branch','pr','issue','tag','release','ruleset','webhook']);
 
 export function assertScratchJournalCoverage({owner,repo,objects,live}) {
   if(typeof owner!=='string'||!owner||typeof repo!=='string'||!repo||
