@@ -80,7 +80,7 @@ export const setCodespaceAccess = defineGithubWrite({
     replaceSelectedUsers: { type: 'boolean', description: 'Explicitly replace the existing selected-member list, which the GitHub API cannot read back.' }
   },
   required: ['visibility'],
-  declarations: { production: 'always', confirm: 'always', spend: true, accessWidening: true, profiles: ['full'] },
+  declarations: { production: 'always', confirm: 'always', accessWidening: true, profiles: ['full'] },
   target: (a, c) => ({ ...org(a, c), kind: 'org-codespaces-access' }),
   read: async (a, c, t) => {
     if (a.visibility === 'selected_members' && (!a.usernames?.length || a.replaceSelectedUsers !== true))
@@ -101,8 +101,8 @@ export const setCodespaceAccess = defineGithubWrite({
     }
     return { organization: identity.login, selectedUserCount: a.usernames?.length ?? 0 };
   },
-  price: ({ args: a }) => a.visibility === 'disabled' ? 0 : null,
   classify: ({ args: a }) => ({
+    spendUnknown: a.visibility !== 'disabled',
     production: 'changes organization-paid Codespaces access and possible ongoing compute/storage charges',
     accessWidening: a.visibility === 'disabled' ? null :
       'grants Codespaces access to ' + (a.visibility === 'selected_members' ? a.usernames.join(', ') : a.visibility)
