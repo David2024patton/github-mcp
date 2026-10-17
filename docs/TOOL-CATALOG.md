@@ -636,7 +636,7 @@ Card(s): U-1, U-2.
 | `github_api_search` | Find REST operations by plain words: method, path, summary, and whether it reads, writes, is production, widens access, notifies people or spends | — | N | — | B,O,Op | R | U-1 built #219 |
 | `github_api_describe` | Parameters for one operation, trimmed, from GitHub's own description at the pinned version | — | N | — | B,O,Op | R | U-1 built #219 |
 | `github_api_read` | Any GET operation, with the same summaries, `fields`, size cap and handles as every other read | — | N | I,U | B,O,Op | R | U-1 built #219 |
-| `github_api_write` | Any POST/PUT/PATCH/DELETE operation through the full safety layer | C·Prod*·A*·M* | N | I,U | B,O,Op | F | U-1 built #219 |
+| `github_api_write` | Execute any eligible pinned non-curated REST write with delegated production consent; every unreviewed operation shows unknown future-cost exposure and enforces user/pass caps | C·$*·Prod*·A*·M* | N | I,U | B,O,Op | F | U-1 built #219 |
 | `github_graphql_read` | Pinned-schema validated single GraphQL query, typed variables, scoped aliases/fragments/nodes and 500-point/500,000-node cap before sending | — | N | I,U | B,O,Op | R | U-2 built #220 |
 | `github_graphql_write` | One reviewed GraphQL mutation (24 specs: pins, locks, minimize, discussions, linked branches, issue comments and delete, draft state, team review assignment; plus the legacy title and project-field shapes) with ownership proof, before/after read, always-confirmed journal and a recorded undo where one exists | C·Prod·A·M | N | I,U | B,O,Op | F | U-2 built #220 |
 
