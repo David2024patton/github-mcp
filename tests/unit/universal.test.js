@@ -135,6 +135,25 @@ describe('U-1 actual user authority and uncertain-cost boundary',()=>{
     expect(classifyUniversal(exactFree).spendRisk).toBe(false);
     expect(classifyUniversal(restOperation(route)).spendRisk).toBe(true);
   });
+  it('allows an exactly reviewed-free provider DELETE at a user-selected $0 limit but never fabricates readback confirmation',async()=>{
+    const free='DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}/labels';
+    expect(universalPrice(restOperation(free))).toBe(0);
+    const w=await makeWorld({profile:'full',mode:'production',gates:[spendGate()]});
+    await w.db.setSpendLimitCents('example-org',0);
+    w.gh.when('GET /repos/{owner}/{repo}').reply(200,
+      {full_name:'example-org/hello',default_branch:'main'});
+    w.gh.when('GET /repos/{owner}/{repo}/actions/runners/{runner_id}/labels')
+      .reply(200,[]);
+    w.gh.when(free).reply(204,null);
+    const args=api(free,{...scope,runner_id:7});
+    const out=parse(await dispatch(w,'github_api_write',{...args,confirm:true}));
+    expect(['applied','unconfirmed']).toContain(out.status);
+    expect(w.gh.calls.filter(x=>x.method==='DELETE')).toHaveLength(1);
+    expect(w.gh.invalid).toEqual([]);
+    const again=parse(await dispatch(w,'github_api_write',{...args,confirm:true}));
+    expect(again).toMatchObject({status:'replayed',replayed:true});
+    expect(w.gh.calls.filter(x=>x.method==='DELETE')).toHaveLength(1);
+  });
   it('refuses unknown future charges under an explicit selected $0 product budget before any PUT',async()=>{
     const w=await makeWorld({profile:'full',mode:'production',gates:[spendGate()]});
     await w.db.setSpendLimitCents('example-org',0);
