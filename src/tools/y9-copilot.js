@@ -83,7 +83,7 @@ const exclusionsSet=defineGithubWrite({
       ?{accessWidening:'removes an existing Copilot content exclusion'}:{})
   }),
   summarize:({args:a,before:b})=>'Replace '+Object.keys(b).length+' current Copilot exclusion repository entries with '+Object.keys(a.rules).length+' entries; GitHub will discard rule comments',
-  apply:async({args:a,ctx,target:t,before:b})=>{
+  apply:async({args:a,ctx,target:t,before})=>{
     if(!ruleKeys(a.rules)||Object.keys(a.rules).length>100)throw refusal('Rules must be a bounded map of repository names to string paths.');
     if(JSON.stringify(before)===JSON.stringify(a.rules))throw refusal('Exclusions already match.');
     // GitHub's replacement endpoint has no ability to preserve existing comments.
@@ -120,21 +120,20 @@ async function seatState(c,t,slug){
   return {plan:bill.plan_type,members,assigned:[...assigned],
     seats:list.seats,setting:bill.seat_management_setting};
 }
-const teamSeats=defineGithubWrite({
-  name:'github_copilot_team_seats',area:'copilot',audience:['O'],
+const makeTeamSeats=(adding)=>defineGithubWrite({
+  name:adding?'github_copilot_team_seats':'github_copilot_team_seats_remove',area:'copilot',audience:['O'],
   description:'Assign or remove a Copilot team with exact membership and existing-seat pricing, spending ceiling and confirmation.',
-  properties:{owner:OWNER,teamSlug:SLUG,action:{type:'string',enum:['add','remove']}},
+  properties:{owner:OWNER,teamSlug:SLUG,action:{type:'string',enum:adding?['add']:['remove']}},
   required:['teamSlug','action'],
-  declarations:{production:'always',confirm:'always',accessWidening:true,spend:true,profiles:['full']},
+  declarations:{production:'always',confirm:'always',accessWidening:adding,spend:adding,profiles:['full']},
   target:org,
   read:async(a,c,t)=>{await enrolled(c,t);return seatState(c,t,a.teamSlug);},
-  price:({args:a,before:b})=>{
+  ...(adding?{price:({args:a,before:b})=>{
     if(!b||!Number.isInteger(b.members?.length))return NaN;
-    if(a.action==='remove')return 0;
     const cents=PRICES[b.plan==='business'?'copilot_business_seat':'copilot_enterprise_seat']?.cents;
     if(!Number.isSafeInteger(cents))return NaN;
     return b.members.filter(login=>!b.assigned.includes(login)).length*cents;
-  },
+  }}:{}),
   classify:({args:a,target:t})=>a.action==='add'?
     {production:'may add paid Copilot team seats',...accessChange({who:'team '+a.teamSlug,access:'Copilot subscription',where:t.owner,before:'verified membership'})}:
     {production:'removes team assignment; member seats may remain through other assignments'},
@@ -163,9 +162,11 @@ const teamSeats=defineGithubWrite({
     note:a.action==='remove'?'GitHub may retain shared/other-team seats until their cycle ends':null})
 });
 
-export const tools=[agentPolicyGet.tool,agentPolicySet.tool,exclusionsGet.tool,exclusionsSet.tool,teamSeats.tool];
+const teamSeats=makeTeamSeats(true);
+const teamSeatsRemove=makeTeamSeats(false);
+export const tools=[agentPolicyGet.tool,agentPolicySet.tool,exclusionsGet.tool,exclusionsSet.tool,teamSeats.tool,teamSeatsRemove.tool];
 export const handlers=Object.fromEntries([
   [agentPolicyGet.tool,agentPolicyGet.handler],[agentPolicySet.tool,agentPolicySet.handler],
   [exclusionsGet.tool,exclusionsGet.handler],[exclusionsSet.tool,exclusionsSet.handler],
-  [teamSeats.tool,teamSeats.handler]
+  [teamSeats.tool,teamSeats.handler],[teamSeatsRemove.tool,teamSeatsRemove.handler]
 ].map(([tool,handler])=>[tool.name,handler]));

@@ -7,16 +7,16 @@ import * as agent from '../../src/tools/y9-agent-tasks.js';
 import { registry } from '../../src/tools/index.js';
 
 const defs=[...copilot.tools,...sponsor.tools,...hosted.tools,...agent.tools];
-const call=async (module,name,w,args)=>parse(await module.handlers[name](args,w.ctx));
+const call=async (module,name,w,args)=>{ const reply=await module.handlers[name](args,w.ctx); return module.tools.find(x=>x.name===name)?.readContract?reply:parse(reply); };
 describe('Y-9d financial and Copilot integration',()=>{
   it('registers every named capability exactly once with its advertised permission profile',()=>{
     const names=defs.map(x=>x.name);
-    expect(new Set(names).size).toBe(12);
+    expect(new Set(names).size).toBe(14);
     for(const name of names){
       expect(registry.tools.some(x=>x.name===name)).toBe(true);
       const def=defs.find(x=>x.name===name);
       expect(def.name.startsWith('github_')).toBe(true);
-      if(def.writes)expect(def.declarations.confirm).toBe('always');
+      if(def.writes){expect(def.declarations.confirm).toBe('always');expect(def.profiles).toContain('full');}
     }
   });
   it('prevents any hosted-runner update from a PREVIEW connection',async()=>{

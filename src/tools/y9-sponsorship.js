@@ -56,15 +56,15 @@ const sponsorGet=defineRead({
       source:'GitHub GraphQL sponsor listing and relationship'};
   })
 });
-const sponsorSet=defineGithubWrite({
-  name:'github_sponsor_set',area:'billing',audience:['O'],
+const sponsorshipChange = (paid) => defineGithubWrite({
+  name:paid?'github_sponsor_set':'github_sponsor_change',area:'billing',audience:['O'],
   description:'Start, cancel or change a verified GitHub Sponsorship with published tier pricing, spend limit and independent confirmation.',
-  properties:{owner:OWNER,recipient:LOGIN,action:{type:'string',enum:['start','cancel','preferences']},
+  properties:{owner:OWNER,recipient:LOGIN,action:{type:'string',enum:paid?['start']:['cancel','preferences']},
     tierId:{type:'string',minLength:2,maxLength:150},
     privacyLevel:{type:'string',enum:['PUBLIC','PRIVATE']},
     receiveEmails:{type:'boolean'}},
   required:['recipient','action'],
-  declarations:{production:'always',confirm:'always',spend:true,notifies:true,cred:'U',profiles:['full']},
+  declarations:{production:'always',confirm:'always',spend:paid,notifies:paid,cred:'U',profiles:['full']},
   target,
   read:async(a,c,t)=>{
     if(a.recipient.toLowerCase()===t.owner.toLowerCase())throw refusal('Cannot sponsor the same paying account.');
@@ -80,7 +80,7 @@ const sponsorSet=defineGithubWrite({
     if(a.action!=='start'&&!existing.active)throw refusal('No active sponsorship exists for that recipient.');
     return {...existing,tier:tier??null};
   },
-  price:({args:a,before:b})=>a.action==='start'?b?.tier?.monthlyPriceInCents??NaN:0,
+  ...(paid?{price:({before:b})=>b?.tier?.monthlyPriceInCents??NaN}:{}),
   classify:({args:a})=>({production:'starts, cancels or changes a GitHub sponsorship payment',
     ...(a.action==='start'?{notifies:[a.recipient]}:{})}),
   summarize:({args:a,target:t,before:b})=>{
@@ -115,8 +115,11 @@ const sponsorSet=defineGithubWrite({
   present:({args:a,after:x})=>({action:a.action,recipient:a.recipient,
     active:!!x?.active,verified_from:'independent GitHub sponsor query'})
 });
-export const tools=[sponsorGet.tool,sponsorSet.tool];
+const sponsorSet=sponsorshipChange(true);
+const sponsorChange=sponsorshipChange(false);
+export const tools=[sponsorGet.tool,sponsorSet.tool,sponsorChange.tool];
 export const handlers={
   [sponsorGet.tool.name]:sponsorGet.handler,
-  [sponsorSet.tool.name]:sponsorSet.handler
+  [sponsorSet.tool.name]:sponsorSet.handler,
+  [sponsorChange.tool.name]:sponsorChange.handler
 };
