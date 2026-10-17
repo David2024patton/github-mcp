@@ -52,6 +52,9 @@ export function spendGate() {
     if (!status) return { refuse: `${target.owner} is not a connected account, so its spend limit is unknown.`, by: 'spend limit' };
     const unknown = classification.spendUnknown === true;
     const cost = classification.spendCents || 0;
+    // Turning off paid access or reducing enforcement exposure is free.
+    // A user-selected $0 ceiling limits new spending, not cost-reducing actions.
+    if (!unknown && cost === 0) return null;
     if (status.limitEnabled && status.limitCents <= 0) {
       return { refuse: `This costs money (${cost ? `about ${dollars(cost)} a month` : 'an amount GitHub bills'}) and the monthly spend limit for ${status.login} is $0.00. To allow spending, raise the limit on the setup page with your passphrase.`, by: 'spend limit' };
     }
