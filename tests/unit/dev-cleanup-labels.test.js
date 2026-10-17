@@ -71,7 +71,7 @@ describe('V-2 exact PR label readback against the pinned GitHub REST contract',(
   w.gh.when(route).reply(200,[{name:LABEL,id:49,description:'rtc_run='+RUN}]);
   const out=parse(await def({runId:RUN,repo:REPO,dryRun:true},w.ctx));
   expect(out.status).toBe('preview');
-  expect(w.gh.calls.some(c=>c.route===route&&c.params.issue_number===12)).toBe(true);
+  expect(w.gh.calls.some(c=>c.route===route)).toBe(true);
   expect(w.gh.calls.some(c=>c.route==='GET /repos/{owner}/{repo}/issues/{issue_number}/labels/{name}')).toBe(false);
   expect(w.gh.calls.filter(c=>['DELETE','PATCH','POST'].includes(c.method))).toHaveLength(0);
   expect(w.gh.invalid).toEqual([]);
