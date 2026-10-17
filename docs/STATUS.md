@@ -1,3 +1,11 @@
+## 2026-10-17 — owner-authority corrections merged; honest source/live split and acceptance handoff
+
+Three independently planned *corrective engineering outcomes* are merged into `main` (not repeat delivery credit for original roadmap engineering): O-4 budget/Codespaces actual delegated writes **PR #236**, merge `efe8e928991f0da72cf4e1db7d2d56f44fee0084`; H-4/Y-7 paid private-security delegated provider features and organization code-security configurations **PR #237**, merge `0539a4d4ec3feaf24457f70d0df818647ced6bba`; Y-1/U-1 non-curated REST unknown-spend authority correction (54 strictly reviewed free write routes; others cost-unknown and governed by user/pass limits) **PR #238**, merge `ee44da0e7b73f26dca247e0e17c3738796a9d3ec`. The frozen corrective plan commits are recorded in `docs/pr-cards/O-4.md`, `docs/pr-cards/Y-7.md`, and `docs/pr-cards/Y-1.md`. Each exact-head aggregate `ci`, both unit shards, `check`, `shapes`, `db`, `rtc` and `release-policy` passed. Verified each merge with expected source head; no open PR or unresolved inline review thread remained. Codex review quota was exhausted, **not** silently treated as passed; documented substantive self-review and source-accounting exceptions are on PRs #236–238. The corrections are relatively compact source deltas with broad user-capability impact; neither historical original work nor documentation/test lines are credited as extra production work or falsely promoted to minimum-volume bundles.
+
+Reconciled source `main=ee44da0e7b73f26dca247e0e17c3738796a9d3ec` against `live=a79f08643241d727b38da87b7713728baad39746` and independently queried Vercel production READY `dpl_FfGNUDzo7vwjExCgD5YYWZZt47Rv` (GitHub SHA matches live; aliases ready). **No new correction is deployed or real-provider accepted.** Production remains OFF, developer spending authorization $0; no production/billing/private security/Codespaces mutation, permissions elevation, off-schedule deployment or cleanup performed. Normal checked scheduled live promotion remains governed by repository release procedure; no authority to force publication assumed from a build merge.
+
+Acceptance reconciliation: 48 historical source-pinned obligations (3 PASSED, 8 BLOCKED, 37 PENDING) were **preserved exactly**. This handoff adds 7 new source-pinned obligations for these actual corrected user capabilities: 3 read-only/non-writing preview checks PENDING after source-bearing READY, plus 4 real provider writes BLOCKED pending independent test-target/cost/permission/production authorization. The new ledger contains **55 rows (3 PASSED, 12 BLOCKED, 40 PENDING)**. No stale or historical evidence is relabeled as newly passed. Do all eligible no-write acceptance once live has the exact required revision; handle genuine blocker evidence while continuing other approved checks. The prior source-only staging notes below are historical checkpoints, superseded by this merged-source record. The developer's testing limits are separate from the authenticated end user's chosen tool authority.
+
 ## 2026-10-16 — Y-1/U-1 universal spend product-authority repair (source staging; no CI pass claimed)
 
 Planned against real main `efe8e928991f0da72cf4e1db7d2d56f44fee0084` after corrective PR #236 merge. The frozen `docs/pr-cards/Y-1.md` owner-authority plan was committed first at `82456d2f165f6f529521aa212957dcf7af207863`. Historical original Y-1 #227/U-1 #219 source remains previously credited and is not counted again. New scope: remove source-level permanent denial of the historic 100 potentially priced universal provider routes, make **all unreviewed writes** cost unknown (not guessed free by risk-word absence), preserve 54 exact reviewed-free routes, actual chosen user and RTC pass limits, protected full-profile confirmation, validated scoped provider request, one-send journal and honest readback/unconfirmed reporting. Test exact pinned inventory, provider risk categories, cost-free allowlist, user-selected $0/finite limits and pass-cap controls. No live GitHub activity, new spend, production enablement, provider acceptance or external release occurred. Engineering branch `ai/chatgpt/owner-authority-universal-spend` is **not merged or CI-accepted** until explicit exact-head evidence/review. Existing acceptance queue remains open.
@@ -1054,6 +1062,98 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "status": "BLOCKED",
     "lastEvidence": "2026-10-16: PR #233 source head 395a54e passed CI/contract fakes and merged. Live release, new App permission grants and genuine provider acceptance not yet proven.",
     "nextAction": "Present exact proposed provider operation, target, cost exposure and cleanup for separate independent owner authorization; otherwise retain this item BLOCKED and never turn on spending or LIVE."
+  },
+  {
+    "id": "GITHUB-O4-AUTH-PREVIEW",
+    "priority": 1,
+    "requiredRevision": "efe8e928991f0da72cf4e1db7d2d56f44fee0084",
+    "task": "On independently verified READY source, use custom GitHub MCP PREVIEW/full with enrolled organization to prove exact budget/organization identity, Codespaces user membership, read-only limits and denied attempts to write without PRODUCTION; record zero provider mutations.",
+    "procedure": "docs/pr-cards/O-4.md; docs/END-USER-AUTHORITY.md",
+    "gates": "PREVIEW/full, enrolled scratch org and source-bearing READY alias, read-only accessible budget/security fixtures; no actual budget deletion, access change, paid action or production enablement.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
+    "nextAction": "After normal approved scheduled release includes merged #236, verify READY source and use custom API read/denial tools on a verified enrolled organization; never mutate billing or Codespaces."
+  },
+  {
+    "id": "GITHUB-O4-AUTH-BUDGET-WRITE",
+    "priority": 2,
+    "requiredRevision": "efe8e928991f0da72cf4e1db7d2d56f44fee0084",
+    "task": "Independently accept real guarded GitHub budget DELETE: exact typed ID twice, informed uncapped future charges, selected cap/pass guards, one-send replay, disappearance proof and preserved other budget entries.",
+    "procedure": "docs/pr-cards/O-4.md; docs/END-USER-AUTHORITY.md",
+    "gates": "BLOCKED: no test budget has a documented safe destruction approval; requires exact disposable org/test budget and independent owner-approved PRODUCTION/full connection, cost/cap/protection consent and cleanup scope. Never touch any real spending ceiling without this.",
+    "dependsOn": [
+      "GITHUB-O4-AUTH-PREVIEW"
+    ],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
+    "nextAction": "Do not perform real deletion until owner supplies exact test organization and budget ID, explicit ceiling-removal/charge acknowledgment and scoped production approval."
+  },
+  {
+    "id": "GITHUB-O4-AUTH-CODESPACES-WRITE",
+    "priority": 2,
+    "requiredRevision": "efe8e928991f0da72cf4e1db7d2d56f44fee0084",
+    "task": "Independently accept GitHub Codespaces org access PUT with selected-member replacement acknowledgement, active member checks, spend caps, one-send, and explicit UNCONFIRMED result until owner verifies policy in GitHub UI.",
+    "procedure": "docs/pr-cards/O-4.md; docs/END-USER-AUTHORITY.md",
+    "gates": "BLOCKED: owner-approved disposable organization access policy and exact replacement membership list, production approval and independent UI saved-policy readback required. GitHub API has no documented Codespaces policy GET; no billable access widening is preapproved.",
+    "dependsOn": [
+      "GITHUB-O4-AUTH-PREVIEW"
+    ],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
+    "nextAction": "Obtain exact user/organization policy, production delegation and owner UI readback plan before any Codespaces access PUT."
+  },
+  {
+    "id": "GITHUB-Y7-AUTH-PREVIEW",
+    "priority": 1,
+    "requiredRevision": "0539a4d4ec3feaf24457f70d0df818647ced6bba",
+    "task": "On independently verified READY source test PREVIEW/full denial and legitimate provider-read inventory of private security feature configuration, private code-scanning setup, and organizational code-security attachments, including 100-entry inventory completeness behavior.",
+    "procedure": "docs/pr-cards/Y-7.md; docs/pr-cards/H-4.md; docs/END-USER-AUTHORITY.md",
+    "gates": "Read-only eligible scratch repository, existing authenticated GitHub entitlement, original private visibility, no purchased plan, no active paid feature toggle or deployment outside scheduled release.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
+    "nextAction": "After source-bearing READY, verify original plan/permissions, test non-writing private read and preview denials; distinguish provider 403 feature limits and incomplete inventories."
+  },
+  {
+    "id": "GITHUB-Y7-AUTH-PRIVATE-PAID-WRITE",
+    "priority": 2,
+    "requiredRevision": "0539a4d4ec3feaf24457f70d0df818647ced6bba",
+    "task": "With independent exact owner consent, accept one disposable private paid security feature/configuration mutation including user-selected cap denial, explicit uncapped charge disclosure, single provider send, state readback and reversible cleanup.",
+    "procedure": "docs/pr-cards/Y-7.md; docs/pr-cards/H-4.md; docs/END-USER-AUTHORITY.md",
+    "gates": "BLOCKED: private plan entitlement, exact disposable target, explicit cost/PRODUCTION/feature approval, existing permissions and cleanup must be verified. Developer $0 and no paid mutations remain binding to engineering agent.",
+    "dependsOn": [
+      "GITHUB-Y7-AUTH-PREVIEW"
+    ],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
+    "nextAction": "Do not buy or enable private paid security for acceptance; obtain individually approved existing eligible test repo and exact feature if owner elects to validate."
+  },
+  {
+    "id": "GITHUB-U1-AUTH-PREVIEW",
+    "priority": 1,
+    "requiredRevision": "ee44da0e7b73f26dca247e0e17c3738796a9d3ec",
+    "task": "On independently verified READY source use custom API search/describe and PREVIEW write to distinguish 54 reviewed free operations from unknown-cost non-curated writes, confirm scope, schema, curated-first routing, owner-selected cap and zero actual provider mutation.",
+    "procedure": "docs/pr-cards/Y-1.md; docs/pr-cards/U-1.md; docs/END-USER-AUTHORITY.md",
+    "gates": "Read-only source-bearing custom MCP, enrolled scratch account, no actual payment, credential bypass, production activation or non-disposable target mutation.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
+    "nextAction": "After READY live contains #238, invoke only custom MCP search/describe/dryRun and guarded denial on known safe scratch operations; record source, identity and no-write evidence."
+  },
+  {
+    "id": "GITHUB-U1-AUTH-METERED-WRITE",
+    "priority": 2,
+    "requiredRevision": "ee44da0e7b73f26dca247e0e17c3738796a9d3ec",
+    "task": "Accept a genuine otherwise-eligible non-curated provider write with potentially unknown future cost, independent owner delegation, explicit billing warning, chosen spending cap/pass enforcement, no bypass of curated/secret endpoints, one-send journal and readback or honest UNCONFIRMED result.",
+    "procedure": "docs/pr-cards/Y-1.md; docs/pr-cards/U-1.md; docs/END-USER-AUTHORITY.md",
+    "gates": "BLOCKED: exact disposable operation/path/body, independently approved full PRODUCTION principal, provider plan/credential, cost exposure, protected scope and any reversible cleanup. Do not spend or change customer/live data for acceptance.",
+    "dependsOn": [
+      "GITHUB-U1-AUTH-PREVIEW"
+    ],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
+    "nextAction": "Use a harmless, provider-reviewed-free disposable write first if owner authorizes its exact target; for paid/uncertain future charge require separately explicit user-funded operation approval before sending."
   }
 ]
 ```
