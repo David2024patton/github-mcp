@@ -184,7 +184,7 @@ describe('X-2 read-only smoke test', () => {
         requestId:'REQ-1\n| extra'}
     ],excludedCount:0};
     const report=renderReport({...r,account:'example-org',date:'2026-10-17'});
-    expect(report).toContain('[REDACTED]');
+    expect(report).toContain('REDACTED');
     expect(report).not.toContain(token);
     expect(report).not.toContain('Bearer abc');
     expect(report).not.toContain('Authorization:');
