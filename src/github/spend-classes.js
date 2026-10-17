@@ -1,15 +1,17 @@
-// Y-1 (Batch Y decision Y2): reviewed-free universal routes.
-// The spend words in operation-classes.js stay a conservative default: any write whose summary/path
-// matches stays blocked unless its exact "METHOD /path/template" key is listed here. Every key is
-// checked against the vendored OpenAPI description in tests/unit/spend-classes.test.js, so a typo can
-// never fail open, and the number of still-blocked operations is pinned there too.
+// Y-1 end-user authority remediation: 54 pinned, individually reviewed cost-free
+// universal REST writes. EVERY other non-GET REST operation remains UNKNOWN COST,
+// whether or not its name happens to contain a billing/runner/Copilot keyword.
+// This list grants zero-cost classification only; actual scoped GitHub permission,
+// confirm, protected-resource, pass-spend and request-key guards never disappear.
+// The developer's own $0/production-OFF restrictions do not become a product ban.
+// Tested against the pinned OpenAPI index; never extend without an explicit
+// provider-cost review and dated owner decision.
 //
 // What qualifies: self-hosted runner administration (no GitHub charge), runner-group membership,
 // OIDC claim customisation, deployment approvals, deletes and restores of packages (never add cost),
 // a Pages rebuild of an existing site, and artifact-metadata records.
-// What does NOT qualify (Y3: cost cannot be computed, stays behind the spend guard): hosted/larger
-// runners and images, cache/artifact retention and storage limits, Codespaces, Copilot, billing,
-// code-security configurations, Marketplace.
+// Unknown/metered: hosted runners, retention and storage, Codespaces, Copilot,
+// billing, code security, Marketplace and ANY operation not explicitly reviewed here.
 const RUNNER_SCOPES = ['/orgs/{org}', '/repos/{owner}/{repo}'];
 const keys = [];
 const add = (method, ...paths) => { for (const p of paths) keys.push(`${method} ${p}`); };
