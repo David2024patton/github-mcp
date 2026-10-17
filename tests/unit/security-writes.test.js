@@ -378,9 +378,9 @@ describe('Y-7 large-org complete security-configuration cursor and readback cont
       expect(w.gh.calls.filter(c=>c.method==='DELETE')).toHaveLength(0);
     }
   });
-  it('verifies the complete provider-supported 500-character configuration description instead of truncating to 200',async()=>{
+  it('verifies the complete provider-supported 255-character configuration description instead of truncating to 200',async()=>{
     const w=await makeWorld({mode:'production',profile:'full'});
-    const description='Verified owner security policy '.repeat(13).slice(0,340);
+    const description='Verified owner security policy '.repeat(13).slice(0,255);
     w.gh.when(CONFIG).replySequence([
       {status:200,body:cfg()},
       {status:200,body:cfg({description})}
@@ -392,6 +392,15 @@ describe('Y-7 large-org complete security-configuration cursor and readback cont
     expect(out).toMatchObject({status:'applied',done:true});
     expect(out.result.configuration.description).toBe(description);
     expect(w.gh.calls.filter(x=>x.method==='PATCH')).toHaveLength(1);
+  });
+  it('rejects descriptions beyond GitHub pinned 255-character maximum without provider writes',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    w.gh.when(CONFIG).reply(200,cfg());
+    w.gh.when(PAGE).reply(200,[]);
+    const out=await run(w,'github_security_config_save',{org:'example-org',
+      configurationId:9,description:'x'.repeat(256),confirm:true});
+    expect(out.done).not.toBe(true);
+    expect(w.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
   });
   it('does not claim confirmed success when requested nested settings or enforcement are ignored',async()=>{
     for(const mismatch of ['enforcement','nested']){
