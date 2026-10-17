@@ -1,4 +1,5 @@
 import {describe,it,expect} from 'vitest';
+import {spendGate as actualSpendGate} from '../../src/tools/spend-guard.js';
 import {makeWorld,runWriteContract,parse} from '../../test/helpers/write-contract.js';
 import {registry} from '../../src/tools/index.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
@@ -60,7 +61,7 @@ runWriteContract({
   arrange:arrangeWorkflow});
 async function call(w,name,args){
   const dispatch=createDispatch({env:w.ctx.env,credentials:w.credentials,
-    fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep,gates:[]});
+    fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep,gates:w.ctx.gates});
   const v=await dispatch({registry,name,args,connection:w.connection,db:w.db});
   return v.structuredContent??(v.isError?{done:false,error:v.content?.[0]?.text}:parse(v));
 }
@@ -77,14 +78,56 @@ describe('H-4 security feature and Actions policy safety',()=>{
     expect(s.security_and_analysis.private_vulnerability_reporting).toBe('enabled');
     expect(w.gh.invalid).toEqual([]);
   });
-  it('paid activation on a private repo is refused at source even if confirmation is sent',async()=>{
-    const w=await makeWorld({mode:'production',profile:'full'});
+  it('can enable private paid security when explicitly delegated, preserving other fields',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
+    w.gh.when(routes.repo).replySequence([
+      {status:200,body:security('disabled',true)},
+      {status:200,body:security('enabled',true)}
+    ]);
+    w.gh.when(routes.pvr).reply(200,{enabled:false});
+    w.gh.when(routes.repoPatch).reply(200,security('enabled',true));
+    const first=await call(w,'github_security_set_feature',
+      {repo:'hello',feature:'secret_scanning',enabled:true});
+    expect(first.status).toBe('needs_confirmation');
+    expect(first.preview).toContain('COST UNKNOWN');
+    const applied=await call(w,'github_security_set_feature',
+      {repo:'hello',feature:'secret_scanning',enabled:true,confirm:true});
+    expect(applied).toMatchObject({status:'applied',done:true});
+    expect(w.gh.calls.filter(x=>x.route===routes.repoPatch)).toHaveLength(1);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('refuses private paid activation under an explicit user $0 limit and pass cap',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
+    await w.db.setSpendLimitCents('example-org',0);
     w.gh.when(routes.repo).reply(200,security('disabled',true));
-    const r=await call(w,'github_security_set_feature',{
-      repo:'hello',feature:'code_security',enabled:true,confirm:true});
-    expect(r.done).toBe(false);
+    w.gh.when(routes.pvr).reply(200,{enabled:false});
+    const out=await call(w,'github_security_set_feature',
+      {repo:'hello',feature:'secret_scanning',enabled:true,confirm:true});
+    expect(out).toMatchObject({status:'refused_by_guard',refusedBy:'spend limit'});
     expect(w.gh.calls.filter(x=>x.route===routes.repoPatch)).toHaveLength(0);
-    expect(JSON.stringify(r)).toMatch(/paid|private|spend/i);
+    const pass=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
+    pass.connection={...pass.connection,pass:true,spend_limit_cents:5000,client_id:'limited-pass'};
+    pass.ctx.connection=pass.connection;
+    pass.gh.when(routes.repo).reply(200,security('disabled',true));
+    pass.gh.when(routes.pvr).reply(200,{enabled:false});
+    const passOut=await call(pass,'github_security_set_feature',
+      {repo:'hello',feature:'secret_scanning',enabled:true,confirm:true});
+    expect(passOut).toMatchObject({status:'refused_by_guard',refusedBy:'pass spend allowance'});
+    expect(pass.gh.calls.filter(x=>x.route===routes.repoPatch)).toHaveLength(0);
+  });
+  it('lets owners turn off premium security even with a selected $0 user cap',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
+    await w.db.setSpendLimitCents('example-org',0);
+    w.gh.when(routes.repo).replySequence([
+      {status:200,body:security('enabled',true)},
+      {status:200,body:security('disabled',true)}
+    ]);
+    w.gh.when(routes.pvr).reply(200,{enabled:false});
+    w.gh.when(routes.repoPatch).reply(200,security('disabled',true));
+    const out=await call(w,'github_security_set_feature',
+      {repo:'hello',feature:'secret_scanning',enabled:false,confirm:true});
+    expect(out.status).toBe('applied');
+    expect(w.gh.calls.filter(x=>x.route===routes.repoPatch)).toHaveLength(1);
   });
   it('denies any changed field without complete readback baseline',async()=>{
     const w=await makeWorld({mode:'production',profile:'full'});
