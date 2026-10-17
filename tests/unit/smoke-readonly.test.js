@@ -190,6 +190,7 @@ describe('X-2 read-only smoke test', () => {
     expect(report).not.toContain('Authorization:');
     expect(report).not.toContain('| evil-table-row');
     expect(report).not.toContain('REQ-1\n');
+    expect(classifyRun({result:null,calls:[]}).outcome).toBe('fail');
     const result=classifyRun({result:{isError:true,content:[{type:'text',text:'Request included Bearer abc.def.secret'}]},calls:[]});
     expect(result.note).not.toContain('abc.def.secret');
   });
