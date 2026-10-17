@@ -118,7 +118,8 @@ export function defineWrite(spec) {
 
     let before = null;
     let readFailed = false;
-    try { before = await read(args, ctx, tgt); } catch { readFailed = true; }
+    let readError = null;
+    try { before = await read(args, ctx, tgt); } catch (error) { readFailed = true; readError = error; }
     let classification;
     try {
       classification = normalizeClassification(await classify({ args, ctx, target: tgt, before, readFailed }), { readFailed, declarations: decl });
@@ -172,7 +173,19 @@ export function defineWrite(spec) {
       const previewId = await log({ summary: line, dryRun: true, ...recordFields() });
       return out({ ...preview, status: 'preview', ...(Number.isSafeInteger(previewId) ? { logged: { id: previewId } } : {}) });
     }
-    if (readFailed) return refuse('read', 'The current state could not be read, so nothing was sent. Try again in a moment.');
+    if (readFailed) {
+      // A denied provider preflight is a confirmed non-write, not an unknown
+      // network outcome. Use the same service-supplied sanitized translator
+      // as failed applies so missing permission is not mistaken for plan cost.
+      let detail = null;
+      if (readError?.status === 403 || readError?.status === 404) {
+        try { detail = explain(readError, { args, ctx, target: tgt }); } catch { /* generic refusal below */ }
+      }
+      const reason = typeof detail === 'string' && detail.length > 0 && detail.length <= 1024
+        ? `The current state could not be read; no change was sent. ${detail}`
+        : 'The current state could not be read, so nothing was sent. Try again in a moment.';
+      return refuse('read', reason);
+    }
     if (needsConfirm && args.confirm !== true) return out({ ...preview, status: 'needs_confirmation', prompt: 'Read the preview, then call again with confirm: true.' });
 
     // 4. One request key per intent. A repeat is a replay, never a second change.
