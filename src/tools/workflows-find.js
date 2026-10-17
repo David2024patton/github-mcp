@@ -105,12 +105,24 @@ export async function digest(a,c){
       const cost=await s.read(owner+':billing:'+date.toISOString().slice(0,10),'github_billing_get_usage',{
         owner,scope:type==='Organization'?'organization':'user',year:date.getUTCFullYear(),month:date.getUTCMonth()+1,day:date.getUTCDate(),max:500});
       const dayKey=date.toISOString().slice(0,10);
-      const good=!!cost&&cost.complete===true&&!partial(cost)&&Array.isArray(cost.items)&&cost.items.every(x=>
-        Number.isFinite(x.net_dollars)&&Number.isSafeInteger(Math.round(x.net_dollars*100))&&x.net_dollars>=0&&typeof x.product==='string'&&x.product.length>0&&
-        Number.isFinite(Date.parse(x.date))&&new Date(x.date).toISOString().slice(0,10)===dayKey);
-      report.billed_usage.days.push({date:date.toISOString().slice(0,10),status:good?'observed':'unknown'});
+      // The registered billing reader returns a verified envelope with nested
+      // usage.items/complete/total_net_dollars, not flat top-level fields.
+      // Validate the responding principal and billing month as well as every
+      // line's requested day before calling any reported cents an actual bill.
+      const usage=cost?.usage;
+      const expectedScope=type==='Organization'?'organization':'user';
+      const good=!!cost&&cost.owner?.toLowerCase()===owner.toLowerCase()&&
+        cost.scope===expectedScope&&cost.year===date.getUTCFullYear()&&cost.month===date.getUTCMonth()+1&&
+        !!usage&&usage.complete===true&&!partial(usage)&&Array.isArray(usage.items)&&
+        Number.isFinite(usage.total_net_dollars)&&usage.total_net_dollars>=0&&
+        Number.isSafeInteger(Math.round(usage.total_net_dollars*100))&&
+        (usage.items.length>0||usage.total_net_dollars===0)&&usage.items.every(x=>
+          Number.isFinite(x.net_dollars)&&Number.isSafeInteger(Math.round(x.net_dollars*100))&&x.net_dollars>=0&&
+          typeof x.product==='string'&&x.product.length>0&&
+          Number.isFinite(Date.parse(x.date))&&new Date(x.date).toISOString().slice(0,10)===dayKey);
+      report.billed_usage.days.push({date:dayKey,status:good?'observed':'unknown'});
       if(!good){report.billed_usage.complete=false;s.sections.push({id:owner+':billing-shape:'+dayKey,status:'not_readable',reason:'Complete date-bound billed costs were not verified.'});continue;}
-      for(const item of cost.items??[]){
+      for(const item of usage.items){
         const product=item.product.toLowerCase(),cents=Math.round(item.net_dollars*100);
         if(product.includes('actions'))report.billed_usage.actions_cents+=cents;
         else if(product.includes('copilot'))report.billed_usage.copilot_cents+=cents;
