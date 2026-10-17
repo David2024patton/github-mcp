@@ -9,6 +9,7 @@
 // it prints no credential and never copies one anywhere. Running it against a real account is an owner step (docs/OWNER-INPUTS.md).
 import { writeFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { parse as parseGraphql, Kind } from 'graphql';
 
 export const SMOKE_PROFILE = 'read_only';
 const REQUIRED_MODE = 'preview';
@@ -39,16 +40,77 @@ export function argumentsFor(tool, fixtures = {}) {
   return { args, missing };
 }
 
+// This runner can carry privileged GitHub credentials. A plain GET to an
+// arbitrary domain is not a safe read: it can exfiltrate authorization headers.
+// Likewise an opaque GraphQL payload can execute an unknown persisted mutation.
+// Only the exact public GitHub REST/GraphQL endpoint is an approved target.
+function githubUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && u.hostname === 'api.github.com' &&
+      u.port === '' && !u.username && !u.password && !u.hash;
+  } catch { return false; }
+}
+function oneGraphqlRead(body) {
+  if (typeof body !== 'string' || body.length > 50000) return false;
+  let payload;
+  try { payload = JSON.parse(body); } catch { return false; }
+  if (!payload || Array.isArray(payload) || typeof payload !== 'object' ||
+      typeof payload.query !== 'string' || !payload.query.trim() ||
+      Object.keys(payload).some(k => !['query', 'variables', 'operationName'].includes(k))) return false;
+  let document;
+  try { document = parseGraphql(payload.query); } catch { return false; }
+  const operations = document.definitions.filter(d => d.kind === Kind.OPERATION_DEFINITION);
+  // A fragment-only/empty/multiple-operation document is ambiguous. Reject
+  // even a named read when the same request contains an unused mutation.
+  if (operations.length !== 1 || operations[0].operation !== 'query') return false;
+  if (payload.operationName !== undefined &&
+      (typeof payload.operationName !== 'string' ||
+       operations[0].name?.value !== payload.operationName)) return false;
+  if (payload.variables !== undefined &&
+      (payload.variables === null || typeof payload.variables !== 'object' || Array.isArray(payload.variables))) return false;
+  return true;
+}
 const isReadRequest = (method, url, body) => {
+  if (!githubUrl(url)) return false;
   const m = String(method ?? 'GET').toUpperCase();
   if (m === 'GET' || m === 'HEAD') return true;
-  if (m === 'POST' && /\/graphql$/.test(new URL(url).pathname)) {
-    let text = typeof body === 'string' ? body : '';
-    try { text = String(JSON.parse(text)?.query ?? ''); } catch { /* not JSON: judged as plain text below */ }
-    return !/\bmutation\b/i.test(text);
-  }
-  return false;
+  return m === 'POST' && new URL(url).pathname === '/graphql' && oneGraphqlRead(body);
 };
+
+// Provider messages and header values are untrusted. Never let credentials,
+// control characters or Markdown structure leak into a checked-in smoke report.
+const protect = (value, max = 220) => String(value ?? '')
+  .replace(/\b(?:github_pat_|gh[pousr]_|ghs_|ghr_)[A-Za-z0-9_]{8,}\b/gi, '[REDACTED]')
+  .replace(/\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/-]+=*/gi, '[REDACTED]')
+  .replace(/([?&](?:access_token|token|client_secret|api_key)=)[^&\s]+/gi, '$1[REDACTED]')
+  .replace(/(?:authorization|x-api-key|private-key)\s*[:=]\s*[^\s,;}]+/gi, '[REDACTED]')
+  .replace(/[\x00-\x1f\x7f|<>\[\]`\\]/g, ' ')
+  .replace(/\s+/g, ' ').trim().slice(0, max);
+const safeRequestId = value => /^[A-Za-z0-9_-]{1,80}$/.test(String(value ?? '')) ? String(value) : null;
+
+/** A read that reports partial coverage is not evidence of a successful smoke.
+ * Recognize the registered workflow envelopes, not arbitrary user file text. */
+function incompleteResult(result) {
+  let data = result?.structuredContent;
+  if (!data && typeof result?.content?.[0]?.text === 'string') {
+    try { data = JSON.parse(result.content[0].text); } catch { /* plain responses are allowed */ }
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+  const wrong = x => x?.complete === false || x?.done === false ||
+    ['partial', 'not_readable', 'not_attempted', 'incomplete', 'refused', 'refused_by_guard', 'needs_confirmation', 'pending'].includes(x?.status) ||
+    x?.more_possible === true || x?.more_exist === true || x?.incomplete_results === true ||
+    x?.next_page_possible || x?.kept_result;
+  const sectionBad = values => Array.isArray(values) && values.some(v =>
+    v?.status && v.status !== 'observed' && v.status !== 'pass' && v.status !== 'success');
+  if (wrong(data) || sectionBad(data.sections) || sectionBad(data.evidence)) return true;
+  if (Array.isArray(data.groups) && data.groups.some(wrong)) return true;
+  if (Array.isArray(data.accounts) && data.accounts.some(account =>
+    wrong(account.billed_usage) || Array.isArray(account.repositories) &&
+      account.repositories.some(repo => wrong(repo.ci) ||
+        Object.values(repo.open_alerts ?? {}).some(v => v === null || wrong(v))))) return true;
+  return false;
+}
 
 /**
  * The only network function a smoke run gets. It refuses everything but reads before any bytes leave, and keeps a small
@@ -66,7 +128,7 @@ export function guardedFetch(inner) {
     const response = await inner(input, init);
     let message = '';
     if (response.status >= 400) { try { message = String(JSON.parse((await response.clone().text()).slice(0, MAX_BODY))?.message ?? ''); } catch { message = ''; } }
-    log.push({ method: String(method).toUpperCase(), status: response.status, requestId: response.headers?.get?.('x-github-request-id') ?? null, message });
+    log.push({ method: String(method).toUpperCase(), status: response.status, requestId: safeRequestId(response.headers?.get?.('x-github-request-id')), message: protect(message, 250) });
     return response;
   };
   return { fetch: guarded, log };
@@ -74,17 +136,27 @@ export function guardedFetch(inner) {
 
 /** Pass, plan limitation, permission gap or failure for one tool run, from the tool answer and its recorded GitHub answers. */
 export function classifyRun({ result, calls }) {
-  const blocked = calls.some((c) => c.blocked);
-  const refused = calls.filter((c) => !c.blocked && c.status >= 400);
-  const requestId = refused.map((c) => c.requestId).find(Boolean) ?? calls.map((c) => c.requestId).find(Boolean) ?? null;
-  if (blocked) return { outcome: 'fail', note: 'tried to send a change; the smoke test blocked it', requestId };
-  if (result?.isError !== true) return { outcome: 'pass', requestId };
-  const planLimited = refused.find((c) => (c.status === 403 || c.status === 404 || c.status === 451) && PLAN_WORDS.test(c.message));
-  if (planLimited) return { outcome: 'limitation', note: `GitHub says this needs a different plan (HTTP ${planLimited.status}); not a code failure`, requestId: planLimited.requestId ?? requestId };
-  const denied = refused.find((c) => c.status === 403 || c.status === 401);
-  if (denied) return { outcome: 'gap', note: `permission not granted to this account (HTTP ${denied.status})`, requestId: denied.requestId ?? requestId };
-  const text = String(result?.content?.[0]?.text ?? '').replace(/\s+/g, ' ').slice(0, 200);
-  return { outcome: 'fail', note: refused[0] ? `GitHub answered HTTP ${refused[0].status}: ${text}` : text, requestId };
+  const blocked = calls.some(c => c.blocked);
+  const refused = calls.filter(c => !c.blocked && c.status >= 400);
+  const requestId = safeRequestId(refused.map(c => c.requestId).find(Boolean) ??
+    calls.map(c => c.requestId).find(Boolean));
+  if (blocked) return { outcome: 'fail', note: 'tried to send a change or reach a non-GitHub destination; the smoke test blocked it', requestId };
+  const planLimited = refused.find(c => (c.status === 403 || c.status === 404 || c.status === 451) && PLAN_WORDS.test(c.message));
+  const denied = refused.find(c => c.status === 403 || c.status === 401);
+  if (result?.isError === true) {
+    if (planLimited) return { outcome: 'limitation', note: `GitHub says this needs a different plan (HTTP ${planLimited.status}); not a code failure`, requestId };
+    if (denied) return { outcome: 'gap', note: `permission not granted to this account (HTTP ${denied.status})`, requestId };
+    const message = protect(result?.content?.[0]?.text ?? 'The tool returned an error.');
+    return { outcome: 'fail', note: refused[0] ? `GitHub answered HTTP ${refused[0].status}: ${message}` : message, requestId };
+  }
+  // Wrapped read-only workflows commonly complete a request successfully but
+  // explicitly label some provider sections partial/unknown. This is not PASS.
+  if (incompleteResult(result)) return {
+    outcome: planLimited ? 'limitation' : denied ? 'gap' : 'fail',
+    note: 'The read reported incomplete, unreadable or unverified coverage; not a complete provider PASS.',
+    requestId
+  };
+  return { outcome: 'pass', requestId };
 }
 
 /**
@@ -98,6 +170,12 @@ export function classifyRun({ result, calls }) {
 export async function runSmoke({ registry, dispatchFor, connection, db, fixtures = {}, innerFetch = globalThis.fetch }) {
   if (connection?.mode !== REQUIRED_MODE || connection?.profile !== SMOKE_PROFILE) {
     throw new TypeError('The smoke test runs only on a preview connection with the read_only profile.');
+  }
+  for (const field of ['owner', 'account', 'org']) {
+    if (fixtures[field] !== undefined &&
+        (typeof fixtures[field] !== 'string' ||
+         !connection.accounts?.some(x => x.toLowerCase() === fixtures[field].toLowerCase())))
+      throw new TypeError(`The smoke fixture ${field} is not enrolled in this connection.`);
   }
   const { chosen, excluded } = selectReadTools(registry);
   const results = [];
@@ -125,7 +203,7 @@ export function renderReport({ results, excludedCount, account, date, revision =
     `PASS ${count('pass')} · LIMITATION ${count('limitation')} · GAP ${count('gap')} · SKIPPED ${count('skipped')} · FAIL ${count('fail')}`, '',
     'A limitation is a GitHub plan feature this account does not have. A gap is a permission the account has not granted. Neither is counted as a pass, and neither is a code failure. A skipped tool had no safe example argument.', '',
     '| Tool | Result | Note | GitHub request ID |', '| --- | --- | --- | --- |',
-    ...results.map((r) => `| \`${r.tool}\` | ${LABEL[r.outcome]} | ${String(r.note ?? '').replace(/\|/g, '/').slice(0, 220)} | ${r.requestId ?? ''} |`), ''
+    ...results.map((r) => `| \`${protect(r.tool, 96)}\` | ${LABEL[r.outcome] ?? 'FAIL'} | ${protect(r.note)} | ${safeRequestId(r.requestId) ?? ''} |`), ''
   ];
   return lines.join('\n');
 }
