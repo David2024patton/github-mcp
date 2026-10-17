@@ -1,9 +1,7 @@
 // Y-7c: organization code-security configurations (a named bundle of security settings that can be attached to many
-// repositories). Two rules govern everything here:
-//  - a configuration that turns on a PAID feature (code security, secret protection, push protection, default code
-//    scanning, ...) is never attached to, or made the default for, anything that could be a private repository: its cost
-//    cannot be calculated (same policy as github_security_set_feature), so the tool refuses instead of guessing;
-//  - every change that applies settings to existing repositories is a production change that asks first.
+// repositories). Paid private security changes remain executable for users who have GitHub provider permission and
+// authorize unknown future metered charges; they are never made free by guessing a price.
+// Every production policy change still requires protected-resource checks and confirmation.
 import { defineGithubWrite } from './define-github-write.js';
 import { missing, octo, refusal, ownerOf } from './github-write.js';
 import { LOGIN, REPO_NAME } from './public-read.js';
@@ -40,17 +38,26 @@ export const shapeConfig = (c) => (c ? {
 const getConfig = (ctx, t, id) => missing(async () => (await (await octo(ctx, t.owner)).request(`GET ${ONE}`, { org: t.owner, configuration_id: id })).data);
 const listConfigs = async (ctx, t) => (await (await octo(ctx, t.owner)).request(`GET ${BASE}`, { org: t.owner, per_page: 100 })).data ?? [];
 const attachedRepos = async (ctx, t, id) => {
-  const rows = (await (await octo(ctx, t.owner)).request(`GET ${ONE}/repositories`, { org: t.owner, configuration_id: id, per_page: 100 })).data ?? [];
-  return rows.map((r) => ({ id: r.repository?.id, name: r.repository?.name, private: r.repository?.private === true, status: r.status }));
+  const gh = await octo(ctx, t.owner);
+  const result = [];
+  for (let page = 1; page <= 5; page++) {
+    const rows = (await gh.request(`GET ${ONE}/repositories`,
+      { org: t.owner, configuration_id: id, per_page: 100, page })).data;
+    if (!Array.isArray(rows)) throw refusal('Attached repository listing is not readable.');
+    result.push(...rows.map((r) => ({ id: r.repository?.id, name: r.repository?.name,
+      private: r.repository?.private === true || ['private', 'internal'].includes(r.repository?.visibility),
+      status: r.status })));
+    if (rows.length < 100) return result;
+  }
+  throw refusal('Attached repository inventory exceeds 500 entries; paid-change scope cannot be verified.');
 };
-const PAID_REFUSAL = (what) => `${what} would apply paid security features that GitHub bills per active committer on private repositories. That cost cannot be calculated here, so nothing was changed. Use scope "public", or a configuration without paid settings.`;
 
 // ---- create / edit -------------------------------------------------------------------------------------------------------
 const save = defineGithubWrite({
   name: 'github_security_config_save', area: 'security', audience: ['O'],
-  description: 'Create or edit an organization code-security configuration. Editing one that is attached to private repositories cannot turn on paid features.',
+  description: 'Create or edit an organization code-security configuration; privately attached paid settings carry explicit future-cost warnings.',
   properties: { org: ORG, configurationId: ID, name: { type: 'string', minLength: 1, maxLength: 100 }, description: { type: 'string', maxLength: 500 }, settings: SETTINGS },
-  required: [], declarations: decl({ production: 'when-target', accessWidening: false }), target: orgTarget,
+  required: [], declarations: decl({ production: 'when-target', accessWidening: false, spend: true }), target: orgTarget,
   read: async (args, ctx, t) => {
     if (!args.configurationId) {
       if (!args.name || !args.description) throw refusal('A new configuration needs name and description.');
@@ -60,6 +67,8 @@ const save = defineGithubWrite({
     const current = await getConfig(ctx, t, args.configurationId);
     return { current: shapeConfig(current), attached: current ? await attachedRepos(ctx, t, args.configurationId) : [], clash: null };
   },
+  price: ({ args, before }) => before?.attached?.some((r) => r.private) &&
+    turnsOnPaid(args.settings) ? null : 0,
   classify: ({ before }) => (before?.attached?.length ? { production: `this configuration is attached to ${before.attached.length} repositor${before.attached.length === 1 ? 'y' : 'ies'}; changes apply to them at once` } : {}),
   summarize: ({ args, target: t, before }) => (before.current
     ? `Edit code-security configuration "${before.current.name}" of ${t.owner}: ${Object.keys(args.settings ?? {}).join(', ') || 'name/description'}${before.attached.length ? ` (attached to ${before.attached.length} repositories - applies immediately)` : ''}`
@@ -69,7 +78,6 @@ const save = defineGithubWrite({
     const body = { ...(args.name !== undefined ? { name: args.name } : {}), ...(args.description !== undefined ? { description: args.description } : {}), ...(args.settings ?? {}) };
     if (args.configurationId) {
       if (!before.current) throw refusal('That configuration was not found; nothing was changed.', 404);
-      if (before.attached.some((r) => r.private) && turnsOnPaid(args.settings)) throw refusal(PAID_REFUSAL('Turning on those settings for a configuration attached to private repositories'));
       return gh.request(`PATCH ${ONE}`, { org: t.owner, configuration_id: args.configurationId, ...body });
     }
     if (before.clash) throw refusal(`A configuration named "${args.name}" already exists (id ${before.clash.id}); nothing was created.`);
@@ -101,10 +109,10 @@ const resolveRepos = async (ctx, t, names) => {
 };
 const attach = defineGithubWrite({
   name: 'github_security_config_attach', area: 'security', audience: ['O'],
-  description: 'Attach a code-security configuration to repositories (all, public, private/internal, or named). Paid configurations only reach public repositories.',
+  description: 'Attach code-security configurations to any authorized repository scope, warning of unknown future private security charges.',
   properties: { org: ORG, configurationId: ID, scope: { type: 'string', enum: ['all', 'all_without_configurations', 'public', 'private_or_internal', 'selected'] },
     repositories: { type: 'array', minItems: 1, maxItems: 50, items: REPO_NAME, uniqueItems: true, description: 'scope selected only: repository names' } },
-  required: ['configurationId', 'scope'], declarations: decl({ accessWidening: false }),
+  required: ['configurationId', 'scope'], declarations: decl({ accessWidening: false, spend: true }),
   target: (args, ctx) => {
     if (args.scope === 'selected' && !args.repositories?.length) throw new TypeError('scope selected needs repositories.');
     if (args.scope !== 'selected' && args.repositories) throw new TypeError('repositories only applies to scope selected.');
@@ -115,13 +123,16 @@ const attach = defineGithubWrite({
     chosen: args.scope === 'selected' ? await resolveRepos(ctx, t, args.repositories) : [],
     attached: await attachedRepos(ctx, t, args.configurationId).catch(() => [])
   }),
+  price: ({ args, before }) => before?.current?.paid &&
+    (args.scope === 'all' || args.scope === 'all_without_configurations' ||
+      args.scope === 'private_or_internal' ||
+      (args.scope === 'selected' && before.chosen.some((r) => r.private))) ? null : 0,
   classify: ({ args }) => ({ production: `applies security settings to ${args.scope === 'selected' ? 'the named repositories' : `${args.scope.replace(/_/g, ' ')} repositories`} of the organization` }),
   summarize: ({ args, target: t, before }) => (before.current
-    ? `Attach configuration "${before.current.name}" to ${args.scope === 'selected' ? args.repositories.join(', ') : `${args.scope.replace(/_/g, ' ')} repositories`} of ${t.owner}${before.current.paid ? ' (it has PAID settings: only public repositories are allowed)' : ''}; GitHub applies it in the background`
+    ? `Attach configuration "${before.current.name}" to ${args.scope === 'selected' ? args.repositories.join(', ') : `${args.scope.replace(/_/g, ' ')} repositories`} of ${t.owner}${before.current.paid ? ' (PAID settings: private targets can create unbounded future active-committer charges)' : ''}; GitHub applies it in the background`
     : `Configuration ${args.configurationId} was not found`),
   apply: async ({ args, ctx, target: t, before }) => {
     if (!before.current) throw refusal('That configuration was not found; nothing was attached.', 404);
-    if (before.current.paid && args.scope !== 'public' && !(args.scope === 'selected' && before.chosen.every((r) => !r.private))) throw refusal(PAID_REFUSAL('Attaching this configuration like that'));
     if (args.scope === 'selected' && before.chosen.every((r) => before.attached.some((a) => a.id === r.id))) throw refusal('Those repositories already have this configuration; nothing to do.');
     return (await octo(ctx, t.owner)).request(`POST ${ONE}/attach`, { org: t.owner, configuration_id: args.configurationId, scope: args.scope, ...(args.scope === 'selected' ? { selected_repository_ids: before.chosen.map((r) => r.id) } : {}) });
   },
@@ -136,17 +147,18 @@ const defaults = defineGithubWrite({
   name: 'github_security_config_default', area: 'security', audience: ['O'],
   description: 'Choose which new repositories get a code-security configuration by default (all, public, private and internal, or none).',
   properties: { org: ORG, configurationId: ID, newRepos: { type: 'string', enum: ['all', 'none', 'private_and_internal', 'public'] } }, required: ['configurationId', 'newRepos'],
-  declarations: decl(), target: orgTarget,
+  declarations: decl({ spend: true }), target: orgTarget,
   read: async (args, ctx, t) => {
     const list = (await (await octo(ctx, t.owner)).request(`GET ${BASE}/defaults`, { org: t.owner })).data ?? [];
     return { current: shapeConfig(await getConfig(ctx, t, args.configurationId)), today: list.find((d) => d.configuration?.id === args.configurationId)?.default_for_new_repos ?? 'none' };
   },
+  price: ({ args, before }) => before?.current?.paid &&
+    ['all', 'private_and_internal'].includes(args.newRepos) ? null : 0,
   classify: () => ({ production: 'changes the security settings every NEW repository starts with' }),
   summarize: ({ args, before }) => (before.current ? `Make "${before.current.name}" the default for ${args.newRepos} new repositories (today: ${before.today})` : `Configuration ${args.configurationId} was not found`),
   apply: async ({ args, ctx, target: t, before }) => {
     if (!before.current) throw refusal('That configuration was not found; nothing was changed.', 404);
     if (before.today === args.newRepos) throw refusal(`It is already the default for ${args.newRepos} new repositories; nothing to do.`);
-    if (before.current.paid && !['public', 'none'].includes(args.newRepos)) throw refusal(PAID_REFUSAL('Making this configuration the default for new private repositories'));
     return (await octo(ctx, t.owner)).request(`PUT ${ONE}/defaults`, { org: t.owner, configuration_id: args.configurationId, default_for_new_repos: args.newRepos });
   },
   readAfter: async ({ args, ctx, target: t }) => {
