@@ -76,8 +76,10 @@ const sponsorshipChange = (paid) => defineGithubWrite({
     const tier=tiers.find(x=>x.id===a.tierId);
     if(a.action==='start'&&(!tier||!Number.isSafeInteger(tier.monthlyPriceInCents)||tier.monthlyPriceInCents<100))
       throw refusal('The selected published tier and its provider price cannot be independently verified.');
-    if(a.action==='start'&&existing.active)throw refusal('A sponsorship is already active; do not create a duplicate paid subscription.');
-    if(a.action!=='start'&&!existing.active)throw refusal('No active sponsorship exists for that recipient.');
+    // Preserve a valid preflight snapshot even if the provider is already at the
+    // requested state. The write layer must check its durable request key FIRST so
+    // an identical financial call replays instead of being refused early.
+    // New requests with different keys are rejected below, before any mutation.
     return {...existing,tier:tier??null};
   },
   ...(paid?{price:({before:b})=>b?.tier?.monthlyPriceInCents??NaN}:{}),
@@ -91,6 +93,14 @@ const sponsorshipChange = (paid) => defineGithubWrite({
       '; payer authorization and GitHub price/readback required';
   },
   apply:async({args:a,ctx,target:t,before:b})=>{
+    if(a.action==='start'&&before.active)
+      throw refusal('A sponsorship is already active; this new intent cannot create a duplicate charge.');
+    if(a.action!=='start'&&!before.active)
+      throw refusal('No active sponsorship exists for that recipient.');
+    if(a.action==='preferences'&&
+      (a.privacyLevel===undefined||before.active.privacyLevel===a.privacyLevel)&&
+      (a.receiveEmails===undefined||before.active.isSponsorOptedIntoEmail===a.receiveEmails))
+      throw refusal('Sponsorship preferences already match; no change to send.');
     const gh=await identity(ctx,t);
     // One provider-side mutation only. Ambiguous errors are never replayed.
     if(a.action==='start'){

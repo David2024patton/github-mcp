@@ -68,7 +68,7 @@ const exclusionsGet = defineRead({
 const exclusionsSet=defineGithubWrite({
   name:'github_copilot_content_exclusions_set',area:'copilot',audience:['O'],
   description:'Replace explicitly approved Copilot exclusion paths with a verified readback; removing exclusions can expose code.',
-  properties:{owner:OWNER,rules:{type:'object',description:'Complete replacement map of repository names to exclusion paths',additionalProperties:{type:'array',maxItems:200,uniqueItems:true,items:{type:'string',minLength:1,maxLength:500}}}},
+  properties:{owner:OWNER,rules:{type:'object',maxProperties:100,description:'Complete replacement map of repository names to exclusion paths',additionalProperties:{type:'array',maxItems:200,uniqueItems:true,items:{type:'string',minLength:1,maxLength:500}}}},
   required:['rules'],
   declarations:{production:'always',confirm:'always',accessWidening:true,profiles:['full']},
   target:org,

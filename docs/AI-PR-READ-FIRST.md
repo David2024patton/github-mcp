@@ -1,6 +1,6 @@
 # Read before any PR that touches credentials, secrets, guards, production, access, spend, login or passes
 
-Blocking review input, in the spirit of the Stripe MCP's and Appliance Desk's audit notes. There is no automated review
+**Owner clarification 2026-10-16:** This checklist protects the developer during engineering, and preserves genuine user-selected delegation restrictions. It cannot be read as a permanent denial of paid, production, destructive or security-sensitive capabilities for a validly authorized end user; [END-USER-AUTHORITY.md](END-USER-AUTHORITY.md) governs conflicts.\n\nBlocking review input, in the spirit of the Stripe MCP's and Appliance Desk's audit notes. There is no automated review
 in this repo (IN-01): write one line per applicable item in the PR description under "Self-review", saying how it is
 honored. A blocking item that is not honored is fixed in the same PR, never deferred.
 
@@ -52,9 +52,7 @@ honored. A blocking item that is not honored is fixed in the same PR, never defe
     before and after.
 15. Notifications reaching anyone outside Chris's own people (IN-13) need `confirm`; the preview shows the exact text
     and who is notified.
-16. Spend: dollar estimate from `src/github/prices.js` (source URL and date per price), always `confirm`, counted
-    against the monthly limit (default $0, IN-09); the limit is raised only on the setup page. Tests use fakes only;
-    nothing is ever bought from a test or script.
+16. Spend: show sourced dollar estimate where GitHub makes it verifiable, otherwise explicitly warn that ongoing charges are unknown and may be unbounded. Always obtain confirmation and respect the end user's **explicitly configured** spending cap/RTC pass limits. Legacy developer default $0 is not a user cap (END-USER-AUTHORITY); the development/test agent's own budget remains $0. Never buy from tests or scripts.
 17. Read-back decides `confirmed`; a tool never says "done" from the request alone. Request-key replay means a retried
     call cannot write twice.
 

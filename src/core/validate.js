@@ -44,10 +44,17 @@ function check(spec, value, path, depth) {
     case 'object': {
       if (typeof value !== 'object' || value === null || Array.isArray(value)) return `${label} must be an object.`;
       const props = spec.properties ?? {};
+      if (spec.maxProperties !== undefined && Object.keys(value).length > spec.maxProperties)
+        return `${label} has too many properties.`;
       for (const key of spec.required ?? []) if (!(key in value)) return `${key} is required.`;
       for (const [key, item] of Object.entries(value)) {
         if (!Object.hasOwn(props, key)) {
           if (spec.additionalProperties === true) continue;
+          if (spec.additionalProperties && typeof spec.additionalProperties === 'object') {
+            const problem = check(spec.additionalProperties, item, path ? `${path}.${key}` : key, depth + 1);
+            if (problem) return problem;
+            continue;
+          }
           return `Unknown argument: ${key.slice(0, 40)}.`;
         }
         const problem = check(props[key], item, path ? `${path}.${key}` : key, depth + 1);
