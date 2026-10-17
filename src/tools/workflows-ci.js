@@ -17,8 +17,14 @@ async function select(a,ctx){
     await call(ctx,'github_commit_get',{...scope(a),ref:a.ref});
   const sha=a.pr?source?.head_sha:source?.sha;
   if(!/^[a-f0-9]{40}$/i.test(sha??''))throw new TypeError('The requested PR/ref head is unreadable.');
-  const listed=await call(ctx,'github_actions_list_runs',{...scope(a),headSha:sha,max:50,detail:'full'});
-  if(bad(listed)||!Array.isArray(listed.items))throw new TypeError('Head-specific run inventory is incomplete.');
+  // Full provider run records can exceed the bounded result budget before the
+  // workflow sees even one item. Select only the exact-head identity fields;
+  // fetch each selected run's jobs separately before interpreting a failure.
+  const listed=await call(ctx,'github_actions_list_runs',{...scope(a),headSha:sha,
+    max:50,detail:'full',fields:['id','workflow_id','head_sha','head_branch','status','conclusion']});
+  if(bad(listed)||!Array.isArray(listed.items)||listed.items.length>=50||
+    (Number.isInteger(listed.count)&&listed.count!==listed.items.length))
+    throw new TypeError('Head-specific run inventory is incomplete.');
   if(listed.items.some(r=>r.head_sha!==sha))throw new TypeError('Run inventory includes another commit.');
   // Latest attempt/run per workflow, so an obsolete failure does not mask a newer pass.
   const workflows=new Map();
@@ -54,7 +60,7 @@ const signature=job=>job.logs_readable&&job.error_lines?.length?
   JSON.stringify([job.failed_steps.map(s=>s.name),job.error_lines]):null;
 async function baseline(a,ctx,run,repo,start){
   if(!repo?.default_branch||!Number.isInteger(run.workflow_id)||ended(ctx,start))return null;
-  const listing=await call(ctx,'github_actions_list_runs',{...scope(a),workflow:String(run.workflow_id),branch:repo.default_branch,max:1,detail:'full'});
+  const listing=await call(ctx,'github_actions_list_runs',{...scope(a),workflow:String(run.workflow_id),branch:repo.default_branch,max:1,detail:'full',fields:['id','workflow_id','head_sha','head_branch','status','conclusion']});
   // max 1 intentionally requests the newest run; older runs are not baseline candidates.
   const latest=listing?.items?.[0];
   if(!latest||latest.workflow_id!==run.workflow_id||latest.head_branch!==repo.default_branch)return null;
@@ -66,7 +72,10 @@ async function baseline(a,ctx,run,repo,start){
 export async function ciFailureSummary(a,ctx){
   const start=ctx.now();
   try{
-    const selected=await select(a,ctx),repo=await call(ctx,'github_repo_get',scope(a)),runs=[];
+    const selected=await select(a,ctx);
+    if(!selected.length)return {done:false,status:'no_runs',runs:[],
+      next_action:'No GitHub Actions workflow run exists at this exact PR/ref head; no CI diagnosis or passing CI claim can be made.'};
+    const repo=await call(ctx,'github_repo_get',scope(a)),runs=[];
     for(const item of selected){
       if(ended(ctx,start))return {done:false,status:'pending',runs,next_action:'Budget exhausted; inspect one remaining runId directly.'};
       const run=await getRun(a,ctx,item.id);
@@ -84,7 +93,8 @@ export async function ciFailureSummary(a,ctx){
           return {...job,same_failure_on_default:same,baseline_job:other?.id??null};
         }),html_url:run.html_url});
     }
-    return {done:runs.every(r=>r.complete&&r.status==='completed'),status:'observed',runs,
+    const complete=runs.length>0&&runs.every(r=>r.complete&&r.status==='completed');
+    return {done:complete,status:complete?'observed':'partial',runs,
       next_action:'Use observed errors to reproduce/fix locally. A guarded automatic failed-job rerun is allowed only once for a workflow/head.'};
   }catch(e){return {done:false,status:'unreadable',reason:e instanceof TypeError?e.message:'CI evidence could not be read.'};}
 }
