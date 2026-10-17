@@ -129,7 +129,7 @@ for(const c of contracts)
     accessWidening:c.accessWidening??false,notifies:c.notifies??[]});
 async function invoke(w,name,args={}){
   const dispatch=createDispatch({env:w.ctx.env,credentials:w.credentials,
-    fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep,gates:[]});
+    fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep,gates:w.ctx.gates});
   const response=await dispatch({registry,name,args,connection:w.connection,db:w.db});
   return response.structuredContent??(response.isError?
     {done:false,error:response.content?.[0]?.text}:parse(response));
