@@ -197,7 +197,6 @@ export function createDb(sql = productionSql()) {
       // Distinguish a user-selected restriction from the legacy default without
       // discarding positive caps that were deliberately configured.
       await sql`ALTER TABLE gh_accounts ADD COLUMN IF NOT EXISTS spend_limit_explicit BOOLEAN NOT NULL DEFAULT FALSE`;
-      await sql`UPDATE gh_accounts SET spend_limit_explicit = TRUE WHERE spend_limit_cents > 0 AND spend_limit_explicit = FALSE`;
       await sql`CREATE TABLE IF NOT EXISTS gh_installation_tokens (
         installation_id BIGINT NOT NULL,
         scope_key TEXT NOT NULL,

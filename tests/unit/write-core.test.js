@@ -36,7 +36,7 @@ describe('defining a write tool', () => {
   });
   it('classifies and marks consistently', () => {
     const decl = { production: 'when-target' };
-    expect(normalizeClassification({}, { declarations: decl })).toEqual({ production: null, accessWidening: null, notifies: [], spendCents: 0 });
+    expect(normalizeClassification({}, { declarations: decl })).toEqual({ production: null, accessWidening: null, notifies: [], spendCents: 0, spendUnknown: false });
     expect(normalizeClassification({}, { readFailed: true, declarations: decl }).production).toContain('could not be read');
     expect(normalizeClassification({}, { declarations: { production: 'always' } }).production).toContain('always');
     expect(normalizeClassification({ spendCents: -5, notifies: 'x' }, { declarations: decl })).toMatchObject({ spendCents: 0, notifies: [] });

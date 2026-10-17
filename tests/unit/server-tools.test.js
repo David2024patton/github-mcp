@@ -47,7 +47,7 @@ describe('github_whoami', () => {
     expect(out).toMatchObject({ mode: 'PREVIEW', profile: 'read_only', listing: 'compact', default_account: 'example-org', api_version: '2026-03-10' });
     expect(out.accounts.map((a) => a.login).sort()).toEqual(['example-org', 'example-user']);
     const org = out.accounts.find((a) => a.login === 'example-org');
-    expect(org).toMatchObject({ is_default: true, credentials: { I: true, U: true, K: true }, production_enabled: false, spend_limit: '$0.00', spend_limit_cents: 0 });
+    expect(org).toMatchObject({ is_default: true, credentials: { I: true, U: true, K: true }, production_enabled: false, spend_limit: 'not configured', spend_limit_cents: null, spend_limit_explicit: false });
     expect(org.rate_core.remaining).toBe(4321);
     expect(org.rate_core.resets_at).toMatch(/Oct 10, 2026/);
     expect(out.accounts.find((a) => a.login === 'example-user').credentials).toEqual({ I: true, U: false, K: false });

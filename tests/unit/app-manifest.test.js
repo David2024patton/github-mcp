@@ -15,12 +15,13 @@ describe('app manifest', () => {
       if (schema[name]) expect(schema[name].enum, name).toContain(level);
       expect(['read', 'write']).toContain(level);
     }
-    expect(Object.keys(MANIFEST_PERMISSIONS).filter((name) => !schema[name]).sort()).toEqual(DOCS_ONLY);
+    expect(Object.keys(MANIFEST_PERMISSIONS).filter((name) => !schema[name]).sort()).toEqual(
+      [...DOCS_ONLY,...(schema.organization_copilot_agent_settings?[]:['organization_copilot_agent_settings'])].sort());
     expect(Object.keys(MANIFEST_PERMISSIONS).length).toBe(Object.keys(REPOSITORY_PERMISSIONS).length + Object.keys(ORGANIZATION_PERMISSIONS).length);
   });
 
   it('asks for the minimum on the sensitive ones: metadata, attestations and organization reads are read-only, no account permissions', () => {
-    expect(MANIFEST_PERMISSIONS).toMatchObject({ metadata: 'read', attestations: 'read', organization_administration: 'read', organization_plan: 'read', organization_custom_org_roles: 'read' });
+    expect(MANIFEST_PERMISSIONS).toMatchObject({ metadata: 'read', attestations: 'read', organization_administration: 'write', organization_copilot_agent_settings: 'write', organization_plan: 'read', organization_custom_org_roles: 'read' });
     for (const account of ['emails', 'email_addresses', 'followers', 'gists', 'keys', 'git_ssh_keys', 'gpg_keys', 'profile', 'starring', 'watching', 'blocking', 'plan']) {
       expect(MANIFEST_PERMISSIONS[account], account).toBeUndefined();
     }

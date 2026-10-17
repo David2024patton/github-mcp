@@ -117,6 +117,7 @@ const sponsorshipChange = (paid) => defineGithubWrite({
 });
 const sponsorSet=sponsorshipChange(true);
 const sponsorChange=sponsorshipChange(false);
+export const sponsorDocuments={tiers:TIERS_QUERY,state:SPONSOR_QUERY,start:CREATE,cancel:CANCEL,preferences:PREFS};
 export const tools=[sponsorGet.tool,sponsorSet.tool,sponsorChange.tool];
 export const handlers={
   [sponsorGet.tool.name]:sponsorGet.handler,
