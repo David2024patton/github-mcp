@@ -71,6 +71,10 @@ describe('org admin extras', () => {
       const write = await run(w, 'github_org_network_config_save',
         { owner: O, name: 'safe-vnet', computeService: 'actions', networkSettingsIds: ['NS1'], confirm: true });
       expect(write.body.done).not.toBe(true);
+      expect(write.body).toMatchObject({ status: 'refused_by_guard', refusedBy: 'read' });
+      expect(write.body.error).toMatch(code === 403
+        ? /not allowed|permission|App/i : /not found|cannot see|does not exist/i);
+      expect(write.body.error).not.toContain('not_available_on_plan');
       expect(w.gh.calls.filter(c => ['POST', 'PUT', 'PATCH', 'DELETE'].includes(c.method))).toHaveLength(0);
       expect(w.gh.invalid).toEqual([]);
     }
