@@ -56,7 +56,7 @@ describe('U-1 pinned operation index and read boundary',()=>{
     const refused=parse(await dispatch(w,'github_api_write',api(merge.route,{...scope,pull_number:7},{})));
     expect(refused.status).toBe('refused');
     expect(w.gh.calls).toEqual([]);
-    expect(()=>universalPrice({method:'POST',path:'/orgs/{org}/copilot/billing/selected_users',summary:'Buy Copilot seats'})).toThrow(/Cost/);
+    expect(universalPrice({method:'POST',path:'/orgs/{org}/copilot/billing/selected_users',summary:'Buy Copilot seats'})).toBeNull();
     expect(classifyUniversal({method:'POST',path:'/orgs/{org}/mystery',summary:'Unknown'}).accessWidening).toBe(true);
   });
   it('enforces connected scope and explicitly U credential for /user endpoints',async()=>{
@@ -119,8 +119,8 @@ describe('U-1 refusal and effect uncertainty',()=>{
   });
 });
 
-describe('U-1 genuine zero-spend boundary',()=>{
-  it('allows a confirmed free operation to reach the confirmation phase at an actual zero spend limit',async()=>{
+describe('U-1 actual user authority and uncertain-cost boundary',()=>{
+  it('unselected developer budget does not impose a product-spend cap on an unknown-cost operation',async()=>{
     const w=await makeWorld({profile:'full',mode:'production',gates:[spendGate()]});
     setRead(w,'GET /repos/{owner}/{repo}/interaction-limits',{limit:'existing',expiry:'one_day'});
     const out=parse(await dispatch(w,'github_api_write',api(route,scope,payload)));
@@ -128,7 +128,46 @@ describe('U-1 genuine zero-spend boundary',()=>{
     expect(out.needsConfirmation).toBe(true);
     expect(noChange(w.gh)).toBe(true);
   });
-  it('refuses cost-uncertain write operations before acquiring a provider credential',()=>{
-    expect(()=>universalPrice({method:'POST',path:'/repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches',summary:'Trigger a run'})).toThrow(/Cost/);
+  it('does not misclassify an unknown non-curated write as free by its innocent name',()=>{
+    expect(universalPrice(restOperation(route))).toBeNull();
+    const exactFree=restOperation('PUT /orgs/{org}/actions/oidc/customization/sub');
+    expect(universalPrice(exactFree)).toBe(0);
+    expect(classifyUniversal(exactFree).spendRisk).toBe(false);
+    expect(classifyUniversal(restOperation(route)).spendRisk).toBe(true);
+  });
+  it('refuses unknown future charges under an explicit selected $0 product budget before any PUT',async()=>{
+    const w=await makeWorld({profile:'full',mode:'production',gates:[spendGate()]});
+    await w.db.setSpendLimitCents('example-org',0);
+    setRead(w,'GET /repos/{owner}/{repo}/interaction-limits',
+      {limit:'existing',expiry:'one_day'});
+    const out=parse(await dispatch(w,'github_api_write',{...api(route,scope,payload),confirm:true}));
+    expect(out).toMatchObject({status:'refused_by_guard',refusedBy:'spend limit'});
+    expect(noChange(w.gh)).toBe(true);
+  });
+  it('refuses unknown future charges under a selected positive cap while keeping full confirmation for uncapped users',async()=>{
+    const w=await makeWorld({profile:'full',mode:'production',gates:[spendGate()]});
+    await w.db.setSpendLimitCents('example-org',50000);
+    setRead(w,'GET /repos/{owner}/{repo}/interaction-limits',
+      {limit:'existing',expiry:'one_day'});
+    const out=parse(await dispatch(w,'github_api_write',{...api(route,scope,payload),confirm:true}));
+    expect(out).toMatchObject({status:'refused_by_guard',refusedBy:'spend limit'});
+    expect(noChange(w.gh)).toBe(true);
+    const uncapped=await makeWorld({profile:'full',mode:'production',gates:[spendGate()]});
+    setRead(uncapped,'GET /repos/{owner}/{repo}/interaction-limits',
+      {limit:'existing',expiry:'one_day'});
+    const ready=parse(await dispatch(uncapped,'github_api_write',api(route,scope,payload)));
+    expect(ready).toMatchObject({status:'needs_confirmation',needsConfirmation:true});
+    expect(ready.preview).toContain('COST UNKNOWN');
+    expect(noChange(uncapped.gh)).toBe(true);
+  });
+  it('enforces unknown-cost RTC pass allowance independently of the pass write-permission layer',async()=>{
+    const w=await makeWorld({profile:'full',mode:'production',gates:[spendGate()]});
+    const ctx={...w.ctx,connection:{...w.ctx.connection,
+      pass:true,spend_limit_cents:12000,client_id:'finite-universal-pass'}};
+    const verdict=await spendGate()({name:'github_api_write',args:api(route,scope,payload),
+      ctx,target:{owner:'example-org',repo:'hello'},
+      classification:{spendUnknown:true,spendCents:0},declarations:{spend:true}});
+    expect(verdict).toMatchObject({by:'pass spend allowance'});
+    expect(noChange(w.gh)).toBe(true);
   });
 });
