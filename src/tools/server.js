@@ -51,7 +51,9 @@ async function whoami(args, ctx) {
     const entry = {
       login: row.login, label: row.label, type: row.account_type, is_default: row.login.toLowerCase() === ctx.connection.default_account.toLowerCase(),
       credentials: credentialsOf(row), production_enabled: !!row.production_enabled,
-      spend_limit: dollars(row.spend_limit_cents), spend_limit_cents: row.spend_limit_cents ?? 0,
+      spend_limit: row.spend_limit_explicit || row.spend_limit_cents > 0 ? dollars(row.spend_limit_cents) : 'not configured',
+      spend_limit_cents: row.spend_limit_explicit || row.spend_limit_cents > 0 ? row.spend_limit_cents : null,
+      spend_limit_explicit: row.spend_limit_explicit === true || row.spend_limit_cents > 0,
       rate_core: rate ? { remaining: rate.remaining, resets_at: when(rate.reset_at), blocked_until: when(rate.blocked_until) } : { remaining: null, note: 'No call made yet' }
     };
     if (args.detail === 'full') Object.assign(entry, { setup: installationLabel(row), repository_selection: row.repository_selection ?? null, user_login: row.user_login ?? null, plan: row.plan_name ?? null });
@@ -291,7 +293,7 @@ const disableProduction = defineGithubWrite({
 const setSpendLimit = defineGithubWrite({
   name: 'github_set_spend_limit',
   area: 'server', audience: ['O'],
-  description: 'Lower an account\'s monthly spend limit (0 blocks all spending). Raising it is only possible on the setup page.',
+  description: 'Set an optional monthly spending cap (0 prevents spend); later increases to chosen caps require setup-page authorization.',
   properties: { account: { type: 'string', maxLength: 39 }, limitCents: { type: 'integer', minimum: 0, maximum: 100000000, description: 'New monthly limit in cents (1000 = $10.00)' } },
   required: ['account', 'limitCents'],
   declarations: { production: 'never', confirm: 'always', cred: '—', profiles: ['full'] },
@@ -299,7 +301,7 @@ const setSpendLimit = defineGithubWrite({
   read: async (args, ctx) => spendStatus(ctx, args.account),
   classify: () => ({}),
   summarize: ({ args, before }) => (before
-    ? `Set the monthly spend limit for ${args.account} to ${money(args.limitCents)} (today ${money(before.limitCents)}; ${money(before.usedCents)} spent so far this month)`
+    ? `Set an explicit monthly spending cap for ${args.account} to ${money(args.limitCents)} (today ${before.limitEnabled ? money(before.limitCents) : 'no user-selected cap'}; ${money(before.usedCents)} tracked so far)`
     : `There is no connected account called "${args.account}"`),
   apply: async ({ args, ctx, before }) => {
     if (!before) throw noAccount(args.account);

@@ -1,7 +1,7 @@
-// The spend guard (B4). Anything that costs money (Copilot seats, Codespaces, paid security features, raised budgets) is `$`:
-// the preview shows the dollar estimate, it always asks first, and it must fit the account's monthly spend limit (default $0, so
-// every `$` tool is refused until the owner raises the limit on the setup page). The month is the calendar month in Denver.
-// The amount comes from tool classification (prices in `src/github/prices.js`), never from an argument.
+// B4 spending: the developer's $0 budget is NOT an end-user product restriction.
+// Users may choose an explicit monthly limit; otherwise price-known or price-unknown
+// actions are available under their delegated production/approval policy with a truthful warning.
+// RTC passes are separately scoped grants and their configured limits still apply.
 import { dollars } from '../github/prices.js';
 
 const DENVER = 'America/Denver';
@@ -29,8 +29,12 @@ export async function spendStatus(ctx, login) {
   const now = (ctx.now ?? Date.now)();
   const since = denverMonthStart(now);
   const limitCents = Number(row.spend_limit_cents) || 0;
+  // Historical default-zero accounts were not explicit product budgets. Positive legacy
+  // preferences are migrated as explicitly configured; future changes set this flag.
+  const limitEnabled = row.spend_limit_explicit === true || limitCents > 0;
   const usedCents = await ctx.db.sumSpendCents(row.login, since);
-  return { login: row.login, limitCents, usedCents, remainingCents: Math.max(0, limitCents - usedCents), since };
+  return { login: row.login, limitEnabled, limitCents, usedCents,
+    remainingCents: limitEnabled ? Math.max(0, limitCents - usedCents) : null, since };
 }
 
 /** The gate for `src/tools/gates.js`. It also enforces "the spend limit tool can only lower the limit". */
@@ -38,27 +42,34 @@ export function spendGate() {
   return async ({ name, args, ctx, target, classification, declarations }) => {
     if (name === 'github_set_spend_limit') {
       const status = await spendStatus(ctx, target.owner);
-      if (status && Number.isSafeInteger(args.limitCents) && args.limitCents > status.limitCents) {
+      if (status?.limitEnabled && Number.isSafeInteger(args.limitCents) && args.limitCents > status.limitCents) {
         return { refuse: `The limit is ${dollars(status.limitCents)} and this would raise it to ${dollars(args.limitCents)}. Only the setup page (with your passphrase) can raise it; this tool can only lower it.`, by: 'spend limit' };
       }
       return null;
     }
-    if (!declarations?.spend && !(classification.spendCents > 0)) return null;
+    if (!declarations?.spend && !(classification.spendCents > 0) && !classification.spendUnknown) return null;
     const status = await spendStatus(ctx, target.owner);
     if (!status) return { refuse: `${target.owner} is not a connected account, so its spend limit is unknown.`, by: 'spend limit' };
+    const unknown = classification.spendUnknown === true;
     const cost = classification.spendCents || 0;
-    if (status.limitCents <= 0) {
+    if (status.limitEnabled && status.limitCents <= 0) {
       return { refuse: `This costs money (${cost ? `about ${dollars(cost)} a month` : 'an amount GitHub bills'}) and the monthly spend limit for ${status.login} is $0.00. To allow spending, raise the limit on the setup page with your passphrase.`, by: 'spend limit' };
     }
-    if (status.usedCents + cost > status.limitCents) {
+    if (status.limitEnabled && unknown) return { refuse: `Your explicit ${dollars(status.limitCents)} monthly limit cannot be proven safe for unknown future charges. Change that user-selected limit or use a bounded operation.`, by: 'spend limit' };
+    if (status.limitEnabled && status.usedCents + cost > status.limitCents) {
       return { refuse: `This would cost about ${dollars(cost)}; ${dollars(status.usedCents)} of the ${dollars(status.limitCents)} monthly limit for ${status.login} is already used this month (${dollars(status.remainingCents)} left). Raise the limit on the setup page if you want this.`, by: 'spend limit' };
     }
     if (ctx.connection?.pass === true) {
       const cap = Number(ctx.connection.spend_limit_cents) || 0;
       const used = await ctx.db.sumSpendCents(status.login, status.since, ctx.connection.client_id);
-      if (cap <= 0) return { refuse: 'This pass has no spend allowance, so it cannot make a change that costs money.', by: 'pass spend allowance' };
+      if (cap <= 0) return { refuse: 'This user-issued pass has no spend allowance. Reissue the pass with the desired spending delegation.', by: 'pass spend allowance' };
+      if (unknown) return { refuse: 'This pass has a numerical spending ceiling; unknown future charges cannot be bounded to it. Use a properly authorized full end-user connection or a verifiably bounded operation.', by: 'pass spend allowance' };
       if (used + cost > cap) return { refuse: `This pass may spend ${dollars(cap)} in total this month and has used ${dollars(used)}; this would cost about ${dollars(cost)}.`, by: 'pass spend allowance' };
     }
-    return { confirm: `This costs about ${dollars(cost)}; ${dollars(status.usedCents)} of ${dollars(status.limitCents)} is used this month for ${status.login}.` };
+    return { confirm: unknown
+      ? `GitHub may charge for this operation now and during later usage. No maximum future charge is guaranteed. You are acting as ${status.login}; check your billing controls before authorizing.`
+      : status.limitEnabled
+        ? `GitHub may charge ${dollars(cost)}; ${dollars(status.usedCents)} of your chosen ${dollars(status.limitCents)} monthly limit was used this month.`
+        : `GitHub may charge about ${dollars(cost)}; this account has no user-configured MCP spending cap. Confirm with the account's actual delegated authority.` };
   };
 }

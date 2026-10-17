@@ -44,13 +44,10 @@ const agentPolicySet = defineGithubWrite({
   declarations: { production:'always', confirm:'always', accessWidening:true, profiles:['full'] },
   target: org,
   read: async (a,c,t) => { await enrolled(c,t); const x=await request(c,t,POLICY); if(!['none','selected','all'].includes(policyValue(x))) throw refusal('Policy baseline unreadable.'); return x; },
-  classify: ({args:a,before:b}) => ({ ...((policyValue(b)==='none' && a.enabledRepositories!=='none') || (a.enabledRepositories==='all' && policyValue(b)!=='all') ? { accessWidening:'allows cloud agents in more repositories' } : {}), production:'changes organization Copilot agent permissions' }),
+  classify: ({args:a,before:b}) => ({ ...((policyValue(b)==='none' && a.enabledRepositories!=='none') || (a.enabledRepositories==='all' && policyValue(b)!=='all') ? { accessWidening:'allows cloud agents in more repositories',spendUnknown:true } : {}), production:'changes organization Copilot agent permissions' }),
   summarize: ({args:a,before:b,target:t}) => 'Set cloud-agent repository policy for '+t.owner+' from '+policyValue(b)+' to '+a.enabledRepositories,
   apply: async ({args:a,ctx,target:t,before:b}) => {
     if(policyValue(b)===a.enabledRepositories) throw refusal('Cloud-agent policy already matches.');
-    // Enabling additional repositories may run a metered agent without a finite GitHub price ceiling.
-    if(a.enabledRepositories==='all' || (policyValue(b)==='none' && a.enabledRepositories==='selected'))
-      throw refusal('Enabling Copilot agent execution can incur unbounded usage. Use owner-reviewed GitHub settings until a provider-enforced cost ceiling is available.');
     return (await at(ctx,t)).request('PUT /orgs/{org}/copilot/coding-agent/permissions',{org:t.owner,enabled_repositories:a.enabledRepositories});
   },
   readAfter: ({ctx,target:t}) => request(ctx,t,POLICY),
@@ -128,7 +125,7 @@ const makeTeamSeats=(adding)=>defineGithubWrite({
   declarations:{production:'always',confirm:'always',accessWidening:adding,spend:adding,profiles:['full']},
   target:org,
   read:async(a,c,t)=>{await enrolled(c,t);return seatState(c,t,a.teamSlug);},
-  ...(adding?{price:({args:a,before:b})=>{
+  ...(adding?{price:({before:b})=>{
     if(!b||!Number.isInteger(b.members?.length))return NaN;
     const cents=PRICES[b.plan==='business'?'copilot_business_seat':'copilot_enterprise_seat']?.cents;
     if(!Number.isSafeInteger(cents))return NaN;

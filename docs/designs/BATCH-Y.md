@@ -4,6 +4,8 @@ Status: **APPROVED DESIGN — implement from this document** (owner request, Chr
 gaps and plan the missing work in enough detail that a smaller model can build it). Written 2026-10-16 against `main`
 `d743313` (merge of #225) by Claude. Cards Y-1 … Y-9. Scope and acceptance: `docs/PLAN.md` → Batch Y.
 
+**Owner correction 2026-10-16 — product capability versus development constraints.** Read [END-USER-AUTHORITY.md](../END-USER-AUTHORITY.md). Y3's historical default-$0 / "no provider ceiling" refusal applies to the developer's autonomous work, **not** as a permanent blocker on actual end users and their delegated agents. For unknown future metered charges, inform the end user that no maximum is guaranteed and honor that user's own chosen authorization/budget policy; where GitHub provides a supported write API, Y-9 must implement the callable action instead of leaving a website guide. Keep developer/test $0 and independent access/consent/security checks; this owner decision supersedes earlier conflicting product interpretations and is not acceptance evidence.
+
 **Plain-English summary for Chris.** The server already has 310 tools and "universal" tools meant to catch everything
 else. The audit found the universal tools are much narrower than advertised, and about 40 things you can do on
 github.com that an agent still cannot. Batch Y closes them in nine cards, ordered so each card unlocks the next.

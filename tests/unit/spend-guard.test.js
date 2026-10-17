@@ -30,6 +30,17 @@ describe('the start of the month in Denver', () => {
 });
 
 describe('the spend gate', () => {
+  it('does not mistake the old developer default $0 for an end-user selected restriction', async () => {
+    const w=await makeWorld({mode:'preview',profile:'everyday',gates:[spendGate()]});
+    arrange(w.gh);
+    const status=await spendStatus(w.ctx,'example-org');
+    expect(status.limitEnabled).toBe(false);
+    expect(status.remainingCents).toBeNull();
+    const preview=await run(w,seatArgs);
+    expect(preview.status).toBe('needs_confirmation');
+    expect(preview.preview).toContain('COSTS $19.00');
+    expect(w.gh.calls.every(c=>c.method==='GET')).toBe(true);
+  });
   it('refuses at the default $0 and says how to raise it', async () => {
     const w = await world(0);
     const res = await run(w, { ...seatArgs, confirm: true });

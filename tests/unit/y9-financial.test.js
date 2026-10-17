@@ -5,13 +5,14 @@ import * as sponsor from '../../src/tools/y9-sponsorship.js';
 import * as hosted from '../../src/tools/y9-hosted-runners.js';
 import * as agent from '../../src/tools/y9-agent-tasks.js';
 import { registry } from '../../src/tools/index.js';
+import { spendGate } from '../../src/tools/spend-guard.js';
 
 const defs=[...copilot.tools,...sponsor.tools,...hosted.tools,...agent.tools];
 const call=async (module,name,w,args)=>{ const reply=await module.handlers[name](args,w.ctx); return module.tools.find(x=>x.name===name)?.readContract?reply:parse(reply); };
 describe('Y-9d financial and Copilot integration',()=>{
   it('registers every named capability exactly once with its advertised permission profile',()=>{
     const names=defs.map(x=>x.name);
-    expect(new Set(names).size).toBe(14);
+    expect(new Set(names).size).toBe(15);
     for(const name of names){
       expect(registry.tools.some(x=>x.name===name)).toBe(true);
       const def=defs.find(x=>x.name===name);
@@ -54,15 +55,47 @@ describe('Y-9d financial and Copilot integration',()=>{
     expect(result.done).toBe(false);
     expect(w.gh.calls.every(x=>x.method!=='POST'||x.route!=='POST /graphql')).toBe(true);
   });
-  it('agent task plan never starts billable work, even for a valid repository',async()=>{
-    const w=await makeWorld({mode:'preview',profile:'read_only'});
+  it('a product user can preview metered cloud-agent execution without a fake cost or mutation',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
     w.gh.when('GET /user').reply(200,{id:10,login:'example-owner'});
     w.gh.when('GET /repos/{owner}/{repo}').reply(200,{
-      full_name:'example-org/test-repo',default_branch:'main',archived:false,disabled:false});
-    const result=await call(agent,'github_copilot_agent_task_plan',w,
-      {repo:'test-repo',prompt:'Review the pull request and add a test'});
-    expect(result.status).toBe('guided');
-    expect(result.completed).toBe(false);
+      id:100,full_name:'example-org/test-repo',default_branch:'main',archived:false,disabled:false});
+    w.gh.when('GET /repos/{owner}/{repo}/branches/{branch}')
+      .reply(200,{name:'main',commit:{sha:'a'.repeat(40)}});
+    const result=await call(agent,'github_copilot_agent_task_start',w,
+      {repo:'test-repo',prompt:'Review the pull request and add a test',dryRun:true});
+    expect(result.status).toBe('preview');
+    expect(result.preview).toContain('COST UNKNOWN');
+    expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);
+  });
+  it('a product user can preview runner creation with unknown future cost',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+    w.gh.when('GET /orgs/{org}/actions/hosted-runners/machine-sizes')
+      .reply(200,{machine_sizes:[{id:'4-core'}]});
+    w.gh.when('GET /orgs/{org}/actions/runner-groups')
+      .reply(200,{runner_groups:[{id:7,name:'Default'}]});
+    w.gh.when('GET /orgs/{org}/actions/hosted-runners')
+      .reply(200,{total_count:0,runners:[]});
+    const args={name:'team-linux',runnerGroupId:7,imageId:'ubuntu-latest',
+      imageSource:'github',size:'4-core'};
+    const preview=await call(hosted,'github_hosted_runner_create',w,{...args,dryRun:true});
+    expect(preview.status).toBe('preview');
+    expect(preview.preview).toContain('COST UNKNOWN');
+    expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);
+  });
+  it('a user-selected $0 limit refuses unknown metered charges',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+    await w.db.setSpendLimitCents('example-org',0);
+    w.gh.when('GET /orgs/{org}/actions/hosted-runners/machine-sizes')
+      .reply(200,{machine_sizes:[{id:'4-core'}]});
+    w.gh.when('GET /orgs/{org}/actions/runner-groups')
+      .reply(200,{runner_groups:[{id:7,name:'Default'}]});
+    w.gh.when('GET /orgs/{org}/actions/hosted-runners')
+      .reply(200,{total_count:0,runners:[]});
+    const out=await call(hosted,'github_hosted_runner_create',w,{name:'team-linux',
+      runnerGroupId:7,imageId:'ubuntu-latest',imageSource:'github',size:'4-core',confirm:true});
+    expect(out.status).toBe('refused_by_guard');
+    expect(out.refusedBy).toBe('spend limit');
     expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);
   });
 });

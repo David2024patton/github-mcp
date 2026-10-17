@@ -1,5 +1,5 @@
-// Y-9d GitHub-hosted runners. Creating a runner pool can incur unbounded billable minutes;
-// those operations remain a guided owner action until GitHub exposes an enforceable financial cap.
+// Y-9d hosted runners. Builder spending is $0; end-user authorized metered capacity
+// is executable through the normal user-controlled risk and approval guards.
 import { defineRead } from './define-read.js';
 import { defineGithubWrite } from './define-github-write.js';
 import { plain } from './github-read.js';
@@ -78,26 +78,81 @@ const hostedManage=defineGithubWrite({
   present:({args:a,after:x})=>({id:a.runnerId,action:a.action,observed:shape(x),
     note:a.action==='delete'?'Deletion is not confirmed until GitHub returns 404 on readback':null})
 });
-const hostedCreatePlan=defineRead({
-  name:'github_hosted_runner_create_plan',area:'actions',audience:['O'],
-  description:'Give exact owner steps for hosted-runner creation; no unpriced, unbounded billed compute is purchased by the agent.',
-  properties:{owner:OWNER,name:NAME},
-  handler:(a,c)=>plain(async()=>{
-    const t=target(a,c),client=await gh(c,t);
-    const [sizes,groups]=await Promise.all([
+const hostedCreate=defineGithubWrite({
+  name:'github_hosted_runner_create',area:'actions',audience:['O'],
+  description:'Create a real billed GitHub-hosted runner with confirmed exposure to metered compute, verified image, size and group.',
+  properties:{owner:OWNER,name:NAME,runnerGroupId:ID,
+    imageId:{type:'string',minLength:1,maxLength:120},
+    imageSource:{type:'string',enum:['github','partner','custom']},
+    imageVersion:{type:'string',minLength:1,maxLength:120},
+    size:{type:'string',minLength:1,maxLength:120},
+    maximumRunners:{type:'integer',minimum:1,maximum:1000},
+    enableStaticIp:{type:'boolean'}},
+  required:['name','runnerGroupId','imageId','imageSource','size'],
+  declarations:{production:'always',confirm:'always',spend:true,profiles:['full']},
+  target,
+  read:async(a,c,t)=>{
+    const client=await gh(c,t);
+    const [sizes,groups,existing]=await Promise.all([
       client.request('GET /orgs/{org}/actions/hosted-runners/machine-sizes',{org:t.owner}),
-      client.request('GET /orgs/{org}/actions/runner-groups',{org:t.owner,per_page:100})
-    ]);
-    return {status:'guided',completed:false,owner:t.owner,name:a.name??null,
-      available_sizes:sizes.data?.machine_sizes?.map(x=>x.id)??[],
-      groups:groups.data?.runner_groups?.map(x=>({id:x.id,name:x.name}))??[],
-      reason:'A hosted runner can consume metered minutes without a provider-enforced maximum dollar amount. The spend guard refuses an invented zero-cost estimate.',
-      url:'https://github.com/organizations/'+encodeURIComponent(t.owner)+'/settings/actions/runners',
-      steps:['Confirm price, billing budget and a finite usage ceiling with GitHub.','Choose a runner image, size, group, and strict maximum concurrency.','Create it in GitHub after a separate owner approval; use github_hosted_runner_list for fresh readback.']};
-  })
+      client.request('GET /orgs/{org}/actions/runner-groups',{org:t.owner,per_page:100}),
+      client.request('GET '+ROUTE,{org:t.owner,per_page:100})]);
+    if(!Array.isArray(sizes.data?.machine_sizes)||!sizes.data.machine_sizes.some(x=>x.id===a.size))
+      throw refusal('GitHub did not verify the requested hosted-runner machine size.');
+    if(!Array.isArray(groups.data?.runner_groups)||groups.data.runner_groups.length>=100||
+       !groups.data.runner_groups.some(x=>x.id===a.runnerGroupId))
+      throw refusal('GitHub did not verify the complete authorized runner-group inventory.');
+    if(!Array.isArray(existing.data?.runners)||existing.data.runners.length>=100||
+       existing.data.runners.some(x=>x.name?.toLowerCase()===a.name.toLowerCase()))
+      throw refusal('Runner name conflicts or hosted-runner inventory is incomplete.');
+    return {name:a.name,group:a.runnerGroupId,size:a.size,verified:true};
+  },
+  price:()=>null, // Explicitly unknown FUTURE metered bill, never interpreted as $0
+  classify:()=>({production:'creates billable GitHub-hosted runner compute'}),
+  summarize:({args:a,target:t})=>'Create billed hosted runner '+a.name+' in '+t.owner+
+    ', group '+a.runnerGroupId+', machine '+a.size+', scale ceiling '+(a.maximumRunners??'GitHub default')+
+    '. Metered GitHub costs have no guaranteed total dollar maximum',
+  apply:async({args:a,ctx,target:t})=>(await gh(ctx,t)).request('POST '+ROUTE,{
+    org:t.owner,name:a.name,runner_group_id:a.runnerGroupId,
+    image:{id:a.imageId,source:a.imageSource,...(a.imageVersion?{version:a.imageVersion}:{})},
+    size:a.size,maximum_runners:a.maximumRunners??1,
+    enable_static_ip:a.enableStaticIp??false}),
+  readAfter:async({ctx,target:t,response})=>{
+    const id=response?.data?.id;
+    if(!Number.isSafeInteger(id)||id<1)throw refusal('GitHub returned no hosted-runner identity; inspect the organization runner inventory.');
+    return one(ctx,t,id);
+  },
+  verify:({args:a,after:x})=>!!x&&x.name===a.name&&x.runner_group_id===a.runnerGroupId&&
+    x.machine_size_details?.id===a.size,
+  inverse:()=>null,
+  present:({after:x})=>({runner:shape(x),billing:'Metered charges depend on use; no maximum is guaranteed'})
 });
-export const tools=[hostedList.tool,hostedManage.tool,hostedCreatePlan.tool];
+
+const hostedScaleUp=defineGithubWrite({
+  name:'github_hosted_runner_scale_up',area:'actions',audience:['O'],
+  description:'Increase GitHub-hosted runner capacity after disclosure of unbounded metered usage and user-authorized confirmation.',
+  properties:{owner:OWNER,runnerId:ID,maximumRunners:{type:'integer',minimum:1,maximum:1000}},
+  required:['runnerId','maximumRunners'],
+  declarations:{production:'always',confirm:'always',spend:true,profiles:['full']},
+  target,
+  read:async(a,c,t)=>{const row=await one(c,t,a.runnerId);if(!row)throw refusal('Runner not found.');
+    if(!Number.isInteger(row.maximum_runners))throw refusal('Runner capacity unreadable.');
+    return row;},
+  price:()=>null,
+  classify:()=>({production:'increases potentially billable hosted runner concurrency'}),
+  summarize:({args:a,before:b,target:t})=>'Increase billed runner '+b.name+' in '+t.owner+
+    ' from '+b.maximum_runners+' to '+a.maximumRunners+' possible concurrent runners; no maximum future bill is guaranteed',
+  apply:async({args:a,ctx,target:t,before:b})=>{
+    if(a.maximumRunners<=b.maximum_runners)throw refusal('Use the non-spending manage tool for decreases.');
+    return (await gh(ctx,t)).request('PATCH '+ROUTE+'/{hosted_runner_id}',{
+      org:t.owner,hosted_runner_id:a.runnerId,maximum_runners:a.maximumRunners});
+  },
+  readAfter:({args:a,ctx,target:t})=>one(ctx,t,a.runnerId),
+  verify:({args:a,after:x})=>x?.maximum_runners===a.maximumRunners,
+  inverse:()=>null,present:({after:x})=>({runner:shape(x),billing:'Metered usage warning; the charge is not capped by MCP'})
+});
+export const tools=[hostedList.tool,hostedManage.tool,hostedCreate.tool,hostedScaleUp.tool];
 export const handlers=Object.fromEntries([
   [hostedList.tool,hostedList.handler],[hostedManage.tool,hostedManage.handler],
-  [hostedCreatePlan.tool,hostedCreatePlan.handler]
+  [hostedCreate.tool,hostedCreate.handler],[hostedScaleUp.tool,hostedScaleUp.handler]
 ].map(([tool,handler])=>[tool.name,handler]));

@@ -1,5 +1,9 @@
 # AGENTS.md — the rules. Read this first, every session.
 
+## Governing end-user authority — owner decision 2026-10-16
+
+Read [docs/END-USER-AUTHORITY.md](docs/END-USER-AUTHORITY.md) first. Developer-agent $0 autonomous spending, no live writes, production-off, fixture, acceptance and release restrictions are rules for **the agents building this project**. They are not product restrictions on the end user's coding agent. The finished GitHub MCP must enable every feasible GitHub action within the end user's genuine delegated permissions, including paid, production, security, admin and destructive actions, with honest notices and user-configured authorization. An unknown price is a disclosure, not a permanent guide-only excuse. Preserve all developer/testing restrictions while implementing the user capability. This latest owner instruction supersedes conflicting product interpretations of IN-09/B-4/Y3 and does not itself authorize developer spending or live mutation.
+
 ## Session entry and authority
 
 “Do N bundles” starts the complete procedure in [docs/SESSION-START.md](docs/SESSION-START.md).
