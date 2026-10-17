@@ -55,9 +55,19 @@ const prIsSafe=async(gh,run,owner,repo,objects,o,initial)=>{
 const ownedLabel=(id,name)=>typeof name==='string'&&
   (name==='rtc-run'||name===`rtc-run-${id}`);
 const getLabel=(gh,owner,repo,name)=>missing(async()=>(await gh.request('GET /repos/{owner}/{repo}/labels/{name}',{owner,repo,name})).data);
-const getPrLabel=(gh,owner,repo,n,name)=>missing(async()=>(await gh.request('GET /repos/{owner}/{repo}/issues/{issue_number}/labels/{name}',{
-  owner,repo,issue_number:n,name
-})).data);
+// GitHub has no GET by issue-label name. DELETE accepts /labels/{name}, but
+// reading ownership requires the actual paginated GET /issues/{number}/labels.
+// 404/403, truncation, or duplicate/ambiguous label names must never be
+// mistaken for an absent recorded association before a destructive cleanup.
+async function getPrLabel(gh,owner,repo,n,name) {
+  const {items,capped}=await listAll(gh,'GET /repos/{owner}/{repo}/issues/{issue_number}/labels',{
+    owner,repo,issue_number:n,per_page:100
+  },{max:100});
+  if(capped||!Array.isArray(items)||items.some(x=>typeof x?.name!=='string'||!x.name)||
+    new Set(items.map(x=>x.name.toLowerCase())).size!==items.length)
+    throw refusal('PR label listing is unreadable, incomplete or ambiguous; cleanup refused.');
+  return items.find(x=>x.name===name)??null;
+}
 function association(objects,run,o) {
   const m=/^([1-9][0-9]*):(rtc-run(?:-[a-z0-9-]+)?)$/.exec(o.object_id??'');
   if(!m||!Number.isSafeInteger(Number(m[1]))||!ownedLabel(run.id,m[2])||
