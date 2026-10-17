@@ -386,7 +386,7 @@ Card(s): H-4.
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_security_get_settings` | Repository security features: secret scanning, push protection, Dependabot alerts/updates, code security, private vulnerability reporting | — | F | I | O,B | R | H-4 built #195/#196/#224 |
-| `github_security_set_feature` | Turn a security feature on or off, including private vulnerability reporting (paid features on private repositories raise spend) | C·Prod | F | I | O | F | H-4 built #195/#196/#224 |
+| `github_security_set_feature` | Actually change permitted private/public security settings, including paid private activation after uncapped usage warning and confirmation | C·$*·Prod | F | I | O | F | H-4 built #195/#196/#224 |
 | `github_security_list_alerts` | Dependabot, code scanning or secret scanning alerts for a repo or org (kind chosen by argument) | — | C | I | O,B,Op | R | H-4 built #195/#196/#224 |
 | `github_security_get_alert` | One alert in plain words (secret scanning: the secret itself is never returned) | — | F | I | O,B | R | H-4 built #195/#196/#224 |
 | `github_security_update_alert` | Dismiss, resolve or reopen an alert with a reason | C·Prod | C | I | O,B | E | H-4 built #195/#196/#224 |
@@ -710,12 +710,12 @@ Card(s): Y-7. Advisory text never appears in a result or the change log (only a 
 | `github_security_advisory_publish` | Publish a draft advisory: PUBLIC, no undo, GHSA id typed twice | C·Prod | N | I | O | F | Y-7 |
 | `github_security_advisory_request_cve` | Request a CVE for an advisory (cannot be withdrawn) | C·Prod | N | I | O | F | Y-7 |
 | `github_security_report_vulnerability` | Privately report a vulnerability to another repository as you | C·M | N | U | O | F | Y-7 |
-| `github_security_code_scanning_default_setup` | Turn code scanning default setup on or off (private repositories refused) | C·Prod | N | I | O | F | Y-7 |
+| `github_security_code_scanning_default_setup` | Configure or disable code scanning even on paid private repos with actual user consent and unknown-cost disclosure | C·$*·Prod | N | I | O | F | Y-7 |
 | `github_security_secret_pattern_save` | Create, edit or delete a custom secret-scanning pattern for an organization or repository | C·Prod* | N | I | O | F | Y-7 |
 | `github_security_dependabot_org_settings` | Set which repositories Dependabot may read and the default access level | C·A | N | I | O | F | Y-7 |
-| `github_security_config_save` | Create or edit an organization code-security configuration | C·Prod* | N | I | O | F | Y-7 |
-| `github_security_config_attach` | Attach a configuration to repositories (paid ones only to public) | C·Prod | N | I | O | F | Y-7 |
-| `github_security_config_default` | Choose the configuration new repositories start with | C·Prod | N | I | O | F | Y-7 |
+| `github_security_config_save` | Create or edit an org code-security configuration; changes affecting private paid repos need informed approval | C·$*·Prod* | N | I | O | F | Y-7 |
+| `github_security_config_attach` | Attach code-security configurations, including private paid targets with uncapped-price notice and user cap enforcement | C·$*·Prod | N | I | O | F | Y-7 |
+| `github_security_config_default` | Choose security defaults for future public/private repos, including billed features with clear future-cost warning | C·$*·Prod | N | I | O | F | Y-7 |
 | `github_security_config_detach` | Detach the configuration from named repositories | C·Prod | N | I | O | F | Y-7 |
 | `github_security_config_delete` | Delete a configuration (name typed; no undo) | C·Prod | N | I | O | F | Y-7 |
 
