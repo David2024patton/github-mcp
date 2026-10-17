@@ -1,3 +1,7 @@
+## 2026-10-17 — security administration corrective source work
+
+A new H-4/Y-7 product-authority correction closes the repository-security switch gap and replaces an invalid Dependabot security-updates PATCH with GitHub's documented status/read/enable/disable routes. The provider's independent GET distinguishes disabled from unreadable permissions and reports paused state; delegated bypass adds explicit access-widening classification; private billed toggles preserve user-chosen spending limits. This is source work on `ai/chatgpt/completion-security-authority-20261017`, not a newly passed external acceptance task. Both original H-4 and Y-7 engineering were previously merged and are not credited again; run original external acceptance only against checked READY source after merge/release.
+
 ## 2026-10-17 — billing and Copilot end-user capability correction in source
 
 The owner confirmed that temporary developer spending and live-operation restrictions are not product defaults. A source-only remediation branch updates organization billing budget control and Copilot seats so the customer's delegated actions can proceed with clear cost uncertainty notices rather than requiring a static quote. Existing explicit user spending caps, service pass constraints, confirmation, production access and provider readbacks remain mandatory. Prior batch implementation is not recounted. This is not deployed or real provider acceptance until separately verified.
