@@ -1,6 +1,10 @@
+## 2026-10-16 — Y-9d merged engineering and explicit deployed acceptance queue (bookkeeping, not a second implementation bundle)
+
+PR #233 merged at `1fa4298d69041d1bc988e2ee4f693cff954a76b3` with source head `395a54e73d48a8c7bf39e1782368f7619787f899`: exact-head aggregate `ci` and `release-policy` passed; documented repository-required self-review addressed all six owner review objections, with no inline review threads. Automated Codex review was unavailable due to account quota and is not claimed. Scope: original remaining **Y-9/WU-Y9d**, five new source modules, 17 tools; 713 source additions and 23 source deletions compared with governing main at review. Y-9a/b/c remain credited only to #232. The source merge is not evidence of deployed, paid, owner-consented or RTC/Hub acceptance. Added six new source-pinned queue obligations here (four read-only credential/plan checks, one no-write denial, one explicit-owner-gated mutation); existing 42 checks and their dispositions are preserved. **No developer paid action, production activation, irreversible operation, cleanup or release has been authorized or performed.**
+
 ## 2026-10-16 — Y-9d as-if-merged engineering handoff (PR #233)
 
-Y-9d completes approved Batch Y source capability for 17 new direct tools (411 total): real Sponsors payments/cancellations/preferences, hosted-runner creation and management, Copilot policies/selected repositories/content exclusion/team seats, and cloud-agent tasks. The developer/test actor has spent $0 and performed no live provider mutations. The shared budget logic now honors **end-user-chosen** financial limits instead of interpreting the developer's inherited default $0 as a user restriction. Verified-priced and explicitly unknown future metered risks are disclosed; production and true user/pass authorization gates remain. CI and review must be verified at the final exact PR head and recorded in the final merged PR comment; code-only source acceptance does **not** establish customer/provider acceptance. IN-15 plus new Y-9d GitHub App permissions, user OAuth, current deployment, production consent, real scratch/Hub RTC and the existing 42-row acceptance backlog remain independently OPEN. Post-release acceptance is not assumed from this PR.
+Y-9d completes approved Batch Y source capability for 17 new direct tools (411 total): real Sponsors payments/cancellations/preferences, hosted-runner creation and management, Copilot policies/selected repositories/content exclusion/team seats, and cloud-agent tasks. The developer/test actor has spent $0 and performed no live provider mutations. The shared budget logic now honors **end-user-chosen** financial limits instead of interpreting the developer's inherited default $0 as a user restriction. Verified-priced and explicitly unknown future metered risks are disclosed; production and true user/pass authorization gates remain. CI and review must be verified at the final exact PR head and recorded in the final merged PR comment; code-only source acceptance does **not** establish customer/provider acceptance. IN-15 plus new Y-9d GitHub App permissions, user OAuth, current deployment, production consent, real scratch/Hub RTC and the expanded 48-row acceptance backlog remain independently OPEN. Post-release acceptance is not assumed from this PR.
 
 ## 2026-10-16 — Y-9d financial capability repair (open engineering; PR #233 draft)
 
@@ -956,6 +960,85 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "status": "PENDING",
     "lastEvidence": "2026-10-16: Source tests on fake GitHub only; no owner-authorized genuine GraphQL mutation or fixture cleanup. Production remains off.",
     "nextAction": "After U-2 deployed read proof, obtain exact mutation/target approval and appropriate protected production and cleanup permissions; perform preview/deny/confirmed write/readback/replay; never silently activate/spend."
+  },
+  {
+    "id": "GITHUB-Y9D-HOSTED-READ",
+    "priority": 1,
+    "requiredRevision": "1fa4298d69041d1bc988e2ee4f693cff954a76b3",
+    "task": "On source-bearing READY live, read hosted runner pools, machine sizes and available images for an eligible enrolled scratch organization; record exact identity and no-write evidence.",
+    "procedure": "docs/pr-cards/Y-9.md; docs/designs/BATCH-Y.md; docs/END-USER-AUTHORITY.md",
+    "gates": "Read-only PREVIEW/full scratch account; independently verified deployed SHA/READY; required hosted-runner read App permissions IN-15 and an eligible org plan. No create, capacity change, static-IP activation or billable request.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-16: PR #233 source head 395a54e passed CI/contract fakes and merged. Live release, new App permission grants and genuine provider acceptance not yet proven.",
+    "nextAction": "Verify READY source and App permissions, then inspect live read-only hosted runner inventory with an independently verified organization; record plan-unavailable responses honestly."
+  },
+  {
+    "id": "GITHUB-Y9D-COPILOT-ORG-READ",
+    "priority": 1,
+    "requiredRevision": "1fa4298d69041d1bc988e2ee4f693cff954a76b3",
+    "task": "Read true Copilot organization agent policy, content exclusions, selected repositories and enrolled subscription/seat state, distinguishing disabled from insufficient permission or plan.",
+    "procedure": "docs/pr-cards/Y-9.md; docs/designs/BATCH-Y.md; docs/END-USER-AUTHORITY.md",
+    "gates": "Source-bearing READY live, current GitHub App organization permission grants IN-15, approved organization only; PREVIEW and no policy change, seat purchase, task start or exposure widening.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-16: PR #233 source head 395a54e passed CI/contract fakes and merged. Live release, new App permission grants and genuine provider acceptance not yet proven.",
+    "nextAction": "After READY and IN-15, use scratch-eligible read APIs, capture only sanitized provider policy/seat evidence; do not infer a disabled feature from a 403/404."
+  },
+  {
+    "id": "GITHUB-Y9D-SPONSORS-U-READ",
+    "priority": 1,
+    "requiredRevision": "1fa4298d69041d1bc988e2ee4f693cff954a76b3",
+    "task": "Prove real user payer identity, sponsorship relationship and advertised tier prices for an explicitly approved non-sensitive recipient without starting or canceling a payment.",
+    "procedure": "docs/pr-cards/Y-9.md; docs/designs/BATCH-Y.md; docs/END-USER-AUTHORITY.md",
+    "gates": "Reviewed source in READY live, actual GitHub U token granted by the owner to exact paying account, known approved recipient and complete sponsor tier inventory. No paid mutation or token capture.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-16: PR #233 source head 395a54e passed CI/contract fakes and merged. Live release, new App permission grants and genuine provider acceptance not yet proven.",
+    "nextAction": "Obtain protected end-user OAuth consent through existing setup page; compare GitHub verified payer, tiers and active relationship in read-only PREVIEW."
+  },
+  {
+    "id": "GITHUB-Y9D-COPILOT-TASKS-U-READ",
+    "priority": 1,
+    "requiredRevision": "1fa4298d69041d1bc988e2ee4f693cff954a76b3",
+    "task": "Read existing Copilot cloud-agent task records with verified GitHub U principal and repository scope; record real ownership and permission/plan limits.",
+    "procedure": "docs/pr-cards/Y-9.md; docs/designs/BATCH-Y.md; docs/END-USER-AUTHORITY.md",
+    "gates": "Source in deployed READY ancestry; actual separately consented U identity, exact authorized owned repository and appropriate Copilot plan/permission. No task start, premium usage or PR creation.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-16: PR #233 source head 395a54e passed CI/contract fakes and merged. Live release, new App permission grants and genuine provider acceptance not yet proven.",
+    "nextAction": "When U access and READY exist, list/read existing tasks only; preserve 403 plan/permission limitations as scoped blockers."
+  },
+  {
+    "id": "GITHUB-Y9D-SAFETY-DENIAL",
+    "priority": 1,
+    "requiredRevision": "1fa4298d69041d1bc988e2ee4f693cff954a76b3",
+    "task": "Observe deployed write previews and denials for cost-unknown, user-capped, narrow-pass and production-off Y-9d operations without issuing any paid GitHub mutation.",
+    "procedure": "docs/pr-cards/Y-9.md; docs/designs/BATCH-Y.md; docs/END-USER-AUTHORITY.md",
+    "gates": "Source-bearing READY live; safely constructed non-mutating fixture and granted PREVIEW/full or read-only pass; no real POST/PUT/PATCH/DELETE, owner approval needed for new grants. Never infer billable-operation success.",
+    "dependsOn": [
+      "GITHUB-Y9D-HOSTED-READ"
+    ],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-16: PR #233 source head 395a54e passed CI/contract fakes and merged. Live release, new App permission grants and genuine provider acceptance not yet proven.",
+    "nextAction": "Run dry-run/production denial against only approved scratch identifiers after deployment and permission upgrade; verify zero writes and sanitized audit status."
+  },
+  {
+    "id": "GITHUB-Y9D-OWNER-AUTH-WRITES",
+    "priority": 2,
+    "requiredRevision": "1fa4298d69041d1bc988e2ee4f693cff954a76b3",
+    "task": "Independently accept only owner-approved real-provider Y-9d mutation(s) with exact cost/security disclosure, single-send, replay, readback and cleanup where reversible; no blanket requirement to incur expense.",
+    "procedure": "docs/pr-cards/Y-9.md; docs/designs/BATCH-Y.md; docs/END-USER-AUTHORITY.md",
+    "gates": "BLOCKED until explicit operation/target/cost/production approval by owner, correct U/I permission and production-enabled connection, source-bearing READY, protected resource clearance and individually confirmed disposable billing/capability fixture. Never spend merely to close acceptance.",
+    "dependsOn": [
+      "GITHUB-Y9D-HOSTED-READ",
+      "GITHUB-Y9D-COPILOT-ORG-READ",
+      "GITHUB-Y9D-SPONSORS-U-READ",
+      "GITHUB-Y9D-COPILOT-TASKS-U-READ"
+    ],
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-16: PR #233 source head 395a54e passed CI/contract fakes and merged. Live release, new App permission grants and genuine provider acceptance not yet proven.",
+    "nextAction": "Present exact proposed provider operation, target, cost exposure and cleanup for separate independent owner authorization; otherwise retain this item BLOCKED and never turn on spending or LIVE."
   }
 ]
 ```
