@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { runWriteContract, makeWorld, parse } from '../../test/helpers/write-contract.js';
 import { spendGate } from '../../test/helpers/fixture-gates.js';
+import { spendGate as actualSpendGate } from '../../src/tools/spend-guard.js';
 import * as advisories from '../../src/tools/advisories.js';
 import * as scanning from '../../src/tools/security-scanning-writes.js';
 import * as config from '../../src/tools/security-config.js';
@@ -114,7 +115,7 @@ runWriteContract({ label: 'github_security_config_delete', definition: def(confi
   } });
 
 describe('Y-7 rules', () => {
-  const run = async (w, name, args, gates = []) => parse(await createDispatch({ env: w.ctx.env, credentials: w.credentials, gates, fetch: w.gh.fetch, now: w.ctx.now, sleep: w.ctx.sleep })({ registry, name, args, connection: w.connection, db: w.db }));
+  const run = async (w, name, args, gates = w.ctx.gates) => parse(await createDispatch({ env: w.ctx.env, credentials: w.credentials, gates, fetch: w.gh.fetch, now: w.ctx.now, sleep: w.ctx.sleep })({ registry, name, args, connection: w.connection, db: w.db }));
   const mutations = (w) => w.gh.calls.filter((c) => !['GET', 'HEAD'].includes(c.method));
   it('all twelve tools are registered, full profile only, descriptions short', () => {
     const names = [...advisories.tools, ...scanning.tools, ...config.tools].map((t) => t.name);
@@ -145,49 +146,107 @@ describe('Y-7 rules', () => {
     expect(r.done).not.toBe(true);
     expect(mutations(w)).toHaveLength(0);
   });
-  it('code scanning on a private repository is refused (paid, cost unknown)', async () => {
-    const w = await makeWorld({ mode: 'production', profile: 'full' });
-    setupRoutes(w.gh, 'ok', true);
-    const r = await run(w, 'github_security_code_scanning_default_setup', { ...R, state: 'configured', confirm: true }).catch(() => ({ done: false }));
-    expect(r.done).not.toBe(true);
+  it('can enable private code scanning when end-user authorizes uncapped provider billing', async () => {
+    const w=await makeWorld({ mode:'production', profile:'full',gates:[actualSpendGate()] });
+    setupRoutes(w.gh,'ok',true);
+    const first=await run(w,'github_security_code_scanning_default_setup',
+      {...R,state:'configured'});
+    expect(first.status).toBe('needs_confirmation');
+    expect(first.preview).toContain('COST UNKNOWN');
     expect(mutations(w)).toHaveLength(0);
+    const result=await run(w,'github_security_code_scanning_default_setup',
+      {...R,state:'configured',confirm:true});
+    expect(result).toMatchObject({status:'applied',done:true});
+    expect(mutations(w).map(x=>x.route)).toEqual([`PATCH ${SETUP}`]);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('honors user-selected $0 for private scanning but allows free public scanning', async () => {
+    const w=await makeWorld({ mode:'production', profile:'full', gates:[actualSpendGate()] });
+    await w.db.setSpendLimitCents(O,0);
+    setupRoutes(w.gh,'ok',true);
+    const blocked=await run(w,'github_security_code_scanning_default_setup',
+      {...R,state:'configured',confirm:true});
+    expect(blocked).toMatchObject({status:'refused_by_guard',refusedBy:'spend limit'});
+    expect(mutations(w)).toHaveLength(0);
+    setupRoutes(w.gh,'ok',false);
+    const allowed=await run(w,'github_security_code_scanning_default_setup',
+      {...R,state:'configured',confirm:true});
+    expect(allowed.status).toBe('applied');
+    expect(mutations(w)).toHaveLength(1);
   });
   it('turnsOnPaid recognises paid settings', () => {
     expect(turnsOnPaid({ secret_scanning: 'enabled' })).toBe(true);
     expect(turnsOnPaid({ advanced_security: 'code_security' })).toBe(true);
     expect(turnsOnPaid({ dependabot_alerts: 'enabled', dependency_graph: 'enabled', secret_scanning: 'disabled' })).toBe(false);
   });
-  it('a configuration with paid settings is refused for private repositories and for "all"', async () => {
-    for (const scope of ['all', 'private_or_internal']) {
-      const w = await makeWorld({ mode: 'production', profile: 'full' });
-      attachArrange(true)(w.gh, 'ok');
-      const r = await run(w, 'github_security_config_attach', { org: O, configurationId: 9, scope, confirm: true }, [spendGate({ limitCents: 100000 })]).catch(() => ({ done: false }));
-      expect(r.done, scope).not.toBe(true);
-      expect(mutations(w), scope).toHaveLength(0);
+  it('paid organization security configurations can be attached to private/all with informed approval', async () => {
+    for (const scope of ['all','private_or_internal']) {
+      const w=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
+      w.gh.when(`GET ${CFG}/{configuration_id}`).reply(200,cfg({secret_scanning:'enabled'}));
+      w.gh.when(`GET ${CFG}/{configuration_id}/repositories`).reply(200,[]);
+      w.gh.when(`POST ${CFG}/{configuration_id}/attach`).reply(202,()=>{
+        w.gh.when(`GET ${CFG}/{configuration_id}/repositories`).reply(200,
+          [repoRow(1,'secret-app',true)]);
+        return null;
+      });
+      const preview=await run(w,'github_security_config_attach',
+        {org:O,configurationId:9,scope});
+      expect(preview.status).toBe('needs_confirmation');
+      expect(preview.preview).toContain('COST UNKNOWN');
+      const applied=await run(w,'github_security_config_attach',
+        {org:O,configurationId:9,scope,confirm:true});
+      expect(applied).toMatchObject({status:'applied'});
+      expect(mutations(w)).toHaveLength(1);
+      expect(w.gh.invalid).toEqual([]);
     }
   });
-  it('a paid configuration may be attached to public repositories', async () => {
-    const w = await makeWorld({ mode: 'production', profile: 'full' });
-    attachArrange(true)(w.gh, 'ok');
-    const r = await run(w, 'github_security_config_attach', { org: O, configurationId: 9, scope: 'public', confirm: true });
-    expect(r.done).toBe(true);
+  it('a paid configuration may be attached to public repositories at a selected $0 budget', async () => {
+    const w=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
+    await w.db.setSpendLimitCents(O,0);
+    attachArrange(true)(w.gh,'ok');
+    const r=await run(w,'github_security_config_attach',
+      {org:O,configurationId:9,scope:'public',confirm:true});
+    expect(r.status).toBe('applied');
     expect(mutations(w)).toHaveLength(1);
   });
-  it('a paid configuration cannot be the default for new private repositories', async () => {
-    const w = await makeWorld({ mode: 'production', profile: 'full' });
-    w.gh.when(`GET ${CFG}/{configuration_id}`).reply(200, cfg({ secret_scanning: 'enabled' }));
-    w.gh.when(`GET ${CFG}/defaults`).reply(200, []);
-    const r = await run(w, 'github_security_config_default', { org: O, configurationId: 9, newRepos: 'all', confirm: true }).catch(() => ({ done: false }));
-    expect(r.done).not.toBe(true);
+  it('an explicit cost ceiling forbids paid configuration on private repositories', async () => {
+    const w=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
+    await w.db.setSpendLimitCents(O,10000);
+    attachArrange(true)(w.gh,'ok');
+    const r=await run(w,'github_security_config_attach',
+      {org:O,configurationId:9,scope:'private_or_internal',confirm:true});
+    expect(r).toMatchObject({status:'refused_by_guard',refusedBy:'spend limit'});
     expect(mutations(w)).toHaveLength(0);
   });
-  it('turning on paid settings of a configuration attached to a private repository is refused', async () => {
-    const w = await makeWorld({ mode: 'production', profile: 'full' });
-    w.gh.when(`GET ${CFG}/{configuration_id}`).reply(200, cfg());
-    w.gh.when(`GET ${CFG}/{configuration_id}/repositories`).reply(200, [repoRow(2, 'secret-app', true)]);
-    const r = await run(w, 'github_security_config_save', { org: O, configurationId: 9, settings: { secret_scanning: 'enabled' }, confirm: true }).catch(() => ({ done: false }));
-    expect(r.done).not.toBe(true);
-    expect(mutations(w)).toHaveLength(0);
+  it('can set paid security configurations as new private repository defaults', async () => {
+    const w=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
+    w.gh.when(`GET ${CFG}/{configuration_id}`).reply(200,cfg({secret_scanning:'enabled'}));
+    w.gh.when(`GET ${CFG}/defaults`).replySequence([
+      {status:200,body:[]},
+      {status:200,body:[{default_for_new_repos:'all',configuration:cfg()}]}
+    ]);
+    w.gh.when(`PUT ${CFG}/{configuration_id}/defaults`).reply(200,
+      {default_for_new_repos:'all',configuration:cfg()});
+    const res=await run(w,'github_security_config_default',
+      {org:O,configurationId:9,newRepos:'all',confirm:true});
+    expect(res.status).toBe('applied');
+    expect(mutations(w)).toHaveLength(1);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('can enable a paid config already attached to a private repo, with no hidden writes', async () => {
+    const w=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
+    w.gh.when(`GET ${CFG}/{configuration_id}`).replySequence([
+      {status:200,body:cfg()},
+      {status:200,body:cfg({secret_scanning:'enabled'})}
+    ]);
+    w.gh.when(`GET ${CFG}/{configuration_id}/repositories`).reply(200,
+      [repoRow(2,'secret-app',true)]);
+    w.gh.when(`PATCH ${CFG}/{configuration_id}`).reply(200,cfg({secret_scanning:'enabled'}));
+    const res=await run(w,'github_security_config_save',{
+      org:O,configurationId:9,settings:{secret_scanning:'enabled'},confirm:true});
+    expect(res).toMatchObject({status:'applied'});
+    expect(mutations(w)).toHaveLength(1);
+    expect(w.gh.invalid).toEqual([]);
   });
   it('a configuration cannot be deleted without its exact name', async () => {
     const w = await makeWorld({ mode: 'production', profile: 'full' });
