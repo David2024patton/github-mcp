@@ -1,3 +1,11 @@
+## 2026-10-17 — current exact-release custom acceptance and new routing defect
+
+Independently reconciled GitHub `main=live=d49aebd6b13365401a8a863876b4a3151b7fa910`; Vercel production deployment `dpl_BWfVi8NaNDpej18hcGW5qQKLwqGP` READY with exact matching Git SHA and canonical live alias. Real *custom* Robinson GitHub Cloud service OAuth works on `robinson-ai-scratch`, PREVIEW/full, I credential, no U, production OFF. No real GitHub writes, purchases, live activation, added permissions, fixture deletion, off-cadence release or spend performed.
+
+**Read/denial-first catch-up:** Closed only `GITHUB-O4-AUTH-PREVIEW` with complete $0 budget and empty Codespaces inventories, exact org/member and two real mode-denied provider writes. `GITHUB-Y7-AUTH-PREVIEW` now BLOCKED by private Free-plan entitlement (public and org config reads and mode denials genuinely observed); `GITHUB-U1-AUTH-PREVIEW` stays PENDING because the deployed universal API incorrectly routes pinned budget DELETE to budget SAVE and broad Codespaces/Copilot patterns conflate different safeguards. Hosted-runner acceptance was genuinely refused on the Free plan, Copilot org policy returned 403 for missing App permissions, and U-2 typed GraphQL read passed only a subset of its original criterion. Exact per-ID evidence is committed in the ledger. No other queue row was converted to PASSED from a schema fake or simple 403. Count now 4 PASSED, 14 BLOCKED, 37 PENDING (55 total).
+
+**New corrective source:** `ai/chatgpt/authority-live-acceptance-20261017` freezes a separate engineering plan at `8302fc88d29287a0596863a82e2d98a4368355bf`, remaps exact method+path to actual specialized guarded provider tools for billing, Codespaces, Copilot, hosted runners and security, and adds regression tests. This is a NEW security/routing integration fix, not repeat credit for historical Y-1/O-4/Y-7. It must pass exact-head CI/review before merging, then its deployed routing must be independently re-accepted after the next release. The earlier completion-only read plan `0e52eb5495d904c0053d470b4c3ef305a0ff78e8` remains **incomplete** because all three frozen acceptance tasks did not PASS. Do not count it as a bundle.
+
 ## 2026-10-17 — owner-authority corrections merged; honest source/live split and acceptance handoff
 
 Three independently planned *corrective engineering outcomes* are merged into `main` (not repeat delivery credit for original roadmap engineering): O-4 budget/Codespaces actual delegated writes **PR #236**, merge `efe8e928991f0da72cf4e1db7d2d56f44fee0084`; H-4/Y-7 paid private-security delegated provider features and organization code-security configurations **PR #237**, merge `0539a4d4ec3feaf24457f70d0df818647ced6bba`; Y-1/U-1 non-curated REST unknown-spend authority correction (54 strictly reviewed free write routes; others cost-unknown and governed by user/pass limits) **PR #238**, merge `ee44da0e7b73f26dca247e0e17c3738796a9d3ec`. The frozen corrective plan commits are recorded in `docs/pr-cards/O-4.md`, `docs/pr-cards/Y-7.md`, and `docs/pr-cards/Y-1.md`. Each exact-head aggregate `ci`, both unit shards, `check`, `shapes`, `db`, `rtc` and `release-policy` passed. Verified each merge with expected source head; no open PR or unresolved inline review thread remained. Codex review quota was exhausted, **not** silently treated as passed; documented substantive self-review and source-accounting exceptions are on PRs #236–238. The corrections are relatively compact source deltas with broad user-capability impact; neither historical original work nor documentation/test lines are credited as extra production work or falsely promoted to minimum-volume bundles.
@@ -967,8 +975,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Merged U-2 source in independently verified READY serving deployment, genuine service-issued OAuth and owner-authorized read-only scratch scope. No real mutation, account widening, production or spend activation.",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-16: U-2 implementation branch fake schema/shape fixture evidence only. Independent READY live ecf190d7 predates U-2. No live GraphQL custom-service read evidence.",
-    "nextAction": "After checked deployment serving U-2, verify origin and source revision, run constrained GraphQL query and denied mutation-as-read, compare provider-scope/identity and retain sanitized evidence."
+    "lastEvidence": "2026-10-17: checked READY live d49aebd6, actual custom GitHub Cloud PREVIEW/full scratch I, bounded pinned query with typed $owner/$repo variables returned owned public repository name, isPrivate=false and main branch; node estimate 5, points 1. Fragment/alias variation, foreign-scope denial and independent complete original criterion still not tested; no GraphQL write executed.",
+    "nextAction": "Re-run separate typed fragment/alias plus foreign-scope denial and bounded point/node cases on exact deployed source before setting PASSED."
   },
   {
     "id": "GITHUB-U2-GRAPHQL-WRITE",
@@ -992,9 +1000,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/Y-9.md; docs/designs/BATCH-Y.md; docs/END-USER-AUTHORITY.md",
     "gates": "Read-only PREVIEW/full scratch account; independently verified deployed SHA/READY; required hosted-runner read App permissions IN-15 and an eligible org plan. No create, capacity change, static-IP activation or billable request.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-16: PR #233 source head 395a54e passed CI/contract fakes and merged. Live release, new App permission grants and genuine provider acceptance not yet proven.",
-    "nextAction": "Verify READY source and App permissions, then inspect live read-only hosted runner inventory with an independently verified organization; record plan-unavailable responses honestly."
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-17 READY d49aebd6 and live custom full/PREVIEW scratch I: github_hosted_runner_list real provider returned 404 'GitHub hosted runners are not supported for this organization.' Free scratch org not an eligible plan. No hosted-runner creation, billed action or capacity change.",
+    "nextAction": "Only retest on eligible approved organization plan with required GitHub App permission; no paid upgrade authorized."
   },
   {
     "id": "GITHUB-Y9D-COPILOT-ORG-READ",
@@ -1004,9 +1012,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/Y-9.md; docs/designs/BATCH-Y.md; docs/END-USER-AUTHORITY.md",
     "gates": "Source-bearing READY live, current GitHub App organization permission grants IN-15, approved organization only; PREVIEW and no policy change, seat purchase, task start or exposure widening.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-16: PR #233 source head 395a54e passed CI/contract fakes and merged. Live release, new App permission grants and genuine provider acceptance not yet proven.",
-    "nextAction": "After READY and IN-15, use scratch-eligible read APIs, capture only sanitized provider policy/seat evidence; do not infer a disabled feature from a 403/404."
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-17 READY d49aebd6 and live custom full/PREVIEW scratch I: github_copilot_agent_policy_get returned HTTP 403 'Resource not accessible by integration' and requested organization Copilot agent settings (read); missing GitHub App permission / plan cannot be inferred as disabled policy. No access widening or Copilot changes.",
+    "nextAction": "Owner accepts applicable IN-15 Copilot agent settings read permission for installed App and confirms plan eligibility; then repeat safe provider reads."
   },
   {
     "id": "GITHUB-Y9D-SPONSORS-U-READ",
@@ -1071,9 +1079,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/O-4.md; docs/END-USER-AUTHORITY.md",
     "gates": "PREVIEW/full, enrolled scratch org and source-bearing READY alias, read-only accessible budget/security fixtures; no actual budget deletion, access change, paid action or production enablement.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
-    "nextAction": "After normal approved scheduled release includes merged #236, verify READY source and use custom API read/denial tools on a verified enrolled organization; never mutate billing or Codespaces."
+    "status": "PASSED",
+    "lastEvidence": "2026-10-17: Verified current main/live d49aebd6 and Vercel production READY dpl_BWfVi8NaNDpej18hcGW5qQKLwqGP at exact SHA. Real Robinson GitHub Cloud custom OAuth whoami PREVIEW/full connected robinson-ai-scratch I (U absent), production OFF and no explicit product spend cap; org identity free plus one member; existing four provider budgets ($0 each) complete, Codespaces inventory complete and empty. Real guarded github_billing_delete_budget(dryRun:true, existing exact budget ID twice) refused_by_guard mode PREVIEW; github_codespace_set_org_access(disabled,dryRun:true) likewise refused by mode. No provider mutations, purchases, access edits or fixture deletion.",
+    "nextAction": "Accepted read/denial-only O-4 correction criterion. Separate real provider deletion and Codespaces policy mutation remain BLOCKED under GITHUB-O4-AUTH-BUDGET-WRITE and GITHUB-O4-AUTH-CODESPACES-WRITE."
   },
   {
     "id": "GITHUB-O4-AUTH-BUDGET-WRITE",
@@ -1111,9 +1119,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/Y-7.md; docs/pr-cards/H-4.md; docs/END-USER-AUTHORITY.md",
     "gates": "Read-only eligible scratch repository, existing authenticated GitHub entitlement, original private visibility, no purchased plan, no active paid feature toggle or deployment outside scheduled release.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
-    "nextAction": "After source-bearing READY, verify original plan/permissions, test non-writing private read and preview denials; distinguish provider 403 feature limits and incomplete inventories."
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-17 READY d49aebd6: real custom PREVIEW/full I. Private scratch repo security-settings read refused incomplete; GET private code-scanning default setup 403 'Advanced Security must be enabled' on Free organization. Public scratch security settings complete and GET default setup 200 not-configured. GET org code-security configs 200 one recommended config id 17, GET defaults 200 [], GET repositories for id17 200 [] (complete empty fixture). PREVIEW/full paid private advanced_security enable (dryRun:true) and public feature disable both refused_by_guard production mode, no provider mutation or spend. Cannot verify paid PRIVATE inventory/100-entry completeness with current plan.",
+    "nextAction": "Retest private paid eligibility only after legitimate provider plan and corresponding App permissions, and use an authorized fuller private config attachment fixture if needed. Existing org config0/1 reads and production denial are partial evidence, not whole pass."
   },
   {
     "id": "GITHUB-Y7-AUTH-PRIVATE-PAID-WRITE",
@@ -1138,8 +1146,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Read-only source-bearing custom MCP, enrolled scratch account, no actual payment, credential bypass, production activation or non-disposable target mutation.",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
-    "nextAction": "After READY live contains #238, invoke only custom MCP search/describe/dryRun and guarded denial on known safe scratch operations; record source, identity and no-write evidence."
+    "lastEvidence": "2026-10-17 READY d49aebd6 real custom PREVIEW/full. API search/describe shows billing/delete-budget-org DELETE flagged spent/curated but INCORRECTLY named github_billing_save_budget (rather than existing github_billing_delete_budget); similarly source wide Codespaces and Copilot patterns. Actual write dryRun of curated DELETE rejected before provider; generic noncurated reviewed-free runner group DELETE and spend-unknown hosted runner DELETE both correctly discovered and refused by PREVIEW mode; unknown-cost runner creation body invalid safely rejected. New exact method/path routing correction is on unmerged topic branch; no provider mutation or spend, selected cap not configured, so full acceptance remains open.",
+    "nextAction": "After PR for exact method/path curated routing merges and a later checked scheduled READY release, repeat custom search/describe and PREVIEW no-write reads and denial, verify 54 free vs unknown metered and curated-first boundary with actual live revision."
   },
   {
     "id": "GITHUB-U1-AUTH-METERED-WRITE",
