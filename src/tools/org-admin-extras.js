@@ -45,11 +45,26 @@ const securityManager = defineGithubWrite({
 // ---- hosted compute network configurations ----
 const shapeConfig = (c) => ({ id: c.id, name: c.name, compute_service: c.compute_service, network_settings_ids: c.network_settings_ids ?? [], failover_enabled: !!c.failover_network_enabled, failover_network_settings_ids: c.failover_network_settings_ids ?? [], created_on: c.created_on ?? null });
 const listConfigs = async (gh, org) => {
-  const data = (await gh.request('GET /orgs/{org}/settings/network-configurations', { org })).data;
-  if (!Array.isArray(data?.network_configurations)) throw new TypeError('GitHub did not return a network configuration inventory.');
-  if (!Number.isSafeInteger(data?.total_count) || data.total_count !== data.network_configurations.length)
-    throw new TypeError('GitHub network configuration inventory is incomplete; no settings can be safely changed.');
-  return data.network_configurations.map(shapeConfig);
+  const items = [], ids = new Set();
+  let total = null;
+  // The provider returns a wrapped paginated list, not Octokit's usual array.
+  // An incomplete read cannot prove a configuration is absent or safely updated.
+  for (let page = 1; page <= 100; page++) {
+    const data = (await gh.request('GET /orgs/{org}/settings/network-configurations', { org, per_page: 100, page })).data;
+    if (!Array.isArray(data?.network_configurations) || !Number.isSafeInteger(data?.total_count) || data.total_count < 0 ||
+        (total !== null && data.total_count !== total))
+      throw new TypeError('GitHub network configuration inventory is not verifiably complete.');
+    total = data.total_count;
+    for (const item of data.network_configurations) {
+      if (typeof item?.id !== 'string' || !item.id || ids.has(item.id))
+        throw new TypeError('GitHub returned an invalid or duplicate network configuration.');
+      ids.add(item.id); items.push(shapeConfig(item));
+    }
+    if (items.length === total) return items;
+    if (items.length > total || data.network_configurations.length === 0)
+      throw new TypeError('GitHub network configuration inventory is incomplete; no settings can be safely changed.');
+  }
+  throw new TypeError('GitHub network configuration inventory exceeded the safe request budget; no settings changed.');
 };
 
 const networkList = defineRead({
