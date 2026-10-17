@@ -33,8 +33,12 @@ export const deleteBudget = defineGithubWrite({
     if (a.budgetId !== a.confirmBudgetId)
       throw refusal('Type the exact budget ID twice before deleting spending protection.');
     const current = await budget(c, t, a.budgetId);
-    if (!current || current.id !== a.budgetId)
-      throw refusal('The exact budget ID cannot be verified; no deletion is allowed.');
+    // After an earlier successful delete, the original request must still
+    // reach the shared request-key journal and replay without a second DELETE.
+    // A genuinely new request with an absent budget is rejected by apply.
+    if (!current) return { current: null, otherIds: [] };
+    if (current.id !== a.budgetId)
+      throw refusal('The exact budget identity could not be verified.');
     const budgets = await inventory(c, t);
     if (!budgetIds(budgets).includes(a.budgetId))
       throw refusal('The budget inventory and exact budget record disagree.');
@@ -46,11 +50,13 @@ export const deleteBudget = defineGithubWrite({
   classify: () => ({ production: 'deletes an organization spending control, which can permit unbounded future billing' }),
   summarize: ({ args: a, target: t, before: b }) =>
     'DELETE budget ' + a.budgetId + ' in ' + t.owner + ', amount $' +
-    b.current.budget_amount + ', enforcement ' + String(b.current.prevent_further_usage) +
+    (b.current?.budget_amount ?? 'already removed') + ', enforcement ' + String(b.current?.prevent_further_usage ?? 'unknown') +
     '; remaining budgets are NOT proof of an effective future charge limit',
-  apply: ({ args: a, ctx, target: t }) => octo(ctx, t.owner).then((gh) =>
-    gh.request('DELETE ' + BUDGETS + '/{budget_id}',
-      { org: t.owner, budget_id: a.budgetId })),
+  apply: ({ args: a, ctx, target: t, before: b }) => {
+    if (!b.current) throw refusal('The exact budget is already absent; no deletion sent.', 404);
+    return octo(ctx, t.owner).then((gh) => gh.request('DELETE ' + BUDGETS + '/{budget_id}',
+      { org: t.owner, budget_id: a.budgetId }));
+  },
   readAfter: async ({ args: a, ctx, target: t, response: r }) => {
     if (r?.data?.budget_id !== a.budgetId)
       throw refusal('GitHub did not acknowledge the exact deleted budget ID.');
@@ -80,7 +86,7 @@ export const setCodespaceAccess = defineGithubWrite({
     replaceSelectedUsers: { type: 'boolean', description: 'Explicitly replace the existing selected-member list, which the GitHub API cannot read back.' }
   },
   required: ['visibility'],
-  declarations: { production: 'always', confirm: 'always', accessWidening: true, profiles: ['full'] },
+  declarations: { production: 'always', confirm: 'always', spend: true, accessWidening: true, profiles: ['full'] },
   target: (a, c) => ({ ...org(a, c), kind: 'org-codespaces-access' }),
   read: async (a, c, t) => {
     if (a.visibility === 'selected_members' && (!a.usernames?.length || a.replaceSelectedUsers !== true))
@@ -101,8 +107,8 @@ export const setCodespaceAccess = defineGithubWrite({
     }
     return { organization: identity.login, selectedUserCount: a.usernames?.length ?? 0 };
   },
+  price: ({ args: a }) => a.visibility === 'disabled' ? 0 : null,
   classify: ({ args: a }) => ({
-    spendUnknown: a.visibility !== 'disabled',
     production: 'changes organization-paid Codespaces access and possible ongoing compute/storage charges',
     accessWidening: a.visibility === 'disabled' ? null :
       'grants Codespaces access to ' + (a.visibility === 'selected_members' ? a.usernames.join(', ') : a.visibility)
