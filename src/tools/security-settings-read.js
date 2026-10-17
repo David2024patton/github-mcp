@@ -5,8 +5,13 @@ import {defineRead} from './define-read.js';
 import {readerFor,plain} from './github-read.js';
 
 const OWNER={type:'string',maxLength:39},REPO={type:'string',minLength:1,maxLength:100};
-const FEATURES=['advanced_security','code_security','secret_scanning',
-  'secret_scanning_push_protection','dependabot_security_updates'];
+// All boolean status switches in the provider's PATCH /repos security_and_analysis
+// contract. Org-wide security configurations and billing entitlements are separate.
+export const REPO_SECURITY_SWITCHES=Object.freeze(['advanced_security','code_security','secret_scanning',
+  'secret_scanning_push_protection','secret_scanning_ai_detection',
+  'secret_scanning_non_provider_patterns','secret_scanning_delegated_alert_dismissal',
+  'secret_scanning_delegated_bypass']);
+const FEATURES=REPO_SECURITY_SWITCHES;
 const root=p=>({owner:p.owner,repo:p.repo});
 const securityStatus=r=>Object.fromEntries(FEATURES.map(k=>[
   k,typeof r?.[k]?.status==='string'?r[k].status:null]));
@@ -47,6 +52,21 @@ export async function readActionSections(gh,p){
     retention:{days:retention.days,maximum_allowed_days:retention.maximum_allowed_days??null}
   };
 }
+// Dependabot security updates are not a security_and_analysis PATCH property.
+// GitHub has a distinct GET/PUT/DELETE /automated-security-fixes contract. Only
+// the documented 404 disabled state is interpreted as disabled after repo identity
+// was independently established. Permission errors stay unknown, not disabled.
+export async function readDependabotUpdates(gh,p){
+  try{
+    const data=await get(gh,'/repos/{owner}/{repo}/automated-security-fixes',root(p));
+    if(typeof data?.enabled!=='boolean')return {status:null,paused:null};
+    return {status:data.enabled?'enabled':'disabled',
+      paused:typeof data.paused==='boolean'?data.paused:null};
+  }catch(error){
+    if(error?.status===404)return {status:'disabled',paused:false};
+    return {status:null,paused:null};
+  }
+}
 // Private vulnerability reporting is a separate GitHub endpoint, not part of security_and_analysis. A read that fails stays
 // unknown (null); a later write then refuses rather than guessing.
 const reportingStatus=async(gh,p)=>{
@@ -61,9 +81,13 @@ export async function readRepoSecurity(gh,p){
     throw new TypeError('Security settings repository identity mismatch.');
   if(!r.security_and_analysis||typeof r.private!=='boolean')
     throw new TypeError('GitHub did not disclose complete security feature settings.');
+  const [dependabot,reporting]=await Promise.all([
+    readDependabotUpdates(gh,p),reportingStatus(gh,p)]);
   return {owner:p.owner,repo:p.repo,private:r.private,
     security_and_analysis:{...securityStatus(r.security_and_analysis),
-      private_vulnerability_reporting:await reportingStatus(gh,p)}};
+      dependabot_security_updates:dependabot.status,
+      private_vulnerability_reporting:reporting},
+    dependabot_security_updates_paused:dependabot.paused};
 }
 export const securitySettings=defineRead({
   name:'github_security_get_settings',area:'security',audience:['B','O'],
