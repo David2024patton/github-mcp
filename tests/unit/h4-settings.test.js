@@ -82,6 +82,7 @@ describe('H-4 security feature and Actions policy safety',()=>{
     const w=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
     w.gh.when(routes.repo).replySequence([
       {status:200,body:security('disabled',true)},
+      {status:200,body:security('disabled',true)},
       {status:200,body:security('enabled',true)}
     ]);
     w.gh.when(routes.pvr).reply(200,{enabled:false});
