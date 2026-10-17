@@ -586,11 +586,11 @@ Card(s): P-2, P-3, W-1 … W-7. P-2 built in PR #207 as a non-read-only composed
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_workflow_pr_status` | Everything about a PR in one answer: CI at head (required vs optional), mergeable, review decision, unresolved threads, stack position, next action | — | N | I | B,Op | R | W-1 built #210 |
-| `github_workflow_open_pr` | Push nothing; stage an idempotent PR open from an existing branch, then separately apply requested missing labels and recheck its status | P·M | N | I | B | E | W-1 built #210 |
+| `github_workflow_open_pr` | Idempotently find an existing PR from bounded normalized head/base inventory without duplicating it; create only through guarded writer, then add missing labels separately | P·M | N | I | B | E | W-1 built #210 |
 | `github_workflow_merge_when_green` | Merge at the exact head SHA only when required checks are green there and no review thread is unresolved; otherwise says what is missing | C·Prod* | F | I | B | E | W-2 built #210 |
 | `github_workflow_merge_stack` | Merge a stack bottom-up: retarget each PR to the default branch, require fresh green CI at its head, merge; stops at the first PR that is not ready | C·Prod* | N | I | B | E | W-2 built #210 |
 | `github_workflow_review_threads` | Unresolved review threads with file context; after fixes, reply and resolve each one verified at the current head | P·M | N | I | B | E | W-3 built #214 |
-| `github_workflow_ci_failure_summary` | Why CI failed: failed jobs and steps, error lines, annotations, likely cause, same failure on the default branch? | — | N | I | B,Op | R | W-4 built #214 |
+| `github_workflow_ci_failure_summary` | Diagnose actual head-specific CI runs: failed jobs, steps, errors, annotations and matching default-branch failures; zero/capped runs never count as a completed diagnosis | — | N | I | B,Op | R | W-4 built #214 |
 | `github_workflow_rerun_failed_ci` | Re-run only failed jobs once; refuses a second automatic re-run of the same failure (two-strikes rule) | P | N | I | B,Op | E | W-4 built #214 |
 | `github_workflow_repo_health` | Protection and rules, CI pass rate, open PRs and staleness, security alerts, secret scanning/push protection, Actions settings | — | F | I | O,Op | R | W-5 built #217 |
 | `github_workflow_security_review` | Open alerts across an org or account by severity, features off, push protection bypasses | — | F | I | O | R | W-5 built #217 |

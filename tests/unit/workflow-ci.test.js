@@ -32,6 +32,37 @@ describe('W-4 CI failure diagnosis',()=>{
     expect(f.calls.find(c=>c.name==='github_actions_list_runs'&&c.args.workflow).args).toMatchObject({workflow:'20',branch:'main',max:1});
     expect(f.calls.some(c=>c.name==='github_actions_rerun')).toBe(false);
   });
+  it('does not claim CI diagnosis complete when GitHub has no runs for this PR head',async()=>{
+    const f=fixture(),original=f.ctx.callTool;
+    f.ctx.callTool=(name,args)=>name==='github_actions_list_runs'?
+      Promise.resolve({structuredContent:{count:0,items:[]}}):original(name,args);
+    const result=await ciFailureSummary({repo:'app',pr:7},f.ctx);
+    expect(result).toMatchObject({done:false,status:'no_runs',runs:[]});
+    expect(result.next_action).toMatch(/no CI diagnosis/i);
+    expect(f.calls.some(x=>x.name==='github_actions_rerun')).toBe(false);
+  });
+  it('requests only bounded exact-head run fields before fetching complete jobs',async()=>{
+    const f=fixture();await ciFailureSummary({repo:'app',pr:7},f.ctx);
+    const lists=f.calls.filter(x=>x.name==='github_actions_list_runs');
+    expect(lists[0].args).toMatchObject({headSha:A,max:50,detail:'full',
+      fields:['id','workflow_id','head_sha','head_branch','status','conclusion']});
+    expect(lists[1].args).toMatchObject({workflow:'20',branch:'main',max:1,
+      fields:['id','workflow_id','head_sha','head_branch','status','conclusion']});
+    expect(f.calls.filter(x=>x.name==='github_actions_get_run')).toHaveLength(2);
+  });
+  it('treats full-page and result-handle run inventories as incomplete',async()=>{
+    for(const inventory of [
+      {count:1,items:[],kept_result:{handle:'held'}},
+      {count:50,items:Array.from({length:50},()=>({workflow_id:20,head_sha:A,id:1}))},
+      {count:3,items:[{id:1,workflow_id:20,head_sha:A}]},
+      {items:[],more_exist:true}
+    ]){
+      const f=fixture(),prior=f.ctx.callTool;
+      f.ctx.callTool=(n,a)=>n==='github_actions_list_runs'?
+        Promise.resolve({structuredContent:inventory}):prior(n,a);
+      expect((await ciFailureSummary({repo:'app',pr:7},f.ctx)).status).toBe('unreadable');
+    }
+  });
   it('handles empty successful CI without manufacturing a failure',async()=>{
     const f=fixture();f.runs[1]=run(1,{conclusion:'success',jobs:[job(5,{conclusion:'success',failed_steps:[]})]});
     expect(await ciFailureSummary({repo:'app',ref:'feature'},f.ctx)).toMatchObject({done:true,runs:[{failed_jobs:[]}]});

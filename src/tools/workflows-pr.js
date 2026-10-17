@@ -81,9 +81,19 @@ async function openPr(args,ctx){
   if(new Set(requested.map(x=>x.toLowerCase())).size!==requested.length)
     return refused('Duplicate or blank label names are not allowed.');
   const head=args.head.includes(':')?args.head:(args.owner??ctx.connection.default_account)+':'+args.head;
-  const listed=readBody(await call(ctx,'github_pr_list',{...s,base,head,max:20,detail:'full'}));
-  if(!listed||listed.more_exist||listed.kept_result)return refused('Open PR inventory is incomplete; cannot verify idempotence.');
-  const matches=(listed.items??[]).filter(p=>p.head?.ref===args.head.split(':').pop()&&p.base?.ref===base);
+  // The registered PR list returns normalized string head/base, not REST head.ref/base.ref.
+  // Full-detail pages can be held behind an 8-KB result handle even for one PR;
+  // request only the evidence required for exact head/base idempotence.
+  const listed=readBody(await call(ctx,'github_pr_list',{...s,base,head,max:20,
+    detail:'summary',fields:['number','head','base','state','draft']}));
+  if(!listed||!Array.isArray(listed.items)||listed.more_exist||listed.more_possible||
+    listed.next_page_possible||listed.complete===false||listed.kept_result||
+    listed.items.length>=20||(Number.isInteger(listed.count)&&listed.count!==listed.items.length))
+    return refused('Open PR inventory is incomplete; cannot verify idempotence.');
+  const requestedHead=args.head.split(':').pop();
+  const matches=listed.items.filter(p=>p.state==='open'&&
+    (typeof p.head==='string'?p.head:p.head?.ref)===requestedHead&&
+    (typeof p.base==='string'?p.base:p.base?.ref)===base);
   if(matches.length>1)return refused('Several open PRs match that head/base; select one explicitly.');
   const existing=matches[0]??null;
   if(existing){
