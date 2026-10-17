@@ -47,6 +47,7 @@ describe('Y-9d genuine delegation for an unpriced paid Copilot team',()=>{
    gh.when(SEATS).replySequence([
      {status:200,body:{total_seats:0,seats:[]}},
      {status:200,body:{total_seats:0,seats:[]}},
+     {status:200,body:{total_seats:1,seats:[user()]}},
      {status:200,body:{total_seats:1,seats:[user()]}}
    ]);
    gh.when('POST /orgs/{org}/copilot/billing/selected_teams')
