@@ -72,7 +72,7 @@ const save = defineGithubWrite({
   classify: ({ before }) => (before?.attached?.length ? { production: `this configuration is attached to ${before.attached.length} repositor${before.attached.length === 1 ? 'y' : 'ies'}; changes apply to them at once` } : {}),
   summarize: ({ args, target: t, before }) => (before.current
     ? `Edit code-security configuration "${before.current.name}" of ${t.owner}: ${Object.keys(args.settings ?? {}).join(', ') || 'name/description'}${before.attached.length ? ` (attached to ${before.attached.length} repositories - applies immediately)` : ''}`
-    : `Create code-security configuration "${args.name}" in ${t.owner}${turnsOnPaid(args.settings) ? ' with PAID features (it cannot be attached to private repositories by this server)' : ''}`),
+    : `Create code-security configuration "${args.name}" in ${t.owner}${turnsOnPaid(args.settings) ? ' with PAID features (attaching to private repositories can incur uncapped future charges)' : ''}`),
   apply: async ({ args, ctx, target: t, before }) => {
     const gh = await octo(ctx, t.owner);
     const body = { ...(args.name !== undefined ? { name: args.name } : {}), ...(args.description !== undefined ? { description: args.description } : {}), ...(args.settings ?? {}) };
@@ -121,7 +121,7 @@ const attach = defineGithubWrite({
   read: async (args, ctx, t) => ({
     current: shapeConfig(await getConfig(ctx, t, args.configurationId)),
     chosen: args.scope === 'selected' ? await resolveRepos(ctx, t, args.repositories) : [],
-    attached: await attachedRepos(ctx, t, args.configurationId).catch(() => [])
+    attached: await attachedRepos(ctx, t, args.configurationId)
   }),
   price: ({ args, before }) => before?.current?.paid &&
     (args.scope === 'all' || args.scope === 'all_without_configurations' ||
