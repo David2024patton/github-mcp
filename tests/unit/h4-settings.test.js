@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {spendGate as actualSpendGate} from '../../src/tools/spend-guard.js';
-import {makeWorld,runWriteContract,parse} from '../../test/helpers/write-contract.js';
+import {makeWorld as baseWorld,runWriteContract,parse} from '../../test/helpers/write-contract.js';
 import {registry} from '../../src/tools/index.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
 import * as settings from '../../src/tools/security-settings-write.js';
@@ -12,24 +12,38 @@ const routes={
   selected:'GET /repos/{owner}/{repo}/actions/permissions/selected-actions',
   fork:'GET /repos/{owner}/{repo}/actions/permissions/fork-pr-contributor-approval',
   retention:'GET /repos/{owner}/{repo}/actions/permissions/artifact-and-log-retention',
+  dependabot:'GET /repos/{owner}/{repo}/automated-security-fixes',
+  dependabotPut:'PUT /repos/{owner}/{repo}/automated-security-fixes',
+  dependabotDelete:'DELETE /repos/{owner}/{repo}/automated-security-fixes',
   pvr:'GET /repos/{owner}/{repo}/private-vulnerability-reporting',pvrPut:'PUT /repos/{owner}/{repo}/private-vulnerability-reporting',
   pvrDelete:'DELETE /repos/{owner}/{repo}/private-vulnerability-reporting',
   workflowPut:'PUT /repos/{owner}/{repo}/actions/permissions/workflow',
   retentionPut:'PUT /repos/{owner}/{repo}/actions/permissions/artifact-and-log-retention'
 };
-const security=(secret='disabled',priv=false)=>({
+const security=(secret='disabled',priv=false,overrides={})=>({
   id:1,full_name:'example-org/hello',private:priv,
   security_and_analysis:{
     advanced_security:{status:'disabled'},code_security:{status:'disabled'},
     secret_scanning:{status:secret},
     secret_scanning_push_protection:{status:'disabled'},
-    dependabot_security_updates:{status:'enabled'}}});
+    secret_scanning_ai_detection:{status:'disabled'},
+    secret_scanning_non_provider_patterns:{status:'disabled'},
+    secret_scanning_delegated_alert_dismissal:{status:'disabled'},
+    secret_scanning_delegated_bypass:{status:'disabled'},
+    ...Object.fromEntries(Object.entries(overrides).map(([name,status])=>[name,{status}]))
+  }});
+async function makeWorld(options){
+  const w=await baseWorld(options);
+  w.gh.when(routes.dependabot).reply(200,{enabled:true,paused:false});
+  return w;
+}
 function arrangeFeature(gh,result){
   gh.when(routes.repo).replySequence([
     {status:200,body:security()},
     {status:200,body:security(result==='ok'?'enabled':'disabled')}]);
   gh.when(routes.repoPatch).reply(200,security('enabled'));
   gh.when(routes.pvr).reply(200,{enabled:false});
+  gh.when(routes.dependabot).reply(200,{enabled:true,paused:false});
 }
 const actions={enabled:true,allowed_actions:'all',sha_pinning_required:true};
 const workflow=(p='read')=>({
@@ -63,6 +77,7 @@ runWriteContract({
       {status:200,body:security(result==='ok'?'enabled':'disabled',true)}
     ]);
     gh.when(routes.pvr).reply(200,{enabled:false});
+    gh.when(routes.dependabot).reply(200,{enabled:true,paused:false});
     gh.when(routes.repoPatch).reply(200,security('enabled',true));
   }
 });
@@ -230,5 +245,124 @@ runWriteContract({
     gh.when(routes.repo).reply(200,security());
     gh.when(routes.pvr).replySequence([{status:200,body:{enabled:false}},{status:200,body:{enabled:result==='ok'}}]);
     gh.when(routes.pvrPut).reply(204,null);
+    gh.when(routes.dependabot).reply(200,{enabled:true,paused:false});
   }});
 function pvrDefForContract(){return {tool:settings.securitySetFeature.tool,handler:settings.securitySetFeature.handler};}
+
+
+
+describe('H-4 source-backed provider security switches and separated Dependabot contract',()=>{
+  const feature=(w,featureName,enabled,extra={})=>
+    call(w,'github_security_set_feature',{repo:'hello',feature:featureName,enabled,...extra});
+  it('reads GitHub supported extra security flags and verified Dependabot paused status',async()=>{
+    const w=await makeWorld({mode:'preview',profile:'full'});
+    w.gh.when(routes.repo).reply(200,security());
+    w.gh.when(routes.pvr).reply(200,{enabled:false});
+    w.gh.when(routes.dependabot).reply(200,{enabled:true,paused:true});
+    const r=await call(w,'github_security_get_settings',{repo:'hello'});
+    expect(r.security_and_analysis.secret_scanning_ai_detection).toBe('disabled');
+    expect(r.security_and_analysis.secret_scanning_non_provider_patterns).toBe('disabled');
+    expect(r.security_and_analysis.secret_scanning_delegated_alert_dismissal).toBe('disabled');
+    expect(r.security_and_analysis.secret_scanning_delegated_bypass).toBe('disabled');
+    expect(r.security_and_analysis.dependabot_security_updates).toBe('enabled');
+    expect(r.dependabot_security_updates_paused).toBe(true);
+    expect(w.gh.calls.some(x=>x.route===routes.dependabot)).toBe(true);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('does not inherit obsolete repo-body Dependabot status when the dedicated GET says disabled',async()=>{
+    const w=await makeWorld({mode:'preview',profile:'full'});
+    w.gh.when(routes.repo).reply(200,{...security(),
+      security_and_analysis:{...security().security_and_analysis,
+        dependabot_security_updates:{status:'enabled'}}});
+    w.gh.when(routes.dependabot).reply(404,{message:'Not Found'});
+    w.gh.when(routes.pvr).reply(200,{enabled:false});
+    const r=await call(w,'github_security_get_settings',{repo:'hello'});
+    expect(r.security_and_analysis.dependabot_security_updates).toBe('disabled');
+    expect(r.dependabot_security_updates_paused).toBe(false);
+  });
+  it('enables Dependabot security fixes using its real PUT, with independent exact GET readback',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    w.gh.when(routes.repo).reply(200,security());
+    w.gh.when(routes.pvr).reply(200,{enabled:false});
+    w.gh.when(routes.dependabot).replySequence([
+      {status:404,body:{message:'Not Found'}},
+      {status:200,body:{enabled:true,paused:false}}
+    ]);
+    w.gh.when(routes.dependabotPut).reply(204,null);
+    const result=await feature(w,'dependabot_security_updates',true,{confirm:true});
+    expect(result).toMatchObject({status:'applied',done:true,
+      result:{feature:'dependabot_security_updates',enabled:true}});
+    expect(w.gh.calls.filter(x=>x.method!=='GET').map(x=>x.route))
+      .toEqual([routes.dependabotPut]);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('disables Dependabot security fixes using real DELETE and absence readback',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    w.gh.when(routes.repo).reply(200,security());
+    w.gh.when(routes.pvr).reply(200,{enabled:false});
+    w.gh.when(routes.dependabot).replySequence([
+      {status:200,body:{enabled:true,paused:false}},
+      {status:404,body:{message:'Not Found'}}
+    ]);
+    w.gh.when(routes.dependabotDelete).reply(204,null);
+    const r=await feature(w,'dependabot_security_updates',false,{confirm:true});
+    expect(r).toMatchObject({status:'applied',done:true,result:{enabled:false}});
+    expect(w.gh.calls.filter(x=>x.method!=='GET').map(x=>x.route))
+      .toEqual([routes.dependabotDelete]);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('refuses Dependabot toggle when GitHub permissions make the state unknown',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    w.gh.when(routes.repo).reply(200,security());
+    w.gh.when(routes.pvr).reply(200,{enabled:false});
+    w.gh.when(routes.dependabot).reply(403,{message:'Forbidden'});
+    const r=await feature(w,'dependabot_security_updates',true,{confirm:true});
+    expect(r.done).toBe(false);
+    expect(w.gh.calls.filter(x=>x.method!=='GET')).toEqual([]);
+  });
+  for(const name of ['secret_scanning_ai_detection','secret_scanning_non_provider_patterns',
+    'secret_scanning_delegated_alert_dismissal','secret_scanning_delegated_bypass']){
+    it('performs exact guarded '+name+' enable and verifies all other settings unchanged',async()=>{
+      const w=await makeWorld({mode:'production',profile:'full',
+        gates:[actualSpendGate()]});
+      w.gh.when(routes.repo).replySequence([
+        {status:200,body:security('disabled',true)},
+        {status:200,body:security('disabled',true,{[name]:'enabled'})}
+      ]);
+      w.gh.when(routes.pvr).reply(200,{enabled:false});
+      w.gh.when(routes.repoPatch).reply(200,security('disabled',true,{[name]:'enabled'}));
+      const preview=await feature(w,name,true,{dryRun:true});
+      expect(preview.status).toBe('preview');
+      expect(preview.preview).toContain('COST UNKNOWN');
+      if(['secret_scanning_delegated_bypass','secret_scanning_delegated_alert_dismissal'].includes(name))
+        expect(preview.preview).toContain('ACCESS CHANGE');
+      expect(w.gh.calls.filter(x=>x.method!=='GET')).toEqual([]);
+      const done=await feature(w,name,true,{confirm:true});
+      expect(done).toMatchObject({status:'applied',done:true,result:{feature:name,enabled:true}});
+      const writes=w.gh.calls.filter(x=>x.method!=='GET');
+      expect(writes).toHaveLength(1);
+      expect(writes[0].route).toBe(routes.repoPatch);
+      expect(writes[0].body.security_and_analysis)
+        .toEqual({[name]:{status:'enabled'}});
+      expect(w.gh.invalid).toEqual([]);
+    });
+  }
+  it('respects a user-selected zero spend cap on new private security features, but permits turning them off',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
+    await w.db.setSpendLimitCents('example-org',0);
+    w.gh.when(routes.repo).reply(200,security('disabled',true));
+    w.gh.when(routes.pvr).reply(200,{enabled:false});
+    const denied=await feature(w,'secret_scanning_ai_detection',true,{confirm:true});
+    expect(denied).toMatchObject({status:'refused_by_guard',refusedBy:'spend limit'});
+    expect(w.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
+  });
+  it('does not invent status or invoke a write for unavailable future feature fields',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    w.gh.when(routes.repo).reply(200,{...security(),
+      security_and_analysis:{secret_scanning:{status:'enabled'}}});
+    w.gh.when(routes.pvr).reply(200,{enabled:false});
+    const r=await feature(w,'secret_scanning_ai_detection',true,{confirm:true});
+    expect(r.done).toBe(false);
+    expect(w.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
+  });
+});

@@ -31,3 +31,7 @@
 ## Billing and Copilot follow-up: October 17, 2026
 
 Additional audit found that earlier product code could only save an enforced organization budget, and could not assign Copilot seats when a valid provider plan lacked a price in the local reference table. The new O-4 and Y-9d corrective branch enables those provider operations for a genuinely delegated full-profile user. Unknown future billing is explicitly disclosed, while a deliberately configured finite spend cap or RTC pass still refuses unbounded exposure. Developer spending, live-state and test-fixture rules are unchanged. The rest of this cross-product capability audit remains open; green source CI is not live financial acceptance.
+
+## October 17, 2026 — full repository security administration corrective work
+
+The H-4/Y-7 source audit identified omitted, provider-supported repo security flags and a false Dependabot update route. The corrective branch exposes direct GitHub settings operations for AI secret detection, non-provider secret patterns, delegated alert dismissal and delegated bypass, plus the separately documented Dependabot security-updates GET/PUT/DELETE. The product still verifies connected owner, exact provider readback, paid private security disclosure, user-selected caps and gated access widening for bypass authority. The developing agent cannot enable these features on real accounts or spend money. A green source PR is not proof of deployed paid feature execution; original live acceptance stays open.
