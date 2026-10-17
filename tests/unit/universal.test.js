@@ -3,7 +3,7 @@ import {createDispatch} from '../../src/tools/dispatch.js';
 import {registry} from '../../src/tools/index.js';
 import {restOperations,restOperation,validateRest} from '../../src/github/openapi-index.js';
 import {classifyUniversal,assertUniversalAuthority,universalPrice} from '../../src/github/operation-classes.js';
-import {curatedTool} from '../../src/github/hand-built-map.js';
+import {curatedTool,handBuiltTargets} from '../../src/github/hand-built-map.js';
 import * as u from '../../src/tools/universal.js';
 import {makeWorld,parse,runWriteContract} from '../../test/helpers/write-contract.js';
 import {spendGate} from '../../src/tools/spend-guard.js';
@@ -188,5 +188,86 @@ describe('U-1 actual user authority and uncertain-cost boundary',()=>{
       classification:{spendUnknown:true,spendCents:0},declarations:{spend:true}});
     expect(verdict).toMatchObject({by:'pass spend allowance'});
     expect(noChange(w.gh)).toBe(true);
+  });
+});
+
+describe('U-1/O-4/Y-7 exact curated provider-operation authority',()=>{
+  const exactCases=[
+    ['POST /organizations/{org}/settings/billing/budgets','github_billing_save_budget'],
+    ['PATCH /organizations/{org}/settings/billing/budgets/{budget_id}','github_billing_save_budget'],
+    ['DELETE /organizations/{org}/settings/billing/budgets/{budget_id}','github_billing_delete_budget'],
+    ['PUT /orgs/{org}/codespaces/access','github_codespace_set_org_access'],
+    ['POST /repos/{owner}/{repo}/codespaces','github_codespace_create'],
+    ['POST /user/codespaces/{codespace_name}/start','github_codespace_set_state'],
+    ['POST /user/codespaces/{codespace_name}/stop','github_codespace_set_state'],
+    ['DELETE /user/codespaces/{codespace_name}','github_codespace_delete'],
+    ['POST /orgs/{org}/copilot/billing/selected_users','github_copilot_add_seats'],
+    ['DELETE /orgs/{org}/copilot/billing/selected_users','github_copilot_remove_seats'],
+    ['POST /orgs/{org}/copilot/billing/selected_teams','github_copilot_team_seats'],
+    ['DELETE /orgs/{org}/copilot/billing/selected_teams','github_copilot_team_seats_remove'],
+    ['PUT /orgs/{org}/copilot/coding-agent/permissions','github_copilot_agent_policy_set'],
+    ['PUT /orgs/{org}/copilot/content_exclusion','github_copilot_content_exclusions_set'],
+    ['PUT /orgs/{org}/copilot/coding-agent/permissions/repositories/{repository_id}','github_copilot_agent_repo_set'],
+    ['DELETE /orgs/{org}/copilot/coding-agent/permissions/repositories/{repository_id}','github_copilot_agent_repo_set'],
+    ['POST /orgs/{org}/actions/hosted-runners','github_hosted_runner_create'],
+    ['PATCH /orgs/{org}/actions/hosted-runners/{hosted_runner_id}','github_hosted_runner_manage'],
+    ['DELETE /orgs/{org}/actions/hosted-runners/{hosted_runner_id}','github_hosted_runner_manage'],
+    ['POST /orgs/{org}/code-security/configurations','github_security_config_save'],
+    ['PATCH /orgs/{org}/code-security/configurations/{configuration_id}','github_security_config_save'],
+    ['DELETE /orgs/{org}/code-security/configurations/{configuration_id}','github_security_config_delete'],
+    ['POST /orgs/{org}/code-security/configurations/{configuration_id}/attach','github_security_config_attach'],
+    ['PUT /orgs/{org}/code-security/configurations/{configuration_id}/defaults','github_security_config_default'],
+    ['DELETE /orgs/{org}/code-security/configurations/detach','github_security_config_detach'],
+    ['PATCH /repos/{owner}/{repo}/code-scanning/default-setup','github_security_code_scanning_default_setup'],
+    ['PUT /repos/{owner}/{repo}/private-vulnerability-reporting','github_security_set_feature'],
+    ['DELETE /repos/{owner}/{repo}/private-vulnerability-reporting','github_security_set_feature'],
+    ['POST /orgs/{org}/secret-scanning/custom-patterns','github_security_secret_pattern_save'],
+    ['POST /repos/{owner}/{repo}/secret-scanning/custom-patterns','github_security_secret_pattern_save'],
+    ['PATCH /orgs/{org}/secret-scanning/custom-patterns/{pattern_id}','github_security_secret_pattern_save'],
+    ['PATCH /repos/{owner}/{repo}/secret-scanning/custom-patterns/{pattern_id}','github_security_secret_pattern_save'],
+    ['DELETE /orgs/{org}/secret-scanning/custom-patterns','github_security_secret_pattern_save'],
+    ['DELETE /repos/{owner}/{repo}/secret-scanning/custom-patterns','github_security_secret_pattern_save'],
+    ['PATCH /orgs/{org}/dependabot/repository-access','github_security_dependabot_org_settings'],
+    ['PUT /orgs/{org}/dependabot/repository-access/default-level','github_security_dependabot_org_settings']
+  ];
+  it('names exactly the matching method and actual specialized provider writer, not a neighboring financial operation',()=>{
+    for(const [route,tool] of exactCases){
+      expect(curatedTool({route})).toBe(tool);
+      expect(registry.tools.some(t=>t.name===tool)).toBe(true);
+      expect(handBuiltTargets()).toContain(tool);
+    }
+    // The originally observed regression: budget DELETE must never tell the
+    // user to save a budget, and removing seats must never tell them to buy.
+    expect(curatedTool(restOperation('billing/delete-budget-org'))).toBe('github_billing_delete_budget');
+    expect(curatedTool(restOperation('DELETE /orgs/{org}/copilot/billing/selected_users')))
+      .toBe('github_copilot_remove_seats');
+  });
+  it('does not turn a family prefix, read or unrelated method into a curated refusal',()=>{
+    for(const route of [
+      'GET /organizations/{org}/settings/billing/budgets',
+      'GET /orgs/{org}/codespaces/access',
+      'GET /repos/{owner}/{repo}/codespaces',
+      'GET /orgs/{org}/code-security/configurations',
+      'GET /orgs/{org}/copilot/billing/selected_users',
+      'GET /orgs/{org}/actions/hosted-runners',
+      'POST /orgs/{org}/codespaces/access',
+      'DELETE /orgs/{org}/code-security/configurations',
+      'PATCH /organizations/{org}/settings/billing/budgets/not-a-path-template'
+    ])expect(curatedTool({route})).toBeNull();
+  });
+  it('rejects real pinned curated budget deletion at the universal boundary without a provider mutation',async()=>{
+    const w=await makeWorld({profile:'full',mode:'production'});
+    const op=restOperation('billing/delete-budget-org');
+    const out=parse(await dispatch(w,'github_api_write',api(op.operationId,{
+      org:'example-org',budget_id:'95cd1c15-3504-4673-bd17-53e4be6a52e7'})));
+    expect(out.status).toBe('refused');
+    expect(out.error).toContain('github_billing_delete_budget');
+    expect(w.gh.calls).toEqual([]);
+  });
+  it('all declared curated routes on the pinned inventory route only to actual catalog tools',()=>{
+    for(const op of restOperations()){
+      const target=curatedTool(op);
+      if(target)expect(registry.tools.some(t=>t.name===target)).toBe(true);
+    }
   });
 });
