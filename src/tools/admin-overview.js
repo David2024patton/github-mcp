@@ -37,27 +37,27 @@ async function overview(a,ctx){
   const row=await getAccount(ctx,owner);
   if(!row)throw new TypeError('This GitHub account is not enrolled on the server.');
   const items=[];
-  const cap=selectedSpendCap(row);
+  const spendCap=selectedSpendCap(row);
   const local=Object.freeze({
     account:row.login,credential_kind:row.credential_kind,
     installation_status:row.installation_status??null,
     production_enabled:row.production_enabled===true,
-    spend_limit_cents:cap.limitCents,
-    spend_limit_configured:cap.configured,
-    spend_limit_explicit:cap.explicit,
+    spend_limit_cents:spendCap.limitCents,
+    spend_limit_configured:spendCap.configured,
+    spend_limit_explicit:spendCap.explicit,
     is_scratch:row.is_scratch===true
   });
   push(items,local.production_enabled?
     attention('server-production',areaName,'Production is enabled for this account',true):
     ok('server-production',areaName,false,'Production stays off'));
   push(items,ok('server-spend',areaName,{
-    limit_cents:cap.limitCents,limit_configured:cap.configured,
-    spend_enabled:cap.newSpendingAllowedByCap
-  },!cap.configured
+    limit_cents:spendCap.limitCents,limit_configured:spendCap.configured,
+    spend_enabled:spendCap.newSpendingAllowedByCap
+  },!spendCap.configured
     ? 'No user-configured MCP spending cap; paid actions still require actual GitHub permission and user authorization. The developer test budget is separate.'
-    : cap.cents===0
+    : spendCap.cents===0
       ? 'Your explicit $0 MCP spending cap forbids new paid actions; free and cost-reducing changes remain available.'
-      : 'Your user-configured $'+(cap.cents/100).toFixed(2)+' MCP spending cap is enforced for chargeable actions.'));
+      : 'Your user-configured $'+(spendCap.cents/100).toFixed(2)+' MCP spending cap is enforced for chargeable actions.'));
   if(row.account_type!=='Organization'){
     push(items,unreadable('organization-profile','org',
       'This enrolled account is a user, not an organization; use personal-account tools for its profile.'));
