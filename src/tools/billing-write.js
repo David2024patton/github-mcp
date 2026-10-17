@@ -83,14 +83,19 @@ export const budgetSave=defineGithubWrite({
     if(!b)throw refusal('Budget preflight was unreadable.');
     const old=b.budget?.budget_amount??0;
     const next=a.budgetAmount??old;
-    if(!Number.isSafeInteger(next)||next<0)
+    if(!Number.isSafeInteger(next)||next<0||!Number.isSafeInteger(old)||old<0)
       throw refusal('Budget amount must be an exact number of whole dollars.');
-    const couldSpend=Math.max(0,next-old);
-    if(a.preventFurtherUsage===false&&b.budget?.prevent_further_usage!==false)
-      throw refusal('Disabling budget enforcement cannot be bounded by an amount; change it manually.');
-    if(a.action==='create'&&a.preventFurtherUsage===false)
-      throw refusal('Unenforced new budgets cannot serve as safe spend limits.');
-    return couldSpend*100;
+    // GitHub accepts unenforced organization/repository budgets. Historically
+    // the developing agent's $0 budget disabled these for every end user.
+    // An unenforced control has potentially unlimited future exposure; route
+    // that through the user-selected cap/service-pass gate as UNKNOWN, not an
+    // invented $0 cost or a permanent product prohibition.
+    const enforcing=a.preventFurtherUsage??b.budget?.prevent_further_usage;
+    if(enforcing===false)return null;
+    // Switching enforcement ON reduces exposure even if the displayed limit
+    // increases. It is never itself a provider charge.
+    if(b.budget?.prevent_further_usage===false&&enforcing===true)return 0;
+    return Math.max(0,next-old)*100;
   },
   classify:({args:a})=>({
     production:'affects organization-wide spending controls',
@@ -102,7 +107,9 @@ export const budgetSave=defineGithubWrite({
     ' from $'+(b?.budget?.budget_amount??0)+' to $'+
     (a.budgetAmount??b?.budget?.budget_amount??'unknown')+
     ', enforced '+String(a.preventFurtherUsage??b?.budget?.prevent_further_usage)+
-    '; this is the maximum configuration change, not a provider bill',
+    '; '+((a.preventFurtherUsage??b?.budget?.prevent_further_usage)===false
+      ? 'UNENFORCED: future GitHub charges have no guaranteed cap'
+      : 'the configured limit may permit future spend; no actual provider charge is claimed'),
   apply:async({args:a,ctx,target:t,before:b})=>{
     if(!b)throw refusal('Verified budget baseline missing.');
     return (await enrolled(ctx,t)).request(
@@ -132,8 +139,9 @@ const seats=async(c,t)=>{
   const [bill,list]=await Promise.all([
     call(c,t,'GET /orgs/{org}/copilot/billing'),
     copilotSeats(gh,t.owner,500)]);
-  if(!list.complete||!planPrice(bill?.plan_type))
-    throw refusal('Copilot plan, complete seat inventory or verified price not readable.');
+  if(!list.complete||typeof bill?.plan_type!=='string'||!bill.plan_type.trim()||
+     bill.plan_type.length>100)
+    throw refusal('Copilot plan identity or complete seat inventory is unreadable.');
   if(bill?.seat_management_setting!=='assign_selected')
     throw refusal('Copilot seats are not in selected-assignee mode.');
   return {bill,seats:list.seats.map(x=>x.assignee?.login?.toLowerCase()).filter(Boolean),
@@ -154,8 +162,14 @@ function copilotWrite(action){
       accessWidening:add,notifies:add,spend:add,profiles:['full']},target:origin,
     read:(a,c,t)=>seats(c,t),
     price:add?({args:a,before:b})=>{
-      if(!b?.bill)return NaN;
-      return seatChanges(a,b).length*planPrice(b.bill.plan_type);
+      if(!b?.bill||!Array.isArray(b.seats))return NaN;
+      const additional=seatChanges(a,b).length;
+      if(!additional)return 0;
+      const cents=planPrice(b.bill.plan_type);
+      // GitHub can report a billable plan before our published price table
+      // includes it. Properly delegated end users may still assign seats,
+      // with honest unknown metered exposure and no cap bypass.
+      return Number.isSafeInteger(cents)?additional*cents:null;
     }:undefined,
     classify:({args:a,before:b,target:t})=>add?{
       production:'new Copilot licenses are billed monthly',
@@ -165,9 +179,12 @@ function copilotWrite(action){
       production:'changes paid Copilot license assignments'},
     summarize:({args:a,before:b,target:t})=>(add?'PURCHASE':'CANCEL')+
       ' Copilot seats for '+a.usernames.join(',')+' in '+t.owner+
-      '; '+(add?priceLine((seatChanges(a,b??{seats:[]}).length)*(
-        planPrice(b?.bill?.plan_type)??0),(b?.bill?.plan_type==='enterprise'?'copilot_enterprise_seat':'copilot_business_seat')):
-        'cancellation effective at end of GitHub billing cycle'),
+      '; '+(add
+        ? (planPrice(b?.bill?.plan_type)===null
+          ? 'GitHub plan '+b.bill.plan_type+' has no verified price in this MCP; billed seats may incur ongoing charges without a guaranteed maximum'
+          : priceLine(seatChanges(a,b).length*planPrice(b.bill.plan_type),
+            b.bill.plan_type==='enterprise'?'copilot_enterprise_seat':'copilot_business_seat'))
+        : 'cancellation effective at end of GitHub billing cycle'),
     apply:async({args:a,ctx,target:t,before:b})=>{
       if(!b)throw refusal('Missing verified Copilot baseline.');
       const changed=(add?seatChanges:seatBeforeRemoval)(a,b);
