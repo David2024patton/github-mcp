@@ -32,7 +32,7 @@ const ONE = `${BASE}/{configuration_id}`;
 export const turnsOnPaid = (settings) => !!settings && (
   [...PAID].some((k) => settings[k] === 'enabled') || ['enabled', 'code_security', 'secret_protection'].includes(settings.advanced_security));
 export const shapeConfig = (c) => (c ? {
-  id: c.id, name: String(c.name ?? '').slice(0, 100), description: typeof c.description === 'string' ? c.description.slice(0, 200) : null, enforcement: c.enforcement ?? null,
+  id: c.id, name: String(c.name ?? '').slice(0, 100), description: typeof c.description === 'string' ? c.description.slice(0, 500) : null, enforcement: c.enforcement ?? null,
   paid: turnsOnPaid(c), settings: Object.fromEntries([...SETTING_KEYS, 'advanced_security',
     'code_scanning_default_setup_options', 'code_scanning_options']
     .filter(k=>c[k]!==undefined).map(k=>[k,c[k]]))

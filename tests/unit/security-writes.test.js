@@ -94,7 +94,7 @@ runWriteContract({ label: 'github_security_config_save', definition: def(config,
   args: { org: O, name: 'Strict', description: 'Stricter', settings: { dependabot_alerts: 'enabled' } },
   arrange: (gh, o) => {
     gh.when(`GET ${CFG}`).reply(200, [cfg()]);
-    gh.when(`POST ${CFG}`).reply(201, (req) => { const made = cfg({ id: 10, name: ok(o) ? req.body.name : 'Other', dependabot_alerts: req.body.dependabot_alerts }); gh.when(`GET ${CFG}/{configuration_id}`).reply(200, made); return made; });
+    gh.when(`POST ${CFG}`).reply(201, (req) => { const made = cfg({ id: 10, name: ok(o) ? req.body.name : 'Other', description: req.body.description, dependabot_alerts: req.body.dependabot_alerts }); gh.when(`GET ${CFG}/{configuration_id}`).reply(200, made); return made; });
   } });
 const attachArrange = (paid) => (gh, o) => {
   gh.when(`GET ${CFG}/{configuration_id}`).reply(200, cfg(paid ? { secret_scanning: 'enabled' } : {}));
@@ -377,6 +377,21 @@ describe('Y-7 large-org complete security-configuration cursor and readback cont
       expect(out.done).not.toBe(true);
       expect(w.gh.calls.filter(c=>c.method==='DELETE')).toHaveLength(0);
     }
+  });
+  it('verifies the complete provider-supported 500-character configuration description instead of truncating to 200',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    const description='Verified owner security policy '.repeat(13).slice(0,340);
+    w.gh.when(CONFIG).replySequence([
+      {status:200,body:cfg()},
+      {status:200,body:cfg({description})}
+    ]);
+    w.gh.when(PAGE).reply(200,[]);
+    w.gh.when(WRITE_CONFIG).reply(200,{description});
+    const out=await run(w,'github_security_config_save',{
+      org:'example-org',configurationId:9,description,confirm:true});
+    expect(out).toMatchObject({status:'applied',done:true});
+    expect(out.result.configuration.description).toBe(description);
+    expect(w.gh.calls.filter(x=>x.method==='PATCH')).toHaveLength(1);
   });
   it('does not claim confirmed success when requested nested settings or enforcement are ignored',async()=>{
     for(const mismatch of ['enforcement','nested']){
