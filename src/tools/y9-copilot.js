@@ -38,7 +38,7 @@ const agentPolicyGet = defineRead({
 });
 const agentPolicySet = defineGithubWrite({
   name: 'github_copilot_agent_policy_set', area: 'copilot', audience: ['O'],
-  description: 'Restrict cloud-agent repository access, with independently verified GitHub before/after; unpriced expansion is refused.',
+  description: 'Set Copilot cloud-agent repository access; expansions disclose metered exposure and require delegated consent plus readback.',
   properties: { owner: OWNER, enabledRepositories: { type:'string', enum:['none','selected','all'] } },
   required: ['enabledRepositories'],
   declarations: { production:'always', confirm:'always', accessWidening:true, profiles:['full'] },
