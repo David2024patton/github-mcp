@@ -1,3 +1,14 @@
+## 2026-10-17 — pre-release genuine standalone MCP read acceptance bundle (three original tasks)
+
+Source at planning: main `6a99aba2de258c28bcdd884cc6fd07d9ce319579`, live `d49aebd6b13365401a8a863876b4a3151b7fa910`. Independently read Vercel production READY `dpl_BWfVi8NaNDpej18hcGW5qQKLwqGP` (matching live exact SHA, canonical alias); source-bearing ancestor U-2/W-5/W-7 already deployed. Actual private Robinson GitHub Cloud custom-MCP connection reports `robinson-ai-scratch` full/PREVIEW, I true, U false, production OFF. No GitHub changes, paid requests, production activation or authorization changes occurred.
+
+Frozen completion acceptance plan commit `e23a9f23264ec9c742929853abbd3c021ca02c1f` in `docs/pr-cards/READONLY-CUSTOM-ACCEPTANCE-OCT17.md` selected three original queue tasks with baseline **PENDING**. New actual scoped provider observations:
+- **U-2 GraphQL:** typed variable/fragment/alias owned public repository and `issues(first:2)` returned a bounded provider result (2 estimated points, 21 max nodes, zero real issues). An unconnected owner was refused, and unsafe deep nested pagination and oversized page values rejected before dispatch.
+- **W-5 Access Review:** complete member/outsider/team/App/token/invitation/collaborator/deploy-key coverage for both scratch repositories; independently repeated provider collaborator, deploy-key and team reads. Found App installation scoped to all scratch repositories and correctly labeled it **needs_attention**, without making access changes or calling it clean.
+- **W-7 Find:** both real scratch repos found, all six content types enumerated, and genuinely zero additional PR/issue/commit/Actions-run/release matches in those existing fixture repositories. Direct scoped GitHub searches and run/release reads corroborated empty inventories. One-item cap produced partial+page 2; unreadable nonexistent repo produced real 422/404 with `not_readable`/partial; foreign owner denied. No artificial data or live mutation.
+
+Original queue statuses for precisely these three IDs moved PENDING→PASSED with fresh actual observations; all other 52 queue items and exact source revision pins remain unchanged. Queue now **7 PASSED, 15 BLOCKED, 33 PENDING (55 total)**. This is proposed as **one COMPLETION bundle** with 3 previously unmet original deployed real-world criteria, no new production code, no original engineering re-credit. Prior partial END-USER-AUTHORITY-LIVE plan stays incomplete/uncredited. Source `main` is ahead of live only for separate merged #240 exact-routing correction; it remains unavailable for current live U-1 routing reacceptance until next checked release. No manual/off-schedule release.
+
 ## 2026-10-17 — current exact-release custom acceptance and new routing defect
 
 Independently reconciled GitHub `main=live=d49aebd6b13365401a8a863876b4a3151b7fa910`; Vercel production deployment `dpl_BWfVi8NaNDpej18hcGW5qQKLwqGP` READY with exact matching Git SHA and canonical live alias. Real *custom* Robinson GitHub Cloud service OAuth works on `robinson-ai-scratch`, PREVIEW/full, I credential, no U, production OFF. No real GitHub writes, purchases, live activation, added permissions, fixture deletion, off-cadence release or spend performed.
@@ -877,13 +888,14 @@ open obligations, original fixture ownership, approvals and deployment provenanc
   {
     "id": "GITHUB-W5-ACCESS-REVIEW",
     "priority": 2,
-    "status": "PENDING",
+    "status": "PASSED",
     "requiredRevision": "f150500d51be54f2b9026eaabd01e347bcc22256",
     "task": "Compare real member/outsider/team/app/token and repository collaborator/deploy-key coverage and unusual-access findings without changing access.",
     "procedure": "docs/pr-cards/W-5.md",
     "gates": "Reviewed source in READY live, scoped enrolled org/repository and legitimate provider read permission; no grant/invitation or token policy mutation.",
     "dependsOn": [],
-    "lastEvidence": "2026-10-15: new original workflow source f150500d51be54f2b9026eaabd01e347bcc22256; 37 focused maintenance tests plus existing writer/registry coverage (249 targeted checks) passed. Fake provider/dispatcher proof only; source absent from independently READY ecf190d7. No real mutation, activation, notification or cleanup claimed."
+    "lastEvidence": "2026-10-17 custom GitHub MCP PREVIEW/full enrolled robinson-ai-scratch I, Vercel READY exact d49aebd6. github_workflow_access_review with accountType organization maxRepositories=2 reported done/complete true, status needs_attention with 10 independently observed source sections: 1 org member, zero outsiders/teams, one verified App installation (repository_selection all), zero fine-grained tokens/requests, both enrolled scratch repositories' exact collaborator and deploy-key lists (one admin each, zero keys/invites, complete true). Finding app:170482829 properly warns all-repository access rather than auto-fix or false clean. Independently compared direct custom provider github_collab_list and github_deploykey_list for private fixture and github_team_list, values match; no access change, notification or credential exposure.",
+    "nextAction": "Read-only W-5 access-review criterion accepted with observed needs_attention finding; owner may separately review existing all-repository scratch App selection. Do not convert finding to blanket missing product permission or automatically change it."
   },
   {
     "id": "GITHUB-W6-RELEASE",
@@ -921,13 +933,14 @@ open obligations, original fixture ownership, approvals and deployment provenanc
   {
     "id": "GITHUB-W7-FIND",
     "priority": 2,
-    "status": "PENDING",
+    "status": "PASSED",
     "requiredRevision": "59e81e0ae9f27ae01ce31ff74891a4e6579f5274",
     "task": "Compare genuine scoped mixed repository/PR/issue/commit/run/release searches, continuation and capped/unreadable cases against owned disposable provider fixtures without writes.",
     "procedure": "docs/pr-cards/W-7.md",
     "gates": "Reviewed source in READY live, service-issued scoped read principal and owned fixture contents; no message, write or actual cleanup.",
     "dependsOn": [],
-    "lastEvidence": "2026-10-15 additional W-7 engineering: source 59e81e0ae9f27ae01ce31ff74891a4e6579f5274; focused workflow, new vulnerability-alert writer contracts, P-3 and registry checks passed (63). Synthetic fixtures only. Not in independently READY ecf190d7; no real repository/configuration, notification, purchase, activation or disposal performed."
+    "lastEvidence": "2026-10-17 live custom GitHub MCP PREVIEW/full scratch I, Vercel READY SHA d49aebd6: github_workflow_find query rtc on enrolled org returned both real scratch repos (one private, one public), six resource types repository/PR/issue/commit/run/release and real bounded complete empty arrays for other types; source sections all observed and done true. Independently compared scoped direct github_search_github query 'rtc org:robinson-ai-scratch' (total_count=2, incomplete_results=false), issue/PR repo-scoped provider search (0), direct actions runs and release list (0). max=1 on real two-result repo inventory produced partial/next_page=2; page 2 completed the second result. Unreadable nonexistent scratch repo fixture produced actual search HTTP 422, run/release HTTP 404, section not_readable and done false/partial rather than false clean. Foreign owner unconnected denied. No fixture creation/write, notification or spend.",
+    "nextAction": "Real W-7 scoped find acceptance complete for two existing disposable empty fixtures with verified zero PR/issues/commits/runs/releases and actual pagination/denial/partial handling. Nonempty per-type scenarios remain available for future separate broader provider tests but were not invented or generated here."
   },
   {
     "id": "GITHUB-W7-DIGEST",
@@ -974,9 +987,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/U-2.md; docs/designs/BATCH-U.md",
     "gates": "Merged U-2 source in independently verified READY serving deployment, genuine service-issued OAuth and owner-authorized read-only scratch scope. No real mutation, account widening, production or spend activation.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-17: checked READY live d49aebd6, actual custom GitHub Cloud PREVIEW/full scratch I, bounded pinned query with typed $owner/$repo variables returned owned public repository name, isPrivate=false and main branch; node estimate 5, points 1. Fragment/alias variation, foreign-scope denial and independent complete original criterion still not tested; no GraphQL write executed.",
-    "nextAction": "Re-run separate typed fragment/alias plus foreign-scope denial and bounded point/node cases on exact deployed source before setting PASSED."
+    "status": "PASSED",
+    "lastEvidence": "2026-10-17 genuine custom Robinson GitHub Cloud MCP on canonical deployment Vercel READY dpl_BWfVi8NaNDpej18hcGW5qQKLwqGP SHA d49aebd6, PREVIEW/full service OAuth scratch I. Typed $owner/$repo/$first query with fragment Repo Fields and alias chosen returned owned PUBLIC rtc-ghaccept-h1-public-oct14, branch main, zero issues, pointsEstimate=2, maximumNodes=21, connections=1. Foreign owner test refused before GitHub ('outside enrolled connection'); deep nested 100x100x100 pagination refused >500 points/500000 nodes; 1001 page size refused 1..100. All tests nonmutating; no secrets or production activation.",
+    "nextAction": "Read-only custom GraphQL acceptance complete on deployed exact source. Guarded mutations remain separately pending under GITHUB-U2-GRAPHQL-WRITE and not authorized by this pass."
   },
   {
     "id": "GITHUB-U2-GRAPHQL-WRITE",
