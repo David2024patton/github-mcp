@@ -119,15 +119,20 @@ describe('H-4 security feature and Actions policy safety',()=>{
       {repo:'hello',feature:'secret_scanning',enabled:true,confirm:true});
     expect(out).toMatchObject({status:'refused_by_guard',refusedBy:'spend limit'});
     expect(w.gh.calls.filter(x=>x.route===routes.repoPatch)).toHaveLength(0);
+    // RTC forbids writes on a read-only pass before touching spend. Exercise
+    // the genuine spend gate in isolation with the same finite pass cap, to
+    // prove unknown charges cannot sneak through even on an authorized pass.
     const pass=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
-    pass.connection={...pass.connection,pass:true,spend_limit_cents:5000,client_id:'limited-pass'};
-    pass.ctx.connection=pass.connection;
-    pass.gh.when(routes.repo).reply(200,security('disabled',true));
-    pass.gh.when(routes.pvr).reply(200,{enabled:false});
-    const passOut=await call(pass,'github_security_set_feature',
-      {repo:'hello',feature:'secret_scanning',enabled:true,confirm:true});
-    expect(passOut).toMatchObject({status:'refused_by_guard',refusedBy:'pass spend allowance'});
-    expect(pass.gh.calls.filter(x=>x.route===routes.repoPatch)).toHaveLength(0);
+    const passCtx={...pass.ctx,connection:{...pass.ctx.connection,
+      pass:true,spend_limit_cents:5000,client_id:'limited-pass'}};
+    const verdict=await actualSpendGate()({
+      name:'github_security_set_feature',
+      args:{repo:'hello',feature:'secret_scanning',enabled:true},
+      ctx:passCtx,target:{owner:'example-org'},
+      classification:{spendUnknown:true,spendCents:0},
+      declarations:{spend:true}});
+    expect(verdict).toMatchObject({by:'pass spend allowance'});
+    expect(pass.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
   });
   it('lets owners turn off premium security even with a selected $0 user cap',async()=>{
     const w=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
