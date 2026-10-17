@@ -6,7 +6,7 @@ import {octo,ownerOf,refusal} from './github-write.js';
 import {plain} from './github-read.js';
 
 const OWNER={type:'string',minLength:1,maxLength:39};
-const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9_.-]+
+const REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9_.-]+$'};
 const base='/orgs/{org}/copilot/coding-agent/permissions';
 const target=(a,c)=>({owner:ownerOf(a,c),scope:'org',kind:'copilot-agent-settings'});
 const ghFor=(c,t)=>octo(c,t.owner,'I');
