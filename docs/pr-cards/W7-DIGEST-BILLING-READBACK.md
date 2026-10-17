@@ -46,3 +46,12 @@ Original W-7 source requirements remain from `docs/pr-cards/W-7.md`, and existin
 <!-- bundle-plan:end -->
 
 No local GitHub checkout possible in this connector-only context; rely on actual mandatory exact-head GitHub Actions and code self-review. No off-schedule release or billing mutation is authorized.
+
+## Delivery comparison — source correction, not a second bundle
+
+Frozen plan commit `04ad7cc1c64bd189aaeaa316e576ee7148892f6b`, based on merged `main=89bbfbf6b3a35673e43fcf05cfd631d5484e2df0`. Source commit `fe913a2517a27184c475434273fa6c83c63ca36d`; test commit `c16029a9b2cc6830e09c997bacdb334a917edf8b`.
+
+- Production source: **17 lines added / 5 removed** in existing `src/tools/workflows-find.js`; no new tool or permission. Test-only source: **43 added / 5 removed** in `tests/unit/workflows-discovery.test.js`.
+- Change preserves verified daily zero-cost outputs rather than always returning UNKNOWN, while rejecting unauthorized/mismatched principal, date period, incomplete nested usage, invalid item charge, missing total, and positive cost without any disclosed items.
+- Real custom-service observation already exists for old deployed SHA: exact `github_billing_get_usage` returns owner/scope/year/month and `usage.items=[]`, `usage.complete=true`, `usage.total_net_dollars=0`, whereas old digest returned seven `billing-shape:not_readable`. **Not** claiming new source provider accepted: it has not yet been released. The underlying scratch private security alert coverage is independently plan-limited and remains partial, so original `GITHUB-W7-DIGEST` remains PENDING after this correction.
+- New original W-7 engineering criteria were already counted at # earlier W-7 source PR and are **not** recounted. This 17-line integration repair is not independently claimed as another normal-volume or completion bundle, nor as external acceptance. It is authorized extra pre-release repair, with mandatory exact-head CI/review/merge. No local npm/test execution available because the ephemeral shell cannot resolve github.com; full GitHub CI remains the authoritative test result.
