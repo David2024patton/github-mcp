@@ -130,8 +130,20 @@ export const compareDependencies=defineRead({
     // A 403 can mean missing App permissions, account policy, or a plan gate.
     // Preserve the actual GitHub refusal and permission headers for the shared
     // sanitized error translator; never assert plan ineligibility from status alone.
-    const data=(await gh.request(
-      'GET /repos/{owner}/{repo}/dependency-graph/compare/{basehead}',p)).data;
+    let data;
+    try {
+      data=(await gh.request(
+        'GET /repos/{owner}/{repo}/dependency-graph/compare/{basehead}',p)).data;
+    } catch (error) {
+      // Only an *explicit provider plan verdict* can establish plan ineligibility.
+      // Other 403s may mean missing App permissions, disabled private security,
+      // or a fork restriction; the shared translator retains those distinctions.
+      const message=String(error?.response?.data?.message??error?.message??'');
+      if(error?.status===403 && /(?:plan does not support dependency review|not available on (?:this|your) plan)/i.test(message))
+        return {status:'not_available_on_plan',owner,repo:a.repo,
+          note:'GitHub explicitly reports that this plan does not permit dependency review. No upgrade attempted.'};
+      throw error;
+    }
     if(!Array.isArray(data))throw new TypeError('GitHub did not return dependency comparison items.');
     return {owner,repo:a.repo,base,head,changes:data.slice(0,100).map(x=>({
       change_type:x.change_type,manifest:x.manifest,ecosystem:x.ecosystem,
