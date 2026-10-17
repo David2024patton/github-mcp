@@ -385,8 +385,8 @@ Card(s): H-4.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_security_get_settings` | Repository security features: secret scanning, push protection, Dependabot alerts/updates, code security, private vulnerability reporting | — | F | I | O,B | R | H-4 built #195/#196/#224 |
-| `github_security_set_feature` | Actually change permitted private/public security settings, including paid private activation after uncapped usage warning and confirmation | C·$*·Prod | F | I | O | F | H-4 built #195/#196/#224 |
+| `github_security_get_settings` | Read verified repo security features including AI detection, non-provider patterns, delegated dismissal/bypass, private reporting and dedicated Dependabot enabled/paused state | — | F | I | O,B | R | H-4 built #195/#196/#224 |
+| `github_security_set_feature` | Enable/disable all provider-supported repo security switches: direct security_and_analysis PATCH, Dependabot PUT/DELETE and private-reporting PUT/DELETE, with paid/private notices, bypass access consent and exact independent readback | C·$*·Prod | F | I | O | F | H-4 built #195/#196/#224 |
 | `github_security_list_alerts` | Dependabot, code scanning or secret scanning alerts for a repo or org (kind chosen by argument) | — | C | I | O,B,Op | R | H-4 built #195/#196/#224 |
 | `github_security_get_alert` | One alert in plain words (secret scanning: the secret itself is never returned) | — | F | I | O,B | R | H-4 built #195/#196/#224 |
 | `github_security_update_alert` | Dismiss, resolve or reopen an alert with a reason | C·Prod | C | I | O,B | E | H-4 built #195/#196/#224 |
