@@ -406,7 +406,11 @@ describe('Y-7 large-org complete security-configuration cursor and readback cont
       connection:w.connection,db:w.db
     });
     expect(out.isError).toBe(true);
-    expect(out.content?.[0]?.text).toMatch(/description.*255/i);
+    // The MCP schema emits a sanitized user-facing rejection message; the
+    // exact numeric limit is asserted separately against the registered schema.
+    expect(registry.tools.find(t=>t.name==='github_security_config_save')
+      .inputSchema.properties.description.maxLength).toBe(255);
+    expect(out.content?.[0]?.text).toMatch(/description is too long/i);
     expect(w.gh.calls).toHaveLength(0);
   });
   it('does not claim confirmed success when requested nested settings or enforcement are ignored',async()=>{
