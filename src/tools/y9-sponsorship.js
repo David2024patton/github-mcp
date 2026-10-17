@@ -93,13 +93,13 @@ const sponsorshipChange = (paid) => defineGithubWrite({
       '; payer authorization and GitHub price/readback required';
   },
   apply:async({args:a,ctx,target:t,before:b})=>{
-    if(a.action==='start'&&before.active)
+    if(a.action==='start'&&b.active)
       throw refusal('A sponsorship is already active; this new intent cannot create a duplicate charge.');
-    if(a.action!=='start'&&!before.active)
+    if(a.action!=='start'&&!b.active)
       throw refusal('No active sponsorship exists for that recipient.');
     if(a.action==='preferences'&&
-      (a.privacyLevel===undefined||before.active.privacyLevel===a.privacyLevel)&&
-      (a.receiveEmails===undefined||before.active.isSponsorOptedIntoEmail===a.receiveEmails))
+      (a.privacyLevel===undefined||b.active.privacyLevel===a.privacyLevel)&&
+      (a.receiveEmails===undefined||b.active.isSponsorOptedIntoEmail===a.receiveEmails))
       throw refusal('Sponsorship preferences already match; no change to send.');
     const gh=await identity(ctx,t);
     // One provider-side mutation only. Ambiguous errors are never replayed.

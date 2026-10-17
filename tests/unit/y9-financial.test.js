@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { makeWorld, parse } from '../../test/helpers/write-contract.js';
 import * as copilot from '../../src/tools/y9-copilot.js';
+import * as copilotRepos from '../../src/tools/y9-copilot-repos.js';
 import * as sponsor from '../../src/tools/y9-sponsorship.js';
 import * as hosted from '../../src/tools/y9-hosted-runners.js';
 import * as agent from '../../src/tools/y9-agent-tasks.js';
@@ -8,7 +9,7 @@ import { registry } from '../../src/tools/index.js';
 import { spendGate } from '../../src/tools/spend-guard.js';
 import { inspectGraphql } from '../../src/github/graphql-schema.js';
 
-const defs=[...copilot.tools,...sponsor.tools,...hosted.tools,...agent.tools];
+const defs=[...copilot.tools,...copilotRepos.tools,...sponsor.tools,...hosted.tools,...agent.tools];
 const call=async (module,name,w,args)=>{ const reply=await module.handlers[name](args,w.ctx); return module.tools.find(x=>x.name===name)?.readContract?reply:parse(reply); };
 describe('Y-9d financial and Copilot integration',()=>{
   it('validates all sponsorship reads and paid mutations against the vendored GitHub GraphQL schema',()=>{
@@ -23,7 +24,7 @@ describe('Y-9d financial and Copilot integration',()=>{
   });
   it('registers every named capability exactly once with its advertised permission profile',()=>{
     const names=defs.map(x=>x.name);
-    expect(new Set(names).size).toBe(15);
+    expect(new Set(names).size).toBe(17);
     for(const name of names){
       expect(registry.tools.some(x=>x.name===name)).toBe(true);
       const def=defs.find(x=>x.name===name);

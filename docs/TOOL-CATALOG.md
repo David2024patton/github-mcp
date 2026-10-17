@@ -6,7 +6,7 @@ Restricted preview RTC successful replies revalidate service pass and scratch ow
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
 else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
 on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
-tool merges, its Card cell gains `built #<PR>`. Built so far: **409 cataloged tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
+tool merges, its Card cell gains `built #<PR>`. Built so far: **411 cataloged tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
 and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Since B-5 every result of these tools is shaped (`src/tools/util.js`) and failures are explained by `src/tools/errors.js`. Since B-6 a connection sees only the tools its profile allows (`tools/list` and by-name calls). Every write tool below is built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
 
 **Safety** (enforced by the trust layer, `docs/designs/BATCH-B.md`):
@@ -603,14 +603,16 @@ Card(s): P-2, P-3, W-1 … W-7. P-2 built in PR #207 as a non-read-only composed
 | `github_workflow_app_readiness` | Is GitHub set up for a profiled project (or an inline spec)? Each row done / fixed with confirm / needs you (steps) / needs a decision | P | N | I | B,O | R | P-2 built #207 |
 | `github_workflow_project_setup` | Set up GitHub for a new project from a short description: repo, rules, environments, labels, security features; idempotent | C·A* | N | I | B,O | F | P-3 built #209 |
 
-## Batch Y-9d financial and Copilot operations (`github_y9_*`) — 15
+## Batch Y-9d financial and Copilot operations (`github_y9_*`) — 17
 
 Y-9d is approved by IN-16. Every mutating call uses the existing production, pass, permission, protection, confirmation, cost and journal gates. Hosted-runner creation and agent task starting use supported GitHub APIs under delegated user authority, a truthful unbounded future metered cost warning and ordinary protected writes; no developer TEST acceptance spends money. Genuine live acceptance is tracked separately.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_copilot_agent_policy_get` | Read selected/none/all cloud-agent access state | — | N | I | O,Op | R | Y-9 |
-| `github_copilot_agent_policy_set` | Restrict verified cloud-agent repository access; unpriced expansion refused | C·Prod·A* | F | I | O | F | Y-9 |
+| `github_copilot_agent_policy_set` | Change Copilot cloud-agent organization repository access with a metered-use warning for expansion | C·Prod·A* | F | I | O | F | Y-9 |
+| `github_copilot_agent_repos_list` | Read verified selected repositories allowed for Copilot cloud agent | — | N | I | O,Op | R | Y-9 |
+| `github_copilot_agent_repo_set` | Allow or deny individual organization repositories for Copilot cloud agent, with authorization | C·Prod·A* | F | I | O | F | Y-9 |
 | `github_copilot_content_exclusions_get` | Read current Copilot excluded repository paths | — | N | I | O,Op | R | Y-9 |
 | `github_copilot_content_exclusions_set` | Replace Copilot exclusions with guarded readback and access-change warning | C·Prod·A* | F | I | O | F | Y-9 |
 | `github_copilot_team_seats` | Assign new Copilot team seats with verified pricing and confirmation | C·Prod·A*·$ | F | I | O | F | Y-9 |
@@ -756,7 +758,7 @@ Card(s): Y-9 (WU-Y9a). Organization-level, so every write is production-class an
 
 ## Totals
 
-**Totals:** 409 tools: 403 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 411 tools: 405 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 134, everyday adds 81
 (everyday lists 215), full adds 96 (full lists 354). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
@@ -802,8 +804,8 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Project profiles | 3 |
 | Workflows | 17 |
 | Everything else on GitHub: the universal tools | 6 |
-| Batch Y-9d financial and Copilot operations | 15 |
-| **Total** | **409** |
+| Batch Y-9d financial and Copilot operations | 17 |
+| **Total** | **411** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 
