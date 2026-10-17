@@ -41,6 +41,10 @@ function arrange(gh,{ruleList=[],repoState={},security={},work='read',fork='all_
   gh.when(REPO).reply(200,repo({...repoState,
     security_and_analysis:{...repo().security_and_analysis,...security}}));
   gh.when(RULES).reply(200,ruleList);
+  // H-4 uses GitHub's real, separate Dependabot security-updates read.
+  // An unstubbed 501 would be retried by Octokit and wrongly time out P-2.
+  gh.when('GET /repos/{owner}/{repo}/automated-security-fixes')
+    .reply(200,{enabled:true,paused:false});
   gh.when('GET /repos/{owner}/{repo}/private-vulnerability-reporting').reply(200,{enabled:false});
   gh.when(BRANCH).reply(404,{message:'not found'});
   gh.when(ACT).reply(200,{enabled:true,allowed_actions:'all'});
