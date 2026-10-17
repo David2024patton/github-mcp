@@ -5,6 +5,8 @@ import {find,digest,newRepo} from '../../src/tools/workflows-find.js';
 const owner='example-org',repo='app';
 const envelope=data=>({structuredContent:data,content:[{type:'text',text:JSON.stringify(data)}]});
 const options={merge_commit:true,squash:false,rebase:false,delete_branch_on_merge:true};
+// Shape of the actual registered github_billing_get_usage reader, not GitHub's raw API.
+const billed=(a,usage)=>({owner:a.owner,scope:a.scope,year:a.year,month:a.month,usage});
 function fixture(extra={}){
   let clock=Date.parse('2026-10-15T12:00:00Z');const calls=[];
   const outputs={
@@ -12,7 +14,7 @@ function fixture(extra={}){
     github_search_github:{items:[],total_count:0,incomplete_results:false,more_possible:false},
     github_repo_list:{items:[{name:repo}]},github_actions_list_runs:{items:[]},github_release_list:{items:[]},github_pr_list:{items:[]},
     github_security_list_alerts:{items:[],count:0,complete:true},github_org_list_invitations:{pending:[],failed:[],complete:true},
-    github_billing_get_usage:{items:[],complete:true},
+    github_billing_get_usage:a=>billed(a,{items:[],complete:true,total_net_dollars:0}),
     github_workflow_project_setup:{stage:'complete',done:true},
     github_repo_get:{default_branch:'main',merge_options:options},github_branch_list:{items:[]},
     github_repo_get_vulnerability_alerts:{enabled:true},
@@ -57,14 +59,14 @@ describe('W-7 mixed scoped discovery',()=>{
   });
 });
 describe('W-7 weekly digest uses actual date-bound billed cents',()=>{
-  const billing=a=>({complete:true,items:[{date:new Date(Date.UTC(a.year,a.month-1,a.day)).toISOString(),product:'Actions',net_dollars:.1},{date:new Date(Date.UTC(a.year,a.month-1,a.day)).toISOString(),product:'Copilot',net_dollars:.2}]});
+  const billing=a=>billed(a,{complete:true,total_net_dollars:.3,items:[{date:new Date(Date.UTC(a.year,a.month-1,a.day)).toISOString(),product:'Actions',net_dollars:.1},{date:new Date(Date.UTC(a.year,a.month-1,a.day)).toISOString(),product:'Copilot',net_dollars:.2}]});
   it('covers seven complete days, merged PRs, CI rates, alerts and invitations',async()=>{
     const w=fixture({github_billing_get_usage:billing,github_pr_list:{items:[{number:1,merged_at:'2026-10-10T04:00:00Z'},{number:2,merged_at:null}]},github_actions_list_runs:{items:[{id:1,created_at:'2026-10-10T04:00:00Z',status:'completed',conclusion:'failure'},{id:2,created_at:'2026-10-11T04:00:00Z',status:'completed',conclusion:'success'}]},github_org_list_invitations:{pending:[{id:1}],failed:[],complete:true}});
     const r=await digest({},w.c),a=r.accounts[0];expect(r.done).toBe(true);expect(a.repositories[0].merged_prs).toHaveLength(1);expect(a.repositories[0].ci.failure_rate).toBe(.5);expect(a.pending_invitations.pending).toBe(1);
     expect(a.billed_usage).toMatchObject({actions_cents:70,copilot_cents:140,actions_display:'$0.70',copilot_display:'$1.40'});expect(w.calls.filter(x=>x.name==='github_billing_get_usage')).toHaveLength(7);expect(changed(w)).toEqual([]);expect(w.calls.every(x=>registry.tools.find(t=>t.name===x.name)?.annotations?.readOnlyHint===true)).toBe(true);
   });
   it('never double-counts Actions usage whose SKU mentions Copilot',async()=>{
-    const w=fixture({github_billing_get_usage:a=>({complete:true,items:[{date:new Date(Date.UTC(a.year,a.month-1,a.day)).toISOString(),product:'Actions',sku:'copilot-runner',net_dollars:1}]})});
+    const w=fixture({github_billing_get_usage:a=>billed(a,{complete:true,total_net_dollars:1,items:[{date:new Date(Date.UTC(a.year,a.month-1,a.day)).toISOString(),product:'Actions',sku:'copilot-runner',net_dollars:1}]})});
     const cost=(await digest({},w.c)).accounts[0].billed_usage;expect(cost.actions_cents).toBe(700);expect(cost.copilot_cents).toBe(0);
   });
   it('separates account scopes and handles month boundaries and Denver DST dates',async()=>{
@@ -75,8 +77,44 @@ describe('W-7 weekly digest uses actual date-bound billed cents',()=>{
     expect(r.period.from_denver).toContain('6:00');expect(r.period.until_denver).toContain('5:00');
   });
   it('never turns unreadable, incomplete or wrong-date costs into zero spend',async()=>{
-    for(const cost of [{isError:true,content:[{type:'text',text:'User sign-in missing'}]},{complete:false,items:[]},{complete:true,items:[{date:'2025-01-01',net_dollars:20,product:'Actions'}]},{complete:true},{complete:true,items:[{date:'2026-10-08',product:'Actions',net_dollars:null}]}]){
-      const w=fixture({github_billing_get_usage:cost}),r=await digest({},w.c);expect(r.done).toBe(false);expect(r.accounts[0].billed_usage.actions_display).toBeNull();expect(r.accounts[0].billed_usage.copilot_cents).toBeNull();
+    const invalid=[
+      {isError:true,content:[{type:'text',text:'User sign-in missing'}]},
+      {usage:{complete:false,items:[],total_net_dollars:null}},
+      {usage:{complete:true,items:[{date:'2025-01-01',net_dollars:20,product:'Actions'}],total_net_dollars:20}},
+      {usage:{complete:true,total_net_dollars:0}},
+      {usage:{complete:true,items:[{date:'2026-10-08',product:'Actions',net_dollars:null}],total_net_dollars:0}}
+    ];
+    for(const cost of invalid){
+      const w=fixture({github_billing_get_usage:a=>cost.isError?cost:billed(a,cost.usage)});
+      const r=await digest({},w.c);expect(r.done).toBe(false);
+      expect(r.accounts[0].billed_usage.actions_display).toBeNull();
+      expect(r.accounts[0].billed_usage.copilot_cents).toBeNull();
+    }
+  });
+  it('accepts a genuine empty complete daily usage envelope as verified $0, not unreadable',async()=>{
+    const w=fixture();
+    const r=await digest({},w.c),usage=r.accounts[0].billed_usage;
+    expect(r.done).toBe(true);
+    expect(usage).toMatchObject({complete:true,actions_cents:0,copilot_cents:0,actions_display:'$0.00',copilot_display:'$0.00'});
+    expect(usage.days).toHaveLength(7);
+    expect(usage.days.every(x=>x.status==='observed')).toBe(true);
+    expect(w.calls.filter(x=>x.name==='github_billing_get_usage')).toHaveLength(7);
+  });
+  it('rejects cross-account/month, missing totals, or an unexplained positive total with no items',async()=>{
+    const modifications=[
+      a=>({...billed(a,{complete:true,items:[],total_net_dollars:0}),owner:'other-org'}),
+      a=>({...billed(a,{complete:true,items:[],total_net_dollars:0}),scope:'user'}),
+      a=>({...billed(a,{complete:true,items:[],total_net_dollars:0}),month:1}),
+      a=>billed(a,{complete:true,items:[],total_net_dollars:null}),
+      a=>billed(a,{complete:true,items:[],total_net_dollars:12})
+    ];
+    for(const response of modifications){
+      const w=fixture({github_billing_get_usage:response});
+      const r=await digest({},w.c);
+      expect(r.done).toBe(false);
+      expect(r.accounts[0].billed_usage.complete).toBe(false);
+      expect(r.accounts[0].billed_usage.actions_display).toBeNull();
+      expect(r.sections.some(x=>x.id.includes('billing-shape')&&x.status==='not_readable')).toBe(true);
     }
   });
   it('preserves inaccessible alert coverage and capped repositories',async()=>{
