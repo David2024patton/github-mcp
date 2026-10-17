@@ -127,21 +127,31 @@ export const compareDependencies=defineRead({
     }
     const p={owner,repo:a.repo,basehead:`${base}...${head}`,
       ...(a.name?{name:a.name}:{})};
-    try{
-      const data=(await gh.request(
+    // A 403 can mean missing App permissions, account policy, or a plan gate.
+    // Preserve the actual GitHub refusal and permission headers for the shared
+    // sanitized error translator; never assert plan ineligibility from status alone.
+    let data;
+    try {
+      data=(await gh.request(
         'GET /repos/{owner}/{repo}/dependency-graph/compare/{basehead}',p)).data;
-      if(!Array.isArray(data))throw new TypeError('GitHub did not return dependency comparison items.');
-      return {owner,repo:a.repo,base,head,changes:data.slice(0,100).map(x=>({
-        change_type:x.change_type,manifest:x.manifest,ecosystem:x.ecosystem,
-        package:x.name,version:x.version,license:x.license,
-        vulnerabilities:(x.vulnerabilities??[]).slice(0,20).map(v=>({
-          ghsa_id:v.advisory_ghsa_id,severity:v.severity,summary:v.advisory_summary}))})),
-        complete:data.length<=100,count:data.length};
-    }catch(e){
-      if(e?.status===403)return {status:'not_available_on_plan',owner,repo:a.repo,
-        note:'GitHub dependency review may require eligible Code Security, or disallow this fork. No paid upgrade is attempted.'};
-      throw e;
+    } catch (error) {
+      // Only an *explicit provider plan verdict* can establish plan ineligibility.
+      // Other 403s may mean missing App permissions, disabled private security,
+      // or a fork restriction; the shared translator retains those distinctions.
+      const message=String(error?.response?.data?.message??error?.message??'');
+      if(error?.status===403 && /(?:plan does not support dependency review|not available on (?:this|your) plan)/i.test(message))
+        return {status:'not_available_on_plan',owner,repo:a.repo,
+          note:'GitHub explicitly reports that this plan does not permit dependency review. No upgrade attempted.'};
+      throw error;
     }
+    if(!Array.isArray(data))throw new TypeError('GitHub did not return dependency comparison items.');
+    return {owner,repo:a.repo,base,head,changes:data.slice(0,100).map(x=>({
+      change_type:x.change_type,manifest:x.manifest,ecosystem:x.ecosystem,
+      package:x.name,version:x.version,license:x.license,
+      vulnerabilities:(x.vulnerabilities??[]).slice(0,20).map(v=>({
+        ghsa_id:v.advisory_ghsa_id,severity:v.severity,summary:v.advisory_summary}))})),
+      complete:data.length<=100,count:data.length};
+
   })
 });
 export const tools=[securityListAlerts.tool,securityGetAlert.tool,

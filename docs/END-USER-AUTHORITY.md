@@ -39,3 +39,8 @@ The H-4/Y-7 source audit identified omitted, provider-supported repo security fl
 ## Large-organization security configuration remediation (October 17, 2026)
 
 The official GitHub code-security API accepts cursor pagination even when more than 100 configurations or associated repositories exist. Valid end-user scope was previously artificially limited by a one-page developer safeguard; the corrected provider contract fetches complete bounded pages, rejects unclear/duplicate/foreign results, retains paid/private disclosure and denies any destructive deletion lacking full exact associated-repository evidence. It also verifies nested setting options and enforcement rather than calling a write successful merely because GitHub returned 2xx. Original Y-7/H-4 implementation and real deployment acceptance remain tracked separately.
+
+
+## October 17 — privilege versus subscription diagnostic correction
+
+The H-4 dependency-review read and Y-9 organization network-configuration read/write paths previously labeled provider HTTP 403/404 as paid-plan ineligibility without proof, masking missing GitHub App permissions or inaccessible exact resources. The focused correction keeps GitHub's original refusal and accepted-permission data through the existing sanitized translator, while preserving PREVIEW/production/confirmation guards, source-verified completeness across paginated network inventories, and changed-network-ID readback. Original H-4/Y-9 implementation was merged earlier, and this maintenance does not re-credit those subsections. No real paid acceptance, credential upgrade, production write or deployed-source acceptance is claimed. See `docs/pr-cards/END-USER-AUTHORITY-REFUSAL-TRUTH-OCT17.md`.

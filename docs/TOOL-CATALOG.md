@@ -391,7 +391,7 @@ Card(s): H-4.
 | `github_security_get_alert` | One alert in plain words (secret scanning: the secret itself is never returned) | — | F | I | O,B | R | H-4 built #195/#196/#224 |
 | `github_security_update_alert` | Dismiss, resolve or reopen an alert with a reason | C·Prod | C | I | O,B | E | H-4 built #195/#196/#224 |
 | `github_security_list_advisories` | Repository security advisories, or global advisories by package | — | C | I | O,B | R | H-4 built #195/#196/#224 |
-| `github_security_compare_dependencies` | Dependencies added, removed or changed between two commits or branches (a PR), with known vulnerabilities and licences | — | N | I | B,O | R | H-4 built #195/#196/#224 |
+| `github_security_compare_dependencies` | Dependencies added, removed or changed between two commits or branches (a PR), with known vulnerabilities and licences; distinguish explicit provider plan refusal from missing App permission | — | N | I | B,O | R | H-4 built #195/#196/#224 |
 | `github_actions_get_settings` | Repository Actions settings: allowed actions, default token permissions, fork PR approval, retention | — | N | I | O,B | R | H-4 built #195/#196/#224 |
 | `github_actions_set_settings` | Change repository Actions settings | C·Prod·A | N | I | O | F | H-4 built #195/#196/#224 |
 
@@ -751,8 +751,8 @@ Card(s): Y-9 (WU-Y9a). Organization-level, so every write is production-class an
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_org_security_manager_set` | Give a team the organization security manager role, or remove it | C·Prod·A | N | I | O | F | Y-9 |
-| `github_org_network_config_list` | List hosted-compute network configurations (Enterprise Cloud) | — | N | I | O,Op | R | Y-9 |
-| `github_org_network_config_save` | Create or edit a hosted-compute network configuration | C·Prod | N | I | O | F | Y-9 |
+| `github_org_network_config_list` | List fully paginated hosted-compute network configurations (Enterprise Cloud); preserve exact GitHub permission/plan errors | — | N | I | O,Op | R | Y-9 |
+| `github_org_network_config_save` | Create or edit a hosted-compute network configuration, verifying primary and failover resource IDs after a guarded write | C·Prod | N | I | O | F | Y-9 |
 | `github_org_migration_start` | Start exporting organization repositories (locking is opt-in) | C·Prod | N | I | O | F | Y-9 |
 | `github_org_migration_status` | State of an organization migration and where to download the archive | — | N | I | O,Op | R | Y-9 |
 

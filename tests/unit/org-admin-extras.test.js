@@ -36,7 +36,7 @@ describe('org admin extras', () => {
     let body; try { body = parse(result); } catch { body = { message: result.content?.[0]?.text }; }
     return { result, body };
   };
-  it('network configurations on a plan without them say not_available_on_plan', async () => {
+  it('network configurations preserve authentic permission refusals instead of inventing a plan limit', async () => {
     const w = await makeWorld({ mode: 'production', profile: 'full' });
     w.gh.when('GET /orgs/{org}/settings/network-configurations').reply(403, { message: 'Forbidden' });
     const out = await run(w, 'github_org_network_config_list', { owner: O });
@@ -61,4 +61,55 @@ describe('org admin extras', () => {
     expect((await run(w, 'github_org_security_manager_set', { owner: O, teamSlug: 'x', enabled: false, confirm: true })).body.done).not.toBe(true);
     expect(w.gh.invalid).toEqual([]);
   });
+  it('distinguishes a missing App permission from an inaccessible configuration and sends no write', async () => {
+    for (const [code, message] of [[403, 'Resource not accessible by integration'], [404, 'Not Found']]) {
+      const w = await makeWorld({ mode: 'production', profile: 'full' });
+      w.gh.when('GET /orgs/{org}/settings/network-configurations').reply(code, { message });
+      const read = await run(w, 'github_org_network_config_list', { owner: O });
+      expect(read.result.isError).toBe(true);
+      expect(JSON.stringify(read)).not.toMatch(/not_available_on_plan|Enterprise Cloud only; no access/);
+      const write = await run(w, 'github_org_network_config_save',
+        { owner: O, name: 'safe-vnet', computeService: 'actions', networkSettingsIds: ['NS1'], confirm: true });
+      expect(write.body.done).not.toBe(true);
+      expect(write.body).toMatchObject({ status: 'refused_by_guard', refusedBy: 'read' });
+      expect(write.body.error).toMatch(code === 403
+        ? /not allowed|permission|App/i : /not found|cannot see|does not exist/i);
+      expect(write.body.error).not.toContain('not_available_on_plan');
+      expect(w.gh.calls.filter(c => ['POST', 'PUT', 'PATCH', 'DELETE'].includes(c.method))).toHaveLength(0);
+      expect(w.gh.invalid).toEqual([]);
+    }
+  });
+  it('refuses incomplete wrapped inventories, but paginates valid configurations without dropping an existing setting', async () => {
+    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    w.gh.when('GET /orgs/{org}/settings/network-configurations').replySequence([
+      { status: 200, body: { total_count: 2, network_configurations: [cfg({ id: 'A' })] } },
+      { status: 200, body: { total_count: 2, network_configurations: [cfg({ id: 'B' })] } }
+    ]);
+    const full = await run(w, 'github_org_network_config_list', { owner: O });
+    expect(full.body).toMatchObject({ count: 2, items: [{ id: 'A' }, { id: 'B' }] });
+    expect(w.gh.calls.filter(c => c.method === 'GET')).toHaveLength(2);
+    expect(w.gh.invalid).toEqual([]);
+
+    const denied = await makeWorld({ mode: 'production', profile: 'full' });
+    denied.gh.when('GET /orgs/{org}/settings/network-configurations')
+      .reply(200, { total_count: 2, network_configurations: [cfg({ id: 'A' })] });
+    const attempt = await run(denied, 'github_org_network_config_save',
+      { owner: O, configurationId: 'A', name: 'modified', confirm: true });
+    expect(attempt.body.done).not.toBe(true);
+    expect(denied.gh.calls.filter(c => c.method !== 'GET')).toHaveLength(0);
+  });
+  it('does not confirm a config write if the provider readback ignores requested network settings IDs', async () => {
+    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    let total = 0;
+    w.gh.when('GET /orgs/{org}/settings/network-configurations')
+      .reply(200, () => ({ total_count: total, network_configurations: total ? [cfg({network_settings_ids:['OLD']})] : [] }));
+    w.gh.when('POST /orgs/{org}/settings/network-configurations')
+      .reply(201, () => { total = 1; return cfg({network_settings_ids:['OLD']}); });
+    const args = { owner: O, name: 'vnet-1', computeService: 'actions', networkSettingsIds: ['NS1'], confirm: true };
+    const outcome = await run(w, 'github_org_network_config_save', args);
+    expect(outcome.body).toMatchObject({ done: false, status: 'unconfirmed' });
+    expect(w.gh.calls.filter(c => c.method === 'POST')).toHaveLength(1);
+    expect(w.gh.invalid).toEqual([]);
+  });
+
 });

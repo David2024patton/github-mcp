@@ -10,8 +10,9 @@ import { accessChange } from './people-guard.js';
 const OWNER = { type: 'string', maxLength: 39, description: 'Organization (default: the connection\'s default account)' };
 const SLUG = { type: 'string', minLength: 1, maxLength: 100, pattern: '^[A-Za-z0-9][A-Za-z0-9_-]*$' };
 const orgTarget = (kind) => (args, ctx) => ({ owner: ownerOf(args, ctx), scope: 'org', kind });
-const NO_PLAN = 'This organization\'s plan does not include hosted compute network configurations (not_available_on_plan). They need GitHub Enterprise Cloud.';
-const onPlan = async (run) => { try { return await run(); } catch (error) { if (error?.status === 403 || error?.status === 404) throw Object.assign(new Error(NO_PLAN), { status: 422 }); throw error; } };
+// A GitHub 403/404 might be a missing delegated App permission or an inaccessible
+// resource, even when this Enterprise feature exists. Keep the original HTTP
+// refusal/permission headers for the shared sanitized error translator.
 
 // ---- security managers ----
 const managers = (gh, owner) => gh.request('GET /orgs/{org}/security-managers', { org: owner }).then((r) => r.data.map((t) => t.slug));
@@ -43,7 +44,28 @@ const securityManager = defineGithubWrite({
 
 // ---- hosted compute network configurations ----
 const shapeConfig = (c) => ({ id: c.id, name: c.name, compute_service: c.compute_service, network_settings_ids: c.network_settings_ids ?? [], failover_enabled: !!c.failover_network_enabled, failover_network_settings_ids: c.failover_network_settings_ids ?? [], created_on: c.created_on ?? null });
-const listConfigs = (gh, org) => onPlan(async () => (await gh.request('GET /orgs/{org}/settings/network-configurations', { org })).data.network_configurations.map(shapeConfig));
+const listConfigs = async (gh, org) => {
+  const items = [], ids = new Set();
+  let total = null;
+  // The provider returns a wrapped paginated list, not Octokit's usual array.
+  // An incomplete read cannot prove a configuration is absent or safely updated.
+  for (let page = 1; page <= 100; page++) {
+    const data = (await gh.request('GET /orgs/{org}/settings/network-configurations', { org, per_page: 100, page })).data;
+    if (!Array.isArray(data?.network_configurations) || !Number.isSafeInteger(data?.total_count) || data.total_count < 0 ||
+        (total !== null && data.total_count !== total))
+      throw new TypeError('GitHub network configuration inventory is not verifiably complete.');
+    total = data.total_count;
+    for (const item of data.network_configurations) {
+      if (typeof item?.id !== 'string' || !item.id || ids.has(item.id))
+        throw new TypeError('GitHub returned an invalid or duplicate network configuration.');
+      ids.add(item.id); items.push(shapeConfig(item));
+    }
+    if (items.length === total) return items;
+    if (items.length > total || data.network_configurations.length === 0)
+      throw new TypeError('GitHub network configuration inventory is incomplete; no settings can be safely changed.');
+  }
+  throw new TypeError('GitHub network configuration inventory exceeded the safe request budget; no settings changed.');
+};
 
 const networkList = defineRead({
   name: 'github_org_network_config_list', area: 'org', audience: ['O', 'Op'],
@@ -78,17 +100,19 @@ const networkSave = defineGithubWrite({
     if (args.configurationId) {
       if (!before.items.find((c) => c.id === args.configurationId)) throw refusal('That network configuration was not found.', 404);
       if (!Object.keys(body).length) throw refusal('Nothing to change: give at least one field.');
-      return onPlan(() => gh.request('PATCH /orgs/{org}/settings/network-configurations/{network_configuration_id}', { org: t.owner, network_configuration_id: args.configurationId, ...body }));
+      return gh.request('PATCH /orgs/{org}/settings/network-configurations/{network_configuration_id}', { org: t.owner, network_configuration_id: args.configurationId, ...body });
     }
     if (!args.name || !args.networkSettingsIds) throw refusal('To create one, give a name and the network settings id.');
-    return onPlan(() => gh.request('POST /orgs/{org}/settings/network-configurations', { org: t.owner, ...body }));
+    return gh.request('POST /orgs/{org}/settings/network-configurations', { org: t.owner, ...body });
   },
   readAfter: async ({ args, ctx, target: t, response }) => {
     const id = args.configurationId ?? response?.data?.id;
     return (await listConfigs(await octo(ctx, t.owner), t.owner)).find((c) => c.id === id) ?? null;
   },
   verify: ({ args, after }) => !!after && (!args.name || after.name === args.name) && (!args.computeService || after.compute_service === args.computeService)
-    && (args.failoverNetworkEnabled === undefined || after.failover_enabled === args.failoverNetworkEnabled),
+    && (args.failoverNetworkEnabled === undefined || after.failover_enabled === args.failoverNetworkEnabled)
+    && (!args.networkSettingsIds || JSON.stringify(after.network_settings_ids) === JSON.stringify(args.networkSettingsIds))
+    && (!args.failoverNetworkSettingsIds || JSON.stringify(after.failover_network_settings_ids) === JSON.stringify(args.failoverNetworkSettingsIds)),
   inverse: () => null,
   present: ({ after }) => ({ configuration: after })
 });
