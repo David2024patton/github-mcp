@@ -308,7 +308,8 @@ describe('O-4 end-user authority: provider-allowed unenforced budget controls',(
  }
  function arrangeUpdate(gh){
    gh.when(BG).replySequence([
-     {status:200,body:b},{status:200,body:unenforced}
+     {status:200,body:b},{status:200,body:b},
+     {status:200,body:unenforced}
    ]);
    gh.when(B).reply(200,{budgets:[b],has_next_page:false,total_count:1});
    gh.when('PATCH /organizations/{org}/settings/billing/budgets/{budget_id}')
