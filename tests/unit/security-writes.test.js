@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { runWriteContract, makeWorld, parse } from '../../test/helpers/write-contract.js';
-import { spendGate } from '../../test/helpers/fixture-gates.js';
 import { spendGate as actualSpendGate } from '../../src/tools/spend-guard.js';
 import * as advisories from '../../src/tools/advisories.js';
 import * as scanning from '../../src/tools/security-scanning-writes.js';
