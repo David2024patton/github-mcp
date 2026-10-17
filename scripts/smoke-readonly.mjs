@@ -48,7 +48,8 @@ function githubUrl(url) {
   try {
     const u = new URL(url);
     return u.protocol === 'https:' && u.hostname === 'api.github.com' &&
-      u.port === '' && !u.username && !u.password && !u.hash;
+      u.port === '' && !u.username && !u.password && !u.hash &&
+      ![...u.searchParams.keys()].some(k => /^(?:token|access_token|api_key|client_secret)$/i.test(k));
   } catch { return false; }
 }
 function oneGraphqlRead(body) {
@@ -74,7 +75,7 @@ function oneGraphqlRead(body) {
 const isReadRequest = (method, url, body) => {
   if (!githubUrl(url)) return false;
   const m = String(method ?? 'GET').toUpperCase();
-  if (m === 'GET' || m === 'HEAD') return true;
+  if (m === 'GET' || m === 'HEAD') return new URL(url).pathname !== '/graphql';
   return m === 'POST' && new URL(url).pathname === '/graphql' && oneGraphqlRead(body);
 };
 
@@ -125,7 +126,10 @@ export function guardedFetch(inner) {
       log.push({ method: String(method).toUpperCase(), blocked: true });
       throw new Error('The read-only smoke test refused a request that could change something.');
     }
-    const response = await inner(input, init);
+    // Prevent automatic redirects from carrying an OAuth request outside the
+    // pinned API destination. GitHub may legitimately redirect downloads; these
+    // are recorded as incomplete instead of silently fetching an outside host.
+    const response = await inner(input, { ...init, redirect: 'manual' });
     let message = '';
     if (response.status >= 400) { try { message = String(JSON.parse((await response.clone().text()).slice(0, MAX_BODY))?.message ?? ''); } catch { message = ''; } }
     log.push({ method: String(method).toUpperCase(), status: response.status, requestId: safeRequestId(response.headers?.get?.('x-github-request-id')), message: protect(message, 250) });
