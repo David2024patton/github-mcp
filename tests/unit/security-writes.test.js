@@ -56,6 +56,14 @@ const setupRoutes = (gh, o, isPrivate = false) => {
 runWriteContract({ label: 'github_security_code_scanning_default_setup', definition: def(scanning, 'github_security_code_scanning_default_setup'), needsConfirm: true, production: true, profile: 'full',
   args: { ...R, state: 'configured', languages: ['javascript-typescript'] }, arrange: (gh, o) => setupRoutes(gh, o) });
 
+// Entire write lifecycle for private paid code scanning; public fixture above remains
+// separate so a private user-charge grant cannot silently alter cost-free routes.
+runWriteContract({label:'github_security_code_scanning_default_setup private paid',
+  definition:def(scanning,'github_security_code_scanning_default_setup'),
+  needsConfirm:true,production:true,profile:'full',
+  args:{...R,state:'configured',languages:['javascript-typescript']},
+  arrange:(gh,o)=>setupRoutes(gh,o,true)});
+
 const PAT = '/orgs/{org}/secret-scanning/custom-patterns';
 const pattern = (over = {}) => ({ id: 31, name: 'Internal key', pattern: 'ACME_[A-Z0-9]{16}', slug: 'internal_key', state: 'published', push_protection_enabled: false, custom_pattern_version: 'v1', ...over });
 runWriteContract({ label: 'github_security_secret_pattern_save', definition: def(scanning, 'github_security_secret_pattern_save'), needsConfirm: true, profile: 'full',
@@ -95,6 +103,22 @@ const attachArrange = (paid) => (gh, o) => {
   gh.when(`POST ${CFG}/{configuration_id}/attach`).reply(202, () => { if (ok(o)) gh.when(`GET ${CFG}/{configuration_id}/repositories`).reply(200, [repoRow(1, 'app')]); return null; });
 };
 runWriteContract({ label: 'github_security_config_attach', definition: def(config, 'github_security_config_attach'), needsConfirm: true, production: true, profile: 'full', args: { org: O, configurationId: 9, scope: 'public' }, arrange: attachArrange(false) });
+runWriteContract({
+  label:'github_security_config_attach private paid scope',
+  definition:def(config,'github_security_config_attach'),needsConfirm:true,
+  production:true,profile:'full',
+  args:{org:O,configurationId:9,scope:'private_or_internal'},
+  arrange:(gh,outcome)=>{
+    gh.when(`GET ${CFG}/{configuration_id}`).reply(200,cfg({secret_scanning:'enabled'}));
+    gh.when(`GET ${CFG}/{configuration_id}/repositories`).reply(200,[]);
+    gh.when(`POST ${CFG}/{configuration_id}/attach`).reply(202,()=>{
+      if(ok(outcome))
+        gh.when(`GET ${CFG}/{configuration_id}/repositories`)
+          .reply(200,[repoRow(11,'private-app',true)]);
+      return null;
+    });
+  }
+});
 runWriteContract({ label: 'github_security_config_default', definition: def(config, 'github_security_config_default'), needsConfirm: true, production: true, profile: 'full', args: { org: O, configurationId: 9, newRepos: 'public' },
   arrange: (gh, o) => {
     gh.when(`GET ${CFG}/{configuration_id}`).reply(200, cfg());
