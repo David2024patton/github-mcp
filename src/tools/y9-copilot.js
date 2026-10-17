@@ -111,8 +111,9 @@ async function seatState(c,t,slug){
     teamMembers(c,t,slug)
   ]);
   const gh=await at(c,t),list=await copilotSeats(gh,t.owner,500);
-  if(!list.complete||!['business','enterprise'].includes(bill?.plan_type) || bill?.seat_management_setting!=='assign_selected')
-    throw refusal('Complete seat inventory, selected-assignee billing and known Copilot plan required.');
+  if(!list.complete||typeof bill?.plan_type!=='string'||!bill.plan_type.trim()||
+     bill.plan_type.length>100||bill?.seat_management_setting!=='assign_selected')
+    throw refusal('Complete seat inventory, verifiable plan identity and selected-assignee billing required.');
   const assigned=new Set(list.seats.map(s=>s.assignee?.login?.toLowerCase()).filter(Boolean));
   return {plan:bill.plan_type,members,assigned:[...assigned],
     seats:list.seats,setting:bill.seat_management_setting};
@@ -127,18 +128,27 @@ const makeTeamSeats=(adding)=>defineGithubWrite({
   read:async(a,c,t)=>{await enrolled(c,t);return seatState(c,t,a.teamSlug);},
   ...(adding?{price:({before:b})=>{
     if(!b||!Number.isInteger(b.members?.length))return NaN;
-    const cents=PRICES[b.plan==='business'?'copilot_business_seat':'copilot_enterprise_seat']?.cents;
-    if(!Number.isSafeInteger(cents))return NaN;
-    return b.members.filter(login=>!b.assigned.includes(login)).length*cents;
+    const seatsNeeded=b.members.filter(login=>!b.assigned.includes(login)).length;
+    if(!seatsNeeded)return 0;
+    const key=b.plan==='business'?'copilot_business_seat':
+      b.plan==='enterprise'?'copilot_enterprise_seat':null;
+    const cents=key?PRICES[key]?.cents:null;
+    // A valid GitHub plan can predate our known-price reference. Do not
+    // substitute $0 or deny a legitimately delegated team just for that.
+    return Number.isSafeInteger(cents)?seatsNeeded*cents:null;
   }}:{}),
   classify:({args:a,target:t})=>a.action==='add'?
     {production:'may add paid Copilot team seats',...accessChange({who:'team '+a.teamSlug,access:'Copilot subscription',where:t.owner,before:'verified membership'})}:
     {production:'removes team assignment; member seats may remain through other assignments'},
   summarize:({args:a,before:b,target:t})=>(a.action==='add'?'Assign':'Remove')+' Copilot team '+a.teamSlug+' in '+t.owner+
     '; '+b.members.length+' verified members, '+b.members.filter(x=>!b.assigned.includes(x)).length+
-    ' without seats; '+(a.action==='add'?priceLine(b.members.filter(x=>!b.assigned.includes(x)).length*
-      PRICES[b.plan==='business'?'copilot_business_seat':'copilot_enterprise_seat'].cents,
-      b.plan==='business'?'copilot_business_seat':'copilot_enterprise_seat'):'no new seat spend'),
+    ' without seats; '+(a.action==='add'
+      ? (b.plan==='business'||b.plan==='enterprise'
+        ? priceLine(b.members.filter(x=>!b.assigned.includes(x)).length*
+          PRICES[b.plan==='business'?'copilot_business_seat':'copilot_enterprise_seat'].cents,
+          b.plan==='business'?'copilot_business_seat':'copilot_enterprise_seat')
+        : 'GitHub plan '+b.plan+' price is not verified; future billed seats may incur unbounded charges')
+      : 'no new seat spend'),
   apply:async({args:a,ctx,target:t,before:b})=>{
     if(!b.members.length)throw refusal('No members verified for selected team.');
     const current=await teamMembers(ctx,t,a.teamSlug);

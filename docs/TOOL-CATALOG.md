@@ -438,12 +438,12 @@ Card(s): O-4. The developer's $0/production-OFF TEST rule does not limit an end 
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_billing_get_usage` | Usage and cost for an org or user by product (Actions, Packages, Codespaces, Copilot, LFS) and period, in dollars; premium requests on request | — | N built #201 | I,U | O | R | O-4 built #201 |
 | `github_billing_list_budgets` | Organization budgets with amount, spent so far and whether usage stops at the limit | — | N built #201 | I | O | R | O-4 built #201 |
-| `github_billing_save_budget` | Create or change a budget (raising or removing a limit raises spend) | C·$*·Prod | N built #201 | I | O | F | O-4 built #201 |
+| `github_billing_save_budget` | Create or modify a verified provider budget, including unenforced settings through informed owner authorization | C·$*·Prod | N built #201 | I | O | F | O-4 built #201 |
 | `github_billing_delete_budget` | Delete an exact verified organization budget after typed-ID confirmation, metered-cost warning, full-profile production consent and provider absence readback | C·D·$*·Prod | N built #201 | I | O | F | O-4 built #201; authority repair pending |
 | `github_billing_list_marketplace` | Marketplace apps Chris pays for (plan, price, next billing date); buying is guided only | — | N built #201 | U | O | R | O-4 built #201 |
 | `github_copilot_get_billing` | Copilot plan, seat counts and seat assignments with last activity | — | C built #201 | I | O | R | O-4 built #201 |
-| `github_copilot_add_seats` | Give users or teams Copilot seats (about $19 per seat per month, prorated) | C·$·A·M·Prod | F built #201 | I | O | F | O-4 built #201 |
-| `github_copilot_remove_seats` | Remove Copilot seats (effective at the end of the billing cycle) | C·Prod | C built #201 | I | O | F | O-4 built #201 |
+| `github_copilot_add_seats` | Assign Copilot seats with a verified plan price, or disclose unknown recurring pricing under user delegation | C·$·A·M·Prod | F built #201 | I | O | F | O-4 built #201 |
+| `github_copilot_remove_seats` | Remove Copilot seats at cycle end even if the provider plan's price is not published | C·Prod | C built #201 | I | O | F | O-4 built #201 |
 | `github_codespace_list` | Codespaces of the user or org with machine, state and who pays | — | C built #201 | I,U | O,B | R | O-4 built #201 |
 | `github_codespace_create` | Create a codespace for a repo and branch (hourly compute plus storage) | C·$·Prod | C built #201 | U | O,B | F | O-4 built #201 |
 | `github_codespace_set_state` | Start (billed) or stop (saves money) a codespace | C·$*·Prod* | C built #201 | U | O,B | F | O-4 built #201 |
@@ -615,7 +615,7 @@ Y-9d is approved by IN-16. Every mutating call uses the existing production, pas
 | `github_copilot_agent_repo_set` | Allow or deny individual organization repositories for Copilot cloud agent, with authorization | C·Prod·A* | F | I | O | F | Y-9 |
 | `github_copilot_content_exclusions_get` | Read current Copilot excluded repository paths | — | N | I | O,Op | R | Y-9 |
 | `github_copilot_content_exclusions_set` | Replace Copilot exclusions with guarded readback and access-change warning | C·Prod·A* | F | I | O | F | Y-9 |
-| `github_copilot_team_seats` | Assign new Copilot team seats with verified pricing and confirmation | C·Prod·A*·$ | F | I | O | F | Y-9 |
+| `github_copilot_team_seats` | Assign actual team seats with known quoted pricing or disclosed unknown recurring charges and confirmation | C·Prod·A*·$ | F | I | O | F | Y-9 |
 | `github_copilot_team_seats_remove` | Remove team-assigned seats without requiring permission to spend | C·Prod | F | I | O | F | Y-9 |
 | `github_sponsor_get` | Read verified sponsorship relationship and published tiers | — | N | U | O | R | Y-9 |
 | `github_sponsor_set` | Start a priced sponsorship from verified GitHub tier with spend guard | C·Prod·M*·$ | F | U | O | F | Y-9 |
