@@ -232,7 +232,7 @@ describe('O-4 real prices, budget safety, marketplace, Copilot and Codespaces',(
     expect(response.refusedBy).toBeUndefined();
     expect(w.gh.calls.filter(x=>x.method==='PUT')).toHaveLength(1);
   });
-  it('rejects unknown Copilot plan prices at zero exposure rather than guessing',async()=>{
+  it('requires real organization membership before assigning an unknown-priced Copilot plan seat',async()=>{
     const w=await makeWorld({mode:'production',profile:'full'});
     w.gh.when(billing).reply(200,{...plan,plan_type:'unknown'});
     w.gh.when(assignments).reply(200,{total_seats:0,seats:[]});
