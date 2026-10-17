@@ -91,6 +91,110 @@ describe('X-2 read-only smoke test', () => {
     expect(classifyRun({ result: { isError: true, content: [{ type: 'text', text: 'boom' }] }, calls: [] })).toMatchObject({ outcome: 'fail', note: 'boom' });
   });
 
+  it('rejects any non-GitHub destination, non-HTTPS request or auth token embedded in a URL before transport', async () => {
+    const net = innerFetch(); const guard = guardedFetch(net.fn);
+    for(const url of [
+      'http://api.github.com/repos/o/r',
+      'https://evil.example/repos/o/r',
+      'https://api.github.com.evil.example/repos/o/r',
+      'https://api.github.com@evil.example/repos/o/r',
+      'https://api.github.com/repos/o/r?access_token=stolen',
+      'https://api.github.com/repos/o/r?token=stolen',
+      'https://api.github.com/graphql?query=mutation%20%7B%20delete%20%7D',
+      'not-a-url'
+    ]) await expect(guard.fetch(url,{method:'GET'})).rejects.toThrow(/refused a request/);
+    expect(net.sent).toHaveLength(0);
+    expect(guard.log.filter(x=>x.blocked)).toHaveLength(8);
+  });
+
+  it('accepts only one explicitly parsed GraphQL query, including typed variables and fragments', async () => {
+    const net=innerFetch(),guard=guardedFetch(net.fn),url='https://api.github.com/graphql';
+    const doc='query Owner($owner: String!) { repositoryOwner(login:$owner) { ...Info } } fragment Info on RepositoryOwner { login }';
+    await expect(guard.fetch(url,{method:'POST',body:JSON.stringify({query:doc,variables:{owner:'example-org'},operationName:'Owner'})})).resolves.toBeTruthy();
+    expect(net.sent).toHaveLength(1);
+    const denied=[
+      {query:'mutation { addStar(input:{}) { clientMutationId } }'},
+      {query:'subscription { viewer { login } }'},
+      {query:'query Valid { viewer { login } } mutation Bad { addStar(input:{}) { clientMutationId } }',operationName:'Valid'},
+      {query:'query One { viewer { login } } query Two { viewer { login } }',operationName:'One'},
+      {query:'fragment X on User { login }'},
+      {query:''},
+      {operationName:'Owner'},
+      {extensions:{persistedQuery:{version:1,sha256Hash:'a'.repeat(64)}}},
+      {query:'query Owner { viewer { login } }',operationName:'Bad'},
+      [{query:'query { viewer { login } }'}]
+    ];
+    for(const payload of denied) await expect(guard.fetch(url,{method:'POST',body:JSON.stringify(payload)})).rejects.toThrow(/refused/);
+    await expect(guard.fetch(url,{method:'POST',body:new Uint8Array([123,125])})).rejects.toThrow(/refused/);
+    await expect(guard.fetch(url,{method:'POST',body:'not-json'})).rejects.toThrow(/refused/);
+    expect(net.sent).toEqual(['POST /graphql']);
+  });
+
+  it('prevents an otherwise-safe GitHub response from silently following an external redirect', async () => {
+    let redirected=false;const guard=guardedFetch(async (_url,options)=>{
+      expect(options.redirect).toBe('manual');redirected=options.redirect!=='manual';
+      return new Response(null,{status:302,headers:{location:'https://evil.example/steal'}});
+    });
+    const response=await guard.fetch('https://api.github.com/repos/o/r',{method:'GET',redirect:'follow'});
+    expect(response.status).toBe(302);expect(redirected).toBe(false);
+    expect(guard.log[0]).toMatchObject({status:302});
+  });
+
+  it('never labels an incomplete workflow with a successful transport PASS', () => {
+    const shapes=[
+      {done:false,status:'partial',sections:[{id:'private',status:'not_readable'}]},
+      {done:true,complete:false,status:'partial'},
+      {done:true,sections:[{id:'job',status:'not_attempted'}]},
+      {done:true,evidence:[{id:'security',status:'incomplete'}]},
+      {done:true,groups:[{kind:'repository',complete:false,items:[]}]},
+      {done:true,accounts:[{billed_usage:{complete:false}}]},
+      {done:true,accounts:[{repositories:[{open_alerts:{secret:null}}]}]},
+      {complete:true,more_possible:true,items:[]},
+      {status:'refused',done:false}
+    ];
+    for(const shape of shapes){
+      expect(classifyRun({result:{isError:false,structuredContent:shape},calls:[{status:200,requestId:'REAL-200'}]}))
+        .toMatchObject({outcome:'fail',requestId:'REAL-200'});
+      expect(classifyRun({result:{content:[{type:'text',text:JSON.stringify(shape)}]},calls:[]}).outcome).toBe('fail');
+    }
+    expect(classifyRun({result:{structuredContent:{done:true,complete:true,sections:[{status:'observed'}]}},calls:[]}).outcome).toBe('pass');
+    expect(classifyRun({result:{structuredContent:{status:'needs_attention',complete:true,findings:[{status:'needs_attention'}]}},calls:[]}).outcome).toBe('pass');
+  });
+
+  it('distinguishes a plan-limited partial workflow from a permission-limited partial workflow', () => {
+    const result={structuredContent:{done:false,status:'partial'}};
+    expect(classifyRun({result,calls:[{status:403,message:'Upgrade to GitHub Team plan',requestId:'R-PLAN'}]}))
+      .toMatchObject({outcome:'limitation',requestId:'R-PLAN'});
+    expect(classifyRun({result,calls:[{status:403,message:'Resource not accessible by integration',requestId:'R-GAP'}]}))
+      .toMatchObject({outcome:'gap',requestId:'R-GAP'});
+  });
+
+  it('rejects fixture actor changes before even constructing a dispatcher', async () => {
+    for(const field of ['owner','org','account']){
+      const opts={fixtures:{owner:'example-org',repo:'hello',[field]:'foreign-org'}};
+      await expect(go(opts)).rejects.toThrow(/not enrolled/);
+    }
+  });
+
+  it('redacts GitHub tokens, Authorization values, control characters, and unsafe request IDs from reports', () => {
+    const token='github_pat_TESTSECRETKEY123456789ABCDE';
+    const r={results:[
+      {tool:'github_bad',outcome:'fail',
+        note:'HTTP 403 Bearer abc.def.secret token='+token+' Authorization: '+token+'\n| evil-table-row',
+        requestId:'REQ-1\n| extra'}
+    ],excludedCount:0};
+    const report=renderReport({...r,account:'example-org',date:'2026-10-17'});
+    expect(report).toContain('REDACTED');
+    expect(report).not.toContain(token);
+    expect(report).not.toContain('Bearer abc');
+    expect(report).not.toContain('Authorization:');
+    expect(report).not.toContain('| evil-table-row');
+    expect(report).not.toContain('REQ-1\n');
+    expect(classifyRun({result:null,calls:[]}).outcome).toBe('fail');
+    const result=classifyRun({result:{isError:true,content:[{type:'text',text:'Request included Bearer abc.def.secret'}]},calls:[]});
+    expect(result.note).not.toContain('abc.def.secret');
+  });
+
   it('the report counts every tool, explains limitations and gaps, and never contains a credential', async () => {
     const run = await go();
     const text = renderReport({ ...run, account: 'example-org', date: '2026-10-16', revision: 'a'.repeat(40) });
