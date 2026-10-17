@@ -10,7 +10,8 @@ const t=(a,c)=>({owner:ownerOf(a,c),repo:a.repo,scope:'repo',kind:'repo-settings
 const p=t=>({owner:t.owner,repo:t.repo});
 const featureNames=[...REPO_SECURITY_SWITCHES,'dependabot_security_updates','private_vulnerability_reporting'];
 const premium=new Set(REPO_SECURITY_SWITCHES);
-const changesAccess=feature=>feature==='secret_scanning_delegated_bypass';
+const changesAccess=feature=>['secret_scanning_delegated_bypass',
+  'secret_scanning_delegated_alert_dismissal'].includes(feature);
 const feature=(a,b)=>b.security_and_analysis?.[a.feature];
 const initialSecurity=(a,ctx,target)=>octo(ctx,target.owner).then(gh=>readRepoSecurity(gh,p(target)));
 const safeFeature=(a,b)=>{
@@ -33,7 +34,7 @@ export const securitySetFeature=defineGithubWrite({
     safeFeature(a,b);
     return {production:'changes repository security features, including private paid products when legitimately delegated',
       ...(a.enabled&&changesAccess(a.feature)?{
-        accessWidening:'Enabling delegated secret-scanning push-protection bypass grants new exception authority to reviewers'
+        accessWidening:'Enabling delegated secret-scanning dismissal or bypass grants additional authority to reviewers'
       }:{})};
   },
   summarize:({args:a,target,before:b})=>{

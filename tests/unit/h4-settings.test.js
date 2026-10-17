@@ -334,7 +334,7 @@ describe('H-4 source-backed provider security switches and separated Dependabot 
       const preview=await feature(w,name,true,{dryRun:true});
       expect(preview.status).toBe('preview');
       expect(preview.preview).toContain('COST UNKNOWN');
-      if(name==='secret_scanning_delegated_bypass')
+      if(['secret_scanning_delegated_bypass','secret_scanning_delegated_alert_dismissal'].includes(name))
         expect(preview.preview).toContain('ACCESS CHANGE');
       expect(w.gh.calls.filter(x=>x.method!=='GET')).toEqual([]);
       const done=await feature(w,name,true,{confirm:true});
