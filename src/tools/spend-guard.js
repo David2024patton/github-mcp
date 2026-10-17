@@ -22,16 +22,27 @@ export function denverMonthStart(now) {
   throw new Error('Could not work out the start of the month in Denver.');
 }
 
+/** The source-of-truth end-user cap interpretation for every read and guard.
+ * A historical developer default zero is NOT a user-selected product cap.
+ * A user-selected zero remains enforceable; positive legacy caps stay effective. */
+export function selectedSpendCap(row) {
+  const value = Number(row?.spend_limit_cents);
+  const cents = Number.isSafeInteger(value) && value >= 0 ? value : 0;
+  const explicit = row?.spend_limit_explicit === true;
+  const configured = explicit || cents > 0;
+  return { configured, explicit, cents, limitCents: configured ? cents : null,
+    newSpendingAllowedByCap: !configured || cents > 0 };
+}
+
 /** Limit, spent so far this month, and what is left for one account. */
 export async function spendStatus(ctx, login) {
   const row = await ctx.db.getAccount(login);
   if (!row) return null;
   const now = (ctx.now ?? Date.now)();
   const since = denverMonthStart(now);
-  const limitCents = Number(row.spend_limit_cents) || 0;
-  // Historical default-zero accounts were not explicit product budgets. Positive legacy
-  // preferences are migrated as explicitly configured; future changes set this flag.
-  const limitEnabled = row.spend_limit_explicit === true || limitCents > 0;
+  const cap = selectedSpendCap(row);
+  const limitCents = cap.cents;
+  const limitEnabled = cap.configured;
   const usedCents = await ctx.db.sumSpendCents(row.login, since);
   return { login: row.login, limitEnabled, limitCents, usedCents,
     remainingCents: limitEnabled ? Math.max(0, limitCents - usedCents) : null, since };

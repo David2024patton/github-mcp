@@ -4,6 +4,8 @@
 import {listAll} from '../github/client.js';
 import {defineRead} from './define-read.js';
 import {plain,readerFor} from './github-read.js';
+import {selectedSpendCap} from './spend-guard.js';
+import {summarizeUsage} from './billing-read.js';
 
 const OWNER={type:'string',maxLength:39};
 const MAX={type:'integer',minimum:1,maximum:20};
@@ -35,19 +37,27 @@ async function overview(a,ctx){
   const row=await getAccount(ctx,owner);
   if(!row)throw new TypeError('This GitHub account is not enrolled on the server.');
   const items=[];
+  const spendCap=selectedSpendCap(row);
   const local=Object.freeze({
     account:row.login,credential_kind:row.credential_kind,
     installation_status:row.installation_status??null,
     production_enabled:row.production_enabled===true,
-    spend_limit_cents:Number(row.spend_limit_cents) || 0,
+    spend_limit_cents:spendCap.limitCents,
+    spend_limit_configured:spendCap.configured,
+    spend_limit_explicit:spendCap.explicit,
     is_scratch:row.is_scratch===true
   });
   push(items,local.production_enabled?
     attention('server-production',areaName,'Production is enabled for this account',true):
     ok('server-production',areaName,false,'Production stays off'));
   push(items,ok('server-spend',areaName,{
-    limit_cents:local.spend_limit_cents,spend_enabled:local.spend_limit_cents>0
-  },local.spend_limit_cents?'Spending ceiling has been configured':'Autonomous spending is $0'));
+    limit_cents:spendCap.limitCents,limit_configured:spendCap.configured,
+    spend_enabled:spendCap.newSpendingAllowedByCap
+  },!spendCap.configured
+    ? 'No user-configured MCP spending cap; paid actions still require actual GitHub permission and user authorization. The developer test budget is separate.'
+    : spendCap.cents===0
+      ? 'Your explicit $0 MCP spending cap forbids new paid actions; free and cost-reducing changes remain available.'
+      : 'Your user-configured $'+(spendCap.cents/100).toFixed(2)+' MCP spending cap is enforced for chargeable actions.'));
   if(row.account_type!=='Organization'){
     push(items,unreadable('organization-profile','org',
       'This enrolled account is a user, not an organization; use personal-account tools for its profile.'));
@@ -187,8 +197,29 @@ async function overview(a,ctx){
       r.items.length?attention('token-requests','access',
         'Fine-grained token requests need approval',r.items.length):
         ok('token-requests','access',0));
-  push(items,unreadable('billing-usage','money',
-    'A billing-scoped organization permission is needed; no $ amount is inferred.'));
+  // Use the same genuine provider usage endpoint/normalizer as O-4, rather
+  // than declaring every organization bill unreadable even when GitHub grants
+  // this already-enrolled App its billing read permission.
+  const at=new Date((ctx.now??Date.now)());
+  const year=at.getUTCFullYear(),month=at.getUTCMonth()+1;
+  await attempt(items,'billing-usage','money',
+    ()=>gh.request('GET /organizations/{org}/settings/billing/usage',
+      {...org,year,month}).then(x=>x.data),data=>{
+      const usage=summarizeUsage(data?.usageItems,500);
+      const period=String(year)+'-'+String(month).padStart(2,'0');
+      // Provider rows must describe the requested billing month. A genuinely
+      // complete empty list is exactly $0, never an estimate or a missing cap.
+      if(!usage.complete||!Number.isFinite(usage.total_net_dollars)||
+         usage.items.some(x=>typeof x.product!=='string'||!x.product||
+           typeof x.date!=='string'||!x.date.startsWith(period)||
+           !Number.isFinite(x.net_dollars)||x.net_dollars<0))
+        return unreadable('billing-usage','money',
+          'GitHub did not provide a complete, date-bound billed-usage inventory; no dollar amount was inferred.');
+      return ok('billing-usage','money',{
+        period_utc:period,total_net_dollars:usage.total_net_dollars,
+        usage_items:usage.items.length,complete:true,currency:'USD'
+      },'Actual GitHub-reported billed usage for the selected UTC month; fixed subscriptions or invoices not shown by this API are not included.');
+    });
   push(items,unreadable('personal-account','personal',
     'Personal account requires a separate user-authorized token, not this organization installation.'));
   return {owner,account_type:'Organization',plan,
