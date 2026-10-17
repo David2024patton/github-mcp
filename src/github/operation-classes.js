@@ -3,18 +3,18 @@ import { isReviewedFree } from './spend-classes.js';
 // A miss cannot become a non-production, non-access-widening, or free operation.
 const productionWords=/(create|delete|transfer|invite|enable|assign|approve|revoke|purchase|upgrade|grant|publish|set|change|update settings|remove)/i;
 const accessWords=/(collaborat|member|team|role|permission|visibility|public|invitation|access|token|key|secret|bypass|rule|organization|security)/i;
-const spendWords=/(copilot|codespace|runner|billing|budget|licen[cs]e|paid.feature|secret.protection|code.security|advanced.security|marketplace|package|pages|artifact|cache|deployment|actions.workflows|storage|build.minutes)/i;
 const protectedPaths=/(^\/orgs\/|^\/enterprises\/|\/(rulesets|branches\/\{branch\}\/protection|actions\/permissions|hooks|keys|environments|pages|releases|git\/refs|settings|security-and-analysis))/i;
 export function classifyUniversal(op) {
   if (!op || !op.method || op.method==='GET') return Object.freeze({production:false,accessWidening:false,notifies:false,spendRisk:false});
   const s=op.summary+' '+op.path+' '+(op.operationId??'');
-  const suspectedSpend=spendWords.test(s);
+  // Classification is fail-closed: absence of a pricing keyword does not
+  // prove this write has no usage charge, seat cost or future metering.
   // Unknown writes remain both production and access changes until individually classified.
   const classification={
     production:protectedPaths.test(op.path)||productionWords.test(s)||!['GET','HEAD'].includes(op.method),
     accessWidening:accessWords.test(s)||productionWords.test(s)||!['GET','HEAD'].includes(op.method),
     notifies:op.notifies===true,
-    spendRisk:suspectedSpend && !isReviewedFree(op)
+    spendRisk:!isReviewedFree(op)
   };
   return Object.freeze(classification);
 }
@@ -45,9 +45,11 @@ export function assertUniversalAuthority(op,params,body) {
   visit(all);
 }
 export function universalPrice(op) {
-  // A universal tool cannot reconstruct licensed seat/usage cost safely from arbitrary input.
-  // Such operations are deliberately routed to the existing priced tools or refused.
-  if (classifyUniversal(op).spendRisk)
-    throw new TypeError('Cost or licensing cannot be verified through the universal route; use the priced curated tool or request a reviewed operation-class amendment.');
-  return 0;
+  // A provider write's bill can depend on future usage, external entitlement
+  // and the tenant's activity; it cannot be priced by a regex over its name.
+  // Null invokes the shared unknown-spend classification, confirmation and
+  // *user-chosen* cap/RTC pass refusal rather than a developer-global ban.
+  // Only 54 individually reviewed, pinned routes have provably zero cost.
+  if (!op || op.method === 'GET') return 0;
+  return isReviewedFree(op) ? 0 : null;
 }
