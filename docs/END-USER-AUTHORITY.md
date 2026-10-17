@@ -27,3 +27,7 @@
 6. Extend tests to independently prove (a) developers cannot spend/live-mutate without separate authorization; (b) the end user's **properly delegated agent** can actually complete paid, destructive and security-sensitive API operations with honest warnings and user-chosen authorization; (c) explicit user deny/cap policies remain enforced; (d) ambiguous network failures do not double-charge; (e) provider state is verified after dispatch.
 
 **Status:** This records the owner decision and starts the remediation requirement. It does **not** constitute a code fix, independent review, real-account acceptance, permission approval, production activation or permission to merge unfinished Y-9 work.
+
+## Billing and Copilot follow-up: October 17, 2026
+
+Additional audit found that earlier product code could only save an enforced organization budget, and could not assign Copilot seats when a valid provider plan lacked a price in the local reference table. The new O-4 and Y-9d corrective branch enables those provider operations for a genuinely delegated full-profile user. Unknown future billing is explicitly disclosed, while a deliberately configured finite spend cap or RTC pass still refuses unbounded exposure. Developer spending, live-state and test-fixture rules are unchanged. The rest of this cross-product capability audit remains open; green source CI is not live financial acceptance.
