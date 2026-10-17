@@ -294,3 +294,107 @@ function gh_create(gh) {
   gh.when(`GET ${ADV}/{ghsa_id}`).reply(404, { message: 'Not Found' });
   gh.when(`POST ${ADV}`).reply(201, (req) => { gh.when(`GET ${ADV}/{ghsa_id}`).reply(200, adv({ summary: req.body.summary, description: req.body.description })); return adv({ summary: req.body.summary, description: req.body.description }); });
 }
+
+
+describe('Y-7 large-org complete security-configuration cursor and readback contracts',()=>{
+  const PAGE='GET /orgs/{org}/code-security/configurations/{configuration_id}/repositories';
+  const CONFIGS='GET /orgs/{org}/code-security/configurations';
+  const CONFIG='GET /orgs/{org}/code-security/configurations/{configuration_id}';
+  const WRITE_CONFIG='PATCH /orgs/{org}/code-security/configurations/{configuration_id}';
+  const listPage=(n=100)=>Array.from({length:n},(_,i)=>({
+    status:'attached',repository:{id:i+1,name:'repo-'+(i+1),private:false}
+  }));
+  const link=(path,cursor)=>'<https://api.github.com'+path+'?per_page=100&after='+encodeURIComponent(cursor)+'>; rel="next"';
+  const pagedRepos=(gh,{lastPrivate=false,malformed=false}={})=>{
+    const second={status:'attached',repository:{id:101,name:'private-last',
+      private:lastPrivate,visibility:lastPrivate?'private':'public'}};
+    gh.when(PAGE).replySequence([
+      {status:200,body:listPage(),headers:{link:link('/orgs/example-org/code-security/configurations/9/repositories','cursor-secret-2')}},
+      {status:200,body:malformed?{items:[second]}:[second]}
+    ]);
+  };
+  async function run(w,name,args){
+    return parse(await createDispatch({env:w.ctx.env,credentials:w.credentials,
+      gates:w.ctx.gates,fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep})({
+      registry,name,args,connection:w.connection,db:w.db
+    }));
+  }
+  const params={org:'example-org',configurationId:9,
+    settings:{secret_scanning:'enabled'}};
+  it('can edit an organization security configuration attached to >100 repositories with full verified paid exposure',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
+    w.gh.when(CONFIG).replySequence([
+      {status:200,body:cfg()},
+      {status:200,body:cfg({secret_scanning:'enabled'})}
+    ]);
+    pagedRepos(w.gh,{lastPrivate:true});
+    w.gh.when(WRITE_CONFIG).reply(200,cfg({secret_scanning:'enabled'}));
+    const out=await run(w,'github_security_config_save',{...params,confirm:true});
+    expect(out).toMatchObject({status:'applied',done:true});
+    expect(w.gh.calls.filter(c=>c.route===PAGE).map(x=>x.query.after)).toEqual([undefined,'cursor-secret-2']);
+    expect(w.gh.calls.filter(c=>c.method==='PATCH')).toHaveLength(1);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('refuses price-unknown >100 paid attachments with a real user-selected cap before provider PATCH',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full',gates:[actualSpendGate()]});
+    await w.db.setSpendLimitCents('example-org',100);
+    w.gh.when(CONFIG).reply(200,cfg());
+    pagedRepos(w.gh,{lastPrivate:true});
+    const out=await run(w,'github_security_config_save',{...params,confirm:true});
+    expect(out).toMatchObject({status:'refused_by_guard',refusedBy:'spend limit'});
+    expect(w.gh.calls.filter(c=>c.method==='PATCH')).toHaveLength(0);
+  });
+  it('sees duplicate configuration names on a later cursor page before CREATE',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    const path='/orgs/example-org/code-security/configurations';
+    w.gh.when(CONFIGS).replySequence([
+      {status:200,body:Array.from({length:100},(_,i)=>cfg({id:i+1,name:'existing-'+i})),
+        headers:{link:link(path,'org-config-next')}},
+      {status:200,body:[cfg({id:101,name:'Strict'})]}
+    ]);
+    const out=await run(w,'github_security_config_save',{org:'example-org',
+      name:'Strict',description:'New security defaults',confirm:true});
+    expect(out.done).not.toBe(true);
+    expect(w.gh.calls.filter(c=>c.route===CONFIGS).map(c=>c.query.after)).toEqual([undefined,'org-config-next']);
+    expect(w.gh.calls.filter(c=>c.method==='POST')).toHaveLength(0);
+  });
+  it('fails closed on wrong-origin cursor, repeated/duplicate pages and unknown attachment state before DELETE',async()=>{
+    for(const fault of ['wrong-host','duplicate','invalid-response','full-page-no-next','denied']){
+      const w=await makeWorld({mode:'production',profile:'full'});
+      w.gh.when(CONFIG).reply(200,cfg());
+      const path='/orgs/example-org/code-security/configurations/9/repositories';
+      const first=listPage();
+      if(fault==='wrong-host')w.gh.when(PAGE).reply(200,first,
+        {link:'<https://evil.invalid'+path+'?after=next>; rel="next"'});
+      else if(fault==='full-page-no-next')w.gh.when(PAGE).reply(200,first);
+      else if(fault==='denied')w.gh.when(PAGE).reply(403,{message:'Forbidden'});
+      else w.gh.when(PAGE).replySequence([
+        {status:200,body:first,headers:{link:link(path,'one')}},
+        {status:200,body:fault==='duplicate'?[first[0]]:{not_a_list:true}}
+      ]);
+      const out=await run(w,'github_security_config_delete',{
+        org:'example-org',configurationId:9,name:'Baseline',confirm:true});
+      expect(out.done).not.toBe(true);
+      expect(w.gh.calls.filter(c=>c.method==='DELETE')).toHaveLength(0);
+    }
+  });
+  it('does not claim confirmed success when requested nested settings or enforcement are ignored',async()=>{
+    for(const mismatch of ['enforcement','nested']){
+      const w=await makeWorld({mode:'production',profile:'full'});
+      const input=mismatch==='nested'?
+        {settings:{code_scanning_options:{allow_advanced:true}}}:
+        {settings:{enforcement:'unenforced'}};
+      w.gh.when(CONFIG).replySequence([
+        {status:200,body:cfg({code_scanning_options:{allow_advanced:false}})},
+        {status:200,body:cfg({code_scanning_options:{allow_advanced:false}})}
+      ]);
+      w.gh.when(PAGE).reply(200,[]);
+      w.gh.when(WRITE_CONFIG).reply(200,{});
+      const out=await run(w,'github_security_config_save',{
+        org:'example-org',configurationId:9,...input,confirm:true});
+      expect(out.status).not.toBe('applied');
+      expect(w.gh.calls.filter(c=>c.method==='PATCH')).toHaveLength(1);
+      expect(w.gh.invalid).toEqual([]);
+    }
+  });
+});
