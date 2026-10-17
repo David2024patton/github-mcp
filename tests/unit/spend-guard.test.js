@@ -93,6 +93,21 @@ describe('the spend gate', () => {
     const gate = spendGate();
     expect(await gate({ name: 'github_x', args: {}, ctx: w.ctx, target: { owner: 'example-org' }, classification: { spendCents: 0 }, declarations: {} })).toBeNull();
   });
+  it('permits a declared billing-class action that reduces charges to zero under a user-selected zero limit',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+    await w.db.setSpendLimitCents('example-org',0);
+    const result=await spendGate()({name:'github_cost_reducing_action',
+      args:{enabled:false},ctx:w.ctx,target:{owner:'example-org'},
+      classification:{spendCents:0,spendUnknown:false},
+      declarations:{spend:true}});
+    expect(result).toBeNull();
+    const passCtx={...w.ctx,connection:{...w.ctx.connection,pass:true,
+      spend_limit_cents:0,client_id:'no-spend-test-pass'}};
+    expect(await spendGate()({name:'github_cost_reducing_action',
+      args:{enabled:false},ctx:passCtx,target:{owner:'example-org'},
+      classification:{spendCents:0,spendUnknown:false},
+      declarations:{spend:true}})).toBeNull();
+  });
   it('refuses for an unknown account', async () => {
     const w = await world(5000);
     const v = await spendGate()({ name: 'github_x', args: {}, ctx: w.ctx, target: { owner: 'ghost' }, classification: { spendCents: 100 }, declarations: { spend: true } });
