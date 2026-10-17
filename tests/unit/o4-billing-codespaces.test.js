@@ -1,12 +1,16 @@
 import {describe,it,expect} from 'vitest';
-import {makeWorld,runWriteContract,parse} from '../../test/helpers/write-contract.js';
+import {makeWorld,runWriteContract,doorsFor,parse} from '../../test/helpers/write-contract.js';
+import {spendGate} from '../../src/tools/spend-guard.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
 import {registry} from '../../src/tools/index.js';
 import * as defs from '../../src/tools/billing-write.js';
+import * as recovered from '../../src/tools/billing-guided.js';
 
 const B='GET /organizations/{org}/settings/billing/budgets';
 const BG='GET /organizations/{org}/settings/billing/budgets/{budget_id}';
 const BC='POST /organizations/{org}/settings/billing/budgets';
+const BD='DELETE /organizations/{org}/settings/billing/budgets/{budget_id}';
+const ACCESS='PUT /orgs/{org}/codespaces/access';
 const billing='GET /orgs/{org}/copilot/billing';
 const assignments='GET /orgs/{org}/copilot/billing/seats';
 const seatPut='POST /orgs/{org}/copilot/billing/selected_users';
@@ -101,6 +105,23 @@ const contracts=[
   {name:'github_codespace_delete',args:{name:'test-code'},
     arrange:deleteCode,production:true}
 ];
+function deleteBudgetArrange(gh,outcome){
+  gh.when(BG).replySequence([
+    {status:200,body:b},
+    outcome==='ok'?{status:404,body:{message:'Not Found'}}:{status:200,body:b}
+  ]);
+  gh.when(B).replySequence([
+    {status:200,body:{budgets:[b],has_next_page:false,total_count:1}},
+    {status:200,body:{budgets:outcome==='ok'?[]:[b],
+      has_next_page:false,total_count:outcome==='ok'?0:1}}
+  ]);
+  gh.when(BD).reply(200,{message:'Budget successfully deleted.',budget_id:b.id});
+}
+runWriteContract({label:'github_billing_delete_budget',
+  definition:{tool:recovered.deleteBudget.tool,handler:recovered.deleteBudget.handler},
+  args:{budgetId:b.id,confirmBudgetId:b.id},
+  arrange:deleteBudgetArrange,profile:'full',needsConfirm:true,production:true});
+
 for(const c of contracts)
   runWriteContract({label:c.name,definition:writeDef(c.name),args:c.args,
     arrange:c.arrange,profile:'full',needsConfirm:true,
@@ -156,23 +177,49 @@ describe('O-4 real prices, budget safety, marketplace, Copilot and Codespaces',(
     expect(result.complete).toBe(true);
     expect(w.gh.invalid).toEqual([]);
   });
-  it('never deletes a budget if removing its ceiling creates unbounded spend exposure',async()=>{
-    const w=await makeWorld({mode:'production',profile:'full'});
+  it('refuses budget deletion with a mismatched confirmation ID before DELETE',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
     w.gh.when(BG).reply(200,b);
-    const result=await invoke(w,'github_billing_delete_budget',{
-      budgetId:b.id});
-    expect(result).toMatchObject({status:'guided',completed:false,
-      enforces_limit:true});
-    expect(w.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
+    const result=await invoke(w,'github_billing_delete_budget',
+      {budgetId:b.id,confirmBudgetId:'not-this-budget',confirm:true});
+    expect(result.done).toBe(false);
+    expect(w.gh.calls.filter(x=>x.method==='DELETE')).toHaveLength(0);
   });
-  it('refuses paid Codespace access expansion without finite verified cap',async()=>{
+  it('enforces an explicitly selected $0 product cap on unknown future budget deletion',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+    await w.db.setSpendLimitCents('example-org',0);
+    deleteBudgetArrange(w.gh,'ok');
+    const result=await invoke(w,'github_billing_delete_budget',
+      {budgetId:b.id,confirmBudgetId:b.id,confirm:true});
+    expect(result).toMatchObject({done:false,status:'refused_by_guard',
+      refusedBy:'spend limit'});
+    expect(w.gh.calls.filter(x=>x.method==='DELETE')).toHaveLength(0);
+  });
+  it('permits an uncapped authorized user to preview unknown future budget charges without DELETE',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+    deleteBudgetArrange(w.gh,'ok');
+    const result=await invoke(w,'github_billing_delete_budget',
+      {budgetId:b.id,confirmBudgetId:b.id,dryRun:true});
+    expect(result.status).toBe('preview');
+    expect(result.preview).toContain('COST UNKNOWN');
+    expect(w.gh.calls.filter(x=>x.method==='DELETE')).toHaveLength(0);
+  });
+  it('refuses Codespaces list replacements without an explicit irreversible replacement acknowledgement',async()=>{
     const w=await makeWorld({mode:'production',profile:'full'});
     w.gh.when('GET /orgs/{org}').reply(200,{login:'example-org'});
-    const result=await invoke(w,'github_codespace_set_org_access',{
-      visibility:'all_members'});
-    expect(result).toMatchObject({status:'guided',completed:false,
-      visibility:'all_members'});
-    expect(w.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
+    const result=await invoke(w,'github_codespace_set_org_access',
+      {visibility:'selected_members',usernames:['alice'],confirm:true});
+    expect(result.done).toBe(false);
+    expect(w.gh.calls.filter(x=>x.method==='PUT')).toHaveLength(0);
+  });
+  it('refuses Codespaces cost-unknown expansion under a user-selected cap',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+    await w.db.setSpendLimitCents('example-org',5000);
+    w.gh.when('GET /orgs/{org}').reply(200,{login:'example-org'});
+    const result=await invoke(w,'github_codespace_set_org_access',
+      {visibility:'all_members',confirm:true});
+    expect(result).toMatchObject({status:'refused_by_guard',refusedBy:'spend limit'});
+    expect(w.gh.calls.filter(x=>x.method==='PUT')).toHaveLength(0);
   });
   it('rejects unknown Copilot plan prices at zero exposure rather than guessing',async()=>{
     const w=await makeWorld({mode:'production',profile:'full'});
@@ -183,4 +230,57 @@ describe('O-4 real prices, budget safety, marketplace, Copilot and Codespaces',(
     expect(result.done).toBe(false);
     expect(w.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
   });
+});
+
+describe('O-4 Codespaces access: all three write doors despite missing provider GET',()=>{
+  const args={visibility:'all_members'};
+  const definition={tool:recovered.setCodespaceAccess.tool,
+    handler:recovered.setCodespaceAccess.handler};
+  const arrange=(w)=>{
+    w.gh.when('GET /orgs/{org}').reply(200,{login:'example-org'});
+    w.gh.when(ACCESS).reply(204,null);
+  };
+  for(const door of doorsFor(definition)){
+    it(door.name+': preview, informed confirmation, exactly-once 204 and honest unverified journal',async()=>{
+      const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+      arrange(w);
+      const preview=parse(await door.call(w,{...args,dryRun:true}));
+      expect(preview).toMatchObject({done:false,status:'preview'});
+      expect(preview.preview).toContain('COST UNKNOWN');
+      expect(preview.preview).toContain('ACCESS CHANGE');
+      expect(w.gh.calls.filter(x=>x.method==='PUT')).toHaveLength(0);
+      const noConsent=parse(await door.call(w,args));
+      expect(noConsent.status).toBe('needs_confirmation');
+      expect(w.gh.calls.filter(x=>x.method==='PUT')).toHaveLength(0);
+      const first=parse(await door.call(w,{...args,confirm:true}));
+      expect(first).toMatchObject({done:false,status:'unconfirmed',confirmed:false});
+      expect(first.result).toMatchObject({acknowledged:true,verified:false});
+      expect(w.gh.calls.filter(x=>x.method==='PUT')).toHaveLength(1);
+      expect(w.gh.invalid).toEqual([]);
+      const again=parse(await door.call(w,{...args,confirm:true}));
+      expect(again).toMatchObject({status:'replayed',replayed:true});
+      expect(w.gh.calls.filter(x=>x.method==='PUT')).toHaveLength(1);
+    });
+    it(door.name+': PREVIEW and no privilege escalation deny before provider write',async()=>{
+      const w=await makeWorld({mode:'preview',profile:'full',gates:[spendGate()]});
+      arrange(w);
+      const denied=parse(await door.call(w,{...args,confirm:true}));
+      expect(denied).toMatchObject({status:'refused_by_guard',refusedBy:'mode'});
+      expect(w.gh.calls.filter(x=>x.method==='PUT')).toHaveLength(0);
+    });
+    it(door.name+': recipient replacement confirms membership and only sends selected_usernames',async()=>{
+      const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+      arrange(w);
+      w.gh.when('GET /orgs/{org}/memberships/{username}')
+        .reply(200,{state:'active',role:'member'});
+      const res=parse(await door.call(w,{visibility:'selected_members',
+        usernames:['alice'],replaceSelectedUsers:true,confirm:true}));
+      expect(res.status).toBe('unconfirmed');
+      const writes=w.gh.calls.filter(x=>x.method==='PUT');
+      expect(writes).toHaveLength(1);
+      expect(writes[0].body).toMatchObject({
+        visibility:'selected_members',selected_usernames:['alice']});
+      expect(w.gh.invalid).toEqual([]);
+    });
+  }
 });
