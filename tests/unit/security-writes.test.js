@@ -397,10 +397,17 @@ describe('Y-7 large-org complete security-configuration cursor and readback cont
     const w=await makeWorld({mode:'production',profile:'full'});
     w.gh.when(CONFIG).reply(200,cfg());
     w.gh.when(PAGE).reply(200,[]);
-    const out=await run(w,'github_security_config_save',{org:'example-org',
-      configurationId:9,description:'x'.repeat(256),confirm:true});
-    expect(out.done).not.toBe(true);
-    expect(w.gh.calls.filter(x=>x.method!=='GET')).toHaveLength(0);
+    // Invalid input is rejected by the dispatcher schema before the handler
+    // returns a JSON write receipt; inspect the actual MCP error envelope.
+    const out=await createDispatch({env:w.ctx.env,credentials:w.credentials,
+      gates:w.ctx.gates,fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep})({
+      registry,name:'github_security_config_save',
+      args:{org:'example-org',configurationId:9,description:'x'.repeat(256),confirm:true},
+      connection:w.connection,db:w.db
+    });
+    expect(out.isError).toBe(true);
+    expect(out.content?.[0]?.text).toMatch(/description.*255/i);
+    expect(w.gh.calls).toHaveLength(0);
   });
   it('does not claim confirmed success when requested nested settings or enforcement are ignored',async()=>{
     for(const mismatch of ['enforcement','nested']){
