@@ -74,6 +74,14 @@ Likewise, `github_codespace_set_org_access` will send GitHub's genuine Codespace
 These capabilities remain **source-only, not provider-accepted or live** while current READY `live` is behind `main`. No existing credentials, configuration, budget, real Codespaces access or production release were changed to develop them.
 
 
+## Pending Y-7/H-4 paid private security correction — source only
+
+The earlier developer-spend interpretation incorrectly prevented even an authorized end user's agent from enabling private-repository code scanning, premium security features, or attaching paid organization security configurations to private repositories. The approved 2026-10-16 owner decision restores **actual guarded GitHub API execution** on these operations, rather than forcing the user to click through manually.
+
+A private paid activation may bill GitHub **per active committer for continuing future usage**. The agent states the unknown maximum cost, shows the exact repository/configuration and intended setting, and requires real end-user delegated **PRODUCTION/full** approval and genuine provider plan entitlement. A **user-selected finite MCP spending ceiling, including $0, or a bounded service-pass allowance** forbids an operation whose future charge cannot be proven to fit. If no user-chosen product cap exists, GitHub permission and explicit confirmation can authorize the operation. Disabling paid features remains available even with a chosen $0 limit. Changes are logged and read back without assuming provider success.
+
+This is a correction to Y-7/H-4 source and tests; it does not authorize this project's implementing agent to activate any real security products, spend GitHub money, change production configuration, or run live provider acceptance. Only a verified scheduled release plus separately authorized provider tests can establish the custom MCP's live behavior.
+
 ## Pending U-1/Y-1 universal paid-operation authority correction — not released
 
 The four REST tools still use the pinned GitHub OpenAPI index: `github_api_search`, `github_api_describe`, `github_api_read`, and `github_api_write`. The 2026-10-16 correction permits a **properly authorized end user's** coding agent to call any otherwise eligible *non-curated* GitHub write—even if future use can cost money. A developer's $0/no-LIVE testing policy is not a user-selected product budget.

@@ -18,26 +18,28 @@ const safeFeature=(a,b)=>{
   const old=feature(a,b);
   if(!['enabled','disabled'].includes(old))
     throw refusal('The requested GitHub security-feature status cannot be independently read.');
-  if(b.private&&a.enabled&&premium.has(a.feature)&&old!=='enabled')
-    throw refusal('Paid private-repository security requires a provider-verified active-committer count and spending approval. The account is $0; no paid change was attempted.');
+  // Private paid activation is available with the end user's actual GitHub
+  // entitlement, production consent and chosen spend policy. The unknown
+  // number of future active committers is a warning, not a builder ban.
 };
 export const securitySetFeature=defineGithubWrite({
   name:'github_security_set_feature',area:'security',audience:['O'],
-  description:'Turn one readable GitHub security feature on/off, preserving the other settings; block unpriced private paid activation.',
+  description:'Turn a readable GitHub security feature on/off while preserving others; paid private activation warns about uncapped future charges.',
   properties:{owner:OWNER,repo:REPO,feature:{type:'string',enum:featureNames},
     enabled:{type:'boolean'}},required:['repo','feature','enabled'],
-  declarations:{production:'always',confirm:'always',profiles:['full']},target:t,
+  declarations:{production:'always',confirm:'always',spend:true,profiles:['full']},target:t,
   read:(a,ctx,target)=>initialSecurity(a,ctx,target),
+  price:({args:a,before:b})=>b?.private&&a.enabled&&premium.has(a.feature)&&feature(a,b)!=='enabled'?null:0,
   classify:({args:a,before:b})=>{
     safeFeature(a,b);
-    return {production:'changes repository security features; private paid activation is explicitly refused until independently priced'};
+    return {production:'changes repository security features, including private paid products when legitimately delegated'};
   },
   summarize:({args:a,target,before:b})=>{
     safeFeature(a,b);
     const newStatus=a.enabled?'enabled':'disabled';
     return 'Change '+a.feature+' on '+slug(target.owner,target.repo)+
       ' from '+feature(a,b)+' to '+newStatus+
-      (a.enabled?'':' (reduces this repository protection if previously on)');
+      (a.enabled?(b.private&&premium.has(a.feature)?' (PAID private security, potentially uncapped active-committer charges)':''):' (reduces this repository protection if previously on)');
   },
   apply:({args:a,ctx,target,before:b})=>{
     safeFeature(a,b);

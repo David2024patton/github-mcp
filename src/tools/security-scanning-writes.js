@@ -1,6 +1,6 @@
 // Y-7b: code scanning default setup, secret-scanning custom patterns and Dependabot organization access.
-//  - Turning code scanning on for a PRIVATE repository is a paid feature whose cost cannot be calculated, so it is
-//    refused (the same policy as github_security_set_feature); public repositories are free.
+//  - Private code-scanning may trigger charges for future active committers. A user with GitHub plan permission can
+//    authorize it after an uncapped-cost disclosure; the developer's $0 testing rules do not forbid the user's action.
 //  - A custom secret pattern is a regular expression. It is data, not a credential: it is sent only as `pattern`, and the
 //    change log keeps names and counts, never the expression text.
 //  - Dependabot repository access lets Dependabot read other private repositories, so adding repositories is an access change.
@@ -30,15 +30,15 @@ const readSetup = async (ctx, t) => {
 };
 const codeScanning = defineGithubWrite({
   name: 'github_security_code_scanning_default_setup', area: 'security', audience: ['O'],
-  description: 'Turn code scanning default setup on or off for a repository, with languages and query suite. Private repositories are refused (paid).',
+  description: 'Turn code scanning default setup on or off with language/query options; private paid activation warns of unbounded future charges.',
   properties: { owner: OWNER, repo: REPO_NAME, state: { type: 'string', enum: ['configured', 'not-configured'] }, languages: { type: 'array', maxItems: 20, items: { type: 'string', minLength: 1, maxLength: 40 }, uniqueItems: true },
     querySuite: { type: 'string', enum: ['default', 'extended'] }, runnerType: { type: 'string', enum: ['standard', 'labeled'] }, runnerLabel: { type: 'string', maxLength: 100 }, threatModel: { type: 'string', enum: ['remote', 'remote_and_local'] } },
-  required: ['repo', 'state'], declarations: decl(), target: repoTarget,
+  required: ['repo', 'state'], declarations: decl({ spend: true }), target: repoTarget,
   read: (args, ctx, t) => readSetup(ctx, t),
+  price: ({ args, before }) => args.state === 'configured' && before?.private && before.setup.state !== 'configured' ? null : 0,
   classify: ({ args }) => ({ production: args.state === 'configured' ? 'changes how the repository\'s code is scanned for vulnerabilities' : 'switching code scanning off removes protection' }),
-  summarize: ({ args, target: t, before }) => `Code scanning default setup for ${t.owner}/${t.repo}: ${before.setup.state} -> ${args.state}${args.languages ? ` (languages ${args.languages.join(', ')})` : ''}${args.state === 'configured' && before.private ? ' - BLOCKED: private repository, paid feature, cost cannot be calculated' : ''}`,
+  summarize: ({ args, target: t, before }) => `Code scanning default setup for ${t.owner}/${t.repo}: ${before.setup.state} -> ${args.state}${args.languages ? ` (languages ${args.languages.join(', ')})` : ''}${args.state === 'configured' && before.private ? ' - PAID private code scanning, future active-committer charges not capped' : ''}`,
   apply: async ({ args, ctx, target: t, before }) => {
-    if (args.state === 'configured' && before.private) throw refusal('Code scanning on a private repository is a paid GitHub feature billed per active committer. That cost cannot be calculated here, so nothing was changed.');
     const s = before.setup;
     const wantsSame = s.state === args.state && (args.state === 'not-configured' || ((args.languages === undefined || same(args.languages, s.languages)) && (args.querySuite === undefined || args.querySuite === s.querySuite)
       && (args.runnerType === undefined || args.runnerType === s.runnerType) && (args.threatModel === undefined || args.threatModel === s.threatModel)));
