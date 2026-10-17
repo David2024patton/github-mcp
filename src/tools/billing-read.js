@@ -31,7 +31,7 @@ const usageRow=x=>({product:x.product??null,sku:x.sku??null,
   date:x.date??null,quantity:nonnegative(x.quantity??x.grossQuantity),
   unit:x.unitType??null,net_dollars:money(x.netAmount),
   gross_dollars:money(x.grossAmount),discount_dollars:money(x.discountAmount)});
-const summarizeUsage=(items,max)=>{
+export const summarizeUsage=(items,max)=>{
   if(!Array.isArray(items))throw new TypeError('GitHub usage response did not include usageItems.');
   const complete=items.length<=max;
   const allReadable=items.every(x=>money(x.netAmount)!==null);
