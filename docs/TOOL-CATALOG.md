@@ -432,14 +432,14 @@ Card(s): O-3.
 
 ## Owner: billing, budgets, Copilot and Codespaces (`github_billing_*, github_copilot_*, github_codespace_*`) — 13
 
-Card(s): O-4. Spend guard (`docs/designs/BATCH-B.md` B-4): `$` tools show a dollar estimate from `src/github/prices.js` (dated, sourced), always need `confirm`, and are refused while the account's spend limit is $0.
+Card(s): O-4. The developer's $0/production-OFF TEST rule does not limit an end user's separately delegated authority. Known-price changes disclose the sourced estimate. `$*` includes future metered/unknown charges: disclose an uncapped exposure, confirm, honor explicit user-chosen spend ceilings and RTC pass allowances, and never infer policy GET verification from a Codespaces 204. Current source repair is pending exact-head CI/merge and subsequent live provider acceptance.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_billing_get_usage` | Usage and cost for an org or user by product (Actions, Packages, Codespaces, Copilot, LFS) and period, in dollars; premium requests on request | — | N built #201 | I,U | O | R | O-4 built #201 |
 | `github_billing_list_budgets` | Organization budgets with amount, spent so far and whether usage stops at the limit | — | N built #201 | I | O | R | O-4 built #201 |
 | `github_billing_save_budget` | Create or change a budget (raising or removing a limit raises spend) | C·$*·Prod | N built #201 | I | O | F | O-4 built #201 |
-| `github_billing_delete_budget` | Guide exact budget deletion after identifying an enforceable replacement spending limit; no automated budget deletion | — | N built #201 | I | O | R | O-4 built #201 |
+| `github_billing_delete_budget` | Delete an exact verified organization budget after typed-ID confirmation, metered-cost warning, full-profile production consent and provider absence readback | C·D·$*·Prod | N built #201 | I | O | F | O-4 built #201; authority repair pending |
 | `github_billing_list_marketplace` | Marketplace apps Chris pays for (plan, price, next billing date); buying is guided only | — | N built #201 | U | O | R | O-4 built #201 |
 | `github_copilot_get_billing` | Copilot plan, seat counts and seat assignments with last activity | — | C built #201 | I | O | R | O-4 built #201 |
 | `github_copilot_add_seats` | Give users or teams Copilot seats (about $19 per seat per month, prorated) | C·$·A·M·Prod | F built #201 | I | O | F | O-4 built #201 |
@@ -448,7 +448,7 @@ Card(s): O-4. Spend guard (`docs/designs/BATCH-B.md` B-4): `$` tools show a doll
 | `github_codespace_create` | Create a codespace for a repo and branch (hourly compute plus storage) | C·$·Prod | C built #201 | U | O,B | F | O-4 built #201 |
 | `github_codespace_set_state` | Start (billed) or stop (saves money) a codespace | C·$*·Prod* | C built #201 | U | O,B | F | O-4 built #201 |
 | `github_codespace_delete` | Delete a codespace (unpushed work is lost) | C·D·Prod | C built #201 | U | O,B | F | O-4 built #201 |
-| `github_codespace_set_org_access` | Guide organization-paid Codespaces access changes with explicit owner UI readback; no API policy GET or automated write | — | N built #201 | I | O | R | O-4 built #201 |
+| `github_codespace_set_org_access` | PUT organization-paid Codespaces access with exact selected-user membership, user-chosen budget enforcement, and explicit UNCONFIRMED 204 until owner UI verifies saved policy | C·A·$*·Prod | N built #201 | I | O | F | O-4 built #201; authority repair pending |
 
 ## Owner: apps and fine-grained tokens (`github_app_*, github_tokenpolicy_*`) — 7
 

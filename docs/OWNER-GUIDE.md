@@ -65,6 +65,15 @@ After the verified release and any required GitHub App permissions and user sign
 GitHub can meter runner compute and Copilot agent usage after a change; this has **no guaranteed total upper dollar amount**. The agent must show this plainly before a real change. A user-selected optional $0 or positive monthly MCP spending cap remains binding, and a scoped RTC pass's finite allowance cannot authorize unknown future charges. An account that has not selected a product spending cap is not automatically treated as having chosen a $0 product cap. To raise an existing selected cap use the protected setup page and its passphrase; credentials are never pasted into chat. Recurring future provider bills and provider-specific pricing policies remain GitHub's responsibility. **Code is merged, but these new paths are not declared live or real-provider accepted until the matching `GITHUB-Y9D-*` checks in STATUS pass on a verified READY deployment.**
 
 
+## Pending O-4 owner-authority repair — not released or accepted
+
+Once this exact corrective PR is merged and released, a properly authorized end-user agent may call `github_billing_delete_budget` to DELETE one exact verified GitHub billing budget after repeating its ID. It shows the existing enforcement, warns of **unbounded future GitHub charges**, requires full-profile PRODUCTION consent, honors any explicit user spending cap or RTC pass allowance, sends DELETE once, and independently reads the budget inventory and individual ID back. The implementation/developer agent is not allowed to delete real budgets during development.
+
+Likewise, `github_codespace_set_org_access` will send GitHub's genuine Codespaces access PUT under explicit permission, production and confirmation guards. With `selected_members`, the complete replacement list must be named and `replaceSelectedUsers: true` supplied after member verification; omitting the flag refuses the action. Allowing members can incur uncapped future compute/storage costs and is refused under an explicit unprovable spending ceiling. **Disabling** org Codespaces access is allowed even with a selected $0 spending cap. GitHub has no documented policy GET endpoint, so an HTTP 204 is marked **unconfirmed** until the owner separately inspects saved settings at `https://github.com/organizations/OWNER/settings/codespaces`; do not interpret a 204 or the caller's submitted values as independent readback.
+
+These capabilities remain **source-only, not provider-accepted or live** while current READY `live` is behind `main`. No existing credentials, configuration, budget, real Codespaces access or production release were changed to develop them.
+
+
 ## Pending Y-7/H-4 paid private security correction — source only
 
 The earlier developer-spend interpretation incorrectly prevented even an authorized end user's agent from enabling private-repository code scanning, premium security features, or attaching paid organization security configurations to private repositories. The approved 2026-10-16 owner decision restores **actual guarded GitHub API execution** on these operations, rather than forcing the user to click through manually.
