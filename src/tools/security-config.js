@@ -38,18 +38,17 @@ export const shapeConfig = (c) => (c ? {
 const getConfig = (ctx, t, id) => missing(async () => (await (await octo(ctx, t.owner)).request(`GET ${ONE}`, { org: t.owner, configuration_id: id })).data);
 const listConfigs = async (ctx, t) => (await (await octo(ctx, t.owner)).request(`GET ${BASE}`, { org: t.owner, per_page: 100 })).data ?? [];
 const attachedRepos = async (ctx, t, id) => {
-  const gh = await octo(ctx, t.owner);
-  const result = [];
-  for (let page = 1; page <= 5; page++) {
-    const rows = (await gh.request(`GET ${ONE}/repositories`,
-      { org: t.owner, configuration_id: id, per_page: 100, page })).data;
-    if (!Array.isArray(rows)) throw refusal('Attached repository listing is not readable.');
-    result.push(...rows.map((r) => ({ id: r.repository?.id, name: r.repository?.name,
-      private: r.repository?.private === true || ['private', 'internal'].includes(r.repository?.visibility),
-      status: r.status })));
-    if (rows.length < 100) return result;
-  }
-  throw refusal('Attached repository inventory exceeds 500 entries; paid-change scope cannot be verified.');
+  // The pinned GitHub endpoint allows per_page but not page: never invent a
+  // page parameter. If the response fills the page, completeness cannot be
+  // established; refuse any financially sensitive write rather than omit a
+  // hidden private repository.
+  const rows = (await (await octo(ctx, t.owner)).request(`GET ${ONE}/repositories`,
+    { org: t.owner, configuration_id: id, per_page: 100 })).data;
+  if (!Array.isArray(rows) || rows.length >= 100)
+    throw refusal('The complete attached repository inventory cannot be verified (100+ records or unreadable response).');
+  return rows.map((r) => ({ id: r.repository?.id, name: r.repository?.name,
+    private: r.repository?.private === true || ['private', 'internal'].includes(r.repository?.visibility),
+    status: r.status }));
 };
 
 // ---- create / edit -------------------------------------------------------------------------------------------------------
