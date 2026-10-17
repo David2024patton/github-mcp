@@ -3,6 +3,7 @@ import {SETTINGS,fill} from '../../src/data/dashboard-map.js';
 import {makeWorld} from '../../test/helpers/write-contract.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
 import {registry} from '../../src/tools/index.js';
+import {selectedSpendCap} from '../../src/tools/spend-guard.js';
 
 const routes={
   org:'GET /orgs/{org}',
@@ -14,7 +15,8 @@ const routes={
   policy:'GET /repos/{owner}/{repo}/actions/permissions/workflow',
   keys:'GET /repos/{owner}/{repo}/keys',
   apps:'GET /orgs/{org}/installations',
-  pats:'GET /orgs/{org}/personal-access-token-requests'
+  pats:'GET /orgs/{org}/personal-access-token-requests',
+  billing:'GET /organizations/{org}/settings/billing/usage'
 };
 const org=(twoFactor=true)=>({
   login:'example-org',name:'Example Org',description:'A safe test org',
@@ -38,6 +40,7 @@ function arrange(w,opts={}){
   w.gh.when(routes.keys).reply(200,opts.writeKey?[{id:7,read_only:false}]:[]);
   w.gh.when(routes.apps).reply(200,{total_count:0,installations:[]});
   w.gh.when(routes.pats).reply(200,[]);
+  w.gh.when(routes.billing).reply(200,{usageItems:[]});
 }
 async function call(w,name,args={}){
   const dispatch=createDispatch({credentials:w.credentials,env:w.ctx.env,
@@ -115,15 +118,73 @@ describe('O-1 actual owner and security overview',()=>{
     arrange(w);
     const r=await call(w,'github_admin_overview',{maxRepositories:10});
     expect(r.owner).toBe('example-org');
-    expect(r.server).toMatchObject({production_enabled:false,spend_limit_cents:0});
+    expect(r.server).toMatchObject({production_enabled:false,spend_limit_cents:null,spend_limit_configured:false});
+    expect(r.checks.find(c=>c.id==='server-spend')).toMatchObject({status:'ok',value:{limit_cents:null,limit_configured:false,spend_enabled:true}});
     expect(r.checks.find(c=>c.id==='require-2fa')).toMatchObject({status:'ok'});
     expect(r.checks.find(c=>c.id==='security-feature-coverage')).toMatchObject({status:'ok'});
     expect(r.checks.find(c=>c.id==='actions-token-rights')).toMatchObject({status:'ok'});
-    expect(r.checks.find(c=>c.id==='billing-usage')).toMatchObject({status:'not_readable'});
+    expect(r.checks.find(c=>c.id==='billing-usage')).toMatchObject({status:'ok',value:{total_net_dollars:0,usage_items:0,complete:true,currency:'USD'}});
     expect(r.checks.find(c=>c.id==='sso')).toMatchObject({status:'not_available_on_plan'});
     expect(r.repo_inventory_complete).toBe(true);
     expect(w.gh.invalid).toEqual([]);
     expect(w.gh.calls.filter(c=>c.method!=='GET')).toHaveLength(0);
+  });
+  it('does not mislabel the legacy developer default $0 as an end-user spending prohibition',async()=>{
+    expect(selectedSpendCap({spend_limit_cents:0,spend_limit_explicit:false}))
+      .toMatchObject({configured:false,limitCents:null,newSpendingAllowedByCap:true});
+    expect(selectedSpendCap({spend_limit_cents:0,spend_limit_explicit:true}))
+      .toMatchObject({configured:true,limitCents:0,newSpendingAllowedByCap:false});
+    // A positive historical cap is a preserved user restriction despite a
+    // missing legacy explicit flag; do not silently drop it.
+    expect(selectedSpendCap({spend_limit_cents:2500,spend_limit_explicit:false}))
+      .toMatchObject({configured:true,limitCents:2500,newSpendingAllowedByCap:true});
+    const w=await makeWorld({profile:'read_only'});arrange(w);
+    const r=await call(w,'github_admin_overview',{maxRepositories:10});
+    const spend=r.checks.find(x=>x.id==='server-spend');
+    expect(spend.detail).toContain('No user-configured MCP spending cap');
+    expect(spend.detail).not.toContain('Autonomous spending is $0');
+    expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);
+  });
+  it('preserves an explicitly selected zero and positive end-user spending cap in owner reporting',async()=>{
+    for(const limit of [0,2500]){
+      const w=await makeWorld({profile:'read_only'});arrange(w);
+      await w.db.setSpendLimitCents('example-org',limit);
+      const r=await call(w,'github_admin_overview',{maxRepositories:10});
+      expect(r.server).toMatchObject({spend_limit_configured:true,spend_limit_cents:limit});
+      const spend=r.checks.find(x=>x.id==='server-spend');
+      expect(spend.value).toMatchObject({limit_cents:limit,limit_configured:true,spend_enabled:limit>0});
+      expect(spend.detail).toContain(limit===0?'explicit $0':'$25.00');
+      expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);
+    }
+  });
+  it('reads real provider billed usage for the selected UTC month rather than guessing unavailability',async()=>{
+    const w=await makeWorld({profile:'read_only'});arrange(w);
+    const month=new Date(w.ctx.now()).toISOString().slice(0,7);
+    w.gh.when(routes.billing).reply(200,{usageItems:[
+      {date:month+'-15T00:00:00Z',product:'Actions',netAmount:1.25,grossAmount:1.25,discountAmount:0}
+    ]});
+    const r=await call(w,'github_admin_overview',{maxRepositories:10});
+    expect(r.checks.find(x=>x.id==='billing-usage')).toMatchObject({
+      status:'ok',value:{period_utc:month,total_net_dollars:1.25,usage_items:1,complete:true,currency:'USD'}});
+    expect(w.gh.calls.some(x=>x.route===routes.billing&&x.method==='GET')).toBe(true);
+    expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('never turns a denied, malformed or wrong-period bill into an apparent $0 balance',async()=>{
+    const month=new Date((await makeWorld({profile:'read_only'})).ctx.now()).toISOString().slice(0,7);
+    const cases=[
+      {status:403,body:{message:'Resource not accessible by integration'}},
+      {status:200,body:{}},
+      {status:200,body:{usageItems:[{date:'2020-01-01',product:'Actions',netAmount:7}]}},
+      {status:200,body:{usageItems:[{date:month+'-01',product:'Actions',netAmount:null}]}}
+    ];
+    for(const test of cases){
+      const w=await makeWorld({profile:'read_only'});arrange(w);
+      w.gh.when(routes.billing).reply(test.status,test.body);
+      const r=await call(w,'github_admin_overview',{maxRepositories:10});
+      expect(r.checks.find(x=>x.id==='billing-usage')).toMatchObject({status:'not_readable'});
+      expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);
+    }
   });
   it('identifies missing 2FA, scanning and write-capable keys as attention, not permission denial',async()=>{
     const w=await makeWorld({profile:'read_only'});
