@@ -1,73 +1,140 @@
-// O-4: two spending-scope changes that must use guided owner flow.
-// GitHub documents their writes but cannot expose a finite cost ceiling and,
-// for org Codespaces access, supplies no GET policy readback endpoint.
-import {defineRead} from './define-read.js';
-import {plain,readerFor} from './github-read.js';
+// O-4 owner-authority correction: provider-backed budget deletion and Codespaces access.
+// The implementing agent has no license to use these endpoints on a real account.
+// End users with actual delegated GitHub permissions can execute them through the
+// normal confirmation, production, scoped-spend and one-send change journal.
+import { defineGithubWrite } from './define-github-write.js';
+import { ownerOf, octo, missing, refusal } from './github-write.js';
+import { budgetInventory } from './billing-read.js';
 
-const OWNER={type:'string',maxLength:39};
-const ID={type:'string',minLength:8,maxLength:80};
-const LOGIN={type:'string',minLength:1,maxLength:39};
-const USERS={type:'array',minItems:1,maxItems:20,uniqueItems:true,items:LOGIN};
-const account=async(a,c)=>{
-  const {owner,octokit:gh}=await readerFor(a,c);
-  const row=await c.db.getAccount(owner);
-  if(row?.account_type!=='Organization')
-    throw new TypeError('Organization billing requires an enrolled organization.');
-  return {owner,gh};
+const OWNER = { type: 'string', maxLength: 39 };
+const ID = { type: 'string', minLength: 8, maxLength: 80 };
+const LOGIN = { type: 'string', minLength: 1, maxLength: 39 };
+const USERS = { type: 'array', minItems: 1, maxItems: 20, uniqueItems: true, items: LOGIN };
+const org = (a, c) => ({ owner: ownerOf(a, c), scope: 'org', kind: 'org-billing' });
+const BUDGETS = '/organizations/{org}/settings/billing/budgets';
+const budget = (c, t, id) => missing(async () =>
+  (await (await octo(c, t.owner)).request('GET ' + BUDGETS + '/{budget_id}',
+    { org: t.owner, budget_id: id })).data);
+const inventory = async (c, t) => {
+  const x = await budgetInventory(await octo(c, t.owner), t.owner, 500);
+  if (!x.complete) throw refusal('A complete budget inventory is required to change spending controls.');
+  return x.budgets;
 };
-export const deleteBudget=defineRead({
-  name:'github_billing_delete_budget',area:'billing',audience:['O'],
-  description:'Guide a separately approved budget deletion safely when removing a cap may permit unbounded future spending.',
-  properties:{owner:OWNER,budgetId:ID},required:['budgetId'],
-  handler:(a,c)=>plain(async()=>{
-    const {owner,gh}=await account(a,c);
-    const budget=(await gh.request('GET /organizations/{org}/settings/billing/budgets/{budget_id}',
-      {org:owner,budget_id:a.budgetId})).data;
-    if(!budget||budget.id!==a.budgetId)
-      throw new TypeError('GitHub did not verify the exact budget ID.');
-    return {status:'guided',completed:false,account:owner,id:a.budgetId,
-      current_amount_dollars:budget.budget_amount,
-      enforces_limit:budget.prevent_further_usage===true,
-      reason:'Removing a budget can allow unbounded future GitHub usage; no finite enforceable price is available for automated approval.',
-      url:'https://github.com/organizations/'+encodeURIComponent(owner)+'/settings/billing/budgets',
-      steps:[
-        {n:1,action:'Review every other enforced organization, repository, and user spending limit and obtain separate owner authorization.',target:'GitHub billing budgets'},
-        {n:2,action:'Open the exact budget with ID '+a.budgetId+' and select the delete control, after reviewing impact.',target:'Organization billing'},
-        {n:3,action:'Confirm only in GitHub after independently verifying the replacement ceiling; otherwise cancel.',target:'GitHub confirmation'}],
-      verifyWith:{tool:'github_billing_list_budgets',args:{owner},
-        instruction:'Verify exact budget ID is absent and the remaining effective limits are still enforced.'},
-      completion:'unverified until owner confirmation and fresh provider readback'};
+const budgetIds = (rows) => rows.map((x) => x.id);
+
+export const deleteBudget = defineGithubWrite({
+  name: 'github_billing_delete_budget', area: 'billing', audience: ['O'],
+  description: 'Delete an exact verified budget with informed unbounded-cost disclosure, guarded approval and absence readback.',
+  properties: { owner: OWNER, budgetId: ID, confirmBudgetId: ID },
+  required: ['budgetId', 'confirmBudgetId'],
+  declarations: { production: 'always', confirm: 'always', spend: true, profiles: ['full'] },
+  target: org,
+  read: async (a, c, t) => {
+    if (a.budgetId !== a.confirmBudgetId)
+      throw refusal('Type the exact budget ID twice before deleting spending protection.');
+    const current = await budget(c, t, a.budgetId);
+    if (!current || current.id !== a.budgetId)
+      throw refusal('The exact budget ID cannot be verified; no deletion is allowed.');
+    const budgets = await inventory(c, t);
+    if (!budgetIds(budgets).includes(a.budgetId))
+      throw refusal('The budget inventory and exact budget record disagree.');
+    return { current, otherIds: budgetIds(budgets).filter((id) => id !== a.budgetId) };
+  },
+  // Removing an enforced billing ceiling can expose unlimited future charges.
+  // This is NOT a fabricated zero-dollar transaction or a known bounded cost.
+  price: () => null,
+  classify: () => ({ production: 'deletes an organization spending control, which can permit unbounded future billing' }),
+  summarize: ({ args: a, target: t, before: b }) =>
+    'DELETE budget ' + a.budgetId + ' in ' + t.owner + ', amount $' +
+    b.current.budget_amount + ', enforcement ' + String(b.current.prevent_further_usage) +
+    '; remaining budgets are NOT proof of an effective future charge limit',
+  apply: ({ args: a, ctx, target: t }) => octo(ctx, t.owner).then((gh) =>
+    gh.request('DELETE ' + BUDGETS + '/{budget_id}',
+      { org: t.owner, budget_id: a.budgetId })),
+  readAfter: async ({ args: a, ctx, target: t, response: r }) => {
+    if (r?.data?.budget_id !== a.budgetId)
+      throw refusal('GitHub did not acknowledge the exact deleted budget ID.');
+    return { exact: await budget(ctx, t, a.budgetId),
+      remaining: await inventory(ctx, t) };
+  },
+  verify: ({ args: a, before: b, after: x }) => !!x && x.exact === null &&
+    !budgetIds(x.remaining).includes(a.budgetId) &&
+    b.otherIds.every((id) => budgetIds(x.remaining).includes(id)),
+  inverse: () => null,
+  present: ({ args: a, after: x }) => ({
+    deletedBudgetId: a.budgetId,
+    otherBudgetCount: x?.remaining?.length ?? null,
+    warning: 'Deleting a budget does not guarantee another budget will cap GitHub charges.'
   })
 });
-export const setCodespaceAccess=defineRead({
-  name:'github_codespace_set_org_access',area:'codespace',audience:['O'],
-  description:'Guide safe organization-paid Codespaces access changes when GitHub provides no policy readback endpoint.',
-  properties:{owner:OWNER,visibility:{type:'string',enum:[
-    'disabled','selected_members','all_members','all_members_and_outside_collaborators']},
-    usernames:USERS},
-  required:['visibility'],
-  handler:(a,c)=>plain(async()=>{
-    const {owner,gh}=await account(a,c);
-    const d=(await gh.request('GET /orgs/{org}',{org:owner})).data;
-    if(d?.login?.toLowerCase()!==owner.toLowerCase())
-      throw new TypeError('Organization identity not verified.');
-    if(a.visibility==='selected_members'&&!a.usernames?.length)
-      throw new TypeError('Selected-member mode requires exact approved usernames.');
-    if(a.visibility!=='selected_members'&&a.usernames?.length)
-      throw new TypeError('Named usernames only apply to selected-member mode.');
-    return {status:'guided',completed:false,owner,visibility:a.visibility,
-      selected_users:a.usernames??[],
-      reason:'Codespaces access grants can trigger uncapped usage, and GitHub does not document an independent policy GET endpoint to verify a write.',
-      url:'https://github.com/organizations/'+encodeURIComponent(owner)+'/settings/codespaces',
-      steps:[
-        {n:1,action:'Verify billing budgets, member eligibility and obtain independent owner approval before any paid access expansion.',target:'Billing and licenses'},
-        {n:2,action:'Open organization Codespaces settings and set visibility to '+a.visibility+
-          (a.usernames?.length?', exact members: '+a.usernames.join(', '):''),target:'Codespaces access'},
-        {n:3,action:'Read the saved GitHub setting back in the interface and independently confirm each approved user.',target:'Codespaces access'}],
-      completion:'requires GitHub UI verification or explicit owner readback; API response alone cannot establish success'};
+
+const VISIBILITY = ['disabled', 'selected_members', 'all_members',
+  'all_members_and_outside_collaborators'];
+const ACCESS = '/orgs/{org}/codespaces/access';
+export const setCodespaceAccess = defineGithubWrite({
+  name: 'github_codespace_set_org_access', area: 'codespace', audience: ['O'],
+  description: 'Set genuine organization Codespaces access with metered-cost warning and explicit unverified provider acknowledgement.',
+  properties: {
+    owner: OWNER, visibility: { type: 'string', enum: VISIBILITY },
+    usernames: USERS,
+    replaceSelectedUsers: { type: 'boolean', description: 'Explicitly replace the existing selected-member list, which the GitHub API cannot read back.' }
+  },
+  required: ['visibility'],
+  declarations: { production: 'always', confirm: 'always', spend: true, accessWidening: true, profiles: ['full'] },
+  target: (a, c) => ({ ...org(a, c), kind: 'org-codespaces-access' }),
+  read: async (a, c, t) => {
+    if (a.visibility === 'selected_members' && (!a.usernames?.length || a.replaceSelectedUsers !== true))
+      throw refusal('Selected members need exact usernames and replaceSelectedUsers=true: GitHub replaces the old unreadable list.');
+    if (a.visibility !== 'selected_members' && a.usernames?.length)
+      throw refusal('Only selected_members mode accepts an exact user list.');
+    const gh = await octo(c, t.owner);
+    const identity = (await gh.request('GET /orgs/{org}', { org: t.owner })).data;
+    if (!identity || identity.login?.toLowerCase() !== t.owner.toLowerCase())
+      throw refusal('The organization identity could not be verified.');
+    // A selected member must exist in this exact organization. We never try to
+    // read an undocumented policy endpoint or assume its current selected list.
+    for (const username of a.usernames ?? []) {
+      const member = await gh.request('GET /orgs/{org}/memberships/{username}',
+        { org: t.owner, username }).then((r) => r.data, () => null);
+      if (member?.state !== 'active')
+        throw refusal('Selected Codespaces user is not a verified active organization member.');
+    }
+    return { organization: identity.login, selectedUserCount: a.usernames?.length ?? 0 };
+  },
+  price: ({ args: a }) => a.visibility === 'disabled' ? 0 : null,
+  classify: ({ args: a }) => ({
+    production: 'changes organization-paid Codespaces access and possible ongoing compute/storage charges',
+    accessWidening: a.visibility === 'disabled' ? null :
+      'grants Codespaces access to ' + (a.visibility === 'selected_members' ? a.usernames.join(', ') : a.visibility)
+  }),
+  summarize: ({ args: a, target: t }) =>
+    'SET organization Codespaces access for ' + t.owner + ' to ' + a.visibility +
+    (a.usernames?.length ? '; REPLACE selected list with ' + a.usernames.join(', ') : '') +
+    '; provider has no policy GET for independent verification; bills can continue without a hard cap',
+  apply: ({ args: a, ctx, target: t }) => octo(ctx, t.owner).then((gh) =>
+    gh.request('PUT ' + ACCESS, {
+      org: t.owner, visibility: a.visibility,
+      ...(a.visibility === 'selected_members' ? { selected_usernames: a.usernames } : {})
+    })),
+  readAfter: async ({ response: r }) => {
+    if (r?.status !== 204)
+      throw refusal('GitHub did not supply its expected 204 acknowledgement.');
+    return { acknowledged: true, independentlyVerified: false };
+  },
+  // GitHub documents no GET for the organization policy. Never claim the
+  // accepted PUT was independently confirmed by echoing our own input.
+  verify: () => false,
+  inverse: () => null,
+  present: ({ args: a, target: t, after: x }) => ({
+    requestedVisibility: a.visibility, acknowledged: x?.acknowledged === true,
+    verified: false, verifyInGithub: 'https://github.com/organizations/' +
+      encodeURIComponent(t.owner) + '/settings/codespaces',
+    warning: 'GitHub acknowledged the request but provides no policy GET. Independently check the saved settings before relying on this change.'
   })
 });
-export const tools=[deleteBudget.tool,setCodespaceAccess.tool];
-export const handlers={
-  [deleteBudget.tool.name]:deleteBudget.handler,
-  [setCodespaceAccess.tool.name]:setCodespaceAccess.handler};
+
+export const tools = [deleteBudget.tool, setCodespaceAccess.tool];
+export const handlers = Object.fromEntries([
+  [deleteBudget.tool.name, deleteBudget.handler],
+  [setCodespaceAccess.tool.name, setCodespaceAccess.handler]
+]);
