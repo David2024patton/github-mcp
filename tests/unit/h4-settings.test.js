@@ -54,6 +54,19 @@ runWriteContract({
   definition:featureDef,args:{repo:'hello',feature:'secret_scanning',enabled:true},
   production:true,needsConfirm:true,profile:'full',arrange:arrangeFeature});
 runWriteContract({
+  label:'github_security_set_feature private paid activation with informed owner consent',
+  definition:featureDef,args:{repo:'hello',feature:'secret_scanning',enabled:true},
+  production:true,needsConfirm:true,profile:'full',
+  arrange(gh,result){
+    gh.when(routes.repo).replySequence([
+      {status:200,body:security('disabled',true)},
+      {status:200,body:security(result==='ok'?'enabled':'disabled',true)}
+    ]);
+    gh.when(routes.pvr).reply(200,{enabled:false});
+    gh.when(routes.repoPatch).reply(200,security('enabled',true));
+  }
+});
+runWriteContract({
   label:'github_actions_set_settings preserves other policy',
   definition:actionDef,args:{repo:'hello',section:'workflow',
     changes:{default_workflow_permissions:'write'}},
