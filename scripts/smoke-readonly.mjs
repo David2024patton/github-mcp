@@ -147,7 +147,8 @@ export function classifyRun({ result, calls }) {
   if (blocked) return { outcome: 'fail', note: 'tried to send a change or reach a non-GitHub destination; the smoke test blocked it', requestId };
   const planLimited = refused.find(c => (c.status === 403 || c.status === 404 || c.status === 451) && PLAN_WORDS.test(c.message));
   const denied = refused.find(c => c.status === 403 || c.status === 401);
-  if (result?.isError === true) {
+  if (!result || typeof result !== 'object') return { outcome: 'fail', note: 'The read returned no verifiable result.', requestId };
+  if (result.isError === true) {
     if (planLimited) return { outcome: 'limitation', note: `GitHub says this needs a different plan (HTTP ${planLimited.status}); not a code failure`, requestId };
     if (denied) return { outcome: 'gap', note: `permission not granted to this account (HTTP ${denied.status})`, requestId };
     const message = protect(result?.content?.[0]?.text ?? 'The tool returned an error.');
@@ -200,8 +201,8 @@ const LABEL = { pass: 'PASS', limitation: 'LIMITATION', gap: 'GAP', skipped: 'SK
 export function renderReport({ results, excludedCount, account, date, revision = null }) {
   const count = (outcome) => results.filter((r) => r.outcome === outcome).length;
   const lines = [
-    `# Read-only smoke report — ${date}`, '',
-    `Account: ${account}. Connection: preview, read_only profile. Server revision: ${revision ?? 'not recorded'}.`,
+    `# Read-only smoke report — ${protect(date, 40)}`, '',
+    `Account: ${protect(account, 70)}. Connection: preview, read_only profile. Server revision: ${protect(revision ?? 'not recorded', 80)}.`,
     'Only read tools were run, and every network request that could change something was refused before it was sent.', '',
     `Tools run or accounted for: ${results.length}. Not selected because they change things or run other tools: ${excludedCount}.`,
     `PASS ${count('pass')} · LIMITATION ${count('limitation')} · GAP ${count('gap')} · SKIPPED ${count('skipped')} · FAIL ${count('fail')}`, '',
