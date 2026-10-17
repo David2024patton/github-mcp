@@ -32,7 +32,7 @@ Per-account onboarding for `Robinson-AI-Systems` and `christcr2012` is still pen
 | [ ] | "Authorize as me" done (user authorization, for personal settings and a few user-only actions) | Setup page (Owner) | Not done | `github_whoami` shows your user and the refresh date |
 | [ ] | Optional: notifications token (classic, `notifications` scope only) (IN-11) | GitHub → Developer settings → Tokens (classic), then paste on the setup page (Owner) | Not added | `github_notify_list` answers |
 | [ ] | Connector added in Claude, **preview** mode | claude.ai → Settings → Connectors (Owner) | Not added | Claude answers "which GitHub accounts am I connected to?" correctly |
-| [ ] | Default settings confirmed: protected repositories (IN-08), production names (IN-12), own people (IN-13), spend limit $0 (IN-09), pass defaults (IN-10) | Answer in chat; edits that widen anything happen only on the setup page | Recommended defaults | `github_list_protected_resources`, `github_whoami` show them |
+| [ ] | Default settings confirmed: protected repositories (IN-08), production names (IN-12), own people (IN-13), user-selected spend cap (unset unless explicitly configured), developer's independent $0 test budget, pass defaults (IN-10) | Answer in chat; edits that widen anything happen only on the setup page | Recommended defaults | `github_list_protected_resources`, `github_whoami` show them |
 
 ## 3. Production, per account
 
@@ -40,8 +40,8 @@ Per-account onboarding for `Robinson-AI-Systems` and `christcr2012` is still pen
 |---|---|---|---|---|
 | [ ] | Production enabled for the account (IN-07): ask Claude, then re-enter your passphrase on the setup page within 10 minutes | Owner | Off | A new connection offers "production" for that account |
 | [ ] | First production action done with you watching: merge one small green PR at its exact head | Owner + Agent | Not done | The PR shows merged with a merge commit; `github_recent_changes` lists it as PRODUCTION |
-| [ ] | Spend limit raised above $0 — **only if you want Claude to add seats or paid features** (IN-09) | Setup page (Owner) | $0 | `github_whoami` shows the new limit |
-| [ ] | Approve the new GitHub App permissions (IN-15): `packages`, `merge_queues`, `artifact_metadata`, `organization_packages`, `organization_self_hosted_runners`, `organization_events` | github.com → Settings → Developer settings → GitHub Apps → the App → Permissions & events, then accept on each installation (`github_where_is_setting` "app permissions" lists the steps) | Not done; existing Apps never gain permissions by themselves | `github_check_permissions` reports `all good` for the account |
+| [ ] | Choose an **optional end-user monthly spend cap**, if desired; even $0 is an explicit user selection (IN-09 clarified by END-USER-AUTHORITY.md). Paid provider tools are available to authorized end-user agents without inheriting our developer's $0 budget | Setup page (Owner) | Legacy account default zero is treated as **not configured** until you set a user cap | `github_whoami` displays `spend_limit: not configured` or your explicit cap |
+| [ ] | Approve the new GitHub App permissions (IN-15): `packages`, `merge_queues`, `artifact_metadata`, `organization_packages`, `organization_self_hosted_runners`, `organization_events`; for Y-9d also upgrade **Organization Administration (write)**, **Copilot agent settings (write)**, **Copilot content exclusion (write)**, and **Agent tasks (read/write)** for the required App user authorization where GitHub offers it | github.com → Settings → Developer settings → GitHub Apps → the App → Permissions & events, then accept on each installation (`github_where_is_setting` "app permissions" lists the steps) | Not done; existing Apps never gain permissions by themselves | `github_check_permissions` reports `all good` for the account |
 
 ## 4. Developer tools
 

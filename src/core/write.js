@@ -27,7 +27,8 @@ export function normalizeClassification(raw = {}, { readFailed = false, declarat
     production,
     accessWidening: reason(raw.accessWidening, 'this widens someone\'s access'),
     notifies: Array.isArray(raw.notifies) ? raw.notifies.map(String).slice(0, 25) : [],
-    spendCents: Number.isSafeInteger(raw.spendCents) && raw.spendCents > 0 ? raw.spendCents : 0
+    spendCents: Number.isSafeInteger(raw.spendCents) && raw.spendCents > 0 ? raw.spendCents : 0,
+    spendUnknown: raw.spendUnknown === true
   };
 }
 
@@ -37,6 +38,7 @@ export function marksOf(c) {
   if (c.accessWidening) marks.push('ACCESS CHANGE');
   if (c.notifies.length) marks.push(`NOTIFIES ${c.notifies.slice(0, 5).join(', ')}${c.notifies.length > 5 ? ` and ${c.notifies.length - 5} more` : ''}`);
   if (c.spendCents) marks.push(`COSTS ${dollars(c.spendCents)}`);
+  if (c.spendUnknown) marks.push('COST UNKNOWN — metered charges can continue without a guaranteed maximum');
   return marks;
 }
 
@@ -49,7 +51,7 @@ export function marksOf(c) {
  * @param {{ production: 'always'|'when-target'|'never', accessWidening?: boolean, notifies?: boolean, spend?: boolean, confirm?: 'always'|'when-needed', cred?: string, profiles?: string[] }} spec.declarations
  * @param {(args, ctx) => { owner: string, repo?: string, ref?: string, environment?: string, scope: string }} spec.target
  * @param {(args, ctx, target) => Promise<any>} spec.read current state; may throw (a failed read counts as production)
- * @param {(input) => number|Promise<number>} [spec.price] cents this change costs, from the price table (required when declarations.spend)
+ * @param {(input) => number|null|Promise<number|null>} [spec.price] cents from provider pricing, or explicit null when metered cost cannot be bounded (required when declarations.spend)
  * @param {(input) => object} spec.classify `{ production, accessWidening, notifies, spendCents }`, computed by the guard helpers
  * @param {(input) => string} spec.summarize one plain-English sentence naming the target
  * @param {(input) => Promise<any>} spec.apply sends the change; called at most once per request key
@@ -127,7 +129,8 @@ export function defineWrite(spec) {
     if (typeof price === 'function') {
       try {
         const cents = await price({ args, ctx, target: tgt, before, readFailed });
-        if (!Number.isSafeInteger(cents) || cents < 0) priceFailed = true;
+        if (cents === null && decl.spend) classification = { ...classification, spendUnknown: true };
+        else if (!Number.isSafeInteger(cents) || cents < 0) priceFailed = true;
         else classification = { ...classification, spendCents: cents };
       } catch { priceFailed = true; }
     }
@@ -161,7 +164,7 @@ export function defineWrite(spec) {
     if (typeof summary !== 'string' || summary.length > 1024) return refuseOutright('A safe preview could not be produced, so this change was refused.');
     const marks = marksOf(classification);
     const line = marks.length ? `${summary} ${marks.map((m) => `${m}.`).join(' ')}` : summary;
-    const needsConfirm = decl.confirm === 'always' || decl.spend || !!classification.production || !!classification.accessWidening
+    const needsConfirm = decl.confirm === 'always' || decl.spend || classification.spendUnknown || !!classification.production || !!classification.accessWidening
       || classification.notifies.length > 0 || classification.spendCents > 0 || forcedConfirm !== null;
     const preview = { done: false, preview: line, needsConfirmation: needsConfirm && args.confirm !== true, ...(forcedConfirm ? { because: forcedConfirm } : {}) };
 

@@ -30,6 +30,17 @@ describe('the start of the month in Denver', () => {
 });
 
 describe('the spend gate', () => {
+  it('does not mistake the old developer default $0 for an end-user selected restriction', async () => {
+    const w=await makeWorld({mode:'preview',profile:'everyday',gates:[spendGate()]});
+    arrange(w.gh);
+    const status=await spendStatus(w.ctx,'example-org');
+    expect(status.limitEnabled).toBe(false);
+    expect(status.remainingCents).toBeNull();
+    const preview=await run(w,seatArgs);
+    expect(preview.status).toBe('needs_confirmation');
+    expect(preview.preview).toContain('COSTS $19.00');
+    expect(w.gh.calls.every(c=>c.method==='GET')).toBe(true);
+  });
   it('refuses at the default $0 and says how to raise it', async () => {
     const w = await world(0);
     const res = await run(w, { ...seatArgs, confirm: true });
@@ -86,6 +97,23 @@ describe('the spend gate', () => {
     const w = await world(5000);
     const v = await spendGate()({ name: 'github_x', args: {}, ctx: w.ctx, target: { owner: 'ghost' }, classification: { spendCents: 100 }, declarations: { spend: true } });
     expect(v.by).toBe('spend limit');
+  });
+});
+
+describe('user delegation versus service-pass limits for metered billing', () => {
+  it('permits an informed end-user preview without a cap but refuses unknown cost under an issued numerical service-pass allowance', async () => {
+    const w = await makeWorld({ mode: 'production', profile: 'full', gates: [spendGate()] });
+    const gate = spendGate();
+    const unknown = { spendCents: 0, spendUnknown: true };
+    const target = { owner: 'example-org' };
+    const user = await gate({ name: 'github_metered', args: {}, ctx: w.ctx, target, classification: unknown, declarations: { spend: true } });
+    expect(user.confirm).toContain('No maximum future charge');
+    const passCtx = { ...w.ctx, connection: { ...w.ctx.connection, pass: true, client_id: 'issued-pass', spend_limit_cents: 5000 } };
+    const limited = await gate({ name: 'github_metered', args: {}, ctx: passCtx, target, classification: unknown, declarations: { spend: true } });
+    expect(limited).toMatchObject({ by: 'pass spend allowance' });
+    expect(limited.refuse).toContain('cannot be bounded');
+    const zero = await gate({ name: 'github_metered', args: {}, ctx: { ...passCtx, connection: { ...passCtx.connection, spend_limit_cents: 0 } }, target, classification: unknown, declarations: { spend: true } });
+    expect(zero).toMatchObject({ by: 'pass spend allowance' });
   });
 });
 

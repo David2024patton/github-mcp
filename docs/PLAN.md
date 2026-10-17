@@ -160,7 +160,7 @@ next bounded implementation. Every line below maps to evidence named in its desi
 - [x] Y-6 (#229): runners and groups (tokens only through the one-time page), Actions retention/OIDC settings with spend rules, deployment protection rules and pending-deployment reviews, Pages build request.
 - [x] Y-7 (#230): security advisories (publish irreversible and confirmed), code-scanning default setup, secret-scanning patterns, Dependabot org settings, org code-security configurations priced and spend-guarded.
 - [x] Y-8 (#231): async jobs, artifact and archive reading (bomb-safe), SBOM, autofix, release upload from artifacts; wiki tools built after IN-17 = yes (Bundle 10).
-- [ ] Y-9: remaining org tools, read-backs for guided settings, missing web-only guides; money tools only if IN-16 approved.
+- [x] Y-9 (#232 plus #233): organization extras/read-backs/guides; approved IN-16 money tools now include genuine GitHub Sponsors, hosted/larger runner operations, Copilot organization/selected-repo policies, team seats and cloud-agent tasks. Full automated CI/write-contract verification is separate from pending real-account consent, production activation and provider acceptance.
 
 ## Batch X — Undo, smoke test (`designs/BATCH-X.md`)
 - [x] Undo for every clean opposite (audit G17 fixed); every other change says what the right opposite is.

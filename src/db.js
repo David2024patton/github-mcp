@@ -187,11 +187,16 @@ export function createDb(sql = productionSql()) {
         plan_name TEXT,
         production_enabled BOOLEAN NOT NULL DEFAULT FALSE,
         spend_limit_cents INTEGER NOT NULL DEFAULT 0,
+        spend_limit_explicit BOOLEAN NOT NULL DEFAULT FALSE,
         is_default BOOLEAN NOT NULL DEFAULT FALSE,
         is_scratch BOOLEAN NOT NULL DEFAULT FALSE,
         added_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         checked_at TIMESTAMPTZ
       )`;
+      // Existing default-zero values were builder policy, not customer-selected limits.
+      // Distinguish a user-selected restriction from the legacy default without
+      // discarding positive caps that were deliberately configured.
+      await sql`ALTER TABLE gh_accounts ADD COLUMN IF NOT EXISTS spend_limit_explicit BOOLEAN NOT NULL DEFAULT FALSE`;
       await sql`CREATE TABLE IF NOT EXISTS gh_installation_tokens (
         installation_id BIGINT NOT NULL,
         scope_key TEXT NOT NULL,
@@ -854,7 +859,7 @@ export function createDb(sql = productionSql()) {
       const rows = await sql`SELECT login, account_type, label, credential_kind, app_id, installation_id, repository_selection,
           installation_status, installation_permissions, user_login, (user_token_enc IS NOT NULL) AS has_user_token, user_token_expires_at,
           (fine_grained_enc IS NOT NULL) AS has_fine_grained, fine_grained_last4, (classic_enc IS NOT NULL) AS has_classic, classic_scopes,
-          classic_last4, plan_name, production_enabled, spend_limit_cents, is_default, is_scratch, checked_at
+          classic_last4, plan_name, production_enabled, spend_limit_cents, spend_limit_explicit, is_default, is_scratch, checked_at
         FROM gh_accounts ORDER BY is_default DESC, login`;
       return rows.map((r) => ({ ...r, app_id: r.app_id == null ? null : Number(r.app_id), installation_id: r.installation_id == null ? null : Number(r.installation_id) }));
     },
@@ -1005,7 +1010,8 @@ export function createDb(sql = productionSql()) {
     /** Sets an account's monthly spend limit in cents. Returns false when the account is unknown. Raising it is done only by the setup page. */
     async setSpendLimitCents(login, cents) {
       if (!Number.isSafeInteger(cents) || cents < 0 || cents > 100000000) throw new TypeError('The spend limit is a whole number of cents from 0 to 1,000,000 dollars.');
-      const rows = await sql`UPDATE gh_accounts SET spend_limit_cents = ${cents} WHERE lower(login) = lower(${login}) RETURNING login`;
+      const rows = await sql`UPDATE gh_accounts SET spend_limit_cents = ${cents}, spend_limit_explicit = TRUE
+        WHERE lower(login) = lower(${login}) RETURNING login`;
       return rows.length === 1;
     },
     /** Cents this account's real (not preview) changes have committed since `since`: everything sent except a change GitHub definitely rejected. In-flight and uncertain ones count. */

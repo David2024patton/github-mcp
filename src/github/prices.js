@@ -1,6 +1,6 @@
 // What GitHub charges for the things this server can switch on (B4). Every price carries the page it came from and the date it was
 // read there, so a stale price is visible. Money is whole cents. The spend guard and the previews compute costs from this table only,
-// never from tool arguments. A price GitHub does not publish is absent, and a tool that needs it refuses instead of guessing.
+// never from tool arguments. A price GitHub does not publish is absent; metered usage may be explicitly unknown and disclosed to the authorized end user, never guessed as $0.
 const DAY = '2026-10-10';
 
 export const PRICES = Object.freeze({

@@ -21,7 +21,7 @@ export const REPOSITORY_PERMISSIONS = Object.freeze({
 });
 
 export const ORGANIZATION_PERMISSIONS = Object.freeze({
-  members: 'write', organization_actions_variables: 'write', organization_administration: 'read', organization_codespaces: 'write',
+  members: 'write', organization_actions_variables: 'write', organization_administration: 'write', organization_copilot_agent_settings: 'write', organization_codespaces: 'write',
   organization_codespaces_secrets: 'write', organization_codespaces_settings: 'write', organization_copilot_seat_management: 'write',
   organization_custom_org_roles: 'read', organization_custom_properties: 'write', organization_dependabot_secrets: 'write',
   organization_hooks: 'write', organization_personal_access_token_requests: 'write', organization_personal_access_tokens: 'write',
