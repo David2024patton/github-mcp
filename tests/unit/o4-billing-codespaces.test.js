@@ -295,3 +295,131 @@ describe('O-4 Codespaces access: all three write doors despite missing provider 
     });
   }
 });
+
+
+describe('O-4 end-user authority: provider-allowed unenforced budget controls',()=>{
+ const args={action:'create',budgetAmount:30,budgetScope:'organization',
+   budgetType:'ProductPricing',budgetProductSku:'actions',preventFurtherUsage:false};
+ const unenforced={...b,prevent_further_usage:false};
+ function arrangeCreate(gh){
+   gh.when(B).reply(200,limit);
+   gh.when(BC).reply(200,{budget:unenforced});
+   gh.when(BG).reply(200,unenforced);
+ }
+ function arrangeUpdate(gh){
+   gh.when(BG).replySequence([
+     {status:200,body:b},{status:200,body:unenforced}
+   ]);
+   gh.when(B).reply(200,{budgets:[b],has_next_page:false,total_count:1});
+   gh.when('PATCH /organizations/{org}/settings/billing/budgets/{budget_id}')
+     .reply(200,{budget:unenforced});
+ }
+ it('executes user-authorized unenforced organization budget once with full billing disclosure',async()=>{
+   const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+   arrangeCreate(w.gh);
+   const dry=await invoke(w,'github_billing_save_budget',{...args,dryRun:true});
+   expect(dry).toMatchObject({status:'preview',done:false});
+   expect(dry.preview).toMatch(/COST UNKNOWN/);
+   expect(dry.preview).toMatch(/UNENFORCED/);
+   expect(w.gh.calls.filter(x=>x.method==='POST')).toHaveLength(0);
+   const waiting=await invoke(w,'github_billing_save_budget',args);
+   expect(waiting.status).toBe('needs_confirmation');
+   expect(w.gh.calls.filter(x=>x.method==='POST')).toHaveLength(0);
+   const applied=await invoke(w,'github_billing_save_budget',{...args,confirm:true});
+   expect(applied).toMatchObject({done:true,status:'applied',confirmed:true});
+   expect(w.gh.calls.filter(x=>x.method==='POST')).toHaveLength(1);
+   expect((await invoke(w,'github_billing_save_budget',{...args,confirm:true})))
+     .toMatchObject({status:'replayed',replayed:true});
+   expect(w.gh.calls.filter(x=>x.method==='POST')).toHaveLength(1);
+   expect(w.gh.invalid).toEqual([]);
+ });
+ it('refuses an unenforced budget under a real user-selected finite cap',async()=>{
+   const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+   await w.db.setSpendLimitCents('example-org',10000);
+   arrangeCreate(w.gh);
+   const denied=await invoke(w,'github_billing_save_budget',{...args,confirm:true});
+   expect(denied).toMatchObject({done:false,status:'refused_by_guard',refusedBy:'spend limit'});
+   expect(w.gh.calls.filter(x=>x.method==='POST')).toHaveLength(0);
+ });
+ it('allows disabling organization budget enforcement only after exact readback',async()=>{
+   const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+   arrangeUpdate(w.gh);
+   const request={action:'update',budgetId:b.id,preventFurtherUsage:false};
+   const dry=await invoke(w,'github_billing_save_budget',{...request,dryRun:true});
+   expect(dry.preview).toMatch(/COST UNKNOWN/);
+   const done=await invoke(w,'github_billing_save_budget',{...request,confirm:true});
+   expect(done).toMatchObject({done:true,status:'applied',confirmed:true});
+   expect(w.gh.calls.filter(x=>x.method==='PATCH')).toHaveLength(1);
+   expect(w.gh.invalid).toEqual([]);
+ });
+ it('protects finite caps and delegated passes against disabling budget enforcement',async()=>{
+   for(const limited of ['user','pass']){
+     const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+     if(limited==='user')await w.db.setSpendLimitCents('example-org',5000);
+     else w.ctx.connection={...w.ctx.connection,pass:true,client_id:'limited-owner-pass',
+       spend_limit_cents:10000};
+     arrangeUpdate(w.gh);
+     const result=await defs.handlers.github_billing_save_budget({
+       action:'update',budgetId:b.id,preventFurtherUsage:false,confirm:true},w.ctx).then(parse);
+     expect(result).toMatchObject({done:false,status:'refused_by_guard'});
+     expect(w.gh.calls.filter(x=>x.method==='PATCH')).toHaveLength(0);
+   }
+ });
+ it('preserves GitHub-required enforcement for user-scoped budgets',async()=>{
+   const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+   const denied=await invoke(w,'github_billing_save_budget',{...args,budgetScope:'user',
+     budgetProductSku:'ai_credits',user:'alice',confirm:true});
+   expect(denied.done).toBe(false);
+   expect(w.gh.calls.filter(x=>x.method==='POST')).toHaveLength(0);
+ });
+});
+
+describe('O-4 end-user authority: a valid but unpriced Copilot license plan',()=>{
+ const futurePlan={...plan,plan_type:'future_paid_org_plan'};
+ const initial={total_seats:0,seats:[]};
+ const final={total_seats:1,seats:[seat()]};
+ function arrange(gh){
+   gh.when(billing).reply(200,futurePlan);
+   gh.when(assignments).replySequence([
+     {status:200,body:initial},{status:200,body:initial},
+     {status:200,body:final}
+   ]);
+   gh.when(membership).reply(200,{state:'active',role:'member'});
+   gh.when(seatPut).reply(201,{seats_created:1});
+ }
+ it('shows unknown future cost instead of mislabeling the license as free',async()=>{
+   const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+   arrange(w.gh);
+   const preview=await invoke(w,'github_copilot_add_seats',{usernames:['alice'],dryRun:true});
+   expect(preview.status).toBe('preview');
+   expect(preview.preview).toContain('COST UNKNOWN');
+   expect(preview.preview).toContain('future_paid_org_plan');
+   expect(w.gh.calls.filter(x=>x.method==='POST')).toHaveLength(0);
+   const result=await invoke(w,'github_copilot_add_seats',{usernames:['alice'],confirm:true});
+   expect(result).toMatchObject({done:true,status:'applied'});
+   expect(w.gh.calls.filter(x=>x.method==='POST')).toHaveLength(1);
+   expect(w.gh.invalid).toEqual([]);
+ });
+ it('does not allow an unknown price to bypass an explicit user spending ceiling',async()=>{
+   const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+   await w.db.setSpendLimitCents('example-org',9000);
+   arrange(w.gh);
+   const result=await invoke(w,'github_copilot_add_seats',{usernames:['alice'],confirm:true});
+   expect(result).toMatchObject({status:'refused_by_guard',refusedBy:'spend limit'});
+   expect(w.gh.calls.filter(x=>x.method==='POST')).toHaveLength(0);
+ });
+ it('still permits license removal without a published plan price',async()=>{
+   const w=await makeWorld({mode:'production',profile:'full',gates:[spendGate()]});
+   await w.db.setSpendLimitCents('example-org',0);
+   w.gh.when(billing).reply(200,futurePlan);
+   w.gh.when(assignments).replySequence([
+     {status:200,body:{total_seats:1,seats:[seat()]}},
+     {status:200,body:{total_seats:1,seats:[seat('2026-11-10')]}}
+   ]);
+   w.gh.when(seatDel).reply(200,{seats_cancelled:1});
+   const result=await invoke(w,'github_copilot_remove_seats',{usernames:['alice'],confirm:true});
+   expect(result).toMatchObject({done:true,status:'applied'});
+   expect(w.gh.calls.filter(x=>x.method==='DELETE')).toHaveLength(1);
+   expect(w.gh.invalid).toEqual([]);
+ });
+});
