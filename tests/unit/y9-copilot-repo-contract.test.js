@@ -7,7 +7,7 @@ const def={tool:copilot.tools.find(x=>x.name==='github_copilot_agent_repo_set'),
 function arrange(gh,outcome){
   gh.when('GET /orgs/{org}/copilot/coding-agent/permissions')
     .reply(200,{enabled_repositories:'selected'});
-  gh.when('GET /repositories/{repository_id}')
+  gh.when('GET /repos/{owner}/{repo}')
     .reply(200,{id:101,full_name:'example-org/scratch',owner:{login:'example-org'}});
   gh.when('GET /orgs/{org}/copilot/coding-agent/permissions/repositories')
     .replySequence([
@@ -20,5 +20,5 @@ function arrange(gh,outcome){
     .reply(204,null);
 }
 runWriteContract({label:'Y-9d github_copilot_agent_repo_set',definition:def,
-  args:{repositoryId:101,enable:true},arrange,needsConfirm:true,
+  args:{repo:'scratch',enable:true},arrange,needsConfirm:true,
   production:true,accessWidening:true,profile:'full',expectedWrites:1});

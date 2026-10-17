@@ -1687,7 +1687,7 @@
         "Y-2"
       ],
       "card": "docs/pr-cards/Y-9.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 600,
       "units": [
@@ -1697,7 +1697,9 @@
       "ownerInputs": [
         "IN-16"
       ],
-      "pr": []
+      "pr": [
+        233
+      ]
     }
   ],
   "gatewayBoundary": {

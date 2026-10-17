@@ -10,7 +10,7 @@ Written 2026-10-10 for an empty repository. [STATUS](STATUS.md) holds current st
 
 ## What is next
 
-**Next:** no original approved card is left (64/64 merged or complete). Open work is (1) the gap-closure Batch Y added 2026-10-16 (`docs/designs/BATCH-Y.md`, cards Y-1 … Y-9; Y-1 and Y-2 merged in #227, Y-3 and Y-4 in #228, Y-5 and Y-6 in #229, Y-7 in #230, Y-8 in #231, next Y-9) and (2) owner-run acceptance that needs a release or a real account: the real-account read-only smoke report (`scripts/smoke-readonly.mjs`), OAuth-connected scratch write and cleanup acceptance, per-account production activation, and Hub route evidence for RTC. `npm run session:status` prints the live queue.
+**Next after Y-9 (#233) is merged:** Batch Y approved engineering is complete (Y-1–Y-9), while provider/RTC and owner-run real-account acceptance remains open. Required work includes the real-account read-only smoke report (`scripts/smoke-readonly.mjs`), installing/upgrading GitHub App permissions (IN-15 and Y-9d additions), user U authorization, OAuth-connected scratch writes and authorized cleanup, per-account production activation, and Hub route evidence for RTC. Also continue the separate `docs/END-USER-AUTHORITY.md` product-wide audit: previous developer-only limits may still affect older feature paths. These items must not be silently marked passed from synthetic CI or from this source merge. `npm run session:status` prints the live queue.
 
 A-1 (repository, fake GitHub, CI, checks) merged in PR #1; A-2 (foundation schema) in PR #7; A-3 (connector login) in PRs #8 and #9; A-4 (GitHub client) in PR #10; A-5a (credential store) in PR #11; A-5b (setup page) in PR #12; A-5c (webhook, `github_whoami`, `github_list_accounts`) in PR #13; A-6 (`docs/DEPLOY.md`) in PR #15; B-1 (write safety layer) in PR #16; B-2 (production guard and switch) in PR #18; B-3 (protected list and project ownership) in PR #19; B-4 (people and spend guards) in PR #20; B-5 (errors and result shaping) in PR #21; B-6 (profiles and downscoped tokens) in PR #22. Plan approved by Chris
 (IN-00, 2026-10-10).
@@ -46,7 +46,7 @@ A-1 (repository, fake GitHub, CI, checks) merged in PR #1; A-2 (foundation schem
 
 `docs/pr-cards/work-index.json` is the machine-readable list (`python3 docs/pr-cards/validate-index.py`). **JIT** = covered
 by the approved design; write the card when its predecessor is real. Tool counts are from `docs/TOOL-CATALOG.md`
-(`python3 scripts/count-catalog.py`: 394 = 388 hand-built + 6 universal).
+(`python3 scripts/count-catalog.py`: 411 = 405 hand-built + 6 universal).
 
 | Batch | Cards | Tools | Card status |
 |---|---|---|---|
@@ -65,5 +65,5 @@ by the approved design; write the card when its predecessor is real. Tool counts
 | U Universal | U-1 REST · U-2 GraphQL | 6 | MERGED |
 | R Hub-ready doors (RTC 1) | R-1 passes · R-2 HTTPS API, manifest, OpenAPI, shared rate limit · R-3 conformance in CI | 1 | MERGED #225 |
 | X Close-out | X-1 undo · X-2 read-only smoke test | 1 | MERGED |
-| Y Gap closure (designed 2026-10-16) | Y-1 unblock universal tools · Y-2 GraphQL write specs · Y-3 other people's data, follow, star lists · Y-4 Projects v2 lifecycle · Y-5 moderation, org issue types/fields · Y-6 runners, Actions admin · Y-7 security writes · Y-8 artifacts, archives, uploads, jobs, wiki · Y-9 org long tail, read-backs, guides | ~80 planned | Y-1 and Y-2 merged (#227), Y-3 and Y-4 merged (#228), Y-5 and Y-6 merged (#229), Y-7 merged (#230), Y-8 merged (#231); Y-9 APPROVED, not started |
-| **Total** | 73 cards (64 merged + 9 planned) | **394** | |
+| Y Gap closure (designed 2026-10-16) | Y-1 unblock universal tools · Y-2 GraphQL write specs · Y-3 other people's data, follow, star lists · Y-4 Projects v2 lifecycle · Y-5 moderation, org issue types/fields · Y-6 runners, Actions admin · Y-7 security writes · Y-8 artifacts, archives, uploads, jobs, wiki · Y-9 org long tail, read-backs, guides | ~80 planned | Y-1 and Y-2 merged (#227), Y-3 and Y-4 merged (#228), Y-5 and Y-6 merged (#229), Y-7 merged (#230), Y-8 merged (#231); Y-9 source complete (#233); live permission upgrades and provider acceptance pending |
+| **Total** | 73 cards (64 original + 9 gap-closure) | **411** | |
