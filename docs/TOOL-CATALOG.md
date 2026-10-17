@@ -713,11 +713,11 @@ Card(s): Y-7. Advisory text never appears in a result or the change log (only a 
 | `github_security_code_scanning_default_setup` | Configure or disable code scanning even on paid private repos with actual user consent and unknown-cost disclosure | C·$*·Prod | N | I | O | F | Y-7 |
 | `github_security_secret_pattern_save` | Create, edit or delete a custom secret-scanning pattern for an organization or repository | C·Prod* | N | I | O | F | Y-7 |
 | `github_security_dependabot_org_settings` | Set which repositories Dependabot may read and the default access level | C·A | N | I | O | F | Y-7 |
-| `github_security_config_save` | Create or edit an org code-security configuration; changes affecting private paid repos need informed approval | C·$*·Prod* | N | I | O | F | Y-7 |
+| `github_security_config_save` | Create or edit provider-verified org code-security configurations across cursor-paginated inventories, including 100+ private paid repositories; full nested/enforcement readback and informed consent | C·$*·Prod* | N | I | O | F | Y-7 |
 | `github_security_config_attach` | Attach code-security configurations, including private paid targets with uncapped-price notice and user cap enforcement | C·$*·Prod | N | I | O | F | Y-7 |
 | `github_security_config_default` | Choose security defaults for future public/private repos, including billed features with clear future-cost warning | C·$*·Prod | N | I | O | F | Y-7 |
 | `github_security_config_detach` | Detach the configuration from named repositories | C·Prod | N | I | O | F | Y-7 |
-| `github_security_config_delete` | Delete a configuration (name typed; no undo) | C·Prod | N | I | O | F | Y-7 |
+| `github_security_config_delete` | Delete a verified configuration (exact name, no undo) only with complete cursor-paginated attached-repository inventory; unreadable/capped lists never silently count as empty | C·Prod | N | I | O | F | Y-7 |
 
 ## Background jobs, archives and autofix (`github_job_*, github_artifact_read, github_content_read_archive, github_security_*sbom*, github_code_scanning_autofix_*`) — 8
 

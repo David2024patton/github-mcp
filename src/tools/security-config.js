@@ -32,30 +32,90 @@ const ONE = `${BASE}/{configuration_id}`;
 export const turnsOnPaid = (settings) => !!settings && (
   [...PAID].some((k) => settings[k] === 'enabled') || ['enabled', 'code_security', 'secret_protection'].includes(settings.advanced_security));
 export const shapeConfig = (c) => (c ? {
-  id: c.id, name: String(c.name ?? '').slice(0, 100), description: typeof c.description === 'string' ? c.description.slice(0, 200) : null, enforcement: c.enforcement ?? null,
-  paid: turnsOnPaid(c), settings: Object.fromEntries([...SETTING_KEYS, 'advanced_security'].filter((k) => c[k] !== undefined).map((k) => [k, c[k]]))
+  id: c.id, name: String(c.name ?? '').slice(0, 100), description: typeof c.description === 'string' ? c.description.slice(0, 255) : null, enforcement: c.enforcement ?? null,
+  paid: turnsOnPaid(c), settings: Object.fromEntries([...SETTING_KEYS, 'advanced_security',
+    'code_scanning_default_setup_options', 'code_scanning_options']
+    .filter(k=>c[k]!==undefined).map(k=>[k,c[k]]))
 } : null);
-const getConfig = (ctx, t, id) => missing(async () => (await (await octo(ctx, t.owner)).request(`GET ${ONE}`, { org: t.owner, configuration_id: id })).data);
-const listConfigs = async (ctx, t) => (await (await octo(ctx, t.owner)).request(`GET ${BASE}`, { org: t.owner, per_page: 100 })).data ?? [];
-const attachedRepos = async (ctx, t, id) => {
-  // The pinned GitHub endpoint allows per_page but not page: never invent a
-  // page parameter. If the response fills the page, completeness cannot be
-  // established; refuse any financially sensitive write rather than omit a
-  // hidden private repository.
-  const rows = (await (await octo(ctx, t.owner)).request(`GET ${ONE}/repositories`,
-    { org: t.owner, configuration_id: id, per_page: 100 })).data;
-  if (!Array.isArray(rows) || rows.length >= 100)
-    throw refusal('The complete attached repository inventory cannot be verified (100+ records or unreadable response).');
-  return rows.map((r) => ({ id: r.repository?.id, name: r.repository?.name,
-    private: r.repository?.private === true || ['private', 'internal'].includes(r.repository?.visibility),
-    status: r.status }));
-};
+// Match explicitly requested nested properties; the provider may add defaults,
+// but must not ignore an explicitly requested security or enforcement change.
+function requestedMatches(expected,actual){
+  if(Array.isArray(expected))
+    return Array.isArray(actual)&&expected.length===actual.length&&
+      expected.every((v,i)=>requestedMatches(v,actual[i]));
+  if(expected&&typeof expected==='object')
+    return actual&&typeof actual==='object'&&!Array.isArray(actual)&&
+      Object.entries(expected).every(([k,v])=>requestedMatches(v,actual[k]));
+  return JSON.stringify(expected)===JSON.stringify(actual);
+}
+const getConfig = (ctx, t, id) => missing(async () => (await (await octo(ctx, t.owner)).request('GET '+ONE, { org: t.owner, configuration_id: id })).data);
 
+// GitHub organization security config and associated-repo lists use opaque
+// after cursors in Link headers. Never fetch these URLs directly: every
+// page is requested through the scoped pinned GitHub endpoint.
+const PAGE_SIZE=100,MAX_PAGES=15;
+const nextCursor=(header,pathname)=>{
+  const link=String(header??'');
+  const next=link.split(',').find(part=>/;\s*rel="?next"?\s*$/i.test(part.trim()));
+  if(!next)return null;
+  const address=next.match(/<([^>]+)>/);
+  if(!address)throw refusal('Security configuration cursor link is malformed.');
+  let url;
+  try{url=new URL(address[1]);}catch{throw refusal('Security configuration cursor link is invalid.');}
+  if(url.origin!=='https://api.github.com'||url.pathname!==pathname)
+    throw refusal('Security configuration cursor points outside the exact GitHub resource.');
+  const cursor=url.searchParams.get('after');
+  if(!cursor||cursor.length>1024||url.searchParams.getAll('after').length!==1)
+    throw refusal('Security configuration cursor is missing or ambiguous.');
+  return cursor;
+};
+async function completeList(ctx,t,route,params,resourcePath,identity){
+  const gh=await octo(ctx,t.owner),rows=[],seen=new Set(),cursors=new Set();
+  let after=null;
+  for(let page=0;page<MAX_PAGES;page++){
+    const response=await gh.request('GET '+route,{
+      ...params,per_page:PAGE_SIZE,...(after?{after}:{})
+    });
+    if(!Array.isArray(response.data))
+      throw refusal('Security configuration inventory is not an array.');
+    for(const item of response.data){
+      const key=identity(item);
+      if(typeof key!=='string'||!key||seen.has(key))
+        throw refusal('Security configuration inventory contains malformed or duplicate records.');
+      seen.add(key);rows.push(item);
+    }
+    const cursor=nextCursor(response.headers?.link,resourcePath);
+    if(!cursor){
+      if(response.data.length===PAGE_SIZE)
+        throw refusal('Full security configuration page lacks proof that the list is complete.');
+      return rows;
+    }
+    if(response.data.length===0||cursors.has(cursor)||cursor===after)
+      throw refusal('Security configuration cursor did not advance.');
+    cursors.add(cursor);after=cursor;
+  }
+  throw refusal('Security configuration inventory exceeds the verified pagination limit.');
+}
+const listConfigs=async(ctx,t)=>completeList(ctx,t,BASE,{org:t.owner},
+  '/orgs/'+encodeURIComponent(t.owner)+'/code-security/configurations',
+  c=>Number.isSafeInteger(c?.id)&&c.id>0&&typeof c.name==='string'&&c.name.trim()
+    ?String(c.id):null);
+const attachedRepos=async(ctx,t,id)=>{
+  const rows=await completeList(ctx,t,ONE+'/repositories',
+    {org:t.owner,configuration_id:id},
+    '/orgs/'+encodeURIComponent(t.owner)+'/code-security/configurations/'+id+'/repositories',
+    r=>Number.isSafeInteger(r?.repository?.id)&&r.repository.id>0&&
+      typeof r.repository.name==='string'&&r.repository.name.trim()&&
+      typeof r.status==='string'&&r.status.trim()?String(r.repository.id):null);
+  return rows.map(r=>({id:r.repository.id,name:r.repository.name,
+    private:r.repository.private===true||['private','internal'].includes(r.repository.visibility),
+    status:r.status}));
+};
 // ---- create / edit -------------------------------------------------------------------------------------------------------
 const save = defineGithubWrite({
   name: 'github_security_config_save', area: 'security', audience: ['O'],
   description: 'Create or edit an organization code-security configuration; privately attached paid settings carry explicit future-cost warnings.',
-  properties: { org: ORG, configurationId: ID, name: { type: 'string', minLength: 1, maxLength: 100 }, description: { type: 'string', maxLength: 500 }, settings: SETTINGS },
+  properties: { org: ORG, configurationId: ID, name: { type: 'string', minLength: 1, maxLength: 100 }, description: { type: 'string', maxLength: 255 }, settings: SETTINGS },
   required: [], declarations: decl({ production: 'when-target', accessWidening: false, spend: true }), target: orgTarget,
   read: async (args, ctx, t) => {
     if (!args.configurationId) {
@@ -86,8 +146,13 @@ const save = defineGithubWrite({
     const id = args.configurationId ?? response?.data?.id;
     return { config: id ? shapeConfig(await getConfig(ctx, t, id)) : null };
   },
-  verify: ({ args, after }) => !!after.config && (args.name === undefined || after.config.name === args.name)
-    && Object.entries(args.settings ?? {}).filter(([k, v]) => typeof v === 'string' && k !== 'enforcement').every(([k, v]) => after.config.settings[k] === v),
+  verify: ({ args, after }) => !!after.config &&
+    (args.name===undefined||after.config.name===args.name) &&
+    (args.description===undefined||after.config.description===args.description) &&
+    (args.settings?.enforcement===undefined||
+      after.config.enforcement===args.settings.enforcement) &&
+    Object.entries(args.settings??{}).filter(([k])=>k!=='enforcement')
+      .every(([k,v])=>requestedMatches(v,after.config.settings[k])),
   inverse: ({ args, before, target: t }) => (before.current && args.configurationId
     ? { tool: 'github_security_config_save', args: { org: t.owner, configurationId: args.configurationId, ...(args.name !== undefined ? { name: before.current.name } : {}),
       ...(args.settings ? { settings: Object.fromEntries(Object.keys(args.settings).filter((k) => before.current.settings[k] !== undefined && typeof before.current.settings[k] === 'string').map((k) => [k, before.current.settings[k]])) } : {}) } }
@@ -207,7 +272,7 @@ const remove = defineGithubWrite({
   read: async (args, ctx, t) => {
     const current = shapeConfig(await getConfig(ctx, t, args.configurationId));
     if (current && current.name !== args.name) throw refusal('name must be exactly the configuration\'s current name.');
-    return { current, attached: current ? await attachedRepos(ctx, t, args.configurationId).catch(() => []) : [] };
+    return { current, attached: current ? await attachedRepos(ctx, t, args.configurationId) : [] };
   },
   classify: ({ before }) => ({ production: `deleting configuration "${before?.current?.name ?? ''}" cannot be undone` }),
   summarize: ({ args, before }) => (before.current ? `DELETE code-security configuration "${before.current.name}" (attached to ${before.attached.length} repositories, which are detached; no undo)` : `Configuration ${args.configurationId} no longer exists`),
