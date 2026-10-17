@@ -599,7 +599,7 @@ Card(s): P-2, P-3, W-1 … W-7. P-2 built in PR #207 as a non-read-only composed
 | `github_workflow_cleanup_branches` | Branches whose PR merged or closed (merge-commit and squash both detected), never default/protected/profile branches; preview then confirm | C | F | I | B,Op | E | W-6 built #217 |
 | `github_workflow_new_repo` | Create a repository the standard way: default branch, ruleset requiring `ci`, secret scanning and push protection, merge commits only, delete branch on merge | C·A* | N | I | B,O | F | W-7 built #218 |
 | `github_workflow_find` | Find anything from plain words: repo, PR, issue, run, release, commit | — | N | I | Op | R | W-7 built #218 |
-| `github_workflow_weekly_digest` | Last 7 days across accounts: merged PRs, CI failure rate, open alerts, Actions/Copilot spend, pending invitations | — | N | I,U | O,Op | R | W-7 built #218 |
+| `github_workflow_weekly_digest` | Seven complete UTC billing days, with Denver dates: merged PRs, CI failure rate, open alerts, pending invitations and verified actual Actions/Copilot billed usage; incomplete or mismatched bills stay unknown, never guessed $0 | — | N | I,U | O,Op | R | W-7 built #218 |
 | `github_workflow_app_readiness` | Is GitHub set up for a profiled project (or an inline spec)? Each row done / fixed with confirm / needs you (steps) / needs a decision | P | N | I | B,O | R | P-2 built #207 |
 | `github_workflow_project_setup` | Set up GitHub for a new project from a short description: repo, rules, environments, labels, security features; idempotent | C·A* | N | I | B,O | F | P-3 built #209 |
 
