@@ -3,6 +3,19 @@
 **Status: DESIGN / NOT IMPLEMENTED. Owner requirement confirmed 2026-10-18.**
 This document specifies the release-barrier design for **GitHub by Robinson AI Systems**. A successful private connector or production-enabled scratch account is **not** evidence that public multi-user service is safe. No owner consent to publish, enroll arbitrary tenants, spend money, or disable developer safety/release rules has been given.
 
+
+## 0. Preflight / correction plan (frozen before follow-up changes, 2026-10-18)
+
+**Owner requirement:** finish the product on mobile and desktop and engineer isolation for eventual public scale, but keep actual plugin publication, public enrollment and third-party spend PRIVATE/disallowed pending separate approval. **Not approved by the owner:** claiming the unofficial GitHub connector is eligible for the OpenAI public Directory or enabling public customer installs.
+
+**Post-merge PR #261 review corrections, acceptance before changes:**
+- Register PUB-1 through PUB-5 explicitly in `docs/pr-cards/work-index.json` with the reviewed `PUB` batch, update `validate-index.py`'s required batch/unit set and the human roadmap, and preserve all original 73 roadmap units and 57 acceptance rows. PUB-1 through PUB-4 must appear as APPROVED unfinished engineering with `WRITE_CARD_AT_START` (JIT card before coding); PUB-5 is BLOCKED on external policy and new publication approval, not silently counted done.
+- State at the beginning that current OpenAI **Plugin Directory guidelines refuse plugins primarily functioning as unofficial third-party connectors**, even if technically excellent. The specific GitHub integration is not GitHub-endorsed and is not presumed directory-eligible. First establish legitimate GitHub/OpenAI authorization and policy eligibility for public Directory distribution; if unavailable, the valid product target is a securely scoped **private/workspace** or otherwise expressly permitted distribution route, not public Directory search placement. Never evade plugin review by renaming or wrapping the backend.
+- Record owner-facing decision IN-18 as publication/eligibility PENDING and keep backend/plugin registration PRIVATE. Maintain the development agent's $0/CI/live-only safety boundaries separately from end-user product capabilities.
+- Run unchanged check/CI, real Postgres, unit shards and release-policy against the exact follow-up PR head; read new reviewer comments before merging. No source implementation or original acceptance pass is claimed for this index-policy correction.
+
+**Actual code work remains PUB-1..PUB-4 following independent just-in-time cards.** This corrective handoff must not be treated as a feature bundle or public release.
+
 ## 1. Current verified boundary (do not present as production-ready public SaaS)
 
 - The existing service exposes many GitHub capabilities through a standalone MCP, and an approved owner-only scratch organization is connected. Its 57-row real-world queue was **14 PASSED / 28 PENDING / 15 BLOCKED** at this design checkpoint. Continue existing accepted plan, do not reset or rewrite the original queue.
