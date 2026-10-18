@@ -119,6 +119,9 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
   // The claim is persisted, so two Vercel instances cannot spend the same
   // one-use GitHub OAuth refresh token at the same time. Never log its value.
   const USER_REFRESH_LEASE_MS = 60_000;
+  // Abort the provider exchange well BEFORE the lease is eligible for takeover.
+  // A slow transport must not allow two active POSTs of one-use refresh credentials.
+  const USER_REFRESH_HTTP_TIMEOUT_MS = 15_000;
   const USER_REFRESH_WAIT_MS = 5_000;
   async function refreshUser(row, app, claimId) {
     const refresh = open(row.user_refresh_enc, contexts.userRefresh(row.login));
@@ -126,6 +129,7 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
     try {
       response = await fetch(OAUTH_TOKEN_URL, {
         method: 'POST',
+        signal: AbortSignal.timeout(USER_REFRESH_HTTP_TIMEOUT_MS),
         headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ client_id: app.client_id, client_secret: open(app.client_secret_enc, contexts.clientSecret(app.id)), grant_type: 'refresh_token', refresh_token: refresh })
       });

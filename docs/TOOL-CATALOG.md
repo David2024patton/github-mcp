@@ -1,6 +1,8 @@
 <!-- Native MCP tools/list catalog is complete across standard nextCursor pages (40 tools/page). Its original 22,000-token ceiling applies to each complete response; meta search/describe/call remain available independently. Implemented in F-1 PR #167 with real issue capabilities. -->
 # Tool catalog
 
+OAuth credential maintenance (A-5/Y-9, PR #258): user authorization refresh is cross-instance claimed and bounded; the existing `github_sponsor_get` read verifies the payer once for its typed relationship and tier inventories. No tool, credential permission, safety category, catalog count or end-user capability changed.
+
 Restricted preview RTC successful replies revalidate service pass and scratch ownership at send time (#150), without an extra rate unit. Restricted preview RTC search/describe tool metadata is size-bounded to 8192 UTF-8 bytes. Oversized catalog pages and schemas are retained whole under connection-owned 24-hour result handles (#149), without expanding independent MCP tool authority.
 
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything

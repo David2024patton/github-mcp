@@ -5,7 +5,9 @@ import { SCHEMA_TABLES, createDb } from '../../src/db.js';
 // Column names that look secret-like but hold no secret: lookup keys, hashes, and expiry timestamps.
 const NON_SECRET_COLUMNS = new Set([
   'scope_key', 'installation_key', 'request_key', 'url_key', 'token_hash', 'refresh_hash',
-  'user_token_expires_at', 'user_refresh_expires_at'
+  'user_token_expires_at', 'user_refresh_expires_at',
+  // Non-sensitive refresh coordination metadata, never OAuth token material.
+  'user_refresh_claim', 'user_refresh_claim_expires_at'
 ]);
 const SECRET_LOOKING = /token|secret|key|pem|refresh|verifier/;
 

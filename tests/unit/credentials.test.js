@@ -22,7 +22,7 @@ async function setup({ env = ENV, kind = 'app', install = true } = {}) {
   const fetch = async (url, init) => {
     if (String(url).startsWith('https://github.com/login/oauth/access_token')) {
       oauth.push(Object.fromEntries(new URLSearchParams(String(init.body))));
-      const r = respond.oauth(oauth.at(-1));
+      const r = respond.oauth(oauth.at(-1), init.signal);
       return new Response(JSON.stringify(r.body ?? {}), { status: r.status ?? 200, headers: { 'content-type': 'application/json' } });
     }
     return gh.fetch(url, init);
@@ -209,6 +209,20 @@ describe('user authorization', () => {
     expect(values).toEqual(['ghu_FAKEuseraccess2', 'ghu_FAKEuseraccess2']);
     expect(oauth).toHaveLength(1);
     expect(await db.getAccount('example-org')).toMatchObject({ user_refresh_claim: null, user_refresh_claim_expires_at: null });
+  });
+
+  it('sends a bounded provider timeout before another worker may claim the one-use refresh token', async () => {
+    const { credentials, clock, respond } = await authorized(3600);
+    clock.t += 55 * 60e3;
+    let observed;
+    respond.oauth = (_fields, signal) => {
+      observed = signal;
+      return { body: { access_token: 'ghu_FAKErenewedaccess', expires_in: 28800,
+        refresh_token: 'ghr_FAKErenewedrefresh', refresh_token_expires_in: 15811200 } };
+    };
+    expect(await credentials.token({ account: 'example-org', cred: 'U' })).toBe('ghu_FAKErenewedaccess');
+    expect(observed).toBeInstanceOf(AbortSignal);
+    expect(observed.aborted).toBe(false);
   });
 
   it('does not erase valid encrypted authorization when GitHub OAuth temporarily fails', async () => {
