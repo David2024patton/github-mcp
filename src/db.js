@@ -178,6 +178,8 @@ export function createDb(sql = productionSql()) {
         user_token_expires_at TIMESTAMPTZ,
         user_refresh_enc TEXT,
         user_refresh_expires_at TIMESTAMPTZ,
+        user_refresh_claim TEXT,
+        user_refresh_claim_expires_at TIMESTAMPTZ,
         fine_grained_enc TEXT,
         fine_grained_last4 TEXT,
         fine_grained_expires_at TIMESTAMPTZ,
@@ -198,6 +200,9 @@ export function createDb(sql = productionSql()) {
         ADD COLUMN IF NOT EXISTS package_scopes TEXT[],
         ADD COLUMN IF NOT EXISTS package_actor TEXT,
         ADD COLUMN IF NOT EXISTS package_expires_at TIMESTAMPTZ`;
+      // Coordinate one-use GitHub OAuth refresh without deleting existing credentials.
+      await sql`ALTER TABLE gh_accounts ADD COLUMN IF NOT EXISTS user_refresh_claim TEXT,
+        ADD COLUMN IF NOT EXISTS user_refresh_claim_expires_at TIMESTAMPTZ`;
       // Existing default-zero values were builder policy, not customer-selected limits.
       // Distinguish a user-selected restriction from the legacy default without
       // discarding positive caps that were deliberately configured.
@@ -882,12 +887,54 @@ export function createDb(sql = productionSql()) {
     /** Stores Chris's user authorization of the App (8-hour token, 6-month refresh token), both already encrypted. */
     async setUserAuthorization(login, { userLogin, tokenEnc, tokenExpiresAt, refreshEnc, refreshExpiresAt }) {
       const rows = await sql`UPDATE gh_accounts SET user_login = ${userLogin}, user_token_enc = ${tokenEnc}, user_token_expires_at = ${tokenExpiresAt},
-        user_refresh_enc = ${refreshEnc}, user_refresh_expires_at = ${refreshExpiresAt} WHERE lower(login) = lower(${login}) RETURNING login`;
+        user_refresh_enc = ${refreshEnc}, user_refresh_expires_at = ${refreshExpiresAt},
+        user_refresh_claim = NULL, user_refresh_claim_expires_at = NULL WHERE lower(login) = lower(${login}) RETURNING login`;
+      return rows.length === 1;
+    },
+    /** One-use token refresh is leased atomically across server instances. */
+    async claimUserRefresh(login, { expectedTokenEnc, claimId, at, expiresAt }) {
+      const rows = await sql`UPDATE gh_accounts SET user_refresh_claim = ${claimId},
+        user_refresh_claim_expires_at = ${expiresAt}
+        WHERE lower(login) = lower(${login}) AND user_token_enc = ${expectedTokenEnc}
+          AND user_refresh_enc IS NOT NULL
+          AND (user_refresh_claim IS NULL OR user_refresh_claim_expires_at <= ${at})
+        RETURNING login`;
+      return rows.length === 1;
+    },
+    /** Only the exact winning claim can replace encrypted authorization. */
+    async finishUserRefresh(login, { expectedTokenEnc, claimId, userLogin, tokenEnc, tokenExpiresAt, refreshEnc, refreshExpiresAt }) {
+      const rows = await sql`UPDATE gh_accounts SET user_login = ${userLogin}, user_token_enc = ${tokenEnc},
+        user_token_expires_at = ${tokenExpiresAt}, user_refresh_enc = ${refreshEnc},
+        user_refresh_expires_at = ${refreshExpiresAt}, user_refresh_claim = NULL,
+        user_refresh_claim_expires_at = NULL
+        WHERE lower(login) = lower(${login}) AND user_token_enc = ${expectedTokenEnc}
+          AND user_refresh_claim = ${claimId} RETURNING login`;
+      return rows.length === 1;
+    },
+    async releaseUserRefreshClaim(login, claimId) {
+      const rows = await sql`UPDATE gh_accounts SET user_refresh_claim = NULL, user_refresh_claim_expires_at = NULL
+        WHERE lower(login) = lower(${login}) AND user_refresh_claim = ${claimId} RETURNING login`;
+      return rows.length === 1;
+    },
+    async clearUserAuthorizationIfClaim(login, expectedTokenEnc, claimId) {
+      const rows = await sql`UPDATE gh_accounts SET user_login = NULL, user_token_enc = NULL,
+        user_token_expires_at = NULL, user_refresh_enc = NULL, user_refresh_expires_at = NULL,
+        user_refresh_claim = NULL, user_refresh_claim_expires_at = NULL
+        WHERE lower(login) = lower(${login}) AND user_token_enc = ${expectedTokenEnc}
+          AND user_refresh_claim = ${claimId} RETURNING login`;
+      return rows.length === 1;
+    },
+    async clearUserAuthorizationIfCurrent(login, expectedTokenEnc) {
+      const rows = await sql`UPDATE gh_accounts SET user_login = NULL, user_token_enc = NULL,
+        user_token_expires_at = NULL, user_refresh_enc = NULL, user_refresh_expires_at = NULL,
+        user_refresh_claim = NULL, user_refresh_claim_expires_at = NULL
+        WHERE lower(login) = lower(${login}) AND user_token_enc = ${expectedTokenEnc}
+          AND user_refresh_claim IS NULL RETURNING login`;
       return rows.length === 1;
     },
     async clearUserAuthorization(login) {
       await sql`UPDATE gh_accounts SET user_login = NULL, user_token_enc = NULL, user_token_expires_at = NULL, user_refresh_enc = NULL,
-        user_refresh_expires_at = NULL WHERE lower(login) = lower(${login})`;
+        user_refresh_expires_at = NULL, user_refresh_claim = NULL, user_refresh_claim_expires_at = NULL WHERE lower(login) = lower(${login})`;
     },
     async setFineGrainedToken(login, { enc, last4, expiresAt = null }) {
       const rows = await sql`UPDATE gh_accounts SET fine_grained_enc = ${enc}, fine_grained_last4 = ${last4}, fine_grained_expires_at = ${expiresAt}
