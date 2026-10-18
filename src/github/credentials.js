@@ -116,33 +116,83 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
     return response.data.token;
   }
 
-  async function refreshUser(row, app) {
+  // The claim is persisted, so two Vercel instances cannot spend the same
+  // one-use GitHub OAuth refresh token at the same time. Never log its value.
+  const USER_REFRESH_LEASE_MS = 60_000;
+  const USER_REFRESH_WAIT_MS = 5_000;
+  async function refreshUser(row, app, claimId) {
     const refresh = open(row.user_refresh_enc, contexts.userRefresh(row.login));
-    const response = await fetch(OAUTH_TOKEN_URL, {
-      method: 'POST',
-      headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ client_id: app.client_id, client_secret: open(app.client_secret_enc, contexts.clientSecret(app.id)), grant_type: 'refresh_token', refresh_token: refresh })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data.error || !data.access_token) {
-      // A refresh token works once. If another server instance just used it, the row already holds the new tokens.
+    let response, data;
+    try {
+      response = await fetch(OAUTH_TOKEN_URL, {
+        method: 'POST',
+        headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ client_id: app.client_id, client_secret: open(app.client_secret_enc, contexts.clientSecret(app.id)), grant_type: 'refresh_token', refresh_token: refresh })
+      });
+      data = await response.json();
+    } catch {
+      // Network errors and malformed temporary responses are not revocation.
+      throw new GithubClientError('rate_limited', 'GitHub user authorization could not be renewed right now. Retry this read shortly.');
+    }
+    if (!response.ok || data?.error || !data?.access_token || !data?.refresh_token) {
       const latest = await db.getAccount(row.login);
       if (latest?.user_token_enc && latest.user_token_enc !== row.user_token_enc) return latest;
-      await db.clearUserAuthorization(row.login);
-      throw missing(row.login, 'your GitHub sign-in for personal settings has expired.');
+      if (data?.error === 'bad_refresh_token' || data?.error === 'invalid_grant') {
+        const cleared = await db.clearUserAuthorizationIfClaim(row.login, row.user_token_enc, claimId);
+        if (!cleared) {
+          const changed = await db.getAccount(row.login);
+          if (changed?.user_token_enc && changed.user_token_enc !== row.user_token_enc) return changed;
+        }
+        throw missing(row.login, 'your GitHub sign-in for personal settings has expired.');
+      }
+      throw new GithubClientError('rate_limited', 'GitHub user authorization refresh was temporarily refused. Retry shortly; the saved authorization was not erased.');
     }
-    await storeUserAuthorization(row.login, { userLogin: row.user_login, accessToken: data.access_token, expiresIn: data.expires_in, refreshToken: data.refresh_token, refreshExpiresIn: data.refresh_token_expires_in });
-    return await db.getAccount(row.login);
+    const at = now();
+    const saved = await db.finishUserRefresh(row.login, {
+      expectedTokenEnc: row.user_token_enc, claimId, userLogin: row.user_login,
+      tokenEnc: seal(data.access_token, contexts.userToken(row.login)),
+      tokenExpiresAt: new Date(at + Number(data.expires_in || 28800) * 1000),
+      refreshEnc: seal(data.refresh_token, contexts.userRefresh(row.login)),
+      refreshExpiresAt: new Date(at + Number(data.refresh_token_expires_in || 15811200) * 1000)
+    });
+    const latest = await db.getAccount(row.login);
+    if (!saved && (!latest?.user_token_enc || latest.user_token_enc === row.user_token_enc)) {
+      // A revoked or replaced authorization must never be resurrected by this call.
+      throw missing(row.login, 'the personal authorization changed during renewal. Recheck it on the private setup page.');
+    }
+    return latest;
   }
 
   async function userToken(row) {
-    if (!row.user_token_enc) throw missing(row.login, 'it has not been authorized for personal settings yet ("Authorize as me").');
+    const deadline = Date.now() + USER_REFRESH_WAIT_MS;
     let current = row;
-    if (current.user_token_expires_at && new Date(current.user_token_expires_at).getTime() - now() < USER_TOKEN_REFRESH_MARGIN_MS) {
-      if (!current.user_refresh_enc) { await db.clearUserAuthorization(row.login); throw missing(row.login, 'your GitHub sign-in for personal settings has expired.'); }
-      current = await refreshUser(current, await appOf(current));
+    while (true) {
+      if (!current?.user_token_enc) throw missing(row.login, 'it has not been authorized for personal settings yet ("Authorize as me").');
+      if (!current.user_token_expires_at || new Date(current.user_token_expires_at).getTime() - now() >= USER_TOKEN_REFRESH_MARGIN_MS)
+        return open(current.user_token_enc, contexts.userToken(row.login));
+      if (!current.user_refresh_enc) {
+        await db.clearUserAuthorizationIfCurrent(row.login, current.user_token_enc);
+        throw missing(row.login, 'your GitHub sign-in for personal settings has expired.');
+      }
+      const claimId = crypto.randomUUID();
+      const at = now();
+      if (await db.claimUserRefresh(row.login, {
+        expectedTokenEnc: current.user_token_enc, claimId, at: new Date(at),
+        expiresAt: new Date(at + USER_REFRESH_LEASE_MS)
+      })) {
+        try {
+          current = await refreshUser(current, await appOf(current), claimId);
+        } finally {
+          await db.releaseUserRefreshClaim(row.login, claimId);
+        }
+      } else {
+        if (Date.now() >= deadline) {
+          throw new GithubClientError('rate_limited', 'Another request is renewing this GitHub sign-in. Retry the read shortly; no authorization was erased.');
+        }
+        await new Promise(resolve => setTimeout(resolve, 75));
+        current = await db.getAccount(row.login);
+      }
     }
-    return open(current.user_token_enc, contexts.userToken(row.login));
   }
 
   async function storeUserAuthorization(login, { userLogin, accessToken, expiresIn, refreshToken, refreshExpiresIn }) {
