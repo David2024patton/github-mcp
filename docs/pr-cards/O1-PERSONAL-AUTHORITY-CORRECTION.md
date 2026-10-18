@@ -37,3 +37,11 @@ Current deployed 20389ae0 has a valid owner-consented U, verified by actual task
 ## Provider and safety boundary
 
 Use the pinned GET /user already used by O-6 and O-4. Match actor to stored user_login for organization U, or the enrolled account login for a personal account. Return id/login and optional 2FA/plan only; withheld settings remain null, no email or other private profile fields. Credentials stay encrypted and never appear in arguments/results. No GitHub mutation, new permission, production activation or expenditure.
+
+## Implemented proof before integration
+
+Shared personal-status read now uses only enrolled U and GET /user in both organization and personal branches, validates positive numeric identity/type and expected enrolled login, and verifies personal account numeric ID. It exposes only id/login and optional 2FA/plan; withheld values remain null. No U gives protected setup guidance; 401/403 and foreign/malformed identities remain unreadable, with no I fallback. Existing organization/cap/billing status is unchanged.
+
+Local focused O-1 tests: 23 passed. Full unit suite on inspected a645ae56 plus this correction: 8,155 tests/210 files, 272.45 s, two workers. Actual request headers prove U and method/route validation reports no invalid provider calls; private email/bio/token fields are omitted, and all requests are GET. This is a small existing O-1 defect correction, not newly credited roadmap work. Local pre-code plan 270374b is reproduced as published planning commit 667c17d7 with the same baseline/content and is preserved on a local recovery branch.
+
+Package PR #253 is independently pending final review CI. Before this correction is published, integrate its final main tree, rerun shared-boundary focused proof and all required publication checks, and keep O-1 deployed/UI acceptance open. No DB, credential-store, production, paid, account grant or manual release changes.
