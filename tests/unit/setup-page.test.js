@@ -132,7 +132,8 @@ describe('the setup page', () => {
 
 describe('owner protected connection mode upgrade', () => {
   const seed = async (t) => {
-    await t.db.upsertAccount({ login: 'example-org', accountId: 55577, accountType: 'Organization', label: 'Example org' });
+    await t.db.upsertAccount({ login: 'example-org', accountId: 55577, accountType: 'Organization', label: 'Example org', credentialKind: 'app', appId: 5150, isScratch: true });
+    await t.db.setInstallation('example-org', { installationId: 5151, repositorySelection: 'all', permissions: { contents: 'write' }, status: 'active' });
     await t.db.createOAuthClient({ clientId: 'chatgpt-test-client', clientSecret: 'fixture-secret-value',
       clientName: 'Robinson GitHub Cloud', redirectUris: ['https://example.test/callback'] });
     await t.db.createAccessToken({ clientId: 'chatgpt-test-client', accessToken: 'fixture-mode-access',
