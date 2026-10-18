@@ -20,8 +20,8 @@ describe('PUB-1 PRIVATE tenant namespace entry points', () => {
     expect(u.searchParams.get('sslmode')).toBe('require');
     expect(u.searchParams.get('options')).toBe('-c search_path=' + tenantSchemaName(A));
     expect(u.username).toBe('user');
-    expect(() => tenantConnectionString(URL + '&options=-c%20search_path%3Dpublic', A)).toThrow();
-    expect(() => tenantConnectionString(URL + '&search_path=public', A)).toThrow();
+    expect(() => tenantConnectionString(DATABASE_URL + '&options=-c%20search_path%3Dpublic', A)).toThrow();
+    expect(() => tenantConnectionString(DATABASE_URL + '&search_path=public', A)).toThrow();
     expect(() => tenantConnectionString('https://example.com', A)).toThrow();
     expect(() => tenantConnectionString('', A)).toThrow();
   });
