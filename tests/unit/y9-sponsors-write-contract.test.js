@@ -11,11 +11,12 @@ const before={id:'sponsor-1',isActive:true,isOneTimePayment:false,
 function arrange(gh,outcome,action){
   gh.when('GET /user').reply(200,{login:'example-owner',id:42,type:'User'});
   gh.when('GET /user/memberships/orgs/{org}').reply(200,{state:'active',role:'admin'});
+  gh.when('GET /users/{username}').reply(200,{login,id:73,type:'User'});
   let sponsorReads=0;
   gh.when('POST /graphql').reply(200,(request)=>{
     const query=request.body?.query??'';
     if(query.includes('Y9Tiers'))return {data:{
-      user:{login,sponsorsListing:{tiers:{nodes:[{
+      user:{login,hasSponsorsListing:true,sponsorsListing:{tiers:{nodes:[{
         id:'tier-5',isOneTime:false,monthlyPriceInCents:500
       }],pageInfo:{hasNextPage:false}}}},organization:null}};
     if(query.includes('Y9Sponsor')){
@@ -39,6 +40,6 @@ for(const action of ['start','cancel','preferences']){
     args:{recipient:login,action,...(action==='start'?{tierId:'tier-5'}:{}),
       ...(action==='preferences'?{privacyLevel:'PUBLIC'}:{})},
     arrange:(gh,outcome)=>arrange(gh,outcome,action),profile:'full',production:true,
-    needsConfirm:true,expectedWrites:1,spendCents:action==='start'?500:0,
+    needsConfirm:true,accessWidening:action==='preferences',expectedWrites:1,spendCents:action==='start'?500:0,
     notifies:action==='start'?[login]:[]});
 }

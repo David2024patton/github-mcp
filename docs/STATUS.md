@@ -1,3 +1,15 @@
+## 2026-10-18 — W-1 original compound acceptance completed
+
+The actual custom PREVIEW/full service on independently READY 20389ae0 now proves the full existing GITHUB-W1-OPEN-PR criterion. Existing PR reuse and separately guarded label application/repeat/readback/restoration were followed by an outsider-mentioned proposed reverse PR: dry-run names NOTIFIES octocat, direct unconfirmed writer needs_confirmation, composed workflow not_applied/needs_confirmation. No notification or new PR was sent. Foreign-owner workflow refused and underlying repo read reports outside_scope before provider access. Independent all-state PR inventory remains exactly the original PR at the same head/base/open state and restored labels. Fifty-seven original criteria, thirteen PASSED and forty-four open; this accepts one existing criterion, zero new roadmap subsections/bundles.
+
+Sponsors first complete CI cycle passed check, shapes, RTC, PostgreSQL and unit shard 1; shard 2 found seventeen new test expectations naming read rather than the existing earlier cost refusal. Core already refuses unverifiable cost before readFailed. The correction adds independent read rejection assertions and retains exact spend refusal/zero mutation proof; production guards are unchanged. No local run is claimed while the runner is offline.
+
+## 2026-10-18 — Sponsors entity selection and genuine reversible write proof
+
+Real curated Sponsors read failed because its document queried a user and organization at the same login; an organization-only U query succeeds with complete empty relationships. Frozen remote pre-code plan 5a2b07d509174cc430d6e08f2f05069cc91cb7f7 precedes source 098fdb8d43ed5fd7591aeecb2a86559d98bb0397, which verifies enrolled payer identity, selects entity-specific roots, handles verified absent listings, and preserves price/cadence/privacy readback. Public visibility and email opt-in use the existing access-change guard. Local runner disconnected before these edits; no local verification claimed. Required complete exact-head CI, review and merge remain mandatory. Correction earns zero new original subsection/bundle credit. Live remains independently READY 20389ae0; genuine corrected Sponsors acceptance remains queued.
+
+Actual W-1 write acceptance also advanced: the custom workflow applied the existing documentation label to the owned public fixture PR, repeated safely without duplicate PR, and independently matched GitHub readback. Custom label removal then restored the exact original labels and head, independently confirmed. This does not close the compound notification/outsider-denial criterion. Three earlier corrections are merged: #253 package credentials, #254 personal authority, #255 truthful permission diagnostics. Fifty-seven criteria remain tracked, twelve fully passed; no package token, payment, production activation, manual release or outside notification occurred.
+
 ## 2026-10-18 — stop phantom permission approvals from provider metadata
 
 A genuine live U package read was rendered as needing a nonexistent allows permissionless access write grant. B-5 source e054d200 now accepts only explicit permission levels, excludes nonselectable metadata/schema-only names, and treats accepted grant entries as requirements to compare rather than proof of missing consent. HTTP/request evidence, provider refusal, redaction and all write/rate guards remain. Stable full local units 8,192/212 and focused 30 passed; first earlier local run was invalidated by an in-progress source/test change and was not claimed as final proof. Frozen pre-code 5ccb26c/published d470755e. Package PR #253 merged 86bb77be and O-1 PR #254 merged 3ad6f298 with green exact-head gates and resolved review findings. Native U is valid; independently READY service remains 20389ae0, so all new source acceptance is queued. Fifty-seven criteria now tracked, twelve recorded passes; no new original subsection/bundle credit, production activation, credential enrollment, spending or manual release.
@@ -605,7 +617,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
     "task": "Re-run exact classic branch protection read against an eligible private scratch repository, without modifying visibility or paying for an upgrade",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "BLOCKED \u2014 PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
+    "gates": "BLOCKED — PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Actual private protection read returned provider HTTP403 upgrade-or-public plan explanation. Next: An independently eligible private test repository on existing authorized plan. Keep private repository private; do not upgrade or widen permission; owner must supply eligible fixture if desired.",
@@ -617,7 +629,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
     "task": "Re-run scoped private-repository ruleset inventory when GitHub plan legitimately permits it",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "BLOCKED \u2014 PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
+    "gates": "BLOCKED — PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Actual private ruleset inventory returned provider HTTP403 upgrade-or-public plan explanation. Next: An independently eligible private test repository on existing authorized plan. Keep visibility and spending unchanged; owner supplies eligible fixture if desired.",
@@ -690,7 +702,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "674fea131e0eb0002f474bb8f529d0f619011286",
     "task": "Independently exercise new H-1 classic complete-object set and remove using isolated public scratch, including preserve-other-controls, readback and exact cleanup",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "Source #188 merged; requires reviewed source in READY live, explicit production-enabled test credential and independent per-operation confirmation. Current live PREVIEW/production OFF: no mutation authorized. Private H-1 403 remains BLOCKED \u2014 PROVIDER PLAN.",
+    "gates": "Source #188 merged; requires reviewed source in READY live, explicit production-enabled test credential and independent per-operation confirmation. Current live PREVIEW/production OFF: no mutation authorized. Private H-1 403 remains BLOCKED — PROVIDER PLAN.",
     "dependsOn": [
       "GITHUB-H1-PUBLIC-READ"
     ],
@@ -816,9 +828,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [
       "GITHUB-W1-PR-STATUS"
     ],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-18 actual custom PREVIEW/full on independently READY 20389ae0. Independent provider PR #1 head/base matched actual github_workflow_open_pr result done=true/status=existing, exact c51e80b0 head and existing labels; no duplicate PR. Separate request with missing rtc-pre-release-check label and dryRun=true returned labels_not_applied/underlying_status=preview through guarded github_issue_set_labels. No label or notification mutation. Original compound application/denial/cleanup acceptance remains open.",
-    "nextAction": "Actual existing PR reused at independently matching head; missing-label dry run returns preview, no mutation. Exact label application/notification test and cleanup authority still needed for full compound criterion."
+    "status": "PASSED",
+    "lastEvidence": "2026-10-18 actual custom PREVIEW/full, independently READY 20389ae0. Workflow reused owned public fixture PR1 at c51e80b09e5b975fcdfd2478e38c9b10e72bf8b3, applied only existing documentation label with confirmation, then repeated as existing/no duplicate. Independent GitHub REST confirmed labels/head. Custom label removal restored only the baseline run label; independent readback matched exact head/base/open state. Reverse-direction proposed PR on those same owned branches: dry-run guarded writer named NOTIFIES octocat; unconfirmed writer returned needs_confirmation and workflow not_applied/needs_confirmation. No outsider intent was confirmed. Foreign-account workflow refused; underlying repo_get explicitly reported outside_scope stopped before GitHub. Independent all-state inventory still exactly one original PR with restored labels/head/base/state. Full original compound criterion fulfilled; detailed evidence in Sponsors correction card and STATUS dated entry. No payment, production activation, new PR or notification.",
+    "nextAction": "Accepted: existing PR idempotence, guarded missing-label application, independent readback, exact label restoration, outsider notification preview and unconfirmed refusal, account-scope denial and unchanged all-state PR inventory. Preserve proof; no notification or duplicate PR cleanup is needed."
   },
   {
     "id": "GITHUB-W2-EXACT-MERGE",
@@ -1039,7 +1051,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PASSED",
     "lastEvidence": "2026-10-16 genuine connected custom GitHub Cloud MCP acceptance: production Vercel alias github-mcp-chris-projects-de6cd1bf.vercel.app independently resolved READY dpl_FfGNUDzo7vwjExCgD5YYWZZt47Rv, serving live revision a79f08643241d727b38da87b7713728baad39746; required U-1 cf09aab182c7bc6d5e80196adb03f605731201a5 verified as live ancestor (ahead 2/behind 0). Real enrolled OAuth principal PREVIEW/full, I-only robinson-ai-scratch, production OFF, spend $0. github_api_search discovered pinned GitHub REST v2026-03-10 orgs/get, github_api_describe showed GET /orgs/{org} required path only; github_api_read GET 200 returned scoped org login robinson-ai-scratch, numeric org identity 341263172, free plan, 2FA false, default repo read. Independently fetched through specialized github_org_get and confirmed same org identity, plan, 2FA, default permission. Explicit foreign org path under enrolled account refused BEFORE provider call; unknown path/query parameter refused before provider call. No mutation, production activation, spend, secret or cleanup.",
-    "nextAction": "ACCEPTED \u2014 genuine source-bearing READY custom-service pinned REST search/describe/read/negative-scope validation independently established. Any U-1 uncurated write still requires separate owner authority per GITHUB-U1-REST-WRITE."
+    "nextAction": "ACCEPTED — genuine source-bearing READY custom-service pinned REST search/describe/read/negative-scope validation independently established. Any U-1 uncurated write still requires separate owner authority per GITHUB-U1-REST-WRITE."
   },
   {
     "id": "GITHUB-U1-REST-WRITE",
@@ -1108,14 +1120,14 @@ open obligations, original fixture ownership, approvals and deployment provenanc
   {
     "id": "GITHUB-Y9D-SPONSORS-U-READ",
     "priority": 1,
-    "requiredRevision": "1fa4298d69041d1bc988e2ee4f693cff954a76b3",
+    "requiredRevision": "098fdb8d43ed5fd7591aeecb2a86559d98bb0397",
     "task": "Prove real user payer identity, sponsorship relationship and advertised tier prices for an explicitly approved non-sensitive recipient without starting or canceling a payment.",
     "procedure": "docs/pr-cards/Y-9.md; docs/designs/BATCH-Y.md; docs/END-USER-AUTHORITY.md",
     "gates": "Reviewed source in READY live, actual GitHub U token granted by the owner to exact paying account, known approved recipient and complete sponsor tier inventory. No paid mutation or token capture.",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-16: PR #233 source head 395a54e passed CI/contract fakes and merged. Live release, new App permission grants and genuine provider acceptance not yet proven.",
-    "nextAction": "An exact approved non-sensitive sponsorship recipient and published tiers must be named; personal U is now authorized, but no recipient is inferred or money moved."
+    "lastEvidence": "2026-10-18 real custom github_sponsor_get on owned scratch with recipient christcr2012 failed NOT_FOUND because one document queries both user and organization roots. Independent custom universal explicit U organization-only relationship query succeeds, totalCount=0, nodes=[], hasNextPage=false. This proves valid payer U, not completed curated Sponsors acceptance. Corrective source 098fdb8d43ed5fd7591aeecb2a86559d98bb0397 selects verified entity roots, handles an explicitly absent listing, and preserves financial/privacy guards; exact-head CI and scheduled deployment required. No payment or preference mutation.",
+    "nextAction": "After the scheduled release includes 098fdb8d43ed5fd7591aeecb2a86559d98bb0397, rerun curated read for the same owned non-sensitive actor. Capture exact payer/recipient type, complete relationship and listing availability; a published tier fixture is separately needed to prove nonempty prices. Do not repeat valid OAuth or move money."
   },
   {
     "id": "GITHUB-Y9D-COPILOT-TASKS-U-READ",

@@ -14,8 +14,10 @@ const call=async (module,name,w,args)=>{ const reply=await module.handlers[name]
 describe('Y-9d financial and Copilot integration',()=>{
   it('validates all sponsorship reads and paid mutations against the vendored GitHub GraphQL schema',()=>{
     const docs=sponsor.sponsorDocuments;
-    expect(inspectGraphql(docs.tiers,{recipient:'example-maintainer'},'query').points).toBeGreaterThan(0);
-    expect(inspectGraphql(docs.state,{sponsor:'example-org',recipient:['example-maintainer']},'query').points).toBeGreaterThan(0);
+    for(const doc of [docs.tiers,docs.tiersOrganization])
+      expect(inspectGraphql(doc,{recipient:'example-maintainer'},'query').points).toBeGreaterThan(0);
+    for(const doc of [docs.state,docs.stateUser])
+      expect(inspectGraphql(doc,{sponsor:'example-org',recipient:['example-maintainer']},'query').points).toBeGreaterThan(0);
     for(const [doc,input] of [
       [docs.start,{sponsorLogin:'example-org',sponsorableLogin:'example-maintainer',tierId:'tier-id'}],
       [docs.cancel,{sponsorLogin:'example-org',sponsorableLogin:'example-maintainer'}],
