@@ -4,7 +4,7 @@ import { tenantSchemaName, tenantConnectionString, assertTenantSearchPath,
 
 const A = '5ca85cbb-2222-4222-8222-333333333333';
 const B = '5ca85cbb-2222-4222-8222-444444444444';
-const URL = 'postgresql://user:fictional@localhost:5432/fixture?sslmode=require';
+const DATABASE_URL = 'postgresql://user:fictional@localhost:5432/fixture?sslmode=require';
 
 describe('PUB-1 PRIVATE tenant namespace entry points', () => {
   it('derives a schema only from a stable opaque UUID', () => {
@@ -16,7 +16,7 @@ describe('PUB-1 PRIVATE tenant namespace entry points', () => {
   });
 
   it('pins the search path through a per-connection option with NO public fallback', () => {
-    const u = new URL(tenantConnectionString(URL, A));
+    const u = new URL(tenantConnectionString(DATABASE_URL, A));
     expect(u.searchParams.get('sslmode')).toBe('require');
     expect(u.searchParams.get('options')).toBe('-c search_path=' + tenantSchemaName(A));
     expect(u.username).toBe('user');
@@ -44,7 +44,7 @@ describe('PUB-1 PRIVATE tenant namespace entry points', () => {
     const sqlFactory = vi.fn(() => { throw new Error('must not connect'); });
     const directory = { authorized: vi.fn(async () => null) };
     await expect(openAuthorizedTenantDb({ directory, tenantId: A, verifiedIdentityId: B,
-      connectionString: URL, sqlFactory })).rejects.toThrow(/membership is not authorized/);
+      connectionString: DATABASE_URL, sqlFactory })).rejects.toThrow(/membership is not authorized/);
     expect(directory.authorized).toHaveBeenCalledWith(A, B);
     expect(sqlFactory).not.toHaveBeenCalled();
   });
@@ -53,13 +53,13 @@ describe('PUB-1 PRIVATE tenant namespace entry points', () => {
     const sqlFactory = vi.fn();
     const directory = { authorized: async () => ({ tenantId: A, namespace: 'public', role: 'owner' }) };
     await expect(openAuthorizedTenantDb({ directory, tenantId: A, verifiedIdentityId: B,
-      connectionString: URL, sqlFactory })).rejects.toThrow(/not authorized/);
+      connectionString: DATABASE_URL, sqlFactory })).rejects.toThrow(/not authorized/);
     expect(sqlFactory).not.toHaveBeenCalled();
   });
 
   it('refuses to initialize any tenant on a driver that ignores its connection schema', async () => {
     const mock = vi.fn(async () => [{ active_schema: 'public', configured_path: 'public' }]);
-    await expect(initializeProvisionedTenant({ tenantId: A, connectionString: URL,
+    await expect(initializeProvisionedTenant({ tenantId: A, connectionString: DATABASE_URL,
       sqlFactory: () => mock })).rejects.toThrow(/namespace unavailable/);
     expect(mock).toHaveBeenCalledTimes(1);
   });
