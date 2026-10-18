@@ -57,3 +57,5 @@ Integrated focused suite: 170 tests across six files, including O-1, package cre
 ## Review correction before merge
 
 First exact-head CI at 057de7db passed all required families. Independent review correctly identified that a valid id/login without the provider-required type could pass. The helper now requires literal type User, with missing and empty type payloads added to malformed-identity regression cases. No good provider response, permission, output field or account scope changes. Focused/shapes/check proof and fresh exact-head CI are required before merge; the live queue must pin this stricter implementation.
+
+Final reviewed implementation pin is 41f1655e, requiring provider type User rather than accepting a missing/empty type. Corrected integrated focused suite passes 172 tests/6 files; all 21 provider shapes and npm check pass. Original O-1 real deployed/UI criteria remain unchanged and pending.

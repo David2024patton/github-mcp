@@ -745,14 +745,14 @@ open obligations, original fixture ownership, approvals and deployment provenanc
   {
     "id": "GITHUB-O1-OWNER-OVERVIEW",
     "priority": 2,
-    "requiredRevision": "c2bdb909a5c8a9bcf7552425df07118d7f94c594",
+    "requiredRevision": "41f1655e9b21f0deea8bec5b1303838a55db0b2f",
     "task": "After checked READY release of merged O-1 source, run real custom GitHub MCP organization/personal dashboard guidance, verification of exact org 2FA and bounded owner/security status; distinguish provider 403/plan and validate relevant UI links with actual owner/browser readback",
     "procedure": "docs/pr-cards/O-1.md",
     "gates": "Saved service-issued OAuth and enrolled org only; PREVIEW read-only, production OFF, no spend or destructive change; browser-only completion requires independent owner/browser confirmation",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-18 actual native custom READY 20389ae0 proves owner-consented U works, while old admin overview unconditionally marks personal access unreadable. Source c2bdb909 corrects both org and personal branches: explicit U GET /user, enrolled login/type/numeric-identity checks, minimal id/login/optional 2FA/plan, null withheld fields and honest missing/401/403/foreign outcomes with no I fallback. Local full 8155/210 on a645 base plus fix, focused 23 pass; integrated main includes merged package PR #253. Fresh combined checks/CI and deployed/browser proof remain required; no new authorization, setting mutation, private profile leakage or spend.",
-    "nextAction": "After source-bearing scheduled READY release of c2bdb909, verify native actual U status matches independently known actor and complete original guided UI checks. Existing OAuth is available; do not request another authorization merely because the old code said unreadable."
+    "lastEvidence": "2026-10-18 actual native custom READY 20389ae0 proves owner-consented U works, while old admin overview unconditionally marks personal access unreadable. Reviewed source 41f1655e fixes both account branches with explicit U GET /user, positive numeric identity, exact required type User and stored actor/account matching; minimal id/login/optional 2FA/plan, null withheld fields and honest missing/401/403/foreign handling. Local full 8155 before integration plus final shared-boundary focused 172 and all 21 shapes/check passed; first publication CI fully green. Missing/empty provider type review finding fixed, fresh exact-head CI required. No grant, mutation, private profile leakage or spend; deployed/browser proof pending.",
+    "nextAction": "After source-bearing scheduled READY release of 41f1655e, verify native actual U status matches independently known actor and complete original guided UI checks. Existing OAuth is available; do not request another authorization merely because the old code said unreadable."
   },
   {
     "id": "GITHUB-O2-ORG-ADMIN",
