@@ -3,7 +3,7 @@
 // data in the legacy (public) schema is never migrated, copied or modified here.
 import { randomUUID } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
-import { createDb } from '../db.js';
+import { createDb, SCHEMA_TABLES } from '../db.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SCHEMA = /^gh_t_[0-9a-f]{32}$/;
@@ -206,6 +206,7 @@ export async function initializeProvisionedTenant({ tenantId, connectionString =
   const namespace = await assertTenantSearchPath(sql, tenantId);
   const db = createDb(sql);
   await db.initSchema();
-  if ((await db.listTables()).length === 0) throw new Error('Tenant schema has no tables.');
+  if (JSON.stringify(await db.listTables()) !== JSON.stringify([...SCHEMA_TABLES].sort()))
+    throw new Error('Tenant schema is not fully initialized. No tenant was activated.');
   return { namespace, db };
 }
