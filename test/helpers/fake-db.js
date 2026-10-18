@@ -223,6 +223,17 @@ export function createFakeDb({ clock = Date.now } = {}) {
       for (const r of tokens.values()) if (r.client_id === clientId && r.kind === 'connector' && live(r) && r.accounts.includes(login)) { r.default_account = login; n += 1; }
       return n;
     },
+    async upgradeConnectionProductionMode(clientId, account) {
+      if (typeof clientId !== 'string' || !/^[A-Za-z0-9_-]{8,128}$/.test(clientId) ||
+          typeof account !== 'string' || !/^[A-Za-z0-9-]{1,39}$/.test(account)) return 0;
+      const owner = accountRows.get(account.toLowerCase());
+      const candidates = [...tokens.values()].filter((t) => t.client_id === clientId && t.kind === 'connector' && t.revoked_at == null);
+      if (!owner || owner.production_enabled !== true || !candidates.length ||
+          candidates.some((t) => t.mode !== 'preview' || t.profile !== 'full' ||
+            t.default_account.toLowerCase() !== account.toLowerCase() || t.accounts.length !== 1 || t.accounts[0] !== account)) return 0;
+      for (const t of candidates) t.mode = 'production';
+      return candidates.length;
+    },
     async listChanges({ repo = null, tool = null, account = null, accounts = null, since = null, includePreviews = false, limit = 20 } = {}) {
       const only = Array.isArray(accounts) ? accounts.map((a) => String(a).toLowerCase()) : null;
       const max = Math.min(Math.max(Number.isInteger(limit) ? limit : 20, 1), 100);

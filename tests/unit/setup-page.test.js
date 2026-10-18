@@ -130,6 +130,46 @@ describe('the setup page', () => {
   });
 });
 
+describe('owner protected connection mode upgrade', () => {
+  const seed = async (t) => {
+    await t.db.upsertAccount({ login: 'example-org', accountId: 55577, accountType: 'Organization', label: 'Example org' });
+    await t.db.createOAuthClient({ clientId: 'chatgpt-test-client', clientSecret: 'fixture-secret-value',
+      clientName: 'Robinson GitHub Cloud', redirectUris: ['https://example.test/callback'] });
+    await t.db.createAccessToken({ clientId: 'chatgpt-test-client', accessToken: 'fixture-mode-access',
+      refreshToken: 'fixture-mode-refresh', defaultAccount: 'example-org', accounts: ['example-org'],
+      mode: 'preview', profile: 'full', listing: 'compact' });
+  };
+  it('requires owner passphrase, CSRF, exact client and account activation, then reads back and audits upgrade', async () => {
+    const t = await build();
+    await seed(t); await t.open();
+    const ask = { action: 'upgrade-connection-production', login: 'example-org', connection: 'chatgpt-test-client' };
+    expect((await t.post(ask, { csrf: 'wrong' })).statusCode).toBe(403);
+    expect((await t.post({ ...ask, passphrase: 'wrong' })).statusCode).toBe(401);
+    expect((await t.post(ask)).statusCode).toBe(403);
+    expect((await t.db.getAccessToken('fixture-mode-access')).mode).toBe('preview');
+    await t.db.setProductionEnabled('example-org', true);
+    const page = await t.post({ action: 'status' });
+    expect(page.body).toContain('chatgpt-test-client');
+    expect(page.body).toContain('PREVIEW');
+    expect((await t.post({ ...ask, connection: 'unknown-client' })).statusCode).toBe(403);
+    const result = await t.post(ask);
+    expect(result.statusCode).toBe(200);
+    expect(result.body).toContain('now PRODUCTION');
+    expect((await t.db.getAccessToken('fixture-mode-access')).mode).toBe('production');
+    expect((await t.post(ask)).statusCode).toBe(403);
+    expect((await t.db.listChanges({ tool: 'setup_upgrade_connection_production' }))[0]).toMatchObject({ accessWidening: true, confirmed: true });
+    noSecrets(result);
+  });
+  it('refuses in preview environments; anonymous GET reveals no client identifiers', async () => {
+    const t = await build({ env: { ...PROD, VERCEL_ENV: 'preview' } });
+    await seed(t); await t.db.setProductionEnabled('example-org', true);
+    expect((await t.open()).body).not.toContain('chatgpt-test-client');
+    const res = await t.post({ action: 'upgrade-connection-production', login: 'example-org', connection: 'chatgpt-test-client' });
+    expect(res.statusCode).toBe(403);
+    expect((await t.db.getAccessToken('fixture-mode-access')).mode).toBe('preview');
+  });
+});
+
 describe('protected connector OAuth readiness on owner setup',()=>{
   it('keeps registration counts hidden from GET and only reveals aggregates after passphrase',async()=>{
     const t=await build();

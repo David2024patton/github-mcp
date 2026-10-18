@@ -110,3 +110,10 @@ A provider permission header lists an endpoint’s accepted grants; it does not 
 
 
 Sponsors reads verify whether the payer and recipient are people or organizations before querying GitHub. A verified missing Sponsors listing is shown as unavailable with no tiers. Starting a sponsorship still requires a real published tier, your configured spending authority and confirmation; public visibility or opting into maintainer email also honors your delegated access-change settings. These source changes take effect through the normal scheduled release.
+
+
+## Upgrade a PREVIEW-only ChatGPT cloud-adapter connection (B-2 correction)
+
+After a reviewed release includes this correction, open the existing protected production `/api/github/setup` page. Submit **Show my accounts** using your administrator passphrase to list the custom connector's IDs, profiles and modes. Under **Upgrade existing custom connection to PRODUCTION**, enter the exact **FULL/PREVIEW** custom ChatGPT connection ID and its sole GitHub account (already production-enabled). The server atomically changes its stored mode with the same bearer and refresh grants, verifies readback and logs access widening. Return to ChatGPT and run `github_whoami` to independently confirm. This avoids repeated ChatGPT sign-in and does not affect the official GitHub connector or authorize individual paid/destructive operations. Preview/non-full/mixed-account sessions fail closed. Deployment and real-world acceptance remain separately tracked.
+
+The adapter's owner-requested label **GitHub by Robinson AI Systems** is not accomplished by this server correction. The current Sites-generated plugin is PRIVATE and the Plugin Creator updater explicitly prohibits App name/presentation changes; obtain a supported adapter presentation-edit workflow before claiming this rename is done.

@@ -51,6 +51,39 @@ export function runConnectionsContract(name, make) {
       expect(await db.setConnectionDefaultAccount('nobody', 'example-org')).toBe(0);
     });
 
+    it('upgrades one full single-account PREVIEW login only after production enabled, keeps bearer/refresh and isolates other logins', async () => {
+      const db = await make();
+      await db.upsertAccount({ login: 'example-org', accountId: 445566, accountType: 'Organization', label: 'Example org' });
+      await login(db, 'full-one', 'ChatGPT', 'access-full', { accounts: ['example-org'], defaultAccount: 'example-org', profile: 'full' });
+      await login(db, 'other-one', 'Other', 'access-other', { accounts: ['example-org'], defaultAccount: 'example-org', profile: 'full' });
+      expect(await db.upgradeConnectionProductionMode('full-one', 'example-org')).toBe(0);
+      await db.setProductionEnabled('example-org', true);
+      expect(await db.upgradeConnectionProductionMode('full-one', 'foreign-account')).toBe(0);
+      expect(await db.upgradeConnectionProductionMode('full-one', 'example-org')).toBe(1);
+      expect((await db.getAccessToken('access-full')).mode).toBe('production');
+      expect((await db.getAccessToken('access-other')).mode).toBe('preview');
+      expect(await db.upgradeConnectionProductionMode('full-one', 'example-org')).toBe(0);
+      const refreshed = await db.rotateRefreshToken({ refreshToken: 'refresh-access-full', clientId: 'full-one',
+        accessToken: 'new-access-full', newRefreshToken: 'new-refresh-full' });
+      expect(refreshed.mode).toBe('production');
+      expect((await db.getAccessToken('new-access-full')).mode).toBe('production');
+    });
+    it('refuses mixed-account, non-full, revoked and unknown client upgrades', async () => {
+      const db = await make();
+      await db.upsertAccount({ login: 'example-org', accountId: 445566, accountType: 'Organization', label: 'Example org' });
+      await db.setProductionEnabled('example-org', true);
+      await login(db, 'mixed-one', 'Mixed', 'mixed-first', { accounts: ['example-org'], defaultAccount: 'example-org', profile: 'full' });
+      await db.createAccessToken({ clientId: 'mixed-one', accessToken: 'mixed-second', refreshToken: 'mixed-refresh',
+        defaultAccount: 'example-org', accounts: ['example-org', 'example-user'], mode: 'preview', profile: 'full', listing: 'compact' });
+      expect(await db.upgradeConnectionProductionMode('mixed-one', 'example-org')).toBe(0);
+      expect((await db.getAccessToken('mixed-first')).mode).toBe('preview');
+      await login(db, 'weak-one', 'Weak', 'weak-first', { accounts: ['example-org'], defaultAccount: 'example-org', profile: 'everyday' });
+      expect(await db.upgradeConnectionProductionMode('weak-one', 'example-org')).toBe(0);
+      await login(db, 'revoked-one', 'Revoked', 'revoked-first', { accounts: ['example-org'], defaultAccount: 'example-org', profile: 'full' });
+      await db.revokeConnection('revoked-one');
+      expect(await db.upgradeConnectionProductionMode('revoked-one', 'example-org')).toBe(0);
+      expect(await db.upgradeConnectionProductionMode('missing-id', 'example-org')).toBe(0);
+    });
     it('notes when a connection was last used', async () => {
       const db = await make();
       await login(db, 'client-1', 'Claude', 'access-one');

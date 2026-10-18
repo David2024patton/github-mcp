@@ -117,7 +117,9 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       for (const a of (await db.listAccounts()).slice(0, 10)) accounts.push(await readBack({ db, credentials, fetch }, a.login));
       const oauthReadiness=summarizeConnectorReadiness(
         await db.getConnectorOAuthReadiness(),{mcpUrl:`${expectedOrigin}/api/mcp`});
-      return page(200, { accounts, oauthReadiness, productionNames: await productionNames(db), protectedList: await protectedList(db), spendLimits: await spendView(), ownPeopleExtra: await extraOwnPeople(db) });
+      return page(200, { accounts, oauthReadiness, connections: (await db.listConnections()).filter((c) => c.kind === 'connector').map((c) => ({
+        id: c.client_id, name: c.client_name || 'Custom MCP login', mode: c.mode, profile: c.profile, accounts: c.accounts
+      })), productionNames: await productionNames(db), protectedList: await protectedList(db), spendLimits: await spendView(), ownPeopleExtra: await extraOwnPeople(db) });
     }
     if (action === 'reveal') {
       if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
@@ -130,6 +132,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'enter-secret') return await enterSecret(p, page);
     if (action === 'set-production-names') return await setProductionNames(p, page);
     if (action === 'confirm-production') return await confirmProduction(p, page);
+    if (action === 'upgrade-connection-production') return await upgradeConnectionProduction(p, page);
     if (action === 'set-spend-limit') return await setSpendLimit(p, page);
     if (action === 'set-scratch') return await setScratch(p, page);
     if (action === 'create-rtc-pass') {
@@ -380,6 +383,30 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     await db.recordChange({ account: row.login, mode: 'setup', tool: 'setup_confirm_production', target: row.login, summary: `Production turned ON for ${row.login} from the setup page`,
       production: true, accessWidening: true, confirmed: true }).catch(() => {});
     return page(200, { result: `Production is now ON for ${row.login}. Connections made in production mode can change its real repositories, always asking you first.` });
+  }
+
+  /** Passphrase/CSRF-protected owner upgrade with exact connected client and account. */
+  async function upgradeConnectionProduction(p, page) {
+    if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
+    const id = String(p.connection || ''), account = String(p.login || '');
+    if (!/^[A-Za-z0-9_-]{8,128}$/.test(id) || !isValidLogin(account))
+      return page(400, { result: 'Enter the exact connection ID and connected GitHub account shown in the authenticated status view.' });
+    const old = (await db.listConnections()).filter((c) => c.client_id === id && c.kind === 'connector');
+    if (!old.length || old.some((c) => c.mode !== 'preview' || c.profile !== 'full' ||
+      c.accounts.length !== 1 || c.accounts[0] !== account || c.default_account !== account))
+      return page(403, { result: 'Only a FULL/PREVIEW custom connection for exactly this one account can be upgraded. Nothing changed.' });
+    const row = await db.getAccount(account);
+    if (!row?.production_enabled) return page(403, { result: 'Production is not enabled for that account. Nothing changed.' });
+    const count = await db.upgradeConnectionProductionMode(id, account);
+    if (count !== old.length) return page(409, { result: 'The connection changed concurrently. Reload its status before trying again.' });
+    const after = (await db.listConnections()).filter((c) => c.client_id === id && c.kind === 'connector');
+    const verified = after.length === count && after.every((c) => c.mode === 'production' && c.profile === 'full' && c.accounts.length === 1 && c.accounts[0] === account);
+    await db.recordChange({ account, mode: 'setup', connection: id, tool: 'setup_upgrade_connection_production', target: id,
+      summary: (verified ? '' : 'UNCONFIRMED: ') + 'Owner upgraded a single-account full-profile custom connector to PRODUCTION; credentials unchanged',
+      production: true, accessWidening: true, confirmed: verified }).catch(() => {});
+    return page(verified ? 200 : 503, { result: verified
+      ? `Connection ${id} is now PRODUCTION for ${account}. Ask ChatGPT for github_whoami to verify. All later writes retain independent confirmation and permission checks.`
+      : 'Upgrade readback was inconclusive. Check the connection before attempting again.' });
   }
 
   /** The token boxes. A token is checked with GitHub before anything is stored, and only its last four characters are ever shown. */

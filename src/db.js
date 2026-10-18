@@ -775,6 +775,25 @@ export function createDb(sql = productionSql()) {
       const rows = await sql`UPDATE oauth_tokens SET default_account = ${login} WHERE client_id = ${clientId} AND kind = 'connector' AND revoked_at IS NULL AND ${login} = ANY(accounts) RETURNING token_hash`;
       return rows.length;
     },
+    /** Atomically upgrade the owner's already-authorized, single-account FULL/PREVIEW connector.
+     * A mixed-client grant, disconnected account, or production-off account fails closed.
+     * No access or refresh token changes, and refresh preserves the upgraded row mode.
+     */
+    async upgradeConnectionProductionMode(clientId, account) {
+      if (typeof clientId !== 'string' || !/^[A-Za-z0-9_-]{8,128}$/.test(clientId) ||
+          typeof account !== 'string' || !/^[A-Za-z0-9-]{1,39}$/.test(account)) return 0;
+      const rows = await sql`UPDATE oauth_tokens SET mode = 'production'
+        WHERE client_id = ${clientId} AND kind = 'connector' AND revoked_at IS NULL
+          AND mode = 'preview' AND profile = 'full'
+          AND lower(default_account) = lower(${account}) AND accounts = ARRAY[${account}]::text[]
+          AND EXISTS (SELECT 1 FROM gh_accounts a WHERE lower(a.login) = lower(${account}) AND a.production_enabled = TRUE)
+          AND NOT EXISTS (SELECT 1 FROM oauth_tokens other
+            WHERE other.client_id = ${clientId} AND other.kind = 'connector' AND other.revoked_at IS NULL
+              AND (other.mode <> 'preview' OR other.profile <> 'full'
+                   OR lower(other.default_account) <> lower(${account}) OR other.accounts <> ARRAY[${account}]::text[]))
+        RETURNING token_hash`;
+      return rows.length;
+    },
     /** Change-log rows, newest first. Previews (dry runs) are left out unless asked for. */
     async listChanges({ repo = null, tool = null, account = null, accounts = null, since = null, includePreviews = false, limit = 20 } = {}) {
       const only = Array.isArray(accounts) ? accounts.map((a) => String(a).toLowerCase()) : null;
