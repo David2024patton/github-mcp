@@ -163,6 +163,7 @@ export function createTenantDirectory(sql) {
           AND EXISTS (SELECT 1 FROM gh_tenant_identities WHERE id = ${target}::uuid)
         ON CONFLICT (tenant_id,identity_id) DO UPDATE SET role = EXCLUDED.role,
           active = TRUE, revision = gh_tenant_memberships.revision + 1, updated_at = now()
+        WHERE gh_tenant_memberships.role <> 'owner'
         RETURNING identity_id,revision`;
       return rows.length === 1;
     },

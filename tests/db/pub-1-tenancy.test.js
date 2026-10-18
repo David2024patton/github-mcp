@@ -115,10 +115,17 @@ describe('PUB-1 real PostgreSQL tenant scope and legacy preservation', () => {
   });
 
   it('isolates audit replay keys, job IDs, retained handles, protected policies and scratch run identifiers', async () => {
-    await tenantA.db.recordChange({ account: 'overlap-org', tool: 'github_fixture', summary: 'Tenant A only',
-      dryRun: false, requestKey: 'repeat-across-tenants' });
-    await tenantB.db.recordChange({ account: 'overlap-org', tool: 'github_fixture', summary: 'Tenant B only',
-      dryRun: false, requestKey: 'repeat-across-tenants' });
+    const key = 'repeat-across-tenants';
+    const claimA = await tenantA.db.claimChange({ account: 'overlap-org', tool: 'github_fixture',
+      summary: 'Tenant A only', requestKey: key });
+    const claimB = await tenantB.db.claimChange({ account: 'overlap-org', tool: 'github_fixture',
+      summary: 'Tenant B only', requestKey: key });
+    expect(claimA.claimed).toBe(true);
+    expect(claimB.claimed).toBe(true);
+    expect((await tenantA.db.claimChange({ account: 'overlap-org', tool: 'github_fixture',
+      summary: 'Tenant A replay', requestKey: key })).claimed).toBe(false);
+    expect((await tenantB.db.claimChange({ account: 'overlap-org', tool: 'github_fixture',
+      summary: 'Tenant B replay', requestKey: key })).claimed).toBe(false);
     expect((await tenantA.db.listChanges())[0].summary).toBe('Tenant A only');
     expect((await tenantB.db.listChanges())[0].summary).toBe('Tenant B only');
 
@@ -152,6 +159,9 @@ describe('PUB-1 real PostgreSQL tenant scope and legacy preservation', () => {
     await expect(openAuthorizedTenantDb({ directory, tenantId: a.id, verifiedIdentityId: 'anonymous',
       connectionString: process.env.TEST_DATABASE_URL, sqlFactory })).rejects.toThrow(/identity ID/);
     expect(await directory.grant(a.id, b.owner, b.owner, 'admin')).toBe(false);
+    expect(await directory.grant(a.id, a.owner, a.owner, 'admin')).toBe(false);
+    expect(await directory.grant(a.id, a.owner, a.owner, 'member')).toBe(false);
+    expect((await directory.authorized(a.id, a.owner)).role).toBe('owner');
     expect(await directory.grant(a.id, a.owner, b.owner, 'admin')).toBe(true);
     const granted = await directory.authorized(a.id, b.owner);
     expect(granted.role).toBe('admin');
