@@ -20,20 +20,22 @@ export const REPOSITORY_PERMISSIONS = Object.freeze({
   packages: 'write', merge_queues: 'write', artifact_metadata: 'write'
 });
 
+// GitHub.com does not expose organization_packages in App settings despite its presence in the REST token schema.
+// Do not request it or diagnose its absence as missing owner consent (GitHub Community #32195; checked 2026-10-17).
 export const ORGANIZATION_PERMISSIONS = Object.freeze({
   members: 'write', organization_actions_variables: 'write', organization_administration: 'write', organization_copilot_agent_settings: 'write', organization_codespaces: 'write',
   organization_codespaces_secrets: 'write', organization_codespaces_settings: 'write', organization_copilot_seat_management: 'write',
   organization_custom_org_roles: 'read', organization_custom_properties: 'write', organization_dependabot_secrets: 'write',
   organization_hooks: 'write', organization_personal_access_token_requests: 'write', organization_personal_access_tokens: 'write',
   organization_plan: 'read', organization_projects: 'write', organization_secrets: 'write', organization_user_blocking: 'write',
-  // Y-1: organization packages, self-hosted runner administration and the organization event feed.
-  organization_packages: 'write', organization_self_hosted_runners: 'write', organization_events: 'read'
+  // Y-1: self-hosted runner administration and the organization event feed.
+  organization_self_hosted_runners: 'write', organization_events: 'read'
 });
 
 /** Y-1: permissions added after the first Apps were created. An existing App never gains them by itself (Batch Y decision Y9). */
 export const Y1_ADDED_PERMISSIONS = Object.freeze({
   packages: 'write', merge_queues: 'write', artifact_metadata: 'write',
-  organization_packages: 'write', organization_self_hosted_runners: 'write', organization_events: 'read'
+  organization_self_hosted_runners: 'write', organization_events: 'read'
 });
 
 export const MANIFEST_PERMISSIONS = Object.freeze({ ...REPOSITORY_PERMISSIONS, ...ORGANIZATION_PERMISSIONS });

@@ -45,3 +45,16 @@ Focused proof: manifest, diagnostics, existing package read/delete/restore unit 
 ```
 <!-- bundle-plan:end -->
 
+## Verification checkpoint
+
+- Focused manifest/diagnostics/package read-delete-restore suites: 6 files / 131 tests passed.
+- `npm run check`: passed locally. Full unit suite: 210 files / 8,143 tests passed (264.48 seconds with two local workers). Request-shape suite: 4 files / 21 tests passed. Publication base comparison current/clean; docs consistency and index validation passed.
+- Current main independently matches baseline a4d0f3bd28ed30345105e0600dd2370987fa8f19; live remains 20389ae0c667ec49d8ce80c5d48f4e2c42f7b2a2. Original acceptance ledger stays 10 passed / 15 blocked / 30 pending.
+- Read-only custom `github_package_list` scoped to scratch container packages returned actual provider HTTP 400 Invalid argument. This is not a package capability pass and is not attributed to missing organization_packages. No package writes or retries were attempted; provider package acceptance remains open.
+- Local Postgres binaries unavailable per `session:prepare`; isolated required database CI will supply that proof. No test skip or weakened assertion.
+
+## Delivery and self-review
+
+Implementation complete: unavailable grant removed from all three runtime data exports; available Packages write requirement retained. Positive package-area and genuine missing/read-only/irrelevant-key denials tested through the actual diagnostic handler. Manifest regression rejects the schema-only grant in new Apps and upgrade lists. Owner guide/checklist/status/decision updated. Production source +8/-4 (comments included), zero new whole subsections or bundles; this is a bounded correctness repair, not a normal-volume feature bundle. Published plan equivalent: ec940c49abe9043c09c344ff4e244ed7700cc752 (local pre-code freeze c0a11022d62533d8b5e2fb1912969e67c871fc4a).
+
+Self-review: no credential storage, profile/downscoping, provider request, secret handling, protected-resource, production, spending, access-write, replay, RTC or package lifecycle changes. All actual provider refusals remain authoritative; no new capability acceptance is asserted. Local database proof unavailable; required isolated CI database, aggregate ci and release-policy must be green at the exact PR head before merge. No release is authorized by this repair.

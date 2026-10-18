@@ -27,7 +27,9 @@ export const AREAS = Object.freeze([
     needs: { members: 'write', organization_administration: 'read', organization_custom_org_roles: 'read' } },
   { id: 'billing', title: 'Billing, Copilot and Codespaces', tools: 'github_billing_*, github_copilot_*, github_codespace_*',
     needs: { organization_plan: 'read', organization_copilot_seat_management: 'write', organization_codespaces: 'write', codespaces: 'write' } },
-  { id: 'packages', title: 'Packages (delete and restore)', tools: 'github_package_*, github_api_write on /packages routes', needs: { packages: 'write', organization_packages: 'write' } },
+  // Installation grants only: package-level access and provider acceptance must be verified per operation.
+  // organization_packages is not selectable on GitHub.com; schema membership alone is not a grant requirement.
+  { id: 'packages', title: 'Packages (delete and restore)', tools: 'github_package_*, github_api_write on /packages routes', needs: { packages: 'write' } },
   { id: 'runners', title: 'Self-hosted runners and runner groups', tools: 'github_api_* on /actions/runners and /actions/runner-groups', needs: { organization_self_hosted_runners: 'write', administration: 'write', actions: 'write' } },
   { id: 'merge-queue', title: 'Merge queues', tools: 'github_pr_* (queued merges), github_api_* on merge queue routes', needs: { merge_queues: 'write', pull_requests: 'write' } },
   { id: 'tokens', title: 'Fine-grained token approvals', tools: 'github_tokenpolicy_*', needs: { organization_personal_access_tokens: 'write', organization_personal_access_token_requests: 'write' } }
