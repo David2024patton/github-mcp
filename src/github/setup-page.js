@@ -117,7 +117,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       for (const a of (await db.listAccounts()).slice(0, 10)) accounts.push(await readBack({ db, credentials, fetch }, a.login));
       const oauthReadiness=summarizeConnectorReadiness(
         await db.getConnectorOAuthReadiness(),{mcpUrl:`${expectedOrigin}/api/mcp`});
-      return page(200, { accounts, oauthReadiness, connections: (await db.listConnections()).filter((c) => c.kind === 'connector').map((c) => ({
+      return page(200, { accounts, oauthReadiness, connections: (await db.listUpgradeableConnections()).filter((c) => c.kind === 'connector').map((c) => ({
         id: c.client_id, name: c.client_name || 'Custom MCP login', mode: c.mode, profile: c.profile, accounts: c.accounts
       })), productionNames: await productionNames(db), protectedList: await protectedList(db), spendLimits: await spendView(), ownPeopleExtra: await extraOwnPeople(db) });
     }
@@ -391,7 +391,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     const id = String(p.connection || ''), account = String(p.login || '');
     if (!/^[A-Za-z0-9_-]{8,128}$/.test(id) || !isValidLogin(account))
       return page(400, { result: 'Enter the exact connection ID and connected GitHub account shown in the authenticated status view.' });
-    const old = (await db.listConnections()).filter((c) => c.client_id === id && c.kind === 'connector');
+    const old = (await db.listUpgradeableConnections()).filter((c) => c.client_id === id && c.kind === 'connector');
     if (!old.length || old.some((c) => c.mode !== 'preview' || c.profile !== 'full' ||
       c.accounts.length !== 1 || c.accounts[0] !== account || c.default_account !== account))
       return page(403, { result: 'Only a FULL/PREVIEW custom connection for exactly this one account can be upgraded. Nothing changed.' });
@@ -399,7 +399,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (!row?.production_enabled) return page(403, { result: 'Production is not enabled for that account. Nothing changed.' });
     const count = await db.upgradeConnectionProductionMode(id, account);
     if (count !== old.length) return page(409, { result: 'The connection changed concurrently. Reload its status before trying again.' });
-    const after = (await db.listConnections()).filter((c) => c.client_id === id && c.kind === 'connector');
+    const after = (await db.listUpgradeableConnections()).filter((c) => c.client_id === id && c.kind === 'connector');
     const verified = after.length === count && after.every((c) => c.mode === 'production' && c.profile === 'full' && c.accounts.length === 1 && c.accounts[0] === account);
     await db.recordChange({ account, mode: 'setup', connection: id, tool: 'setup_upgrade_connection_production', target: id,
       summary: (verified ? '' : 'UNCONFIRMED: ') + 'Owner upgraded a single-account full-profile custom connector to PRODUCTION; credentials unchanged',
