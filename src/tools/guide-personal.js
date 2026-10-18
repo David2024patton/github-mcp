@@ -8,8 +8,12 @@ export async function enrolledGuideUser(ctx, selectedAccount) {
   if (!canonical) throw new TypeError('This account is not enrolled in the active connection.');
   const row = await ctx.db.getAccount(canonical);
   if (!row) throw new TypeError('This account is not enrolled on the server.');
-  const user = row.account_type === 'User' && Number.isSafeInteger(row.account_id) && row.account_id > 0
-    ? row.login
+  // A personal account needs an enrolled U matching its account login, not merely
+  // a populated database row or an unrelated OAuth actor.
+  const user = row.account_type === 'User'
+    ? row.user_token_enc && Number.isSafeInteger(row.account_id) && row.account_id > 0 &&
+      typeof row.user_login === 'string' &&
+      row.login.toLowerCase() === row.user_login.toLowerCase() ? row.login : null
     : row.user_token_enc && row.user_login;
   return typeof user === 'string' && LOGIN.test(user) ? user : null;
 }
