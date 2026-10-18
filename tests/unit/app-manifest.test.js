@@ -32,6 +32,15 @@ describe('app manifest', () => {
     expect(MANIFEST_PERMISSIONS.repository_advisories).toBeUndefined();
   });
 
+  it('never asks GitHub.com for the unavailable organization_packages grant, even when the token schema lists it', () => {
+    for (const permissions of [MANIFEST_PERMISSIONS, ORGANIZATION_PERMISSIONS, Y1_ADDED_PERMISSIONS,
+      buildManifest({ origin: 'https://github-mcp.example.test', login: 'example-org' }).default_permissions]) {
+      expect(permissions).not.toHaveProperty('organization_packages');
+    }
+    expect(REPOSITORY_PERMISSIONS.packages).toBe('write');
+    expect(Y1_ADDED_PERMISSIONS.packages).toBe('write');
+  });
+
   it('builds a private App whose URLs all point at this server and which listens for no extra events', () => {
     const manifest = buildManifest({ origin: 'https://github-mcp.example.test', login: 'example-org' });
     expect(manifest).toMatchObject({

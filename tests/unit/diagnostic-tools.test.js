@@ -41,10 +41,10 @@ describe('permission needs data', () => {
 });
 
 describe('github_check_permissions', () => {
-  it('says all good when the installation holds everything the App asks for', async () => {
+  it('separates complete App grants from the unverified package credential capability', async () => {
     const w = await appWorld({ ...MANIFEST_PERMISSIONS });
     const out = await call('github_check_permissions', w, { account: 'example-org' });
-    expect(out.accounts[0]).toMatchObject({ login: 'example-org', status: 'all good', areas_missing: 0 });
+    expect(out.accounts[0]).toMatchObject({ login: 'example-org', status: 'capability unverified', areas_missing: 0, areas_unverified: 1, areas_ok: AREAS.length - 1 });
     expect(out.checked_areas).toBe(AREAS.length);
   });
   it('names the exact permission to add and where to add it', async () => {
@@ -64,15 +64,36 @@ describe('github_check_permissions', () => {
     expect(full.accounts[0].areas[0]).toMatchObject({ area: 'issues', ok: false });
   });
   it('names the packages, runner and merge-queue gaps for an installation created before Y-1, and never calls a missing permission ok', async () => {
-    const { packages, organization_packages, organization_self_hosted_runners, merge_queues, ...older } = MANIFEST_PERMISSIONS; // eslint-disable-line no-unused-vars
+    const { packages, organization_self_hosted_runners, merge_queues, ...older } = MANIFEST_PERMISSIONS; // eslint-disable-line no-unused-vars
     const w = await appWorld(older);
     const out = await call('github_check_permissions', w, { account: 'example-org' });
     const acct = out.accounts[0];
     expect(acct.status).toBe('permissions missing');
-    expect(acct.add_these).toEqual(expect.arrayContaining(['packages: write (now none)', 'organization_packages: write (now none)', 'organization_self_hosted_runners: write (now none)', 'merge_queues: write (now none)']));
+    expect(acct.add_these).toEqual(expect.arrayContaining(['packages: write (now none)', 'organization_self_hosted_runners: write (now none)', 'merge_queues: write (now none)']));
     expect(acct.areas.map((a) => a.area)).toEqual(expect.arrayContaining(['packages', 'runners', 'merge-queue']));
     expect((await call('github_check_permissions', w, { account: 'example-org', area: 'packages' })).accounts[0].status).toBe('permissions missing');
   });
+  it.each(['brief', 'full'])('accepts package grants but keeps runtime capability unverified without requesting impossible consent (%s)', async (detail) => {
+    const w = await appWorld({ packages: 'write' });
+    const out = await call('github_check_permissions', w, { account: 'example-org', area: 'packages', detail });
+    expect(out).toMatchObject({ checked_areas: 1, accounts: [{
+      login: 'example-org', status: 'capability unverified', areas_ok: 0, areas_missing: 0, areas_unverified: 1,
+      areas: [{ area: 'packages', capability: 'unverified', missing: [], note: expect.stringContaining('installation credentials') }]
+    }] });
+    if (detail === 'full') expect(out.accounts[0].areas[0]).toMatchObject({ permissions_ok: true, ok: false });
+    expect(out.accounts[0]).not.toHaveProperty('add_these');
+    expect(out.accounts[0]).not.toHaveProperty('how');
+  });
+  it.each([{}, { packages: 'read' }, { organization_packages: 'write' }])(
+    'still refuses to mark an unavailable or insufficient packages grant as ready: %j', async (permissions) => {
+      // Include metadata so absent packages is a known permission map rather than an unrecorded installation.
+      const w = await appWorld({ metadata: 'read', ...permissions });
+      const acct = (await call('github_check_permissions', w, { account: 'example-org', area: 'packages' })).accounts[0];
+      expect(acct.status).toBe('permissions missing');
+      expect(acct.add_these).toEqual([`packages: write (now ${permissions.packages ?? 'none'})`]);
+      expect(acct.areas[0].missing).toEqual([{ permission: 'packages', needed: 'write', granted: permissions.packages ?? 'none' }]);
+      expect(acct.how).toContain('/settings/installations/777');
+    });
   it('explains fine-grained, not-installed, and unknown cases instead of guessing', async () => {
     const w = await appWorld({});
     const all = await call('github_check_permissions', w, {});
