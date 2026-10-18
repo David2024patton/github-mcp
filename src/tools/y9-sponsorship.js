@@ -142,7 +142,9 @@ const sponsorshipChange = (paid) => defineGithubWrite({
   },
   readAfter:({args:a,ctx,target:t})=>sponsorState(ctx,t,a.recipient),
   verify:({args:a,before:b,after:x})=>a.action==='start'?!!x?.active&&
-      x.active.tier?.id===b.tier.id:
+      x.active.tier?.id===b.tier.id&&x.active.tier?.monthlyPriceInCents===b.tier.monthlyPriceInCents&&
+      x.active.isOneTimePayment===b.tier.isOneTime&&x.active.privacyLevel===(a.privacyLevel??'PRIVATE')&&
+      x.active.isSponsorOptedIntoEmail===(a.receiveEmails??false):
     a.action==='cancel'?!x?.active:
       !!x?.active&&(a.privacyLevel===undefined||x.active.privacyLevel===a.privacyLevel)
       &&(a.receiveEmails===undefined||x.active.isSponsorOptedIntoEmail===a.receiveEmails),
