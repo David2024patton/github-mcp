@@ -40,3 +40,13 @@ https://docs.github.com/en/rest/packages/packages — read:packages for metadata
 ## Verification and resume
 
 Implementation not started. Dedicated P credential never falls back to I/U/K. No production activation, paid service, token creation or real package mutation authorized by this plan.
+
+## Published planning provenance
+
+The local pre-code plan was frozen at f8a14e3, following completion plan 758e547. Git-data publication reproduces those planning snapshots as 7272183b and 975051a0 (with only the engineering baseline SHA translated to its published parent). No scope or criterion was changed after coding. The original local planning branch is preserved for recovery.
+
+## Implemented proof and limits
+
+Dedicated P is implemented across additive DB/fake contracts, encrypted credentials, protected setup, safe account view, package-only client, curated G-6 tools and explicit universal package reads. Existing package write contracts still pass through every door. Added tests verify actor/scope rejection, personal and org enrollment, replacement/removal/expiry, purpose/account ciphertext binding, missing-token no-fallback, foreign URLs/accounts, repository/permission-limited passes, read-only mutation denial, operation-specific scopes, provider SAML refusal, token authorization on the actual outbound request and rerunnable persistent schema. Local full units: 8,173/211 files (267.62 s, two workers); request shapes 21/4 files; final focused 123/3 files. All check validation must pass on the final ledger; actual PostgreSQL is unavailable locally and required exact-head CI must supply DB proof.
+
+No new package credential was generated or enrolled and no real package was mutated. Live provider acceptance remains open. Current serving deployment is READY 20389ae0; this source correction awaits release.

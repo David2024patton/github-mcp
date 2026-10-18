@@ -14,7 +14,7 @@ const restore = defineGithubWrite({
   description: 'Restore a deleted package or one exact version while GitHub retains it (up to 30 days).',
   properties: { ...packageProperties, versionId: ID },
   required: ['scope', 'packageType', 'packageName'],
-  declarations: { production: 'always', confirm: 'always', profiles: ['full'] },
+  declarations: { cred: 'P', production: 'always', confirm: 'always', profiles: ['full'] },
   target: packageTarget,
   read: async (args, ctx, t) => {
     const parent = args.versionId ? await getPackageRecord(ctx, t) : null;
@@ -33,7 +33,7 @@ const restore = defineGithubWrite({
     if (fresh) throw refusal('Target became active after preview; no restore sent.');
     if (args.versionId && fingerprint(await getPackageRecord(ctx, t)) !== fingerprint(before.parent))
       throw refusal('Parent package changed after preview; request a new preview.');
-    return (await octo(ctx, t.owner)).request('POST ' + fullPath(t, args.versionId) + '/restore',
+    return (await octo(ctx, t.owner, 'P')).request('POST ' + fullPath(t, args.versionId) + '/restore',
       { ...packageParams(t), ...(args.versionId ? { package_version_id: args.versionId } : {}) });
   },
   readAfter: ({ args, ctx, target: t }) => getPackageRecord(ctx, t, args.versionId),

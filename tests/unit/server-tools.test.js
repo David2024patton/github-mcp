@@ -50,7 +50,7 @@ describe('github_whoami', () => {
     expect(org).toMatchObject({ is_default: true, credentials: { I: true, U: true, K: true }, production_enabled: false, spend_limit: 'not configured', spend_limit_cents: null, spend_limit_explicit: false });
     expect(org.rate_core.remaining).toBe(4321);
     expect(org.rate_core.resets_at).toMatch(/Oct 10, 2026/);
-    expect(out.accounts.find((a) => a.login === 'example-user').credentials).toEqual({ I: true, U: false, K: false });
+    expect(out.accounts.find((a) => a.login === 'example-user').credentials).toEqual({ I: true, U: false, K: false, P: false });
     for (const shape of SECRET_SHAPES) expect(result.content[0].text).not.toMatch(shape);
   });
 

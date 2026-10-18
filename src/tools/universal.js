@@ -13,7 +13,7 @@ const OP={type:'string',minLength:2,maxLength:240,description:'Pinned operationI
 const PARAMS={type:'object',additionalProperties:true,maxProperties:60,description:'Only OpenAPI-defined path and query parameters'};
 const BODY={type:'object',additionalProperties:true,description:'JSON request body, validated against the pinned GitHub schema'};
 const OWNER={type:'string',minLength:1,maxLength:39};
-const CRED={type:'string',enum:['I','U'],description:'I installation; U explicitly enrolled user authorization'};
+const CRED={type:'string',enum:['I','U','P'],description:'I installation; U user; P enrolled package-only classic token'};
 const queryProperties={operation:OP,params:PARAMS,body:BODY,owner:OWNER,cred:CRED};
 
 function ownerFor(a,c,p) {
@@ -36,8 +36,11 @@ function scopeFor(a,c,p,op) {
     kind:repo?'universal-repo':'universal-account'};
 }
 function credentials(a,op) {
-  if(typeof a.cred!=='undefined' && !['I','U'].includes(a.cred))
-    throw new TypeError('Only enrolled I and U credentials are supported.');
+  if(typeof a.cred!=='undefined' && !['I','U','P'].includes(a.cred))
+    throw new TypeError('Only enrolled I, U and package-only P credentials are supported.');
+  const packages=/^\/(?:orgs\/\{org\}|users\/\{username\})\/packages(?:\/|$)/.test(op.path);
+  if ((packages && a.cred !== 'P') || (a.cred === 'P' && !packages))
+    throw new TypeError('Package routes require explicitly enrolled P authorization; P cannot be used for other operations.');
   const userOnly=/^\/user(?:\/|$)/.test(op.path);
   if(userOnly && a.cred!=='U')
     throw new TypeError('This operation requires explicitly selected U authorization.');
@@ -157,7 +160,7 @@ const apiWrite=defineGithubWrite({
   name:'github_api_write',area:'universal',audience:['B','O','Op'],
   description:'PRODUCTION: Execute validated non-curated REST writes with delegated billing warnings, scoped guards and confirmation.',
   properties:queryProperties,required:['operation'],
-  declarations:{production:'when-target',accessWidening:true,notifies:true,spend:true,confirm:'always',cred:'I,U',profiles:['full']},
+  declarations:{production:'when-target',accessWidening:true,notifies:true,spend:true,confirm:'always',cred:'I,U,P',profiles:['full']},
   target:(a,c)=>resolve(a,c,['POST','PUT','PATCH','DELETE'],true).target,
   read:async(a,c)=>baseline(c,resolve(a,c,['POST','PUT','PATCH','DELETE'],true)),
   price:({args:a,ctx:c})=>universalPrice(resolve(a,c,['POST','PUT','PATCH','DELETE'],true).op),

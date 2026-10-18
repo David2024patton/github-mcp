@@ -271,3 +271,22 @@ describe('U-1/O-4/Y-7 exact curated provider-operation authority',()=>{
     }
   });
 });
+
+describe('universal package credential selection', () => {
+  it('requires explicit P, verifies the outbound package token and rejects non-package P', async () => {
+    const w = await makeWorld({ packageToken: true, profile: 'read_only' });
+    const operation = 'GET /orgs/{org}/packages';
+    w.gh.when(operation).reply(200, []);
+    const args = { operation, params: { org: 'example-org', package_type: 'container' } };
+    expect((await dispatch(w, 'github_api_read', args)).isError).toBe(true);
+    expect(w.gh.calls).toEqual([]);
+    const out = await dispatch(w, 'github_api_read', { ...args, cred: 'P' });
+    expect(out.isError).toBeUndefined();
+    expect(w.gh.calls).toHaveLength(1);
+    expect(w.gh.calls[0].headers.authorization).toBe('token fixture-package-token-value-only');
+    expect(w.gh.invalid).toEqual([]);
+    const bad = await dispatch(w, 'github_api_read', { operation: 'GET /repos/{owner}/{repo}', params: scope, cred: 'P' });
+    expect(bad.isError).toBe(true);
+    expect(w.gh.calls).toHaveLength(1);
+  });
+});

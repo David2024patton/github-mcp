@@ -26,7 +26,8 @@ function installationLabel(row) {
 const credentialsOf = (row) => ({
   I: row.credential_kind === 'fine_grained' ? row.has_fine_grained : row.installation_status === 'active',
   U: !!row.has_user_token,
-  K: !!row.has_classic
+  K: !!row.has_classic,
+  P: !!row.has_package
 });
 
 /** Accounts this connection may use, default first. An account removed since the connection was made simply disappears. */
@@ -62,7 +63,7 @@ async function whoami(args, ctx) {
   return {
     mode: ctx.connection.mode.toUpperCase(), profile: ctx.connection.profile, listing: ctx.connection.listing,
     default_account: ctx.connection.default_account, api_version: GITHUB_API_VERSION,
-    credential_types: { I: 'installation token (or fine-grained token)', U: 'your sign-in for personal settings', K: 'notifications-only classic token' },
+    credential_types: { I: 'installation token (or fine-grained token)', U: 'your sign-in for personal settings', K: 'notifications-only classic token', P: 'package-only classic token' },
     accounts: pick(accounts, args.fields)
   };
 }
@@ -179,7 +180,7 @@ const readTools = [
   {
     name: 'github_whoami',
     area: 'server', audience: ['B', 'O', 'Op'], compact: true,
-    description: 'Accounts this connection can use, mode (PREVIEW/PRODUCTION), profile, credential types per account (I, U, K), API version, rate budget, spend limit.',
+    description: 'Accounts this connection can use, mode (PREVIEW/PRODUCTION), profile, credential types per account (I, U, K, P), API version, rate budget, spend limit.',
     inputSchema: { type: 'object', properties: { detail: DETAIL, fields: FIELDS }, additionalProperties: false },
     annotations: readOnly
   },

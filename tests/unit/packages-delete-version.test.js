@@ -11,7 +11,7 @@ const args = { scope: 'org', packageType: 'npm', packageName: '@example-org/libr
 const seq = (gh, route, entries) => gh.when(route).replySequence(entries.map(x =>
   x === null ? { status: 404, body: { message: 'Not Found' } } : { status: 200, body: x }));
 const call = (w, a = args) => doorsFor(def)[0].call(w, a).then(parse);
-runWriteContract({
+runWriteContract({packageToken:true,
   label: 'github_package_delete_version', definition: def, args,
   needsConfirm: true, production: true, profile: 'full',
   arrange(gh, state) {
@@ -22,7 +22,7 @@ runWriteContract({
 });
 describe('G-6 version deletion', () => {
   it('encodes a scoped package name and checks the exact version by ID', async () => {
-    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    const w = await makeWorld({packageToken:true, mode: 'production', profile: 'full' });
     seq(w.gh, PKG, [pkg, pkg]); seq(w.gh, VER, [version, version, null]);
     w.gh.when(DEL).reply(204, '');
     expect((await call(w, { ...args, confirm: true })).status).toBe('applied');
@@ -30,21 +30,21 @@ describe('G-6 version deletion', () => {
     expect(w.gh.calls.some(x => x.route === DEL && x.path.includes('%2F'))).toBe(true);
   });
   it('refuses deletion for public packages over 5,000 version downloads', async () => {
-    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    const w = await makeWorld({packageToken:true, mode: 'production', profile: 'full' });
     w.gh.when(PKG).reply(200, { ...pkg, visibility: 'public' });
     w.gh.when(VER).reply(200, { ...version, download_count: 5001 });
     expect((await call(w, { ...args, confirm: true })).status).toBe('rejected');
     expect(w.gh.calls.every(x=>x.method === 'GET')).toBe(true);
   });
   it('does not confuse permission refusal with a missing version', async () => {
-    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    const w = await makeWorld({packageToken:true, mode: 'production', profile: 'full' });
     w.gh.when(PKG).reply(403, { message: 'Forbidden' });
     const out = await call(w, { ...args, confirm: true });
     expect(out.status).not.toBe('applied');
     expect(w.gh.calls.every(x=>x.method === 'GET')).toBe(true);
   });
   it('rejects an intervening version update without deleting', async () => {
-    const w = await makeWorld({ mode: 'production', profile: 'full' });
+    const w = await makeWorld({packageToken:true, mode: 'production', profile: 'full' });
     seq(w.gh, PKG, [pkg, pkg]);
     seq(w.gh, VER, [version, { ...version, name: 'changed' }]);
     expect((await call(w, { ...args, confirm: true })).status).toBe('rejected');

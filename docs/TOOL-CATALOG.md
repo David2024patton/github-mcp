@@ -22,7 +22,7 @@ copy code) · `F` the old toolkit had it **with a bug or a missing guard**, fixe
 §2) · `N` new.
 **Cred** (which credential GitHub accepts for it, `docs/designs/BATCH-A.md` A5): `I` the GitHub App installation token
 (default) · `U` Chris's user authorization of the App (personal settings and a few user-only operations) · `I,U` either ·
-`K` the optional classic token (notifications only) · `—` no GitHub call.
+`P` the optional classic package token (package routes only) · `K` the optional classic token (notifications only) · `—` no GitHub call.
 **Audience** (contract §3): `B` builder · `O` owner/administrator · `Op` day-to-day operator.
 **Profile:** `R` read_only and up · `E` everyday and up · `F` full only.
 
@@ -306,10 +306,10 @@ Card(s): G-6.
 | `github_pages_get` | Pages site settings, custom domain, HTTPS state and the latest build | — | C | I | B,O | R | G-6 built #60 |
 | `github_pages_save` | Turn on Pages or change source branch/path, custom domain, HTTPS | C·Prod·A* | C | I | B,O | F | G-6 built #61 |
 | `github_pages_disable` | Turn off a Pages site | C·D·Prod | C | I | O | F | G-6 built #61 |
-| `github_package_list` | Packages of an org or user with versions | — | C | I | B | R | G-6 built #60 |
-| `github_package_delete_version` | Delete a package version (restorable for 30 days) | C·D·Prod | C | I | B | F | G-6 built #62 |
-| `github_package_delete` | Delete a whole package with all its versions (restorable for 30 days; GitHub refuses public packages with over 5,000 downloads) | C·D·Prod | C | I | B | F | G-6 built #63 |
-| `github_package_restore_version` | Restore a deleted package or package version (within 30 days) | C·Prod | C | I | B | F | G-6 built #64 |
+| `github_package_list` | Packages of an org or user with versions | — | C | P | B | R | G-6 built #60 |
+| `github_package_delete_version` | Delete a package version (restorable for 30 days) | C·D·Prod | C | P | B | F | G-6 built #62 |
+| `github_package_delete` | Delete a whole package with all its versions (restorable for 30 days; GitHub refuses public packages with over 5,000 downloads) | C·D·Prod | C | P | B | F | G-6 built #63 |
+| `github_package_restore_version` | Restore a deleted package or package version (within 30 days) | C·Prod | C | P | B | F | G-6 built #64 |
 
 ## Developer tools (`github_dev_*`) — 15
 
@@ -635,8 +635,8 @@ Card(s): U-1, U-2.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_api_search` | Find REST operations by plain words: method, path, summary, and whether it reads, writes, is production, widens access, notifies people or spends | — | N | — | B,O,Op | R | U-1 built #219 |
 | `github_api_describe` | Parameters for one operation, trimmed, from GitHub's own description at the pinned version | — | N | — | B,O,Op | R | U-1 built #219 |
-| `github_api_read` | Any GET operation, with the same summaries, `fields`, size cap and handles as every other read | — | N | I,U | B,O,Op | R | U-1 built #219 |
-| `github_api_write` | Execute any eligible pinned non-curated REST write with delegated production consent; every unreviewed operation shows unknown future-cost exposure and enforces user/pass caps | C·$*·Prod*·A*·M* | N | I,U | B,O,Op | F | U-1 built #219 |
+| `github_api_read` | Any GET operation, with the same summaries, `fields`, size cap and handles as every other read | — | N | I,U,P | B,O,Op | R | U-1 built #219 |
+| `github_api_write` | Execute any eligible pinned non-curated REST write with delegated production consent; every unreviewed operation shows unknown future-cost exposure and enforces user/pass caps | C·$*·Prod*·A*·M* | N | I,U,P | B,O,Op | F | U-1 built #219 |
 | `github_graphql_read` | Pinned-schema validated single GraphQL query, typed variables, scoped aliases/fragments/nodes and 500-point/500,000-node cap before sending | — | N | I,U | B,O,Op | R | U-2 built #220 |
 | `github_graphql_write` | One reviewed GraphQL mutation (24 specs: pins, locks, minimize, discussions, linked branches, issue comments and delete, draft state, team review assignment; plus the legacy title and project-field shapes) with ownership proof, before/after read, always-confirmed journal and a recorded undo where one exists | C·Prod·A·M | N | I,U | B,O,Op | F | U-2 built #220 |
 

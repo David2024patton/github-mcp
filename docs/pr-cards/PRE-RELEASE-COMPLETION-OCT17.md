@@ -56,3 +56,11 @@ Main a645ae56; live and independently confirmed Vercel READY alias 20389ae0 (dep
 ## Verification
 
 Use the actual custom MCP, independent provider GET/GraphQL readback, and sanitized criterion-specific evidence. No real mutation, account elevation or expense. Partial provider reads do not pass a compound criterion. No completed bundle claimed unless all selected original criteria pass.
+
+## Actual observations and original criterion disposition
+
+- Y-9 U task inventory: PASSED on READY 20389ae0, actual custom list and separate pinned universal U provider GET both return complete empty inventory, status 200. Independent GitHub REST verifies exact owned public scope; foreign account is refused. No premium task starts or nonempty-task detail proof.
+- Y-9 organization read: INCOMPLETE. Policy all and selected-list not applicable now succeed; content exclusions remains ambiguous provider 404. Prior O-4 seat/subscription proof is preserved, not credited again. No new App grant is requested for this failure.
+- U-2 read: fresh scoped variables/fragment/alias/connection query matches independent GitHub REST node ID; foreign scope, 1001 page size and over-budget nested query refused. The original source pin 02df1aab was a topic commit replaced by PR #220 squash 9271b645; provider PR/compare plus complete-tree equality with final PR head reconcile both U-2 pins. No rollback is inferred from the old pin. This was a revalidation of existing read proof, not newly counted completion.
+
+Completion bundle remains CONTINUE with zero new bundle credit: the original compound organization criterion has not passed. Source package repair is tracked separately on its frozen engineering card.

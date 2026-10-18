@@ -1,6 +1,7 @@
 // G-6 package discovery: distinct organization and user routes, bounded versions.
 import { defineRead } from './define-read.js';
-import { plain, readerFor } from './github-read.js';
+import { plain } from './github-read.js';
+import { githubFor } from '../github/client.js';
 
 const OWNER = { type: 'string', maxLength: 39 };
 const TYPE = { type: 'string', enum: ['npm', 'maven', 'rubygems', 'docker', 'nuget', 'container'] };
@@ -26,7 +27,8 @@ export const packageList = defineRead({
   },
   required: ['scope', 'packageType'],
   handler: (args, ctx) => plain(async () => {
-    const { owner, octokit } = await readerFor(args, ctx);
+    const owner = String(args.owner ?? ctx.connection.default_account);
+    const octokit = await githubFor(ctx, { owner, cred: 'P' });
     const scope = args.scope;
     const page = args.page ?? 1, max = args.max ?? 10, versionMax = args.versionMax ?? 10;
     const locator = scope === 'org' ? { org: owner } : { username: owner };

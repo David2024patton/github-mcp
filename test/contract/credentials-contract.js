@@ -67,6 +67,28 @@ export function runCredentialsContract(name, make) {
       expect(await db.setFineGrainedToken('nobody', { enc: 'x', last4: 'x' })).toBe(false);
     });
 
+    it('stores, replaces and clears dedicated package credentials without touching notifications or policy', async () => {
+      const db = await make();
+      await db.upsertAccount(ORG);
+      await db.setClassicToken(ORG.login, { enc: 'v1.notifications', scopes: ['notifications'], last4: 'ABCD' });
+      const expiry = future(3600e3);
+      expect(await db.setPackageToken('EXAMPLE-ORG', { enc: 'v1.package-secret', scopes: ['read:packages'], actor: 'example-user', expiresAt: expiry })).toBe(true);
+      await db.initSchema(); // Existing installations upgrade safely and repeated schema startup preserves credentials.
+      const row = await db.getAccount(ORG.login);
+      expect(row).toMatchObject({ package_enc: 'v1.package-secret', package_actor: 'example-user', production_enabled: false, classic_enc: 'v1.notifications' });
+      expect(new Date(row.package_expires_at).getTime()).toBe(expiry.getTime());
+      const listed = await db.listAccounts();
+      expect(listed[0]).toMatchObject({ has_package: true, package_scopes: ['read:packages'], package_actor: 'example-user' });
+      expect(JSON.stringify(listed)).not.toContain('v1.package-secret');
+      expect(listed[0]).not.toHaveProperty('package_enc');
+      await db.setPackageToken(ORG.login, { enc: 'v1.replacement', scopes: ['read:packages', 'delete:packages'], actor: 'example-user' });
+      expect((await db.getAccount(ORG.login)).package_expires_at).toBeNull();
+      expect(await db.clearPackageToken(ORG.login)).toBe(true);
+      expect(await db.getAccount(ORG.login)).toMatchObject({ package_enc: null, package_scopes: null, package_actor: null, package_expires_at: null, classic_enc: 'v1.notifications' });
+      expect(await db.setPackageToken('absent', { enc: 'v1.x', scopes: [], actor: 'nobody' })).toBe(false);
+      expect(await db.clearPackageToken('absent')).toBe(false);
+    });
+
     it('lists accounts without any ciphertext, only whether each credential exists', async () => {
       const db = await make();
       await db.upsertAccount(ORG);

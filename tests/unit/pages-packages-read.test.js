@@ -21,7 +21,7 @@ async function run(w, name, args) {
 }
 describe('G-6 Pages and packages reads', () => {
   it('reads Pages settings plus latest build, preserving source and HTTPS state', async () => {
-    const w = await makeWorld({ profile: 'read_only' });
+    const w = await makeWorld({ packageToken: true, profile: 'read_only' });
     w.gh.when(SITE).reply(200, { status: 'built', html_url: 'https://example.github.io',
       https_enforced: true, cname: 'docs.example.org', source: { branch: 'docs', path: '/site' } });
     w.gh.when(BUILD).reply(200, { status: 'built', pusher: { login: 'developer' } });
@@ -32,11 +32,11 @@ describe('G-6 Pages and packages reads', () => {
     expect(w.gh.calls.every((x) => x.method === 'GET')).toBe(true);
   });
   it('reports an unconfigured Pages site only on 404; keeps 403 as a permission error', async () => {
-    const w = await makeWorld({ profile: 'read_only' });
+    const w = await makeWorld({ packageToken: true, profile: 'read_only' });
     w.gh.when(SITE).reply(404, { message: 'Not Found' });
     expect(await run(w, 'github_pages_get', { repo: 'hello' })).toMatchObject({ configured: false });
     expect(w.gh.calls).toHaveLength(1);
-    const denied = await makeWorld({ profile: 'read_only' });
+    const denied = await makeWorld({ packageToken: true, profile: 'read_only' });
     denied.gh.when(SITE).reply(403, { message: 'Forbidden' });
     const dispatch = createDispatch({ credentials: denied.credentials, gates: [], fetch: denied.gh.fetch, now: denied.ctx.now });
     const result = await dispatch({ registry, name: 'github_pages_get', args: { repo: 'hello' },
@@ -45,7 +45,7 @@ describe('G-6 Pages and packages reads', () => {
   });
   it('uses distinct org and user routes and reports incomplete package/versions paging', async () => {
     for (const [scope, route, versions] of [['org', ORG, ORG_V], ['user', USER, USER_V]]) {
-      const w = await makeWorld({ profile: 'read_only' });
+      const w = await makeWorld({ packageToken: true, profile: 'read_only' });
       w.gh.when(route).reply(200, [pkg]);
       w.gh.when(versions).reply(200, [version]);
       const out = await run(w, 'github_package_list',
@@ -67,7 +67,7 @@ describe('G-6 Pages and packages reads', () => {
     }
   });
   it('caps an unpageable user versions response and reports potentially omitted versions', async () => {
-    const w = await makeWorld({ profile: 'read_only' });
+    const w = await makeWorld({ packageToken: true, profile: 'read_only' });
     w.gh.when(USER).reply(200, [{ ...pkg, version_count: null }]);
     w.gh.when(USER_V).reply(200, [version, { ...version, id: 13, name: '1.3.0' }]);
     const out = await run(w, 'github_package_list', {
@@ -79,13 +79,13 @@ describe('G-6 Pages and packages reads', () => {
     expect(w.gh.invalid).toEqual([]);
   });
   it('can list packages without version calls and propagates permission refusal', async () => {
-    const w = await makeWorld({ profile: 'read_only' });
+    const w = await makeWorld({ packageToken: true, profile: 'read_only' });
     w.gh.when(ORG).reply(200, [pkg]);
     const out = await run(w, 'github_package_list',
       { scope: 'org', packageType: 'npm', includeVersions: false });
     expect(out.items[0].versions).toBeUndefined();
     expect(w.gh.calls).toHaveLength(1);
-    const denied = await makeWorld({ profile: 'read_only' });
+    const denied = await makeWorld({ packageToken: true, profile: 'read_only' });
     denied.gh.when(ORG).reply(403, { message: 'Forbidden' });
     const dispatch = createDispatch({ credentials: denied.credentials, gates: [],
       fetch: denied.gh.fetch, now: denied.ctx.now });

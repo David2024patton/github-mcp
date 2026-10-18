@@ -69,16 +69,16 @@ describe('github_check_permissions', () => {
     const out = await call('github_check_permissions', w, { account: 'example-org' });
     const acct = out.accounts[0];
     expect(acct.status).toBe('permissions missing');
-    expect(acct.add_these).toEqual(expect.arrayContaining(['packages: write (now none)', 'organization_self_hosted_runners: write (now none)', 'merge_queues: write (now none)']));
+    expect(acct.add_these).toEqual(expect.arrayContaining(['organization_self_hosted_runners: write (now none)', 'merge_queues: write (now none)']));
     expect(acct.areas.map((a) => a.area)).toEqual(expect.arrayContaining(['packages', 'runners', 'merge-queue']));
-    expect((await call('github_check_permissions', w, { account: 'example-org', area: 'packages' })).accounts[0].status).toBe('permissions missing');
+    expect((await call('github_check_permissions', w, { account: 'example-org', area: 'packages' })).accounts[0].status).toBe('capability unverified');
   });
   it.each(['brief', 'full'])('accepts package grants but keeps runtime capability unverified without requesting impossible consent (%s)', async (detail) => {
     const w = await appWorld({ packages: 'write' });
     const out = await call('github_check_permissions', w, { account: 'example-org', area: 'packages', detail });
     expect(out).toMatchObject({ checked_areas: 1, accounts: [{
       login: 'example-org', status: 'capability unverified', areas_ok: 0, areas_missing: 0, areas_unverified: 1,
-      areas: [{ area: 'packages', capability: 'unverified', missing: [], note: expect.stringContaining('installation credentials') }]
+      areas: [{ area: 'packages', capability: 'unverified', missing: [], note: expect.stringContaining('classic package token') }]
     }] });
     if (detail === 'full') expect(out.accounts[0].areas[0]).toMatchObject({ permissions_ok: true, ok: false });
     expect(out.accounts[0]).not.toHaveProperty('add_these');
@@ -89,10 +89,10 @@ describe('github_check_permissions', () => {
       // Include metadata so absent packages is a known permission map rather than an unrecorded installation.
       const w = await appWorld({ metadata: 'read', ...permissions });
       const acct = (await call('github_check_permissions', w, { account: 'example-org', area: 'packages' })).accounts[0];
-      expect(acct.status).toBe('permissions missing');
-      expect(acct.add_these).toEqual([`packages: write (now ${permissions.packages ?? 'none'})`]);
-      expect(acct.areas[0].missing).toEqual([{ permission: 'packages', needed: 'write', granted: permissions.packages ?? 'none' }]);
-      expect(acct.how).toContain('/settings/installations/777');
+      expect(acct.status).toBe('capability unverified');
+      expect(acct).not.toHaveProperty('add_these');
+      expect(acct.areas[0].missing).toEqual([]);
+      expect(acct.areas[0].note).toContain('classic package token');
     });
   it('explains fine-grained, not-installed, and unknown cases instead of guessing', async () => {
     const w = await appWorld({});

@@ -151,3 +151,9 @@ tried against real GitHub yet. If creating the App fails on one of them, the fix
 To start an account over: delete its App on GitHub (Settings → Developer settings → GitHub Apps → Advanced → Delete), then
 repeat Part 5. To rotate the encryption key or the passphrase, change the value in Vercel, redeploy, and (for the key) redo Part 5
 for each account, because saved credentials were scrambled with the old key.
+
+## Optional package authentication — October 18
+
+Package tools now use a dedicated classic personal access token (`P`), enrolled only through the passphrase/CSRF-protected private setup page. Use `read:packages` for metadata, plus `delete:packages` for deletion and `write:packages` for restoration. Repository-scoped registries additionally need `repo`; do not select unrelated scopes. The token must belong to the connected personal account or the person already authorized for the organization. It is encrypted separately from notifications (`K`) and never accepted as a tool argument. Replace or remove it on setup; revoke it on GitHub if no longer needed. Package-level access, SSO and organization token policies still apply. Repository/permission-limited passes cannot use an un-narrowable classic token; read-only connections can list but cannot mutate. Package operations preserve production, preview, confirmation and independent readback guards. Universal REST requires explicit `cred: P` on supported org/user package routes; curated deletes/restores still require their specialized tool. A saved token or accepted App grant does not prove real package access.
+
+The database upgrade is additive and rerunnable, adding four nullable dedicated package columns. Existing credentials and account policy remain intact. Rollback code can ignore these columns; remove the optional credential in setup before retiring the new path. Real package acceptance still requires owner enrollment and an exact disposable package fixture.

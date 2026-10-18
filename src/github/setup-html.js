@@ -26,6 +26,7 @@ function accountCard(a) {
     lines.push(mark(a.user.authorized, `You are signed in as ${h(a.user.login || 'yourself')} for personal settings.`, a.user.error || 'Not authorized for personal settings yet (optional).'));
   }
   lines.push(`<li>${a.classic.present ? `Notifications token saved (ends in ${h(a.classic.last4)}, scopes: ${h((a.classic.scopes || []).join(', '))}).` : 'No notifications token (optional).'}</li>`);
+  lines.push(`<li>${a.packages?.present ? `Package token saved for ${h(a.packages.actor)} (scopes: ${h((a.packages.scopes || []).join(', '))}).` : 'No package token (optional; package tools require one).'}</li>`);
   lines.push(`<li>Production changes: <strong>${a.production_enabled ? 'on' : 'off'}</strong>${a.is_default ? ' · default account' : ''}</li>`);
   lines.push(`<li>Disposable scratch organization: <strong>${a.is_scratch ? 'yes' : 'no'}</strong></li>`);
   return `<div class="card"><strong>${h(a.label)}</strong> <small>${h(a.login)} · ${h(a.account_type)} · ${h(a.credential_kind === 'app' ? 'GitHub App' : 'fine-grained token')}</small><ul>${lines.join('')}</ul></div>`;
@@ -88,6 +89,9 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
     form('set-own-people', '<label>Extra names<input name="logins" maxlength="1000" autocomplete="off"></label>', 'Save own people') +
     '<h2>Alternative: use a fine-grained token instead of a GitHub App</h2><p>Simpler, but no per-connection read-only tokens and no check runs. Classic tokens are refused.</p>' +
     form('add-fine-grained', login + '<label>Fine-grained personal access token<input type="password" name="token" required autocomplete="off"></label>', 'Verify and save encrypted token') +
+    '<h2>Optional: package token</h2><p>GitHub Packages requires a classic token. Use read:packages to list, add delete:packages to delete, and write:packages to restore. Only repository-scoped registries need repo. It must belong to the personal account or the person signed in for this organization. This token can only be used for this account’s package operations. Repository-limited passes cannot use it. GitHub package access and SSO rules still apply.</p>' +
+    form('add-package', login + '<label>Classic package token<input type="password" name="token" required autocomplete="off"></label>', 'Verify and save encrypted package token') +
+    form('remove-package', login, 'Remove stored package token') +
     '<h2>Optional: notifications token</h2><p>GitHub only lets a classic token read notifications. It must have only the <em>notifications</em> scope; anything else is refused.</p>' +
     form('add-classic', login + '<label>Classic token (notifications scope only)<input type="password" name="token" required autocomplete="off"></label>', 'Verify and save encrypted token') +
     (show ? `<h2>Reveal a one-time secret</h2>${form('reveal', '', 'Reveal this one-time secret', hidden('id', show))}` : '') +
