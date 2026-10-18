@@ -34,8 +34,8 @@ async function identity(c,t){
   }
   return {gh,root};
 }
-async function sponsorState(c,t,recipient){
-  const {gh,root}=await identity(c,t);
+async function sponsorState(c,t,recipient,verified=null){
+  const {gh,root}=verified??await identity(c,t);
   const d=await graphql(gh,sponsorQuery(root),{sponsor:t.owner,recipient:[recipient]});
   const row=d?.[root],list=row?.sponsorshipsAsSponsor;
   if(!sameLogin(row?.login,t.owner)||!list||list.pageInfo?.hasNextPage!==false||
@@ -46,8 +46,8 @@ async function sponsorState(c,t,recipient){
   if(list.nodes.length>1)throw refusal('Multiple active sponsorship records; resolve directly on GitHub.');
   return {active:list.nodes[0]??null};
 }
-async function tierState(c,t,recipient){
-  const {gh}=await identity(c,t);
+async function tierState(c,t,recipient,verified=null){
+  const {gh}=verified??await identity(c,t);
   const actor=(await gh.request('GET /users/{username}',{username:recipient})).data;
   const root=accountRoot(actor?.type);
   if(!root||!Number.isSafeInteger(actor.id)||actor.id<=0||!sameLogin(actor.login,recipient))
@@ -68,7 +68,10 @@ const sponsorGet=defineRead({
   description:'Read the existing verified sponsor relationship and published GitHub tier prices without buying anything.',
   properties:{owner:OWNER,recipient:LOGIN},required:['recipient'],
   handler:(a,c)=>plain(async()=>{
-    const t=target(a,c),[state,listing]=await Promise.all([sponsorState(c,t,a.recipient),tierState(c,t,a.recipient)]);
+    // A single verified payer identity must back both read-only inventories; avoid
+    // racing the same one-use user OAuth refresh twice within one Sponsors read.
+    const t=target(a,c),verified=await identity(c,t);
+    const [state,listing]=await Promise.all([sponsorState(c,t,a.recipient,verified),tierState(c,t,a.recipient,verified)]);
     return {payer:t.owner,recipient:a.recipient,active:state.active,
       sponsors_listing_available:listing.available,tiers:listing.tiers.map(x=>({id:x.id,one_time:x.isOneTime,price_cents:x.monthlyPriceInCents})),
       source:'GitHub GraphQL sponsor listing and relationship'};
