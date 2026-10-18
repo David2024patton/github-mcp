@@ -8,14 +8,19 @@ import { redact } from './util.js';
 const clip = (text, n = 300) => redact(String(text ?? '').replace(/\s+/g, ' ').trim()).slice(0, n);
 const headerOf = (error, name) => error?.response?.headers?.[name] ?? error?.headers?.[name];
 
-/** Permissions GitHub says the call needed, from `x-accepted-github-permissions` ("pull_requests=write; issues=read"). */
+/** Declared accepted grants, not proof of a missing grant, from `x-accepted-github-permissions` ("pull_requests=write; issues=read"). */
 export function acceptedPermissions(header) {
   if (!header) return [];
+  const raw = String(header);
+  // Boolean endpoint metadata is not a selectable App permission or a missing grant.
+  if (/(?:^|[;,])\s*allows_permissionless_access\s*=\s*true\s*(?=$|[;,])/.test(raw)) return [];
   const names = [];
-  for (const alternative of String(header).split(';')) {
+  for (const alternative of raw.split(';')) {
     for (const part of alternative.split(',')) {
-      const [name, level] = part.trim().split('=');
-      if (/^[a-z_]+$/.test(name ?? '')) names.push({ permission: name, level: level === 'read' || level === 'write' || level === 'admin' ? level : 'write' });
+      const match = /^([a-z_]+)\s*=\s*(read|write|admin)$/.exec(part.trim());
+      // organization_packages is schema-only on GitHub.com, not an available setting.
+      if (match && !['allows_permissionless_access', 'organization_packages'].includes(match[1]))
+        names.push({ permission: match[1], level: match[2] });
     }
   }
   const seen = new Set();
@@ -74,10 +79,14 @@ export function describeGithubError(error, { account = null } = {}) {
     }
     const accepted = acceptedPermissions(headerOf(error, 'x-accepted-github-permissions'));
     if (/resource not accessible by integration/i.test(message) || accepted.length) {
-      const named = accepted.length ? accepted.map((p) => `${words(p.permission)} (${p.level})`).join(' or ') : null;
-      return out('missing_permission', named ? `The GitHub App is not allowed to do this. It needs the ${named} permission.` : 'The GitHub App is not allowed to do this.',
-        'The App was not granted that permission, or the installation does not include this repository.',
-        named ? `Open the App's permissions on GitHub, add ${named}, then accept the change on the installation. The setup page's check button lists what is missing.` : 'Check the App\'s permissions and its repository selection on GitHub, using the setup page\'s check button.');
+      if (!accepted.length) return out('forbidden',
+        'GitHub refused this integration credential for this operation.',
+        'The response does not establish a missing selectable App permission. The credential type, target access, or organization policy may block this request.',
+        'Check the endpoint’s supported credential type and actual target access. Use setup to compare real App grants before requesting a change.');
+      const named = accepted.map((p) => `${words(p.permission)} (${p.level})`).join(', ');
+      return out('forbidden', `GitHub refused this credential. The endpoint reports these accepted App permission entries: ${named}.`,
+        'These entries describe the endpoint, not a proven missing grant. Credential support, target access and organization policy can also cause this refusal.',
+        `Compare the App's actual grants and repository selection with ${named}. Add a listed permission only if it is missing; otherwise verify the supported credential type and the provider's detailed refusal.`);
     }
     if (/repository rule violations/i.test(message)) { /* some rule failures arrive as 403; handled below */ } else {
       return out('forbidden', 'GitHub says this account is not allowed to do that.', 'The credential lacks access, or an organization policy (such as SAML single sign-on or an IP allow list) blocks it.', 'Check the account\'s access on GitHub; if the organization uses SAML, authorize the App for it.');
