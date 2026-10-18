@@ -6,9 +6,9 @@ import { githubFor } from '../github/client.js';
 const OWNER = { type: 'string', maxLength: 39 };
 const TYPE = { type: 'string', enum: ['npm', 'maven', 'rubygems', 'docker', 'nuget', 'container'] };
 const LIST_ORG = 'GET /orgs/{org}/packages';
-const LIST_USER = 'GET /users/{username}/packages';
+const LIST_USER = 'GET /user/packages';
 const VERSIONS_ORG = 'GET /orgs/{org}/packages/{package_type}/{package_name}/versions';
-const VERSIONS_USER = 'GET /users/{username}/packages/{package_type}/{package_name}/versions';
+const VERSIONS_USER = 'GET /user/packages/{package_type}/{package_name}/versions';
 const versionView = (v) => ({
   id: v.id, name: v.name, description: v.description, created_at: v.created_at,
   updated_at: v.updated_at, html_url: v.html_url, metadata: v.metadata?.container
@@ -31,12 +31,13 @@ export const packageList = defineRead({
     const octokit = await githubFor(ctx, { owner, cred: 'P' });
     const scope = args.scope;
     const page = args.page ?? 1, max = args.max ?? 10, versionMax = args.versionMax ?? 10;
-    const locator = scope === 'org' ? { org: owner } : { username: owner };
+    const locator = scope === 'org' ? { org: owner } : {};
     const route = scope === 'org' ? LIST_ORG : LIST_USER;
     const { data } = await octokit.request(route, {
       ...locator, package_type: args.packageType, per_page: max, page
     });
-    const rows = Array.isArray(data) ? data : [];
+    if (!Array.isArray(data)) throw new TypeError('GitHub did not return a package list.');
+    const rows = data;
     const items = [];
     for (const pkg of rows) {
       const item = {
@@ -48,18 +49,15 @@ export const packageList = defineRead({
       if (args.includeVersions !== false) {
         const { data: versions } = await octokit.request(scope === 'org' ? VERSIONS_ORG : VERSIONS_USER, {
           ...locator, package_type: args.packageType, package_name: pkg.name,
-          // The pinned user versions route has NO per_page/page parameters;
-          // the org version route has both. Never send invented query fields.
-          ...(scope === 'org' ? { per_page: versionMax, page: 1 } : {})
+          per_page: versionMax, page: 1
         });
         if (!Array.isArray(versions)) throw new TypeError('GitHub did not return a package version list.');
         item.versions = versions.slice(0, versionMax).map(versionView);
         item.versions_page = 1;
-        item.versions_paging_supported = scope === 'org';
-        // A non-pageable user route is only a bounded snapshot. Never claim all
-        // versions were returned, even if the response happened to be short.
+        item.versions_paging_supported = true;
+        // Authenticated personal and organization versions both support paging.
         if (pkg.version_count != null ? pkg.version_count > item.versions.length :
-            (scope === 'user' || versions.length >= versionMax)) {
+            versions.length >= versionMax) {
           item.more_versions_possible = true;
         }
       }

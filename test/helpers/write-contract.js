@@ -20,7 +20,7 @@ export const NOW = Date.UTC(2026, 9, 10, 18, 0, 0);
 const ENV = { TOKEN_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64url') };
 
 /** A fresh world: fake database and GitHub, a fine-grained credential for example-org, and a connection of the given kind. */
-export async function makeWorld({ mode = 'preview', profile = 'everyday', accounts = ['example-org'], gates = [], scratchAccount = false, advanceClockOnSleep = false, packageToken = false } = {}) {
+export async function makeWorld({ mode = 'preview', profile = 'everyday', accounts = ['example-org'], gates = [], scratchAccount = false, advanceClockOnSleep = false, packageToken = false, packageUser = false } = {}) {
   // Long multi-step fixtures must let reserved write slots expire in virtual time.
   // Production spacing remains real; this only advances the fake clock after a simulated sleep.
   let offsetMs = 0;
@@ -37,9 +37,9 @@ export async function makeWorld({ mode = 'preview', profile = 'everyday', accoun
     [{ login: 'example-owner', id: 1, type: 'User' }]);
   const credentials = createCredentials({ db, env: ENV, fetch: gh.fetch, now: () => NOW });
   for (const login of accounts) {
-    await db.upsertAccount({ login, accountId: 1000 + login.length, accountType: 'Organization', label: login, credentialKind: scratchAccount ? 'app' : 'fine_grained', appId: scratchAccount ? 901 : null, isScratch: scratchAccount });
+    await db.upsertAccount({ login, accountId: 1000 + login.length, accountType: packageUser ? 'User' : 'Organization', label: login, credentialKind: scratchAccount ? 'app' : 'fine_grained', appId: scratchAccount ? 901 : null, isScratch: scratchAccount });
     if (scratchAccount) await db.setInstallation(login, { installationId: 902, repositorySelection: 'all', permissions: { contents: 'write', metadata: 'read' }, status: 'active' });
-    if (packageToken) await credentials.storePackage(login, 'fixture-package-token-value-only', { scopes: ['read:packages', 'write:packages', 'delete:packages'], actor: 'example-owner' });
+    if (packageToken) await credentials.storePackage(login, 'fixture-package-token-value-only', { scopes: ['read:packages', 'write:packages', 'delete:packages'], actor: packageUser ? login : 'example-owner' });
     await credentials.storeFineGrained(login, 'github_pat_FAKE0123456789abcdefghij', { expiresAt: null });
     await credentials.storeUserAuthorization(login, { userLogin: 'example-owner', accessToken: 'ghu_FAKE0123456789abcdefghij', expiresIn: 28800, refreshToken: 'ghr_FAKE0123456789abcdefghij', refreshExpiresIn: 15811200 });
   }

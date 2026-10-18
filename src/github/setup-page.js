@@ -198,7 +198,6 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'save-protected' || action === 'remove-protected') return await editProtected(action, p, page);
     if (!['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'add-package', 'remove-package'].includes(action)) return page(400, { result: 'Unknown action.' });
     if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
-    if (!credentials.keyConfigured()) return page(503, { keyHelp: 'The server has no encryption key, so it will not store anything. Set TOKEN_ENCRYPTION_KEY (see docs/DEPLOY.md) and reload.' });
     if (!isValidLogin(p.login)) return page(400, { result: 'Enter a valid GitHub account name.' });
     const account = p.login;
     if (action === 'remove-package') {
@@ -207,6 +206,8 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
         ? 'Removed the stored package token. Revoke it on GitHub too if it is no longer needed.'
         : 'That account is not set up on the server.' });
     }
+
+    if (!credentials.keyConfigured()) return page(503, { keyHelp: 'The server has no encryption key, so it will not store anything. Set TOKEN_ENCRYPTION_KEY (see docs/DEPLOY.md) and reload.' });
 
     if (action === 'start-app') {
       const accountType = p.accountType === 'User' ? 'User' : 'Organization';
@@ -401,7 +402,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       try { actor = (await bareOctokit({ token, fetch }).request('GET /user')).data; }
       catch (error) { return page(400, { result: `GitHub could not verify the package token owner (${plainStatus(error)}). Nothing was saved.` }); }
       const expected = row.account_type === 'User' ? row.login : row.user_login;
-      if (!actor?.id || !expected || typeof actor.login !== 'string' || actor.login.toLowerCase() !== expected.toLowerCase())
+      if (!Number.isSafeInteger(actor?.id) || actor.id <= 0 || row.account_type === 'User' && actor.id !== row.account_id || !expected || typeof actor.login !== 'string' || actor.login.toLowerCase() !== expected.toLowerCase())
         return page(400, { result: 'The package token must belong to this personal account or the person already signed in for this organization. Use Authorize as me first. Nothing was saved.' });
       const expiry = Date.parse(probe.headers['github-authentication-token-expiration'] || '');
       if (Number.isFinite(expiry) && expiry <= Date.now())

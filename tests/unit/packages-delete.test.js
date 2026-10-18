@@ -4,9 +4,9 @@ import { runWriteContract, makeWorld, doorsFor, parse } from '../../test/helpers
 const PKG = 'GET /orgs/{org}/packages/{package_type}/{package_name}';
 const VER = PKG + '/versions';
 const DEL = 'DELETE /orgs/{org}/packages/{package_type}/{package_name}';
-const USER_PKG = 'GET /users/{username}/packages/{package_type}/{package_name}';
+const USER_PKG = 'GET /user/packages/{package_type}/{package_name}';
 const USER_VER = USER_PKG + '/versions';
-const USER_DEL = 'DELETE /users/{username}/packages/{package_type}/{package_name}';
+const USER_DEL = 'DELETE /user/packages/{package_type}/{package_name}';
 const pkg = { id: 5, name: '@example-org/widgets', visibility: 'private', version_count: 2, updated_at: '2026-10-10' };
 const versions = [{ id: 11, name: 'v1', download_count: 5 }, { id: 12, name: 'v2', download_count: 12 }];
 const args = { scope: 'org', packageType: 'npm', packageName: pkg.name };
@@ -44,12 +44,12 @@ describe('G-6 whole-package deletion', () => {
     expect(w.gh.calls.every(c=>c.method==='GET')).toBe(true);
   });
   it('distinguishes user routes and omits user-version paging query fields', async () => {
-    const w=await makeWorld({packageToken:true,mode:'production',profile:'full'});
+    const w=await makeWorld({packageToken:true,packageUser:true,mode:'production',profile:'full'});
     seq(w.gh,USER_PKG,[pkg,pkg,null]); w.gh.when(USER_VER).reply(200,versions);
     w.gh.when(USER_DEL).reply(204,'');
     const out=await call(w,{...args,scope:'user',confirm:true});
     expect(out.status).toBe('applied');
-    expect(w.gh.calls.find(c=>c.route===USER_VER).query).toEqual({});
+    expect(w.gh.calls.find(c=>c.route===USER_VER).query).toEqual({per_page:'100',page:'1'});
     expect(w.gh.invalid).toEqual([]);
   });
   it('refuses an intervening version change instead of deleting a different package state', async () => {

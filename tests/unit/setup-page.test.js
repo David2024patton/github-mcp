@@ -841,3 +841,28 @@ describe('package enrollment provider boundaries', () => {
     expect((await t.db.getAccount('example-user')).package_enc).toBe(before.package_enc);
   });
 });
+
+describe('package token removal when encryption is unavailable',()=>{
+  it('removes ciphertext with existing owner safeguards without needing to decrypt it',async()=>{
+    const t=await build({env:{...PROD,TOKEN_ENCRYPTION_KEY:''}});
+    await t.db.upsertAccount({login:'example-user',accountId:1002,accountType:'User',label:'Personal'});
+    await t.db.setPackageToken('example-user',{enc:'v1.fixture-package-ciphertext',scopes:['read:packages'],actor:'example-user'});
+    await t.open();
+    expect((await t.post({action:'remove-package',login:'example-user'},{csrf:'wrong'})).statusCode).toBe(403);
+    expect((await t.db.getAccount('example-user')).package_enc).not.toBeNull();
+    expect((await t.post({action:'remove-package',login:'example-user',passphrase:'wrong'})).statusCode).toBe(401);
+    expect((await t.post({action:'remove-package',login:'example-user'})).statusCode).toBe(200);
+    expect((await t.db.getAccount('example-user')).package_enc).toBeNull();
+    expect((await t.post({action:'add-package',login:'example-user',token:'fixture-package-token-value-only'})).statusCode).toBe(503);
+    expect(t.gh.calls).toEqual([]);
+  });
+  it('does not enroll a reused personal login with a different numeric provider identity',async()=>{
+    const t=await build();
+    await t.db.upsertAccount({login:'example-user',accountId:1002,accountType:'User',label:'Personal'});
+    t.gh.when('GET /rate_limit').reply(200,{},{'x-oauth-scopes':'read:packages'});
+    t.gh.when('GET /user').reply(200,{id:9999,login:'example-user'});
+    await t.open();
+    expect((await t.post({action:'add-package',login:'example-user',token:'fixture-package-token-value-only'})).statusCode).toBe(400);
+    expect((await t.db.getAccount('example-user')).package_enc).toBeNull();
+  });
+});

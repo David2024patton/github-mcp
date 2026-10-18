@@ -47,6 +47,13 @@ const exact = new Map([
   ['PATCH /orgs/{org}/dependabot/repository-access', 'github_security_dependabot_org_settings'],
   ['PUT /orgs/{org}/dependabot/repository-access/default-level', 'github_security_dependabot_org_settings']
 ]);
+for (const base of ['/orgs/{org}', '/users/{username}', '/user']) {
+  const path = base + '/packages/{package_type}/{package_name}';
+  exact.set('DELETE ' + path, 'github_package_delete');
+  exact.set('DELETE ' + path + '/versions/{package_version_id}', 'github_package_delete_version');
+  exact.set('POST ' + path + '/restore', 'github_package_restore_version');
+  exact.set('POST ' + path + '/versions/{package_version_id}/restore', 'github_package_restore_version');
+}
 const maps=[
   [/^PUT \/repos\/\{owner\}\/\{repo\}\/pulls\/\{pull_number\}\/merge$/, 'github_pr_merge'],
   [/^POST \/repos\/\{owner\}\/\{repo\}\/merge-upstream$/, 'github_pr_merge'],

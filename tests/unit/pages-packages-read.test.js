@@ -6,9 +6,9 @@ import { makeWorld, parse } from '../../test/helpers/write-contract.js';
 const SITE = 'GET /repos/{owner}/{repo}/pages';
 const BUILD = 'GET /repos/{owner}/{repo}/pages/builds/latest';
 const ORG = 'GET /orgs/{org}/packages';
-const USER = 'GET /users/{username}/packages';
+const USER = 'GET /user/packages';
 const ORG_V = 'GET /orgs/{org}/packages/{package_type}/{package_name}/versions';
-const USER_V = 'GET /users/{username}/packages/{package_type}/{package_name}/versions';
+const USER_V = 'GET /user/packages/{package_type}/{package_name}/versions';
 const pkg = { id: 51, name: 'library', package_type: 'npm', visibility: 'private',
   version_count: 2, owner: { login: 'example-org' } };
 const version = { id: 12, name: '1.2.0', metadata: { container: { tags: ['current'] } } };
@@ -45,7 +45,7 @@ describe('G-6 Pages and packages reads', () => {
   });
   it('uses distinct org and user routes and reports incomplete package/versions paging', async () => {
     for (const [scope, route, versions] of [['org', ORG, ORG_V], ['user', USER, USER_V]]) {
-      const w = await makeWorld({ packageToken: true, profile: 'read_only' });
+      const w = await makeWorld({ packageToken: true, packageUser: scope === 'user', profile: 'read_only' });
       w.gh.when(route).reply(200, [pkg]);
       w.gh.when(versions).reply(200, [version]);
       const out = await run(w, 'github_package_list',
@@ -56,25 +56,19 @@ describe('G-6 Pages and packages reads', () => {
       expect(w.gh.invalid).toEqual([]);
       expect(w.gh.calls).toHaveLength(2);
       const query = w.gh.calls[1].query;
-      if (scope === 'user') {
-        expect(query).not.toHaveProperty('per_page');
-        expect(query).not.toHaveProperty('page');
-        expect(out.items[0].versions_paging_supported).toBe(false);
-      } else {
-        expect(query).toMatchObject({ per_page: '1', page: '1' });
-        expect(out.items[0].versions_paging_supported).toBe(true);
-      }
+      expect(query).toMatchObject({ per_page: '1', page: '1' });
+      expect(out.items[0].versions_paging_supported).toBe(true);
     }
   });
-  it('caps an unpageable user versions response and reports potentially omitted versions', async () => {
-    const w = await makeWorld({ packageToken: true, profile: 'read_only' });
+  it('caps an authenticated personal versions response and reports potentially omitted versions', async () => {
+    const w = await makeWorld({ packageToken: true, packageUser: true, profile: 'read_only' });
     w.gh.when(USER).reply(200, [{ ...pkg, version_count: null }]);
     w.gh.when(USER_V).reply(200, [version, { ...version, id: 13, name: '1.3.0' }]);
     const out = await run(w, 'github_package_list', {
       scope: 'user', packageType: 'npm', max: 1, versionMax: 1
     });
     expect(out.items[0]).toMatchObject({
-      versions: [{ id: 12 }], more_versions_possible: true, versions_paging_supported: false
+      versions: [{ id: 12 }], more_versions_possible: true, versions_paging_supported: true
     });
     expect(w.gh.invalid).toEqual([]);
   });
@@ -92,5 +86,14 @@ describe('G-6 Pages and packages reads', () => {
     const result = await dispatch({ registry, name: 'github_package_list',
       args: { scope: 'org', packageType: 'npm' }, connection: denied.connection, db: denied.db });
     expect(result.isError).toBe(true);
+  });
+});
+
+describe('supported package read completeness',()=>{
+  it('refuses a malformed package inventory instead of reporting empty success',async()=>{
+    const w=await makeWorld({packageToken:true,profile:'read_only'});
+    w.gh.when(ORG).reply(200,{});
+    await expect(run(w,'github_package_list',{scope:'org',packageType:'container'})).rejects.toThrow('did not return a package list');
+    expect(w.gh.calls).toHaveLength(1);
   });
 });

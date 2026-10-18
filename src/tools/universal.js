@@ -38,11 +38,11 @@ function scopeFor(a,c,p,op) {
 function credentials(a,op) {
   if(typeof a.cred!=='undefined' && !['I','U','P'].includes(a.cred))
     throw new TypeError('Only enrolled I, U and package-only P credentials are supported.');
-  const packages=/^\/(?:orgs\/\{org\}|users\/\{username\})\/packages(?:\/|$)/.test(op.path);
+  const packages=/^\/(?:orgs\/\{org\}|users\/\{username\}|user)\/packages(?:\/|$)/.test(op.path);
   if ((packages && a.cred !== 'P') || (a.cred === 'P' && !packages))
     throw new TypeError('Package routes require explicitly enrolled P authorization; P cannot be used for other operations.');
   const userOnly=/^\/user(?:\/|$)/.test(op.path);
-  if(userOnly && a.cred!=='U')
+  if(userOnly && !packages && a.cred!=='U')
     throw new TypeError('This operation requires explicitly selected U authorization.');
   return a.cred??'I';
 }

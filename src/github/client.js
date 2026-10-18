@@ -166,18 +166,22 @@ async function assertPackageRequest(ctx, account, method, url) {
   const parsed = new URL(url, 'https://api.github.com');
   const parts = parsed.pathname.split('/');
   const owner = (() => { try { return decodeURIComponent(parts[2] ?? ''); } catch { return ''; } })();
-  const valid = parsed.origin === 'https://api.github.com' && !parsed.username && !parsed.password &&
-    ['orgs', 'users'].includes(parts[1]) && owner.toLowerCase() === account.toLowerCase() &&
-    parts[3] === 'packages' &&
-    (/^\/(?:orgs|users)\/[^/]+\/packages$/.test(parsed.pathname) ||
-      /^\/(?:orgs|users)\/[^/]+\/packages\/(?:npm|maven|rubygems|docker|nuget|container)\/[^/]+(?:\/versions(?:\/[1-9][0-9]*)?)?(?:\/restore)?$/.test(parsed.pathname));
-  const restore = method === 'POST' && /\/restore$/.test(parsed.pathname);
-  const deletion = method === 'DELETE' && !/\/(?:restore|versions)$/.test(parsed.pathname) && parts.length >= 6;
-  if (!valid || !(['GET', 'HEAD'].includes(method) || restore || deletion))
-    throw new GithubClientError('outside_scope', 'This credential is restricted to package operations on its connected account.');
-  if (!['GET', 'HEAD'].includes(method) && ctx.connection?.profile === 'read_only')
-    throw new GithubClientError('outside_scope', 'A read-only connection cannot mutate packages.');
   const row = await ctx.db.getAccount(account);
+  const authenticated = parts[1] === 'user' && parts[2] === 'packages';
+  const accountBound = authenticated
+    ? row?.account_type === 'User' && row.package_actor?.toLowerCase() === account.toLowerCase()
+    : ['orgs', 'users'].includes(parts[1]) && owner.toLowerCase() === account.toLowerCase() && parts[3] === 'packages';
+  const suffix = '/' + parts.slice(authenticated ? 3 : 4).join('/');
+  const record = /^\/(?:npm|maven|rubygems|docker|nuget|container)\/[^/]+(?:\/versions\/[1-9][0-9]*)?$/;
+  const readable = ['GET', 'HEAD'].includes(method) && (suffix === '/' || record.test(suffix) ||
+    /^\/(?:npm|maven|rubygems|docker|nuget|container)\/[^/]+\/versions$/.test(suffix));
+  const restore = method === 'POST' && suffix.endsWith('/restore') && record.test(suffix.slice(0, -8));
+  const deletion = method === 'DELETE' && record.test(suffix);
+  if (parsed.origin !== 'https://api.github.com' || parsed.username || parsed.password ||
+      !accountBound || !(readable || restore || deletion))
+    throw new GithubClientError('outside_scope', 'This credential is restricted to package operations on its connected account and verified personal actor.');
+  if (!readable && ctx.connection?.profile === 'read_only')
+    throw new GithubClientError('outside_scope', 'A read-only connection cannot mutate packages.');
   const scopes = row?.package_scopes ?? [];
   const required = ['read:packages', ...(restore ? ['write:packages'] : deletion ? ['delete:packages'] : [])];
   if (!row?.package_enc || required.some(s => !scopes.includes(s)))

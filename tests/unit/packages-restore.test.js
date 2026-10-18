@@ -5,8 +5,8 @@ const ROOT = 'GET /orgs/{org}/packages/{package_type}/{package_name}';
 const GETV = ROOT + '/versions/{package_version_id}';
 const POSTV = 'POST /orgs/{org}/packages/{package_type}/{package_name}/versions/{package_version_id}/restore';
 const POST = 'POST /orgs/{org}/packages/{package_type}/{package_name}/restore';
-const UROOT = 'GET /users/{username}/packages/{package_type}/{package_name}';
-const UPOST = 'POST /users/{username}/packages/{package_type}/{package_name}/restore';
+const UROOT = 'GET /user/packages/{package_type}/{package_name}';
+const UPOST = 'POST /user/packages/{package_type}/{package_name}/restore';
 const pkg = { id: 18, name: '@example-org/library', package_type: 'npm', updated_at: '2026-10-10' };
 const ver = { id: 41, name: '1.0.0' };
 const args = { scope: 'org', packageType: 'npm', packageName: pkg.name, versionId: 41 };
@@ -42,7 +42,7 @@ describe('G-6 package and version recovery', () => {
     }
   });
   it('uses user route for a whole package and preserves scoped name encoding', async () => {
-    const w = await makeWorld({packageToken:true, mode: 'production', profile: 'full' });
+    const w = await makeWorld({packageToken:true,packageUser:true, mode: 'production', profile: 'full' });
     seq(w.gh, UROOT, [null, null, pkg]); w.gh.when(UPOST).reply(204, '');
     const result = await call(w, { scope: 'user', packageType: 'npm', packageName: pkg.name, confirm: true });
     expect(result.status).toBe('applied');

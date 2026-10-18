@@ -86,3 +86,25 @@ describe('supported package credential isolation', () => {
     expect(w.gh.calls).toHaveLength(1);
   });
 });
+
+describe('authenticated private personal package routes',()=>{
+  it('permits implicit /user packages only for the enrolled personal token actor',async()=>{
+    const w=await world({packageUser:true,profile:'read_only'});
+    const route='GET /user/packages/{package_type}/{package_name}/versions';
+    w.gh.when(route).reply(200,[{id:12,name:'private-version'}]);
+    const data=(await (await client(w)).request(route,{package_type:'container',package_name:'private-image',per_page:20,page:1})).data;
+    expect(data[0].id).toBe(12);expect(w.gh.invalid).toEqual([]);
+    expect(w.gh.calls[0].headers.authorization).toBe(`token ${TOKEN}`);
+  });
+  it('refuses implicit personal routes for an organization-associated token, even if that actor owns packages',async()=>{
+    const w=await world();
+    await expect((await client(w)).request('GET /user/packages',{package_type:'container'})).rejects.toMatchObject({code:'outside_scope'});
+    expect(w.gh.calls).toEqual([]);
+  });
+  it('refuses a personal route when stored token actor differs from the enrolled account',async()=>{
+    const w=await world({packageUser:true});
+    await w.credentials.storePackage('example-org',TOKEN,{scopes:['read:packages'],actor:'foreign-user'});
+    await expect((await client(w)).request('GET /user/packages',{package_type:'container'})).rejects.toMatchObject({code:'outside_scope'});
+    expect(w.gh.calls).toEqual([]);
+  });
+});

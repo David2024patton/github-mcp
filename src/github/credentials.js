@@ -41,7 +41,7 @@ export function signAppJwt({ appId, privateKey, now = Date.now }) {
  * @param {{ db: object, env?: object, fetch?: Function, now?: () => number }} options
  * @returns the credential API: `token({ account, cred, scope })` for the client, plus the storing and verifying calls the
  *   setup page uses. `cred`: `I` the account's main credential (App installation token, or its fine-grained token),
- *   `U` the owner's user authorization, `K` the classic notifications token.
+ *   `U` the owner's user authorization, `K` the notifications token, `P` the package-only classic token.
  */
 export function createCredentials({ db, env = process.env, fetch = globalThis.fetch, now = Date.now }) {
   let cachedKey = null;

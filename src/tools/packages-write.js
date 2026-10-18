@@ -11,9 +11,9 @@ export const packageProperties = { owner: OWNER, scope: { type: 'string', enum: 
   packageType: TYPE, packageName: NAME };
 const template = (t) => t.scope === 'org'
   ? '/orgs/{org}/packages/{package_type}/{package_name}'
-  : '/users/{username}/packages/{package_type}/{package_name}';
+  : '/user/packages/{package_type}/{package_name}';
 const params = (t) => ({
-  ...(t.scope === 'org' ? { org: t.owner } : { username: t.owner }),
+  ...(t.scope === 'org' ? { org: t.owner } : {}),
   package_type: t.type, package_name: t.name
 });
 const target = (args, ctx) => ({
@@ -65,7 +65,7 @@ export const packageDeleteVersion = defineGithubWrite({
 // first page contains every version. GitHub itself enforces the public download ceiling.
 const listVersions = async (ctx, t) => {
   const { data } = await (await octo(ctx, t.owner, 'P')).request('GET ' + template(t) + '/versions', {
-    ...params(t), ...(t.scope === 'org' ? { per_page: 100, page: 1 } : {})
+    ...params(t), per_page: 100, page: 1
   });
   if (!Array.isArray(data)) throw refusal('GitHub did not return package versions.');
   return data.map((v) => ({ id: v.id, name: v.name, download_count: v.download_count ?? null }));
