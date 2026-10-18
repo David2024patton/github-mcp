@@ -765,6 +765,20 @@ export function createDb(sql = productionSql()) {
         listing: r.listing, expires_at: r.expires_at, last_used_at: r.last_used_at ?? null, created_at: r.created_at,
         ...(r.kind === 'pass' ? { pass: { areas: r.pass_areas ?? [], repos: r.pass_repos ?? null, allow_writes: r.pass_allow_writes === true, allow_access_changes: r.pass_allow_access_changes === true, production_access: r.pass_production_access === true, spend_allowance_cents: r.pass_money_limit == null ? 0 : Number(r.pass_money_limit), rate_limit_per_minute: r.pass_rate_limit ?? null } } : {}) }));
     },
+    /** Owner setup-page connection inventory: an expired access bearer remains usable through
+     * its live refresh credential. This endpoint never returns bearer or refresh material. */
+    async listUpgradeableConnections() {
+      const rows = await sql`SELECT t.client_id, c.data->>'client_name' AS client_name, t.kind,
+          t.default_account, t.accounts, t.mode, t.profile, t.listing, t.expires_at, t.created_at
+        FROM oauth_tokens t LEFT JOIN oauth_clients c ON c.client_id = t.client_id
+        WHERE t.kind = 'connector' AND t.revoked_at IS NULL
+          AND (t.expires_at > now() OR t.refresh_hash IS NOT NULL)
+        ORDER BY t.created_at DESC`;
+      return rows.map((r) => ({ client_id: r.client_id, client_name: r.client_name ?? null,
+        kind: r.kind, default_account: r.default_account, accounts: r.accounts ?? [],
+        mode: r.mode, profile: r.profile, listing: r.listing, expires_at: r.expires_at,
+        created_at: r.created_at }));
+    },
     /** Switches off every live token of one connector login. Returns how many were switched off. */
     async revokeConnection(clientId) {
       const rows = await sql`UPDATE oauth_tokens SET revoked_at = now() WHERE client_id = ${clientId} AND kind IN ('connector','pass') AND revoked_at IS NULL RETURNING token_hash`;
@@ -786,9 +800,16 @@ export function createDb(sql = productionSql()) {
         WHERE client_id = ${clientId} AND kind = 'connector' AND revoked_at IS NULL
           AND mode = 'preview' AND profile = 'full'
           AND lower(default_account) = lower(${account}) AND accounts = ARRAY[${account}]::text[]
-          AND EXISTS (SELECT 1 FROM gh_accounts a WHERE lower(a.login) = lower(${account}) AND a.production_enabled = TRUE)
+          AND (expires_at > now() OR refresh_hash IS NOT NULL)
+          AND EXISTS (SELECT 1 FROM gh_accounts a WHERE lower(a.login) = lower(${account})
+            AND a.production_enabled = TRUE AND a.account_type = 'Organization'
+            AND a.is_scratch = TRUE AND (
+              (a.credential_kind = 'app' AND a.installation_status = 'active' AND a.installation_id IS NOT NULL)
+              OR (a.credential_kind = 'fine_grained' AND a.fine_grained_enc IS NOT NULL
+                AND (a.fine_grained_expires_at IS NULL OR a.fine_grained_expires_at > now()))))
           AND NOT EXISTS (SELECT 1 FROM oauth_tokens other
             WHERE other.client_id = ${clientId} AND other.kind = 'connector' AND other.revoked_at IS NULL
+              AND (other.expires_at > now() OR other.refresh_hash IS NOT NULL)
               AND (other.mode <> 'preview' OR other.profile <> 'full'
                    OR lower(other.default_account) <> lower(${account}) OR other.accounts <> ARRAY[${account}]::text[]))
         RETURNING token_hash`;
