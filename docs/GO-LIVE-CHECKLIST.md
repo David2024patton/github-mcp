@@ -57,7 +57,7 @@ Per-account onboarding for `Robinson-AI-Systems` and `christcr2012` is still pen
 | Done | Item | Who / where | How to verify |
 |---|---|---|---|
 | [ ] | Complete existing 57-row real-world release acceptance and independently approve any legitimate provider exception | Implementing agent and owner | `docs/STATUS.md` evidence, exact deployed SHA, not source CI alone |
-| [ ] | Complete secure PUB-1/PUB-2 tenant identity + OAuth/credentials isolation and private allowlisted pilot | Developer, zero spend | Genuine isolated PostgreSQL tenant A/B attack/permission tests and provider identity/grant proof |
+| [ ] | Complete secure PUB-1/PUB-2 tenant identity + OAuth/credentials isolation and private allowlisted pilot | Developer, zero spend | Source-only internal PUB-1 tenant schema prototype on `ai/chatgpt/pub-1-private-tenant-isolation-foundation-20261018`; still unverified and non-public. Requires real PostgreSQL A/B tests, PUB-2 provider-issued identities and scoped login/read/write proof. Do NOT open enrollment or migrate real owner tokens. |
 | [ ] | Complete PUB-3 rate/abuse/reliability/monitoring controls without unapproved spending | Developer | Tested realistic quotas, fault/replay and incident isolation under available no-spend capacity |
 | [ ] | Prove genuine Android/iOS AND desktop/web ChatGPT connections separately using private plugins and service-owned OAuth and full safeguards | Owner + agent | Two real `github_whoami` scope/mode readbacks and independently approved disposable provider read/write/revoke |
 | [ ] | Complete privacy, support, credentials revocation, retention, incident handling and public developer/business verification | Owner decision with evidence | Legal/operations readiness checklist and policy acceptance |
