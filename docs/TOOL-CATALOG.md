@@ -618,8 +618,8 @@ Y-9d is approved by IN-16. Every mutating call uses the existing production, pas
 | `github_copilot_team_seats` | Assign actual team seats with known quoted pricing or disclosed unknown recurring charges and confirmation | C·Prod·A*·$ | F | I | O | F | Y-9 |
 | `github_copilot_team_seats_remove` | Remove team-assigned seats without requiring permission to spend | C·Prod | F | I | O | F | Y-9 |
 | `github_sponsor_get` | Read verified sponsorship relationship and published tiers | — | N | U | O | R | Y-9 |
-| `github_sponsor_set` | Start a priced sponsorship from verified GitHub tier with spend guard | C·Prod·M*·$ | F | U | O | F | Y-9 |
-| `github_sponsor_change` | Cancel a sponsorship or change email/privacy preferences without new spending | C·Prod | F | U | O | F | Y-9 |
+| `github_sponsor_set` | Start a priced sponsorship from verified GitHub tier with spend guard | C·Prod·A*·M*·$ | F | U | O | F | Y-9 |
+| `github_sponsor_change` | Cancel a sponsorship or change email/privacy preferences without new spending | C·Prod·A* | F | U | O | F | Y-9 |
 | `github_hosted_runner_list` | Read GitHub-hosted runner pools, concurrency, size and capacity | — | N | I | O,Op | R | Y-9 |
 | `github_hosted_runner_manage` | Rename, reduce concurrency or remove hosted runner, verified | C·Prod | F | I | O | F | Y-9 |
 | `github_hosted_runner_create` | Create a real hosted-runner pool with cost exposure warning and user authorization | C·Prod·$ | F | I | O | F | Y-9 |
