@@ -44,16 +44,20 @@ async function checkPermissions(args, ctx) {
     if (row.installation_status !== 'active' || row.installation_id == null) return { ...base, status: 'not installed', note: 'Install the App on this account from the setup page, then check again.' };
     const granted = row.installation_permissions ?? {};
     if (!Object.keys(granted).length) return { ...base, status: 'unknown', note: 'The permissions this installation holds have not been recorded yet. Reconnect the account on the setup page.' };
-    const results = areas.map((a) => ({ area: a.id, title: a.title, tools: a.tools, missing: compareArea(a, granted) }));
+    const results = areas.map((a) => ({ area: a.id, title: a.title, tools: a.tools, missing: compareArea(a, granted),
+      ...(a.capabilityNote ? { capability: 'unverified', note: a.capabilityNote } : {}) }));
     const lacking = results.filter((r) => r.missing.length);
+    const unverified = results.filter((r) => !r.missing.length && r.capability === 'unverified');
     const needed = [...new Map(lacking.flatMap((r) => r.missing).map((m) => [m.permission, m])).values()];
     return {
-      ...base, status: lacking.length ? 'permissions missing' : 'all good', areas_ok: results.length - lacking.length, areas_missing: lacking.length,
+      ...base, status: lacking.length ? 'permissions missing' : unverified.length ? 'capability unverified' : 'all good',
+      areas_ok: results.length - lacking.length - unverified.length, areas_missing: lacking.length, areas_unverified: unverified.length,
       ...(needed.length ? {
         add_these: needed.map((m) => `${m.permission}: ${m.needed} (now ${m.granted})`),
         how: `On GitHub open the App's settings → Permissions & events, raise those permissions, save, then accept the new permissions on the installation page${configureUrl(row) ? ` (${configureUrl(row)})` : ''}.`
       } : {}),
-      areas: args.detail === 'full' ? results.map((r) => ({ ...r, ok: r.missing.length === 0 })) : lacking
+      areas: args.detail === 'full' ? results.map((r) => ({ ...r, permissions_ok: r.missing.length === 0, ok: r.missing.length === 0 && !r.capability }))
+        : results.filter((r) => r.missing.length || r.capability)
     };
   });
   return { checked_areas: areas.length, accounts };
