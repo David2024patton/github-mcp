@@ -16,6 +16,14 @@ This document specifies the release-barrier design for **GitHub by Robinson AI S
 
 **Actual code work remains PUB-1..PUB-4 following independent just-in-time cards.** This corrective handoff must not be treated as a feature bundle or public release.
 
+## 0b. Distribution eligibility — resolve before treating the Directory as a target
+
+**Current policy blocker.** OpenAI's published [Plugin guidelines](https://developers.openai.com/plugins/plugin-guidelines) say in the Third-party content and integrations section: **“We cannot approve plugins that primarily function as unofficial connectors to third-party services, including pass-through intermediary software layers.”** The GitHub MCP is currently an *unofficial* GitHub integration and is not automatically eligible for a public ChatGPT Plugin Directory listing, regardless of brand wording, scale, security or end-user usefulness. A generic plugin name that suggests GitHub endorsement or uses wording to manipulate agent/plugin selection also conflicts with discoverability rules. Nothing in the owner's PRIVATE plugin tests constitutes permission from GitHub/OpenAI or directory approval.
+
+**Early independent go/no-go, not a PUB-5-only checkbox:** before pursuing any public Directory submission, obtain written, applicable third-party authorization and confirmation of policy eligibility or stop that channel and use a legitimately supported **private/workspace distribution** path. Do not try to bypass review by routing through a Sites adapter, renaming, wrapping a proxy, or presenting independent plugin functionality as an official GitHub product. This eligibility gate is already open (IN-18). Product security, tenant-isolation and mobile/desktop acceptance can and should progress privately without waiting for a promise of public-directory eligibility. A future permitted general-audience standalone MCP distribution model also needs separate provider, privacy, identity and hosting assessment; it is not assumed by this design.
+
+**Automatic workflow inclusion:** PUB-1..PUB-4 are APPROVED, unimplemented rows in the authoritative `docs/pr-cards/work-index.json`; PUB-5 is BLOCKED pending IN-18 plus independent release acceptance. Each row is a whole subsection, not an opportunity to count fragments or skip existing acceptance-first obligations.
+
 ## 1. Current verified boundary (do not present as production-ready public SaaS)
 
 - The existing service exposes many GitHub capabilities through a standalone MCP, and an approved owner-only scratch organization is connected. Its 57-row real-world queue was **14 PASSED / 28 PENDING / 15 BLOCKED** at this design checkpoint. Continue existing accepted plan, do not reset or rewrite the original queue.
