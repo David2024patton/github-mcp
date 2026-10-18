@@ -1,3 +1,7 @@
+## 2026-10-18 — provider permission metadata is not proof of missing owner consent
+
+The genuine native U package probe produced a phantom allows permissionless access write recommendation. Unknown/boolean header values must never default to write, nor may schema-only unselectable organization_packages become an App-setting task. Actual grant requirements remain visible but conditional on a real missing grant; credential support, target access and provider policy remain possible causes. This changes explanations, not grants or enforcement, and preserves HTTP/request evidence. No new owner OAuth is established by the refusal. Stable source/fixture proof is separate from actual post-release evidence.
+
 ## 2026-10-18 — O-1 personal authorization must be attempted before declaring it missing
 
 Actual deployed acceptance had valid owner-consented U while admin overview always claimed personal status inaccessible. Source correction uses explicit U GET /user, verifies stored login/type and personal account numeric identity, omits private email/bio and handles withheld 2FA/plan as unknown. No credential fallback, new grant, mutation, production activation or spend. Existing O-1 source credit is not repeated; source-bearing live and guided UI proof remain open.

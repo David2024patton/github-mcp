@@ -1,3 +1,7 @@
+## 2026-10-18 — stop phantom permission approvals from provider metadata
+
+A genuine live U package read was rendered as needing a nonexistent allows permissionless access write grant. B-5 source e054d200 now accepts only explicit permission levels, excludes nonselectable metadata/schema-only names, and treats accepted grant entries as requirements to compare rather than proof of missing consent. HTTP/request evidence, provider refusal, redaction and all write/rate guards remain. Stable full local units 8,192/212 and focused 30 passed; first earlier local run was invalidated by an in-progress source/test change and was not claimed as final proof. Frozen pre-code 5ccb26c/published d470755e. Package PR #253 merged 86bb77be and O-1 PR #254 merged 3ad6f298 with green exact-head gates and resolved review findings. Native U is valid; independently READY service remains 20389ae0, so all new source acceptance is queued. Fifty-seven criteria now tracked, twelve recorded passes; no new original subsection/bundle credit, production activation, credential enrollment, spending or manual release.
+
 ## 2026-10-18 — O-1 recognizes genuine enrolled personal authorization
 
 The owner-requested completion pass reproduced an unconditional personal-status refusal despite valid U. The corrective branch now verifies GET /user under U for organization-associated and personal accounts, matches enrolled identity, returns minimal actual status and preserves denied/foreign/withheld fields honestly. No new owner OAuth, App grant, server setting, production or spending change. Frozen local plan 270374b, published identical 667c17d7, implementation c2bdb909; original O-1 already counted, zero new subsection/bundle credit. Local full 8,155 tests/210 files and focused 23 passed before integration. Package PR #253 is merged as 86bb77be, every exact-head gate green at f5f6d34a and both review threads resolved; remote branch was automatically deleted. Combined source checks, CI/review and source-bearing scheduled release remain required; live is still independently READY 20389ae0. Original guided UI acceptance stays open.
@@ -581,7 +585,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Exact run journal and remote preflight refuse new connection identity; remote result explicitly reports no destructive operations. Next: Original connection ownership and independent exact disposal confirmation. Use original owning runner if recoverable; never rebind journal ownership or delete outside guarded proof.",
-    "nextAction": "First finish prerequisite acceptance, identify the exact run-owned fixture and obtain its independent deletion confirmation; then custom cleanup and remote absence readback. Preserve original private quarantine."
+    "nextAction": "Original quarantined run needs exact disposal decision and independent owner confirmation; do not rebind or delete uncertain run ownership."
   },
   {
     "id": "GITHUB-NATIVE",
@@ -593,7 +597,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Custom whoami, provider reads, foreign-account refusals and retained-result pagination succeeded; old run journal denied after reconnect. Next: Exact run creation baseline and independent cleanup authority; write scenarios still outstanding. Recover original owning runner or obtain separately scoped fixture approval; keep existing quarantine intact.",
-    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
+    "nextAction": "Recover original run creation/owning-runner provenance or establish a newly approved isolated native fixture; quarantined old run must remain untouched."
   },
   {
     "id": "GITHUB-H1-PRIVATE-PROTECTION",
@@ -605,7 +609,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Actual private protection read returned provider HTTP403 upgrade-or-public plan explanation. Next: An independently eligible private test repository on existing authorized plan. Keep private repository private; do not upgrade or widen permission; owner must supply eligible fixture if desired.",
-    "nextAction": "When provider plan eligibility legitimately changes, restore custom OAuth and repeat this exact private read. Do not upgrade a plan or change visibility to bypass the current 403."
+    "nextAction": "Existing private scratch plan refused governance; preserve visibility, no paid upgrade. Use genuinely eligible provider tier only when independently available."
   },
   {
     "id": "GITHUB-H1-PRIVATE-RULESETS",
@@ -617,7 +621,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Actual private ruleset inventory returned provider HTTP403 upgrade-or-public plan explanation. Next: An independently eligible private test repository on existing authorized plan. Keep visibility and spending unchanged; owner supplies eligible fixture if desired.",
-    "nextAction": "When provider plan eligibility legitimately changes, restore custom OAuth and repeat this exact private read. Do not upgrade a plan or change visibility to bypass the current 403."
+    "nextAction": "Existing private scratch plan refused rulesets; preserve visibility and zero developer spending, no paid upgrade inferred."
   },
   {
     "id": "GITHUB-H1-PUBLIC-SCRATCH",
@@ -629,7 +633,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Public fixture read succeeded; protection wrapper could not read classic protection and warned against inferring absence; rulesets empty and complete. Next: Production-enabled exact test operation and independent confirmation. Keep separate public fixture; await explicit operation authority and then perform write/readback.",
-    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
+    "nextAction": "Exact production-enabled scratch protection/ruleset mutation and per-operation disposal authority; current connection remains PREVIEW and production OFF."
   },
   {
     "id": "GITHUB-H2-WEBHOOK-READS",
@@ -641,7 +645,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Actual custom repo hook list empty and complete; foreign org refused before provider. No hook exists for detail/delivery read. Next: Approved non-sensitive hook and receiver fixture. Obtain exact isolated fixture approval; then test detail and deliveries.",
-    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
+    "nextAction": "A separately approved non-sensitive existing webhook/delivery fixture is required; creating one needs receiver and secret-transmission approval first."
   },
   {
     "id": "GITHUB-H2-WEBHOOK-DELIVERY-CONTROL",
@@ -653,7 +657,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Custom webhook inventory empty; connection remains PREVIEW production OFF. Next: Approved run-owned hook/delivery plus independent production operation and cleanup authority. Owner supplies exact approval/fixture; do not create or ping arbitrary endpoints.",
-    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
+    "nextAction": "Exact safe disposable hook, owned destination and production redelivery/ping authorization required; do not create or replay external notifications to arbitrary endpoints."
   },
   {
     "id": "GITHUB-H1-PUBLIC-READ",
@@ -678,7 +682,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Exact public fixture remains present, public and empty; feature acceptance not complete. Next: Feature checks complete plus exact independent disposal confirmation. Retain fixture until dependency and explicit deletion decision are satisfied.",
-    "nextAction": "First finish prerequisite acceptance, identify the exact run-owned fixture and obtain its independent deletion confirmation; then custom cleanup and remote absence readback. Preserve original private quarantine."
+    "nextAction": "Exact public fixture disposal confirmation and fresh no-foreign-changes evidence; do not touch the separately quarantined private run."
   },
   {
     "id": "GITHUB-H1-CLASSIC-WRITE-POSTRELEASE",
@@ -692,7 +696,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Source is deployed but actual custom whoami remains PREVIEW and production OFF. Next: Independently authorized production-classified scratch set/remove and cleanup. Owner must authorize exact isolated operation before activation; no guard bypass.",
-    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
+    "nextAction": "Independent exact production-mode scratch write approval and connection switch are absent; all checked source is deployed, but no real governance mutation is authorized."
   },
   {
     "id": "GITHUB-H2-SIGNER-LIFECYCLE",
@@ -704,7 +708,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Authenticated custom webhook listing works; no isolated hook or receiver signature fixture exists. Next: Approved receiver/HMAC fixture plus independent production write and disposal authority. Obtain exact fixture approval, then verify receiver signatures without publishing secrets.",
-    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
+    "nextAction": "Owned non-sensitive receiver/HMAC fixture plus exact signer/webhook production write, delivery and cleanup authorization; no receiver/secret transmission is inferred."
   },
   {
     "id": "GITHUB-H3-ACCESS-LIFECYCLE",
@@ -716,7 +720,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Actual collaborator list complete with one existing admin, no invitations; deploy keys empty and complete. Next: Named consenting principal/public key and independent access-change/cleanup approval. Owner supplies exact isolated access fixture; never invite or grant from reconnect alone.",
-    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
+    "nextAction": "Exact disposable collaborator/key principal and independent access-widening, production and cleanup approval; no outside invitations or new keys inferred."
   },
   {
     "id": "GITHUB-H4-ALERT-TRIAGE",
@@ -728,7 +732,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Dependabot inventory empty complete; code scanning returned no analysis; secret scanning returned disabled. Next: Legitimate disposable alert/analysis fixture and independent status-change approval. Use an explicitly authorized existing alert fixture; do not enable paid scanning or seed harmful material.",
-    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
+    "nextAction": "Real safe test alerts and exact dismissal/reopen authority are absent. Current public fixture has no Dependabot alerts, no code analysis and disabled secret scanning."
   },
   {
     "id": "GITHUB-H4-SETTINGS",
@@ -740,7 +744,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Security features readable. Public Actions settings returned incomplete required fields; private returned HTTP422. Deployed source requires integer fork policy; main 3680779 accepts current string enums. Raw field response not exposed, so precise cause remains unproven. Next: Checked daily release including existing enum fix, then successful read; separate exact writes approved. Retest after normal release; if still failing, capture sanitized section diagnostics through authorized source instrumentation.",
-    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
+    "nextAction": "Exact production-authorized disposable security-settings fixture required; current scanning is disabled. Do not enable paid/private features to manufacture acceptance."
   },
   {
     "id": "GITHUB-O1-OWNER-OVERVIEW",
@@ -752,7 +756,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-18 actual native custom READY 20389ae0 proves owner-consented U works, while old admin overview unconditionally marks personal access unreadable. Reviewed source 41f1655e fixes both account branches with explicit U GET /user, positive numeric identity, exact required type User and stored actor/account matching; minimal id/login/optional 2FA/plan, null withheld fields and honest missing/401/403/foreign handling. Local full 8155 before integration plus final shared-boundary focused 172 and all 21 shapes/check passed; first publication CI fully green. Missing/empty provider type review finding fixed, fresh exact-head CI required. No grant, mutation, private profile leakage or spend; deployed/browser proof pending.",
-    "nextAction": "After source-bearing scheduled READY release of 41f1655e, verify native actual U status matches independently known actor and complete original guided UI checks. Existing OAuth is available; do not request another authorization merely because the old code said unreadable."
+    "nextAction": "After source-bearing scheduled READY release of reviewed 41f1655e, verify actual enrolled U identity and the original guided UI controls. Native OAuth is currently valid; no repeat consent is justified by the old stub."
   },
   {
     "id": "GITHUB-O2-ORG-ADMIN",
@@ -764,7 +768,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Actual org, members/outside collaborators and invitation reads complete; one member, no outsiders, pending or failed invites. Next: Independent exact org settings/access mutation approval. Retain reads; obtain named operation confirmation before guarded writes.",
-    "nextAction": "Reconcile the saved grant with its single owning runner or reconnect the custom adapter after uncertain refresh investigation; then follow procedure for this task, preserving the exact permissions, fixture and independent write approvals in gates."
+    "nextAction": "Exact disposable organization policy/identity mutation and independent production/access approval; safe org reads report free plan and existing policy, not mutation acceptance."
   },
   {
     "id": "GITHUB-O3-TEAM-ROLES",
@@ -776,7 +780,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-18 actual custom PREVIEW/full READY 20389ae0 with new grants: teams empty/complete, full max=500 role inventory returns nine roles, complete=true/availability=available. Initial deliberately bounded max=5 correctly signaled partial. Prior assignment read evidence retained. No exact team/principal grant or independent production/access approval was supplied; no access mutations.",
-    "nextAction": "Use exact independently approved team/principal and grant/role assignment fixture under production/access confirmation; do not create users, widen access or call a capped role list complete."
+    "nextAction": "Complete nine-role and empty-team read now works. Exact named team/principal and independent grant/role/production confirmation still required."
   },
   {
     "id": "GITHUB-O4-BILLING-CODESPACES",
@@ -814,7 +818,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "PENDING",
     "lastEvidence": "2026-10-18 actual custom PREVIEW/full on independently READY 20389ae0. Independent provider PR #1 head/base matched actual github_workflow_open_pr result done=true/status=existing, exact c51e80b0 head and existing labels; no duplicate PR. Separate request with missing rtc-pre-release-check label and dryRun=true returned labels_not_applied/underlying_status=preview through guarded github_issue_set_labels. No label or notification mutation. Original compound application/denial/cleanup acceptance remains open.",
-    "nextAction": "Exact approved missing-label application and notification/outsider denial fixture plus cleanup authority are still needed; source idempotent reuse and safe preview now observed."
+    "nextAction": "Actual existing PR reused at independently matching head; missing-label dry run returns preview, no mutation. Exact label application/notification test and cleanup authority still needed for full compound criterion."
   },
   {
     "id": "GITHUB-W2-EXACT-MERGE",
@@ -828,7 +832,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Source absent from independently observed READY revision; restored adapter is working. Next: Reviewed workflow source included in normal checked daily release plus exact approved scratch fixture. Recheck deployment after scheduled release and execute eligible read/denial scenarios; mutations retain independent authority.",
-    "nextAction": "After the next checked daily release includes requiredRevision, verify alias/READY SHA, restore the service principal and execute this exact scenario; obtain only the notification/production/fixture approvals named in gates."
+    "nextAction": "Safe previews/refusals alone cannot pass; exact disposable merge plus production-enabled principal, fresh green checks and independent owner confirmation required."
   },
   {
     "id": "GITHUB-W2-STACK",
@@ -843,7 +847,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Source absent from independently observed READY revision; restored adapter is working. Next: Reviewed workflow source included in normal checked daily release plus exact approved scratch fixture. Recheck deployment after scheduled release and execute eligible read/denial scenarios; mutations retain independent authority.",
-    "nextAction": "After the next checked daily release includes requiredRevision, verify alias/READY SHA, restore the service principal and execute this exact scenario; obtain only the notification/production/fixture approvals named in gates."
+    "nextAction": "Existing isolated three-PR stack available, but exact retarget/notification, one-at-a-time production merge and cleanup authorization remain separate prerequisites."
   },
   {
     "id": "GITHUB-W3-THREADS",
@@ -867,7 +871,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Source absent from independently observed READY revision; restored adapter is working. Next: Reviewed workflow source included in normal checked daily release plus exact approved scratch fixture. Recheck deployment after scheduled release and execute eligible read/denial scenarios; mutations retain independent authority.",
-    "nextAction": "After the next checked daily release includes requiredRevision, verify alias/READY SHA, restore the service principal and execute this exact scenario; obtain only the notification/production/fixture approvals named in gates."
+    "nextAction": "An owned failed run, annotations/logs and matching default-branch baseline fixture is missing; current fixture inventory has zero workflow runs."
   },
   {
     "id": "GITHUB-W4-CI-RETRY",
@@ -879,7 +883,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-15 restored adapter: Source absent from independently observed READY revision; restored adapter is working. Next: Reviewed workflow source included in normal checked daily release plus exact approved scratch fixture. Recheck deployment after scheduled release and execute eligible read/denial scenarios; mutations retain independent authority.",
-    "nextAction": "After the next checked daily release includes requiredRevision, verify alias/READY SHA, restore the service principal and execute this exact scenario; obtain only the notification/production/fixture approvals named in gates."
+    "nextAction": "An explicitly approved existing failed scratch Actions run on exact head and nonpaid runner is required; current public fixture has zero runs. No new runner/minutes inferred."
   },
   {
     "id": "GITHUB-NATIVE-REVOCATION",
@@ -891,7 +895,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Reconnected useful service grant works; no separately disposable revocation grant available. Next: Disposable service-issued grant and exact revocation authority. Prepare authorized disposable grant; never revoke useful new connection as a test.",
-    "nextAction": "Restore or obtain the authorized disposable grant through the protected existing flow, identify it, perform approved revocation and record subsequent custom denial. Never revoke the coordinating runner grant."
+    "nextAction": "A separately disposable native grant and explicit authority to revoke it; do not revoke the working shared developer OAuth connection."
   },
   {
     "id": "GITHUB-RTC-DIRECT",
@@ -903,7 +907,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Working adapter OAuth is not an RTC pass; contract remains RTC0 restricted subset. Next: Exact-origin short-lived read-only nonproduction service-owned RTC pass. Use protected owner setup/authorized runner when approved; never substitute OAuth.",
-    "nextAction": "Coordinate the protected pass with its single owning runner, execute direct restricted read/denial and readback, then separately authorized revocation. Full RTC1 remains roadmap R engineering."
+    "nextAction": "Exact-origin short-lived read-only RTC pass through protected setup; current native OAuth is not an RTC pass. Reuse saved authorized pass if available, no token capture."
   },
   {
     "id": "GITHUB-RTC-RELAY",
@@ -915,7 +919,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Adapter recovery does not configure optional Hub federation or grant its denied namespaces. Prior actual Hub evidence remains foundation-only. Next: Configured authorized service grant/relay and compatible Hub route. Hub owner configures explicit grant before route acceptance; no provider-specific workaround.",
-    "nextAction": "Finish the existing authorized Hub federation/relay prerequisites in its owning repository, then obtain the scoped service pass and run the actual relay read/denial/readback. Never widen this connection or substitute foundation health for relay proof."
+    "nextAction": "Optional Hub must be explicitly configured with upstream RTC pass and connection permission; observed federation not_configured/provider calls disabled. Standalone native MCP stays independent."
   },
   {
     "id": "GITHUB-RTC-SANDBOX",
@@ -927,7 +931,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Adapter recovery supplies neither scoped RTC pass nor authorized Sandbox route/project. Next: Approved compatible Sandbox runner, scoped service pass and zero-spend cleanup authority. Owner supplies authorized runner/grant; do not provision paid resources.",
-    "nextAction": "When exact runner/project, zero-cost boundary and protected service grant are available, execute real Sandbox read/denial/readback and authorized cleanup; do not relabel preview as TEST or infer spending approval."
+    "nextAction": "Authorized compatible Sandbox project/runner plus direct scoped RTC pass and zero-spend enforcement/cleanup authority; no new paid Sandbox is provisioned."
   },
   {
     "id": "GITHUB-W5-REPO-HEALTH",
@@ -939,7 +943,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Reviewed source in READY live and enrolled disposable repository; read-only PREVIEW, preserve plan/permission gaps.",
     "dependsOn": [],
     "lastEvidence": "2026-10-18 actual custom repo-health on approved public scratch at verified READY 20389ae0 returns done=false/status=partial. Provider repository/protection/rulesets/CI/open-PR/Actions policy reads observed; no CI runs, one PR, unprotected main, zero rulesets. Code scanning 404 no analysis; secret scanning explicitly disabled. Exact unknown coverage is preserved; no mutation or paid activation.",
-    "nextAction": "Provide separately approved enabled scanning/analysis fixture and run evidence to finish the full original health criterion; missing analysis is not a permission grant to buy/activate services."
+    "nextAction": "Fresh real workflow remains partial: zero CI runs, no code analysis and disabled secret scanning; exact observed state is preserved. Use approved populated/enabled fixture."
   },
   {
     "id": "GITHUB-W5-SECURITY-REVIEW",
@@ -951,7 +955,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Reviewed source in READY live, scoped service OAuth, legitimate non-sensitive alert fixtures; no feature activation or access widening.",
     "dependsOn": [],
     "lastEvidence": "2026-10-18 actual custom workflow security review on approved public scratch returns done=false/status=partial. Dependabot alerts complete and empty; code scanning provider 404 no analysis found; secret scanning provider 404 explicitly disabled. Feature read reports secret scanning/push protection/Dependabot security updates disabled. Workflow preserves unknown coverage rather than declaring healthy. No feature activation.",
-    "nextAction": "Use separately authorized scanning/alert fixtures and legitimately enabled features for the complete original scenario; no production or premium activation inferred."
+    "nextAction": "Fresh real review remains partial: Dependabot inventory empty, code analysis absent and secret scanning explicitly disabled. Use legitimately enabled, separately authorized alert fixture."
   },
   {
     "id": "GITHUB-W5-ACCESS-REVIEW",
@@ -974,7 +978,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/W-6.md",
     "gates": "Reviewed source in READY live, disposable exact release/tag fixture, separately approved production operation/notifications and disposal; production remains OFF and spend zero.",
     "dependsOn": [],
-    "lastEvidence": "2026-10-15: new original workflow source f150500d51be54f2b9026eaabd01e347bcc22256; 37 focused maintenance tests plus existing writer/registry coverage (249 targeted checks) passed. Fake provider/dispatcher proof only; source absent from independently READY ecf190d7. No real mutation, activation, notification or cleanup claimed."
+    "lastEvidence": "2026-10-15: new original workflow source f150500d51be54f2b9026eaabd01e347bcc22256; 37 focused maintenance tests plus existing writer/registry coverage (249 targeted checks) passed. Fake provider/dispatcher proof only; source absent from independently READY ecf190d7. No real mutation, activation, notification or cleanup claimed.",
+    "nextAction": "Exact disposable draft/tag lifecycle plus owner production/publish/cleanup approval; no release or publication is inferred from generic test authorization."
   },
   {
     "id": "GITHUB-W6-CLEANUP",
@@ -985,7 +990,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/W-6.md",
     "gates": "Reviewed source in READY live, approved disposable run-owned branches/PRs, exact deletion confirmation and unchanged ownership baseline; never original quarantined repository cleanup.",
     "dependsOn": [],
-    "lastEvidence": "2026-10-15: new original workflow source f150500d51be54f2b9026eaabd01e347bcc22256; 37 focused maintenance tests plus existing writer/registry coverage (249 targeted checks) passed. Fake provider/dispatcher proof only; source absent from independently READY ecf190d7. No real mutation, activation, notification or cleanup claimed."
+    "lastEvidence": "2026-10-15: new original workflow source f150500d51be54f2b9026eaabd01e347bcc22256; 37 focused maintenance tests plus existing writer/registry coverage (249 targeted checks) passed. Fake provider/dispatcher proof only; source absent from independently READY ecf190d7. No real mutation, activation, notification or cleanup claimed.",
+    "nextAction": "Exact disposable merged/closed branch target and independent destructive cleanup authority with fresh full inventory required; do not delete uncertain original run resources."
   },
   {
     "id": "GITHUB-W7-NEW-REPO",
@@ -996,7 +1002,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/W-7.md",
     "gates": "Reviewed source in READY live, exact disposable repository and independent production/access/notification/cleanup authority; private paid features remain separate and spend $0.",
     "dependsOn": [],
-    "lastEvidence": "2026-10-15 additional W-7 engineering: source 59e81e0ae9f27ae01ce31ff74891a4e6579f5274; focused workflow, new vulnerability-alert writer contracts, P-3 and registry checks passed (63). Synthetic fixtures only. Not in independently READY ecf190d7; no real repository/configuration, notification, purchase, activation or disposal performed."
+    "lastEvidence": "2026-10-15 additional W-7 engineering: source 59e81e0ae9f27ae01ce31ff74891a4e6579f5274; focused workflow, new vulnerability-alert writer contracts, P-3 and registry checks passed (63). Synthetic fixtures only. Not in independently READY ecf190d7; no real repository/configuration, notification, purchase, activation or disposal performed.",
+    "nextAction": "Exact independently approved disposable repository desired state, organization creation/production authority and cleanup scope; no security or paid defaults silently enabled."
   },
   {
     "id": "GITHUB-W7-FIND",
@@ -1020,7 +1027,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Reviewed source in READY live, legitimate account and billing reads, user authorization only where actually needed; costs unknown if unexposed, no paid capacity or seat changes.",
     "dependsOn": [],
     "lastEvidence": "2026-10-18 ancestry proves fe913a2 already deployed at independently READY 20389ae0. Actual custom digest all five enrolled repos and seven complete UTC billing days Oct11-17: billed_usage complete=true, every day observed, Actions $0 and Copilot $0, with correct nested usage envelope. Overall done=false/status=partial because private alert endpoints 403 for disabled/ineligible features, public code scanning no analysis and secret scanning disabled; 35 sections retained with continuation handle. No mutation or spending. Billing correction is genuinely live; full security/activity coverage is not accepted.",
-    "nextAction": "Use legitimately enabled/readable security fixtures for full original digest coverage; preserve unknown alerts and provider plan/permission distinctions. No source-release wait remains for nested billing correction."
+    "nextAction": "Nested billing fix is already deployed: all seven daily bills read complete at actual $0. Overall digest remains partial because scanning/alerts are disabled or inaccessible; use legitimately enabled/readable fixtures."
   },
   {
     "id": "GITHUB-U1-REST-READ",
@@ -1046,7 +1053,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "PENDING",
     "lastEvidence": "2026-10-15: New implementation source from PR #219 has fake all-door write contracts only. Current custom connection PREVIEW, production disabled and spend $0; no genuine uncurated provider mutation, replay or cleanup authorized.",
-    "nextAction": "Obtain exact isolated zero-charge scratch operation, owner production/notification/fixture and cleanup authorization, then confirm preview/denial/write/readback/replay and journal through genuine custom service; never silently switch or spend."
+    "nextAction": "Exact disposable non-curated operation and independent production/write/cleanup authority; preserve real readback/replay and scoped provider permissions."
   },
   {
     "id": "GITHUB-U2-GRAPHQL-READ",
@@ -1072,7 +1079,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "PENDING",
     "lastEvidence": "2026-10-18 source-pin reconciliation: provider PR #220 merged=true, merge SHA 9271b645 and final head 02aacb49; complete trees equal, GitHub compare proves merge is ancestor of READY 20389ae0 (+156 commits). Original topic 02df1aab was squash-replaced; implementation is deployed. Fresh U-2 read revalidated. Guarded actual mutation, readback, idempotence and approved fixture cleanup remain unperformed: current service PREVIEW/full, production OFF, and no exact production write/cleanup approval. Source/CI/read success is not mutation acceptance.",
-    "nextAction": "Use exact disposable mutation and cleanup authorization plus production-enabled full principal when separately authorized; preserve expected target, schema, scope, spend and replay guards. Source no longer waits for release."
+    "nextAction": "Squash source pin is reconciled and read proof revalidated. Exact disposable mutation and production/write/cleanup authority still absent; no source-release blocker remains."
   },
   {
     "id": "GITHUB-Y9D-HOSTED-READ",
@@ -1084,7 +1091,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-18 actual custom MCP PREVIEW/full at independently READY 20389ae0 with new App grants: hosted runner list returns provider 404, message GitHub hosted runners are not supported for this organization. Organization GET independently reports plan free. No runner creation, capacity or plan change.",
-    "nextAction": "An already eligible organization plan/runner entitlement is required for true inventory acceptance. Do not buy or upgrade a plan for testing; repeat safe read only when provider eligibility changes."
+    "nextAction": "Provider now explicitly says hosted runners unsupported for this organization (404); existing plan is free. Use already eligible entitlement, without purchasing an upgrade."
   },
   {
     "id": "GITHUB-Y9D-COPILOT-ORG-READ",
@@ -1096,7 +1103,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-18 actual custom MCP at independently READY 20389ae0 after owner accepted App grants: policy GET succeeds with enabled_repositories=all; selected repositories returns not-applicable for all policy. Content exclusions GET returns provider 404, which is not proof of disabled exclusions or absent rules. Prior O-4 subscription/seat read evidence exists. Compound criterion remains incomplete; no policy changes or purchases.",
-    "nextAction": "Inspect organization Copilot feature/endpoint eligibility for content exclusions with GitHub; retain ambiguous 404 rather than request another already accepted App grant. Repeat only after entitlement/provider response changes."
+    "nextAction": "Content-exclusion endpoint remains provider 404 despite newly accepted grants; policy all and selected-list not applicable succeeded. Verify actual feature/endpoint eligibility with GitHub."
   },
   {
     "id": "GITHUB-Y9D-SPONSORS-U-READ",
@@ -1108,7 +1115,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-16: PR #233 source head 395a54e passed CI/contract fakes and merged. Live release, new App permission grants and genuine provider acceptance not yet proven.",
-    "nextAction": "Obtain protected end-user OAuth consent through existing setup page; compare GitHub verified payer, tiers and active relationship in read-only PREVIEW."
+    "nextAction": "An exact approved non-sensitive sponsorship recipient and published tiers must be named; personal U is now authorized, but no recipient is inferred or money moved."
   },
   {
     "id": "GITHUB-Y9D-COPILOT-TASKS-U-READ",
@@ -1134,7 +1141,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "PENDING",
     "lastEvidence": "2026-10-16: PR #233 source head 395a54e passed CI/contract fakes and merged. Live release, new App permission grants and genuine provider acceptance not yet proven.",
-    "nextAction": "Run dry-run/production denial against only approved scratch identifiers after deployment and permission upgrade; verify zero writes and sanitized audit status."
+    "nextAction": "Full original plan/scope/cost-denial fixture and prerequisite owner-authorized write scenario remain unavailable; partial PREVIEW refusals cannot prove successful paid execution."
   },
   {
     "id": "GITHUB-Y9D-OWNER-AUTH-WRITES",
@@ -1151,7 +1158,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-16: PR #233 source head 395a54e passed CI/contract fakes and merged. Live release, new App permission grants and genuine provider acceptance not yet proven.",
-    "nextAction": "Present exact proposed provider operation, target, cost exposure and cleanup for separate independent owner authorization; otherwise retain this item BLOCKED and never turn on spending or LIVE."
+    "nextAction": "Exact paid runner/Copilot/Sponsors operation, target, chosen financial exposure and production authorization; actual personal U exists but does not authorize developer spending."
   },
   {
     "id": "GITHUB-O4-AUTH-PREVIEW",
@@ -1177,7 +1184,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
-    "nextAction": "Do not perform real deletion until owner supplies exact test organization and budget ID, explicit ceiling-removal/charge acknowledgment and scoped production approval."
+    "nextAction": "Exact disposable budget destruction permission, production-enabled principal and independent final provider readback; existing real budgets must not be deleted as tests."
   },
   {
     "id": "GITHUB-O4-AUTH-CODESPACES-WRITE",
@@ -1191,7 +1198,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
-    "nextAction": "Obtain exact user/organization policy, production delegation and owner UI readback plan before any Codespaces access PUT."
+    "nextAction": "Exact approved replacement organization membership policy and production authority, plus independent UI readback of this unreadable setting; no live access change inferred."
   },
   {
     "id": "GITHUB-Y7-AUTH-PREVIEW",
@@ -1203,7 +1210,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-17 READY d49aebd6: real custom PREVIEW/full I. Private scratch repo security-settings read refused incomplete; GET private code-scanning default setup 403 'Advanced Security must be enabled' on Free organization. Public scratch security settings complete and GET default setup 200 not-configured. GET org code-security configs 200 one recommended config id 17, GET defaults 200 [], GET repositories for id17 200 [] (complete empty fixture). PREVIEW/full paid private advanced_security enable (dryRun:true) and public feature disable both refused_by_guard production mode, no provider mutation or spend. Cannot verify paid PRIVATE inventory/100-entry completeness with current plan. 2026-10-18 minimum source pin reconciled to reviewed Y-7 provider permission/refusal truth at c552ab89, already on main but absent from verified live 20389ae0. No pre-fix retest can accept corrected behavior.",
-    "nextAction": "After the scheduled source-bearing READY release, repeat the original criterion with Y-7 provider permission/refusal truth. Retest private paid eligibility only after legitimate provider plan and corresponding App permissions, and use an authorized fuller private config attachment fixture if needed. Existing org config0/1 reads and production denial are partial evidence, not whole pass."
+    "nextAction": "Release corrected provider refusal/cursor behavior c552ab8 and use legitimately eligible security fixture; do not treat private-feature 403 as consent or buy eligibility."
   },
   {
     "id": "GITHUB-Y7-AUTH-PRIVATE-PAID-WRITE",
@@ -1217,7 +1224,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
-    "nextAction": "Do not buy or enable private paid security for acceptance; obtain individually approved existing eligible test repo and exact feature if owner elects to validate."
+    "nextAction": "Legitimate private paid-security entitlement and exact uncapped-cost/production/fixture authorization required; do not buy entitlement or alter original private visibility."
   },
   {
     "id": "GITHUB-U1-AUTH-PREVIEW",
@@ -1243,7 +1250,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     ],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
-    "nextAction": "Use a harmless, provider-reviewed-free disposable write first if owner authorizes its exact target; for paid/uncertain future charge require separately explicit user-funded operation approval before sending."
+    "nextAction": "Exact operation/body/target and unbounded-cost authorization with legitimate provider eligibility and production-enabled full principal; developer spending stays zero."
   },
   {
     "id": "GITHUB-G6-PACKAGE-AUTH",
@@ -1255,7 +1262,19 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "2026-10-18 reviewed source correction includes dedicated encrypted P, verified actor/account IDs, exact org and authenticated private personal package routes, curated mutation routing for all twelve variants, and protected removal without decryption. Full local units 8179/211 plus final focused 135 (including one added malformed-list test), shapes 21, check pass; real DB passed prior heads with unchanged additive schema. Fresh final CI/review required. No genuine package token enrolled, no real package mutation accepted; serving source remains 20389ae0.",
-    "nextAction": "After source-bearing scheduled release of at least 4fed65b9, enroll genuine package token through protected setup; safely verify actual org/personal reads and exact disposable guarded lifecycle only under independently granted write/disposal authority."
+    "nextAction": "Release reviewed supported P source 4fed65b9, protected owner token enrollment and actual package access; exact disposable package production lifecycle needs independent write/disposal authority. No extra App permission solves it."
+  },
+  {
+    "id": "GITHUB-B5-PERMISSION-GUIDANCE",
+    "priority": 1,
+    "requiredRevision": "e054d200471e04e6000692bf103506a55881a87a",
+    "task": "On actual source-bearing custom MCP verify unsupported credential requests give truthful access guidance without recommending boolean/schema-only App grants, and compare genuine named permission requirements without asserting unfinished owner consent.",
+    "procedure": "docs/pr-cards/PERMISSION-HEADER-TRUTH.md; docs/pr-cards/G-6.md",
+    "gates": "Independently verified READY implementation source and genuine existing service OAuth; safe read/refusal only. Never remove legitimate permissions, fabricate provider evidence, activate production or spend to manufacture a denial. Distinguish an earlier curated argument refusal from execution of the provider-header translator.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "2026-10-18 actual custom U package GET on READY 20389ae0 was refused HTTP403 Resource not accessible by integration and rendered a nonexistent allows permissionless access write grant. Adapter exposes sanitized explanation, not raw headers; representative exact-value tests are synthetic. Source e054d200 strictly parses explicit read/write/admin, excludes permissionless/schema-only keys, makes genuine named grants conditional and preserves HTTP/request evidence. Stable full local 8192/212 plus focused30 passed; not yet deployed. No provider mutation or new owner grant.",
+    "nextAction": "After source-bearing READY release of e054d200, verify genuine unsupported-request guidance and any legitimately available named-header refusal. Record whether an earlier curated guard or actual formatter executed; do not fabricate provider headers, remove grants or spend."
   }
 ]
 ```
