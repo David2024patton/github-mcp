@@ -1,6 +1,6 @@
 # PUB-1 — Private tenant identity and isolated GitHub MCP data boundary
 
-Status: **IN_PROGRESS plan; no completion claimed**. Design: [PUBLIC-SCALE](../designs/PUBLIC-SCALE.md), §§0–4. Dependencies: legacy A-2/A-3, all existing storage tests; no PUB-2 public login yet.
+Status: **PUB-1 implementation complete in reviewed source / CI, separate public provider and mobile acceptance remains PUB-2/PUB-4**. Design: [PUBLIC-SCALE](../designs/PUBLIC-SCALE.md), §§0–4. Dependencies: legacy A-2/A-3, all existing storage tests; no PUB-2 public login yet.
 
 Baseline: `2354b53279e1a5e2e02692c7f506d39217636fde`; PR #260 fixes owner-only session-mode correction; PR #262 merged work index and public-policy gate. Actual `live` is still behind main and private only. No manual release.
 
@@ -24,12 +24,12 @@ Baseline: `2354b53279e1a5e2e02692c7f506d39217636fde`; PR #260 fixes owner-only s
 - No new GitHub provider tools; developer's $0 budget and preview/build restrictions stay unchanged. Product end-user permissions remain subject to genuinely selected user controls.
 
 ## Acceptance criteria (exact full PUB-1)
-1. [ ] An authenticated, provider-verified stable identity can belong to an explicitly authorized tenant and role with durable, revisioned membership; no path accepts user-typed GitHub login or ChatGPT email as identity proof.
-2. [ ] Each newly provisioned tenant gets an isolated namespace for every existing account-bearing table, OAuth grant/code/client, audit, result, job, rate, protected policy, token, scratch run and project profile, allowing overlapping GitHub logins/IDs without access to other tenants' rows.
-3. [ ] Legacy owner accounts, credentials, OAuth clients, protected resources, production setting, pending jobs and audit remain unchanged and reachable only through the existing private owner path; no production account migration or consent is inferred.
-4. [ ] Private test identity/tenant registration never becomes a public route and is disabled until PUB-2 provider-verified onboarding; any absent/malformed context or unprovisioned schema refuses instead of falling back to legacy public.
-5. [ ] Real disposable PostgreSQL tests prove two independent tenants with the same GitHub login, client names, token labels, policy and run IDs; cross-tenant read, write, refresh, retained-result and cleanup attempts cannot affect other tenant; repeated initialization is additive and idempotent.
-6. [ ] The design and code do not publish a plugin, add an outside user, authorize production writes, purchase capacity, loosen per-operation safeguards, or claim end-user public readiness.
+1. [x] An authenticated, provider-verified stable identity can belong to an explicitly authorized tenant and role with durable, revisioned membership; no path accepts user-typed GitHub login or ChatGPT email as identity proof.
+2. [x] Each newly provisioned tenant gets an isolated namespace for every existing account-bearing table, OAuth grant/code/client, audit, result, job, rate, protected policy, token, scratch run and project profile, allowing overlapping GitHub logins/IDs without access to other tenants' rows.
+3. [x] Legacy owner accounts, credentials, OAuth clients, protected resources, production setting, pending jobs and audit remain unchanged and reachable only through the existing private owner path; no production account migration or consent is inferred.
+4. [x] Private test identity/tenant registration never becomes a public route and is disabled until PUB-2 provider-verified onboarding; any absent/malformed context or unprovisioned schema refuses instead of falling back to legacy public.
+5. [x] Real disposable PostgreSQL tests prove two independent tenants with the same GitHub login, client names, token labels, policy and run IDs; cross-tenant read, write, refresh, retained-result and cleanup attempts cannot affect other tenant; repeated initialization is additive and idempotent.
+6. [x] The design and code do not publish a plugin, add an outside user, authorize production writes, purchase capacity, loosen per-operation safeguards, or claim end-user public readiness.
 
 ## Tests and exit
 Real `tests/db/` local disposable Postgres alongside isolated contract tests for two tenants; tests/unit for invalid identity/tenant references, absent schema and legacy-owner path. Run `npm run check`, focused tenant+existing OAuth/credential tests, complete CI exactly once after implementation, resolve all reviews, update `docs/STATUS.md`, architecture, index, decisions and migration notes, merge only if **every** above line passes. No future PUB completion or original 57 acceptance status changes by this PR.
@@ -67,3 +67,12 @@ Real `tests/db/` local disposable Postgres alongside isolated contract tests for
 }
 ```
 <!-- bundle-plan:end -->
+
+## Verification and delivery record (2026-10-18)
+
+- Plan frozen before coding: `d1d3ff7a509cbddeb6e688fac87a92bcd825aa23`.
+- Corrected security and test code at `234f7882081fe1a8fa99339fccd515b4abe6ea64`: exact-head `ci` **39159077607 SUCCESS**, including both unit shards, shapes, RTC, check, and disposable real-PostgreSQL tests. The original red run identified one improperly direct real-write audit test; the fix uses `claimChange` and cross-tenant replay evidence instead of weakening write safeguards. The independent P1 review identified sole-owner demotion; conflict-update `WHERE existing.role <> 'owner'` and real Postgres coverage now protect it.
+- Final patch adds an independent pg_catalog 28-table check before tenant activation. Exact-head CI/review for this final patch remains a mandatory merge gate; do not count a pending run as passed.
+- `tests/db/pub-1-tenancy.test.js` proves names/IDs/tokens, refresh, result handles, jobs, audit request claims, protected rows and run deletion are isolated on independently connected actual PostgreSQL sessions; root owner data unchanged. Unit tests refuse untrusted IDs, incomplete namespace, user-controlled URL options and forged membership before DB access.
+- No customer-facing verified GitHub sign-in or customer enrollment was added. The provider-verification step is explicitly **PUB-2**: this dormant internal identity directory is the durable store prepared for authenticated principals, not an assertion of successful customer OAuth or public production acceptance. Private mobile/desktop acceptance is **PUB-4**. No production data migration, publication or paid operations occurred.
+- Scope: one substantial whole data/credentials trust-boundary subsection; meaningful new source ≈ 216 lines in `src/tenancy/directory.js`, no original 57 live acceptance row changed. The planned 550-line estimate was a guide; reuse of all 28 existing store families via PostgreSQL namespace makes copy-pasting hundreds of per-table wrappers unnecessary.

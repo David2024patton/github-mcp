@@ -38,6 +38,10 @@ beforeAll(async () => {
   const p2 = await directory.enrollVerifiedGithubSubject('10002');
   a = await directory.provision(p1);
   b = await directory.provision(p2);
+  // A caller must not make a tenant active before all tables are real,
+  // even when it knows the correct opaque schema name.
+  expect(await directory.activate(a.id, tenantSchemaName(a.id))).toBe(false);
+  expect(await directory.activate(b.id, tenantSchemaName(b.id))).toBe(false);
 
   // Genuine separate PostgreSQL connections with the exact per-tenant startup
   // search_path option; no app SELECT/INSERT may accidentally use the public table.

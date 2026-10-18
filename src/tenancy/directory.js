@@ -130,6 +130,11 @@ export function createTenantDirectory(sql) {
     async activate(tenantId, namespaceVerified) {
       const id = validUuid(tenantId);
       if (namespaceVerified !== tenantSchemaName(id)) return false;
+      // Never trust a caller-supplied namespace string as an initialization proof.
+      // The provisioning role independently verifies all known table families first.
+      const present = await sql`SELECT count(*)::integer AS table_count FROM pg_catalog.pg_tables
+        WHERE schemaname = ${namespaceVerified} AND tablename = ANY(${SCHEMA_TABLES}::text[])`;
+      if (present.length !== 1 || Number(present[0].table_count) !== SCHEMA_TABLES.length) return false;
       const rows = await sql`UPDATE gh_tenants SET status = 'active'
         WHERE id = ${id}::uuid AND namespace = ${namespaceVerified}
           AND status = 'provisioning' RETURNING id`;

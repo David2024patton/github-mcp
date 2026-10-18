@@ -1709,7 +1709,7 @@
       "design": "docs/designs/PUBLIC-SCALE.md",
       "dependencies": [],
       "card": "docs/pr-cards/PUB-1.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "tenancy (additive); owner migration gated",
       "budget": 750,
       "units": [
@@ -1717,7 +1717,9 @@
       ],
       "readiness": "READY",
       "ownerInputs": [],
-      "pr": []
+      "pr": [
+        263
+      ]
     },
     {
       "id": "PUB-2",
