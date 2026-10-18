@@ -1,7 +1,7 @@
 // O-1: honest owner account overview and security review from live GitHub.
 // Each signal has its own provenance and status; a denied/partial provider read
 // cannot silently become "all clear". No account mutation, spend or credential echo.
-import {listAll} from '../github/client.js';
+import {githubFor,listAll} from '../github/client.js';
 import {defineRead} from './define-read.js';
 import {plain,readerFor} from './github-read.js';
 import {selectedSpendCap} from './spend-guard.js';
@@ -32,6 +32,29 @@ const attempt=async(items,id,area,task,interpret)=>{
   try{push(items,interpret(await task()));}
   catch(e){push(items,unreadable(id,area,providerError(e)));}
 };
+async function personalStatus(items,owner,row,ctx,id='personal-account'){
+  if(!row.user_token_enc){
+    push(items,unreadable(id,'personal',
+      'No personal authorization is enrolled for this account. Use Authorize as me on the private setup page.'));
+    return;
+  }
+  await attempt(items,id,'personal',async()=>{
+    const gh=await githubFor(ctx,{owner,cred:'U'});
+    return (await gh.request('GET /user')).data;
+  },user=>{
+    const expected=row.account_type==='User'?row.login:row.user_login;
+    if(!Number.isSafeInteger(user?.id)||user.id<=0||typeof user.login!=='string'||
+       user.type!=='User'||typeof expected!=='string'||
+       user.login.toLowerCase()!==expected.toLowerCase()||
+       row.account_type==='User'&&user.id!==row.account_id)
+      return unreadable(id,'personal','The authorized GitHub user does not match this account’s enrolled personal identity. Nothing was inferred from installation credentials.');
+    return ok(id,'personal',{
+      id:user.id,login:user.login,
+      two_factor_authentication:typeof user.two_factor_authentication==='boolean'?user.two_factor_authentication:null,
+      plan:typeof user.plan?.name==='string'?user.plan.name:null
+    },'Verified enrolled personal identity using user authorization. Omitted personal settings remain unknown; this is not a full security review.');
+  });
+}
 async function overview(a,ctx){
   const owner=a.owner??ctx.connection.default_account;
   const row=await getAccount(ctx,owner);
@@ -61,8 +84,7 @@ async function overview(a,ctx){
   if(row.account_type!=='Organization'){
     push(items,unreadable('organization-profile','org',
       'This enrolled account is a user, not an organization; use personal-account tools for its profile.'));
-    push(items,unreadable('personal-status','personal',
-      'Personal settings require a separately authorized user credential, not an App installation.'));
+    await personalStatus(items,owner,row,ctx,'personal-status');
     return {owner,account_type:row.account_type,server:local,
       status:'partial',checks:items,summary:summarize(items)};
   }
@@ -220,8 +242,7 @@ async function overview(a,ctx){
         usage_items:usage.items.length,complete:true,currency:'USD'
       },'Actual GitHub-reported billed usage for the selected UTC month; fixed subscriptions or invoices not shown by this API are not included.');
     });
-  push(items,unreadable('personal-account','personal',
-    'Personal account requires a separate user-authorized token, not this organization installation.'));
+  await personalStatus(items,owner,row,ctx);
   return {owner,account_type:'Organization',plan,
     checked_repositories:repos?.items.length??0,
     repo_inventory_complete:repos?!repos.capped:false,

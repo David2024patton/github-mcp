@@ -29,6 +29,7 @@ const fakeRepo=(secret='enabled')=>({
     secret_scanning_push_protection:{status:'enabled'},
     dependabot_security_updates:{status:'enabled'}}});
 function arrange(w,opts={}){
+  w.gh.when('GET /user').reply(200,{id:1,login:'example-owner',type:'User',two_factor_authentication:true});
   w.gh.when(routes.org).reply(200,org(opts.twoFactor??true));
   w.gh.when(routes.owners).reply(200,[{login:'example-owner',id:1}]);
   w.gh.when(routes.outside).reply(200,opts.outside?[{login:'outsider'}]:[]);
@@ -205,5 +206,57 @@ describe('O-1 actual owner and security overview',()=>{
       status:'not_readable'});
     expect(r.summary.not_readable).toBeGreaterThan(0);
     expect(w.gh.calls.filter(c=>c.method!=='GET')).toHaveLength(0);
+  });
+});
+
+describe('O-1 enrolled personal authority read',()=>{
+  const personal=out=>out.checks.find(x=>x.area==='personal');
+  it('uses genuine U associated with an org and exposes minimal verified status only',async()=>{
+    const w=await makeWorld({profile:'read_only'});arrange(w);
+    w.gh.when('GET /user').reply(200,{id:1,login:'EXAMPLE-OWNER',type:'User',two_factor_authentication:true,plan:{name:'free'},email:'private@example.test',bio:'private text',token:'ghu_FAKEprivateProfileValue'});
+    const out=await call(w,'github_admin_overview');
+    expect(personal(out)).toMatchObject({id:'personal-account',status:'ok',value:{id:1,login:'EXAMPLE-OWNER',two_factor_authentication:true,plan:'free'}});
+    const reads=w.gh.calls.filter(x=>x.route==='GET /user');expect(reads).toHaveLength(1);
+    expect(reads[0].headers.authorization).toBe('token ghu_FAKE0123456789abcdefghij');
+    expect(JSON.stringify(out)).not.toMatch(/private@example|private text|privateProfileValue/);
+    expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);expect(w.gh.invalid).toEqual([]);
+  });
+  it('keeps withheld personal settings unknown instead of treating them as false',async()=>{
+    const w=await makeWorld({profile:'read_only'});arrange(w);
+    w.gh.when('GET /user').reply(200,{id:1,login:'example-owner',type:'User'});
+    const out=personal(await call(w,'github_admin_overview'));
+    expect(out).toMatchObject({status:'ok',value:{two_factor_authentication:null,plan:null}});
+    expect(out.detail).toContain('Omitted personal settings remain unknown');
+  });
+  it('uses U for a personal enrolled account without pretending it is an organization',async()=>{
+    const w=await makeWorld({profile:'read_only'});
+    await w.db.upsertAccount({login:'example-org',accountId:1011,accountType:'User',label:'Personal'});
+    w.gh.when('GET /user').reply(200,{id:1011,login:'example-org',type:'User',two_factor_authentication:false});
+    const out=await call(w,'github_admin_overview');
+    expect(out.account_type).toBe('User');
+    expect(personal(out)).toMatchObject({id:'personal-status',status:'ok',value:{login:'example-org',two_factor_authentication:false}});
+    expect(w.gh.calls.map(x=>x.route)).toEqual(['GET /user']);
+  });
+  it('does not request any personal provider data without U or fall back to I',async()=>{
+    const w=await makeWorld({profile:'read_only'});arrange(w);await w.db.clearUserAuthorization('example-org');
+    const out=personal(await call(w,'github_admin_overview'));
+    expect(out.status).toBe('not_readable');expect(out.reason).toContain('Authorize as me');
+    expect(w.gh.calls.some(x=>x.route==='GET /user')).toBe(false);
+  });
+  it.each([401,403])('preserves provider HTTP %i as unreadable without credential fallback',async status=>{
+    const w=await makeWorld({profile:'read_only'});arrange(w);
+    w.gh.when('GET /user').reply(status,{message:'Not authorized'});
+    expect(personal(await call(w,'github_admin_overview'))).toMatchObject({status:'not_readable',reason:expect.stringContaining('HTTP '+status)});
+    expect(w.gh.calls.filter(x=>x.route==='GET /user')).toHaveLength(1);
+  });
+  it.each([{id:1,login:'example-owner'},{id:1,login:'example-owner',type:''},{id:2,login:'outsider',type:'User'},{id:1,login:'example-owner',type:'Organization'},{login:'example-owner'},{id:0,login:'example-owner'}])('refuses mismatched or unverifiable user identity: %j',async user=>{
+    const w=await makeWorld({profile:'read_only'});arrange(w);w.gh.when('GET /user').reply(200,user);
+    expect(personal(await call(w,'github_admin_overview'))).toMatchObject({status:'not_readable',reason:expect.stringContaining('does not match')});
+  });
+  it('refuses a personal account whose provider numeric identity differs from enrollment',async()=>{
+    const w=await makeWorld({profile:'read_only'});
+    await w.db.upsertAccount({login:'example-org',accountId:1011,accountType:'User',label:'Personal'});
+    w.gh.when('GET /user').reply(200,{id:9999,login:'example-org',type:'User'});
+    expect(personal(await call(w,'github_admin_overview')).status).toBe('not_readable');
   });
 });

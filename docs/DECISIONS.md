@@ -1,3 +1,7 @@
+## 2026-10-18 — O-1 personal authorization must be attempted before declaring it missing
+
+Actual deployed acceptance had valid owner-consented U while admin overview always claimed personal status inaccessible. Source correction uses explicit U GET /user, verifies stored login/type and personal account numeric identity, omits private email/bio and handles withheld 2FA/plan as unknown. No credential fallback, new grant, mutation, production activation or spend. Existing O-1 source credit is not repeated; source-bearing live and guided UI proof remain open.
+
 ## 2026-10-18 — dedicated package credential correction
 
 The owner authorized remaining release preparation and package authentication repair. Existing G-6 calls must use a supported classic package credential P rather than assume installation Packages grants work. P is explicit, optional, encrypted and restricted to package routes on the enrolled account; K remains notifications-only. The protected setup verifies provider scopes and actor before storage, supports replacement/removal, and optional repo is allowed only to support repository-scoped registries. Provider package access, production, confirmation, revocation, pass isolation and no developer spending remain binding. This source correction earns no new subsection/bundle credit and does not establish live package acceptance.
