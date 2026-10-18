@@ -5,6 +5,7 @@ import {SETTINGS,MAP_STATUS,fill,findSettings} from '../data/dashboard-map.js';
 import {READBACKS,pointerGet} from '../data/readbacks.js';
 import {defineRead} from './define-read.js';
 import {plain,readerFor} from './github-read.js';
+import {enrolledGuideUser,restrictUnknownUserLink} from './guide-personal.js';
 
 const OWNER={type:'string',maxLength:39},REPO={type:'string',minLength:1,maxLength:100};
 const SCOPE={type:'string',enum:['repo','org','user']};
@@ -16,13 +17,13 @@ const allowed=(ctx,owner)=>{
     throw new TypeError('This account is not enrolled in the active connection.');
   return chosen;
 };
-const guide=(s,a,owner)=>fill({
+const guide=(s,a,owner,user)=>restrictUnknownUserLink(fill({
   id:s.id,setting:s.title,page:s.page,scope:s.scope,url:s.url,
   steps:s.steps.map((x,i)=>({n:i+1,...x})),expected:s.expected,
   ...(s.apiAvailable===false?{apiAvailable:false,reason:s.reason,browserAgent:s.browserAgent}:{}),
   verification:s.verifyWith??(READBACKS[s.id]?{tool:'github_admin_check_setting',args:{settingId:s.id,owner:'{org}',repo:'{repo}'},fields:Object.keys(READBACKS[s.id].fields)}:null),
   status:s.verifyWith||READBACKS[s.id]?'can_check_with_provider':'manual_confirmation_required'
-},{org:owner,user:owner,repo:a.repo});
+},{org:owner,user,repo:a.repo}),s.url,user);
 export const listGuided=defineRead({
   name:'github_admin_list_guided_settings',area:'admin',audience:['O'],
   description:'List structured guides for GitHub owner, organization or repository dashboard settings with confirmation status.',
@@ -30,6 +31,7 @@ export const listGuided=defineRead({
     query:{type:'string',minLength:2,maxLength:120}},
   handler:(a,ctx)=>plain(async()=>{
     const owner=allowed(ctx,a.owner);
+    const user=await enrolledGuideUser(ctx,owner);
     if(a.repo&&!/^[a-zA-Z0-9._-]{1,100}$/.test(a.repo))
       throw new TypeError('Repository name is not valid.');
     const matches=a.query?findSettings(a.query,{max:100,scope:a.scope}):
@@ -38,7 +40,7 @@ export const listGuided=defineRead({
     const page=matches.slice(offset,offset+max);
     return {owner,map:MAP_STATUS,total:matches.length,offset,
       count:page.length,complete:offset+max>=matches.length,
-      settings:page.map(s=>guide(s,a,owner)),
+      settings:page.map(s=>guide(s,a,owner,user)),
       note:'Navigation links and manual checks are not proof of a changed setting.'};
   })
 });
