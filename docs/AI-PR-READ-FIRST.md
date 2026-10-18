@@ -11,8 +11,7 @@ honored. A blocking item that is not honored is fixed in the same PR, never defe
 2. Installation tokens are minted from the App key, cached encrypted until 5 minutes before expiry, and **downscoped per
    connection** (read-only connection → every permission `read`; pass limited to repositories → token limited to them).
    A change that widens the minted permissions or drops downscoping is an owner decision.
-3. A classic token is accepted only with the `notifications` scope (the setup page reads `X-OAuth-Scopes`); each tool
-   uses only the credential its TOOL-CATALOG Cred column names (`I` / `U` / `K`).
+3. A classic notifications token K is accepted only with the `notifications` scope. Owner-authorized package correction adds a separate P credential with `read:packages` and optional `write:packages`, `delete:packages`, and `repo` for repository-scoped registries, verified through `X-OAuth-Scopes` and `GET /user` on protected setup. P can only reach exact connected-account package routes, cannot serve repository/permission-limited passes, and cannot mutate on read-only connections. Each tool uses its catalog credential (`I` / `U` / `K` / `P`), with no fallback.
 4. Non-production deployments (`VERCEL_ENV !== 'production'`) refuse every credential step (manifest, user
    authorization, token paste) and production mode.
 

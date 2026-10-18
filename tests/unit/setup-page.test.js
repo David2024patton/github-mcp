@@ -103,7 +103,7 @@ describe('the setup page', () => {
   it('refuses every credential step off the production deployment, but still shows status', async () => {
     const t = await build({ env: { ...PROD, VERCEL_ENV: 'preview' } });
     await t.open();
-    for (const action of ['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'reveal']) {
+    for (const action of ['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'add-package', 'remove-package', 'reveal']) {
       const res = await t.post({ action, login: 'example-org', token: 'ghp_FAKE'.padEnd(40, 'x') });
       expect(res.statusCode, action).toBe(403);
       expect(res.body).toContain('production deployment');
@@ -754,5 +754,115 @@ describe('setup form feedback visibility on mobile without JavaScript', () => {
     expect(good.body).toContain('Continue to GitHub');
     expect(good.body.indexOf('Ready to create the GitHub App')).toBeLessThan(good.body.indexOf('1. Create the GitHub App for an account'));
     expect(good.body).toContain('<form method="post" action="https://github.com/organizations/example-org/settings/apps/new');
+  });
+});
+
+describe('dedicated package credential enrollment', () => {
+  const token = 'fixture-package-token-value-only';
+  async function prepare(scopes = 'read:packages, write:packages, delete:packages', actor = 'example-user') {
+    const t = await build();
+    await t.db.upsertAccount({ login: 'example-org', accountId: 1001, accountType: 'Organization', label: 'Example' });
+    await t.credentials.storeUserAuthorization('example-org', { userLogin: 'example-user', accessToken: 'fixture-user-authorization-value' });
+    t.gh.when('GET /rate_limit').reply(200, {}, { 'x-oauth-scopes': scopes });
+    t.gh.when('GET /user').reply(200, { id: 1002, login: actor });
+    await t.open();
+    return t;
+  }
+  it('verifies scopes and actor, encrypts separately, never reveals token, then removes it', async () => {
+    const t = await prepare();
+    const result = await t.post({ action: 'add-package', login: 'example-org', token });
+    expect(result.statusCode).toBe(200);
+    expect(JSON.stringify(result)).not.toContain(token);
+    const row = await t.db.getAccount('example-org');
+    expect(row.package_enc).toMatch(/^v1\./);
+    expect(row.package_enc).not.toContain(token);
+    expect(row.classic_enc).toBeNull();
+    expect(await t.credentials.token({ account: 'example-org', cred: 'P' })).toBe(token);
+    expect((await t.post({ action: 'remove-package', login: 'example-org' })).statusCode).toBe(200);
+    await expect(t.credentials.token({ account: 'example-org', cred: 'P' })).rejects.toMatchObject({ code: 'no_credentials' });
+  });
+  it.each(['notifications', 'read:packages, admin:org', ''])('rejects incorrect scopes without storage: %s', async scopes => {
+    const t = await prepare(scopes);
+    expect((await t.post({ action: 'add-package', login: 'example-org', token })).statusCode).toBe(400);
+    expect((await t.db.getAccount('example-org')).package_enc).toBeNull();
+    expect(t.gh.calls.some(c => c.route === 'GET /user')).toBe(false);
+  });
+  it('rejects another user and preserves an existing credential', async () => {
+    const t = await prepare('read:packages', 'outsider');
+    await t.credentials.storePackage('example-org', token, { scopes: ['read:packages'], actor: 'example-user' });
+    const before = (await t.db.getAccount('example-org')).package_enc;
+    expect((await t.post({ action: 'add-package', login: 'example-org', token: token + 'new' })).statusCode).toBe(400);
+    expect((await t.db.getAccount('example-org')).package_enc).toBe(before);
+  });
+  it.each(['add-package', 'remove-package'])('retains passphrase and CSRF guards for %s', async action => {
+    const t = await prepare();
+    expect((await t.post({ action, login: 'example-org', token, passphrase: 'wrong' })).statusCode).toBe(401);
+    expect((await t.post({ action, login: 'example-org', token }, { csrf: 'wrong' })).statusCode).toBe(403);
+    expect((await t.db.getAccount('example-org')).package_enc).toBeNull();
+  });
+});
+
+describe('package enrollment provider boundaries', () => {
+  const token = 'fixture-package-token-value-only';
+  it('supports a personal account without an unrelated App authorization and accepts optional repo for inherited packages', async () => {
+    const t = await build();
+    await t.db.upsertAccount({ login: 'example-user', accountId: 1002, accountType: 'User', label: 'Personal' });
+    t.gh.when('GET /rate_limit').reply(200, {}, { 'x-oauth-scopes': 'read:packages, repo' });
+    t.gh.when('GET /user').reply(200, { id: 1002, login: 'EXAMPLE-USER' });
+    await t.open();
+    expect((await t.post({ action: 'add-package', login: 'example-user', token })).statusCode).toBe(200);
+    expect((await t.db.getAccount('example-user')).package_scopes).toEqual(['read:packages', 'repo']);
+  });
+  it.each([
+    [undefined, 200, { id: 1002, login: 'example-user' }],
+    ['read:packages', 401, { message: 'Bad credentials' }],
+    ['read:packages', 200, { login: 'example-user' }]
+  ])('refuses nonclassic or unverified identities without storing the token', async (scopes, status, user) => {
+    const t = await build();
+    await t.db.upsertAccount({ login: 'example-user', accountId: 1002, accountType: 'User', label: 'Personal' });
+    t.gh.when('GET /rate_limit').reply(200, {}, scopes ? { 'x-oauth-scopes': scopes } : {});
+    t.gh.when('GET /user').reply(status, user);
+    await t.open();
+    expect((await t.post({ action: 'add-package', login: 'example-user', token })).statusCode).toBe(400);
+    expect((await t.db.getAccount('example-user')).package_enc).toBeNull();
+  });
+  it('records provider expiry and refuses an expired token without replacing a valid token', async () => {
+    const t = await build();
+    await t.db.upsertAccount({ login: 'example-user', accountId: 1002, accountType: 'User', label: 'Personal' });
+    const headers = { 'x-oauth-scopes': 'read:packages', 'github-authentication-token-expiration': new Date(Date.now()+3600e3).toISOString() };
+    t.gh.when('GET /rate_limit').reply(200, {}, headers);
+    t.gh.when('GET /user').reply(200, { id: 1002, login: 'example-user' });
+    await t.open();
+    expect((await t.post({ action: 'add-package', login: 'example-user', token })).statusCode).toBe(200);
+    const before = await t.db.getAccount('example-user');
+    expect(new Date(before.package_expires_at).toISOString()).toBe(headers['github-authentication-token-expiration']);
+    t.gh.when('GET /rate_limit').reply(200, {}, { ...headers, 'github-authentication-token-expiration': '2000-01-01T00:00:00Z' });
+    expect((await t.post({ action: 'add-package', login: 'example-user', token: token+'new' })).statusCode).toBe(400);
+    expect((await t.db.getAccount('example-user')).package_enc).toBe(before.package_enc);
+  });
+});
+
+describe('package token removal when encryption is unavailable',()=>{
+  it('removes ciphertext with existing owner safeguards without needing to decrypt it',async()=>{
+    const t=await build({env:{...PROD,TOKEN_ENCRYPTION_KEY:''}});
+    await t.db.upsertAccount({login:'example-user',accountId:1002,accountType:'User',label:'Personal'});
+    await t.db.setPackageToken('example-user',{enc:'v1.fixture-package-ciphertext',scopes:['read:packages'],actor:'example-user'});
+    await t.open();
+    expect((await t.post({action:'remove-package',login:'example-user'},{csrf:'wrong'})).statusCode).toBe(403);
+    expect((await t.db.getAccount('example-user')).package_enc).not.toBeNull();
+    expect((await t.post({action:'remove-package',login:'example-user',passphrase:'wrong'})).statusCode).toBe(401);
+    expect((await t.post({action:'remove-package',login:'example-user'})).statusCode).toBe(200);
+    expect((await t.db.getAccount('example-user')).package_enc).toBeNull();
+    expect((await t.post({action:'add-package',login:'example-user',token:'fixture-package-token-value-only'})).statusCode).toBe(503);
+    expect(t.gh.calls).toEqual([]);
+  });
+  it('does not enroll a reused personal login with a different numeric provider identity',async()=>{
+    const t=await build();
+    await t.db.upsertAccount({login:'example-user',accountId:1002,accountType:'User',label:'Personal'});
+    t.gh.when('GET /rate_limit').reply(200,{},{'x-oauth-scopes':'read:packages'});
+    t.gh.when('GET /user').reply(200,{id:9999,login:'example-user'});
+    await t.open();
+    expect((await t.post({action:'add-package',login:'example-user',token:'fixture-package-token-value-only'})).statusCode).toBe(400);
+    expect((await t.db.getAccount('example-user')).package_enc).toBeNull();
   });
 });

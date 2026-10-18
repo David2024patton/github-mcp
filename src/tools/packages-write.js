@@ -11,15 +11,15 @@ export const packageProperties = { owner: OWNER, scope: { type: 'string', enum: 
   packageType: TYPE, packageName: NAME };
 const template = (t) => t.scope === 'org'
   ? '/orgs/{org}/packages/{package_type}/{package_name}'
-  : '/users/{username}/packages/{package_type}/{package_name}';
+  : '/user/packages/{package_type}/{package_name}';
 const params = (t) => ({
-  ...(t.scope === 'org' ? { org: t.owner } : { username: t.owner }),
+  ...(t.scope === 'org' ? { org: t.owner } : {}),
   package_type: t.type, package_name: t.name
 });
 const target = (args, ctx) => ({
   owner: ownerOf(args, ctx), scope: args.scope, type: args.packageType, name: args.packageName
 });
-const get = (ctx, t, id) => missing(async () => (await (await octo(ctx, t.owner))
+const get = (ctx, t, id) => missing(async () => (await (await octo(ctx, t.owner, 'P'))
   .request('GET ' + template(t) + (id ? '/versions/{package_version_id}' : ''),
     { ...params(t), ...(id ? { package_version_id: id } : {}) })).data);
 const snapshot = (x) => x === null ? null : JSON.stringify({
@@ -36,7 +36,7 @@ export const packageDeleteVersion = defineGithubWrite({
   description: 'Delete a verified package version; recovery may be possible for 30 days.',
   properties: { ...packageProperties, versionId: ID },
   required: ['scope', 'packageType', 'packageName', 'versionId'],
-  declarations: { production: 'always', confirm: 'always', profiles: ['full'] },
+  declarations: { cred: 'P', production: 'always', confirm: 'always', profiles: ['full'] },
   target,
   read: async (args, ctx, t) => ({
     pkg: await get(ctx, t), version: await get(ctx, t, args.versionId)
@@ -51,7 +51,7 @@ export const packageDeleteVersion = defineGithubWrite({
     if (snapshot(freshPkg) !== snapshot(before.pkg) || snapshot(freshVersion) !== snapshot(before.version))
       throw refusal('Package or version changed after preview; review its new state.');
     ensureDeletable(freshPkg, freshVersion, args.versionId);
-    return (await octo(ctx, t.owner)).request('DELETE ' + template(t) + '/versions/{package_version_id}',
+    return (await octo(ctx, t.owner, 'P')).request('DELETE ' + template(t) + '/versions/{package_version_id}',
       { ...params(t), package_version_id: args.versionId });
   },
   readAfter: ({ args, ctx, target: t }) => get(ctx, t, args.versionId),
@@ -64,8 +64,8 @@ export const packageDeleteVersion = defineGithubWrite({
 // A whole package deletion must name its exact version count, not imply an incomplete
 // first page contains every version. GitHub itself enforces the public download ceiling.
 const listVersions = async (ctx, t) => {
-  const { data } = await (await octo(ctx, t.owner)).request('GET ' + template(t) + '/versions', {
-    ...params(t), ...(t.scope === 'org' ? { per_page: 100, page: 1 } : {})
+  const { data } = await (await octo(ctx, t.owner, 'P')).request('GET ' + template(t) + '/versions', {
+    ...params(t), per_page: 100, page: 1
   });
   if (!Array.isArray(data)) throw refusal('GitHub did not return package versions.');
   return data.map((v) => ({ id: v.id, name: v.name, download_count: v.download_count ?? null }));
@@ -83,7 +83,7 @@ export const packageDelete = defineGithubWrite({
   description: 'Delete an entire verified package and all versions with a 30-day restore warning.',
   properties: { ...packageProperties },
   required: ['scope', 'packageType', 'packageName'],
-  declarations: { production: 'always', confirm: 'always', profiles: ['full'] },
+  declarations: { cred: 'P', production: 'always', confirm: 'always', profiles: ['full'] },
   target,
   read: async (_args, ctx, t) => {
     const pkg = await get(ctx, t);
@@ -101,7 +101,7 @@ export const packageDelete = defineGithubWrite({
     complete(pkg, versions);
     if (snapshot(pkg) !== snapshot(before.pkg) || listSignature(versions) !== listSignature(before.versions))
       throw refusal('Package or its version inventory changed after preview; request a new preview.');
-    return (await octo(ctx, t.owner)).request('DELETE ' + template(t), params(t));
+    return (await octo(ctx, t.owner, 'P')).request('DELETE ' + template(t), params(t));
   },
   readAfter: ({ ctx, target: t }) => get(ctx, t),
   verify: ({ after, response }) => response.status === 204 && after === null,

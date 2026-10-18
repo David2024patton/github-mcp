@@ -29,8 +29,8 @@ export const AREAS = Object.freeze([
     needs: { organization_plan: 'read', organization_copilot_seat_management: 'write', organization_codespaces: 'write', codespaces: 'write' } },
   // Installation grants only: package-level access and provider acceptance must be verified per operation.
   // organization_packages is not selectable on GitHub.com; schema membership alone is not a grant requirement.
-  { id: 'packages', title: 'Packages (delete and restore)', tools: 'github_package_*, github_api_write on /packages routes', needs: { packages: 'write' },
-    capabilityNote: 'Package capability is unverified: the current tools use installation credentials, but the pinned package API contract marks these routes unavailable to GitHub Apps. No additional App setting resolves this; verify a supported credential path and package-level access before use.' },
+  { id: 'packages', title: 'Packages (delete and restore)', tools: 'github_package_*, github_api_write on /packages routes', needs: {},
+    capabilityNote: 'Package capability is unverified: package tools require a separately enrolled classic package token on the private setup page, with operation-specific scopes and package-level access. Additional App permissions cannot replace it; a saved token alone does not prove package operations.' },
   { id: 'runners', title: 'Self-hosted runners and runner groups', tools: 'github_api_* on /actions/runners and /actions/runner-groups', needs: { organization_self_hosted_runners: 'write', administration: 'write', actions: 'write' } },
   { id: 'merge-queue', title: 'Merge queues', tools: 'github_pr_* (queued merges), github_api_* on merge queue routes', needs: { merge_queues: 'write', pull_requests: 'write' } },
   { id: 'tokens', title: 'Fine-grained token approvals', tools: 'github_tokenpolicy_*', needs: { organization_personal_access_tokens: 'write', organization_personal_access_token_requests: 'write' } }

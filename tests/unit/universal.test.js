@@ -271,3 +271,45 @@ describe('U-1/O-4/Y-7 exact curated provider-operation authority',()=>{
     }
   });
 });
+
+describe('universal package credential selection', () => {
+  it('requires explicit P, verifies the outbound package token and rejects non-package P', async () => {
+    const w = await makeWorld({ packageToken: true, profile: 'read_only' });
+    const operation = 'GET /orgs/{org}/packages';
+    w.gh.when(operation).reply(200, []);
+    const args = { operation, params: { org: 'example-org', package_type: 'container' } };
+    expect((await dispatch(w, 'github_api_read', args)).isError).toBe(true);
+    expect(w.gh.calls).toEqual([]);
+    const out = await dispatch(w, 'github_api_read', { ...args, cred: 'P' });
+    expect(out.isError).toBeUndefined();
+    expect(w.gh.calls).toHaveLength(1);
+    expect(w.gh.calls[0].headers.authorization).toBe('token fixture-package-token-value-only');
+    expect(w.gh.invalid).toEqual([]);
+    const bad = await dispatch(w, 'github_api_read', { operation: 'GET /repos/{owner}/{repo}', params: scope, cred: 'P' });
+    expect(bad.isError).toBe(true);
+    expect(w.gh.calls).toHaveLength(1);
+  });
+});
+
+describe('private personal package routing keeps curated mutation boundaries',()=>{
+  it('reads authenticated personal private metadata with P and routes every package mutation through the specialized guard',async()=>{
+    const w=await makeWorld({packageToken:true,packageUser:true,profile:'full'});
+    w.gh.when('GET /user/packages').reply(200,[{id:1,name:'private-image',visibility:'private'}]);
+    const read=await dispatch(w,'github_api_read',{operation:'GET /user/packages',params:{package_type:'container'},cred:'P'});
+    expect(read.isError).toBeUndefined();expect(read.structuredContent.data[0].visibility).toBe('private');
+    expect(w.gh.calls[0].headers.authorization).toBe('token fixture-package-token-value-only');
+    for(const base of ['/user','/users/{username}','/orgs/{org}']){
+      for(const[method,suffix,tool]of [
+        ['DELETE','','github_package_delete'],['DELETE','/versions/{package_version_id}','github_package_delete_version'],
+        ['POST','/restore','github_package_restore_version'],['POST','/versions/{package_version_id}/restore','github_package_restore_version']
+      ]){
+        const operation=method+' '+base+'/packages/{package_type}/{package_name}'+suffix;
+        const params={package_type:'container',package_name:'private-image',...(suffix.includes('package_version_id')?{package_version_id:12}:{}),
+          ...(base.includes('{username}')?{username:'example-org'}:base.includes('{org}')?{org:'example-org'}:{})};
+        const result=await dispatch(w,'github_api_write',{operation,params,cred:'P',dryRun:true});
+        expect(result.isError).toBe(true);expect(parse(result).error).toContain(tool);
+      }
+    }
+    expect(w.gh.calls).toHaveLength(1);expect(w.gh.invalid).toEqual([]);
+  });
+});

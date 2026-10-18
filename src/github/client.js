@@ -12,7 +12,7 @@ import { assertNotBlocked, rateLimited, recordRate, resourceFor, takeWriteSlot }
 export const GITHUB_API_VERSION = '2026-03-10';
 /** How long one request may spend waiting on GitHub's `retry-after` / reset times before it gives up (A9). */
 export const DEFAULT_BUDGET_MS = 20_000;
-export const CREDENTIAL_KINDS = Object.freeze(['I', 'U', 'K']);
+export const CREDENTIAL_KINDS = Object.freeze(['I', 'U', 'K', 'P']);
 const USER_AGENT = 'robinson-github-mcp';
 const KEY_EXCLUDED_ARGS = Object.freeze(['dryRun', 'confirm', 'fields', 'detail', 'requestKey']);
 const BUCKET_MS = 10 * 60 * 1000;
@@ -81,7 +81,7 @@ function resolveAccount(connection, owner) {
  * Builds the Octokit for one request (A9: never shared between requests, so a token never outlives its request).
  * @param {object} ctx `{ connection, db, credentials, fetch?, now?, sleep?, budgetMs?, retryAfterBaseValue? }` where
  *   `credentials.token({ account, cred, scope })` returns the token string (A-5 supplies it).
- * @param {{ owner?: string, cred?: 'I'|'U'|'K', scope?: object }} target the account to act as and the credential kind
+ * @param {{ owner?: string, cred?: 'I'|'U'|'K'|'P', scope?: object }} target the account to act as and the credential kind
  */
 export async function credentialFor(ctx, { owner, cred = 'I', scope } = {}) {
   if (!CREDENTIAL_KINDS.includes(cred)) throw new TypeError(`Unknown credential kind "${cred}".`);
@@ -91,6 +91,8 @@ export async function credentialFor(ctx, { owner, cred = 'I', scope } = {}) {
   const asked = passRepos && scope?.repositories?.length ? scope.repositories.filter((r) => passRepos.includes(String(r).toLowerCase())) : [];
   // Never wider than the pass: a request that names nothing inside the pass gets the pass's whole list, not "all repositories".
   const narrowed = passRepos ? { ...(scope ?? {}), repositories: asked.length ? asked : passRepos } : scope;
+  if (cred === 'P' && (passRepos || narrowed?.permissions || narrowed?.repositories?.length))
+    throw new GithubClientError('outside_scope', 'Package tokens cannot be narrowed to repository or permission-limited passes.');
   const token = await ctx.credentials?.token({ account, cred, scope: narrowed, profile: ctx.connection?.profile });
   if (typeof token !== 'string' || !token) {
     throw new GithubClientError('no_credentials', `No GitHub credential is set up for ${account}. Open the setup page to add one.`, { account });
@@ -124,6 +126,9 @@ export async function githubFor(ctx, { owner, cred = 'I', scope } = {}) {
     const { method: rawMethod, url } = octokit.request.endpoint.parse(options);
     const method = String(rawMethod || 'GET').toUpperCase();
     const write = isWrite(method, { ...options, url });
+    // Classic package credentials never authorize arbitrary REST, GraphQL or foreign accounts.
+    // Validate the expanded URL BEFORE any request or rate/write side effect.
+    if (cred === 'P') await assertPackageRequest(ctx, account, method, url);
     const resource = resourceFor(method, url);
     options.headers = { ...options.headers, 'x-github-api-version': GITHUB_API_VERSION };
     await assertNotBlocked(ctx.db, account, resource);
@@ -155,6 +160,32 @@ export async function githubFor(ctx, { owner, cred = 'I', scope } = {}) {
     return response;
   });
   return octokit;
+}
+
+async function assertPackageRequest(ctx, account, method, url) {
+  const parsed = new URL(url, 'https://api.github.com');
+  const parts = parsed.pathname.split('/');
+  const owner = (() => { try { return decodeURIComponent(parts[2] ?? ''); } catch { return ''; } })();
+  const row = await ctx.db.getAccount(account);
+  const authenticated = parts[1] === 'user' && parts[2] === 'packages';
+  const accountBound = authenticated
+    ? row?.account_type === 'User' && row.package_actor?.toLowerCase() === account.toLowerCase()
+    : ['orgs', 'users'].includes(parts[1]) && owner.toLowerCase() === account.toLowerCase() && parts[3] === 'packages';
+  const suffix = '/' + parts.slice(authenticated ? 3 : 4).join('/');
+  const record = /^\/(?:npm|maven|rubygems|docker|nuget|container)\/[^/]+(?:\/versions\/[1-9][0-9]*)?$/;
+  const readable = ['GET', 'HEAD'].includes(method) && (suffix === '/' || record.test(suffix) ||
+    /^\/(?:npm|maven|rubygems|docker|nuget|container)\/[^/]+\/versions$/.test(suffix));
+  const restore = method === 'POST' && suffix.endsWith('/restore') && record.test(suffix.slice(0, -8));
+  const deletion = method === 'DELETE' && record.test(suffix);
+  if (parsed.origin !== 'https://api.github.com' || parsed.username || parsed.password ||
+      !accountBound || !(readable || restore || deletion))
+    throw new GithubClientError('outside_scope', 'This credential is restricted to package operations on its connected account and verified personal actor.');
+  if (!readable && ctx.connection?.profile === 'read_only')
+    throw new GithubClientError('outside_scope', 'A read-only connection cannot mutate packages.');
+  const scopes = row?.package_scopes ?? [];
+  const required = ['read:packages', ...(restore ? ['write:packages'] : deletion ? ['delete:packages'] : [])];
+  if (!row?.package_enc || required.some(s => !scopes.includes(s)))
+    throw new GithubClientError('no_credentials', `The package token needs ${required.join(' and ')}; verify it on the private setup page.`);
 }
 
 /** Records what a failed response says about rate limits and, when it is one, replaces it with `rate_limited`. */

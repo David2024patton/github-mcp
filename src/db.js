@@ -193,6 +193,11 @@ export function createDb(sql = productionSql()) {
         added_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         checked_at TIMESTAMPTZ
       )`;
+      // Additive and rerunnable: existing I/U/K credentials and account policy stay intact.
+      await sql`ALTER TABLE gh_accounts ADD COLUMN IF NOT EXISTS package_enc TEXT,
+        ADD COLUMN IF NOT EXISTS package_scopes TEXT[],
+        ADD COLUMN IF NOT EXISTS package_actor TEXT,
+        ADD COLUMN IF NOT EXISTS package_expires_at TIMESTAMPTZ`;
       // Existing default-zero values were builder policy, not customer-selected limits.
       // Distinguish a user-selected restriction from the legacy default without
       // discarding positive caps that were deliberately configured.
@@ -859,7 +864,7 @@ export function createDb(sql = productionSql()) {
       const rows = await sql`SELECT login, account_type, label, credential_kind, app_id, installation_id, repository_selection,
           installation_status, installation_permissions, user_login, (user_token_enc IS NOT NULL) AS has_user_token, user_token_expires_at,
           (fine_grained_enc IS NOT NULL) AS has_fine_grained, fine_grained_last4, (classic_enc IS NOT NULL) AS has_classic, classic_scopes,
-          classic_last4, plan_name, production_enabled, spend_limit_cents, spend_limit_explicit, is_default, is_scratch, checked_at
+          classic_last4, (package_enc IS NOT NULL) AS has_package, package_scopes, package_actor, package_expires_at, plan_name, production_enabled, spend_limit_cents, spend_limit_explicit, is_default, is_scratch, checked_at
         FROM gh_accounts ORDER BY is_default DESC, login`;
       return rows.map((r) => ({ ...r, app_id: r.app_id == null ? null : Number(r.app_id), installation_id: r.installation_id == null ? null : Number(r.installation_id) }));
     },
@@ -892,6 +897,17 @@ export function createDb(sql = productionSql()) {
     async setClassicToken(login, { enc, scopes, last4 }) {
       const rows = await sql`UPDATE gh_accounts SET classic_enc = ${enc}, classic_scopes = ${scopes}, classic_last4 = ${last4}
         WHERE lower(login) = lower(${login}) RETURNING login`;
+      return rows.length === 1;
+    },
+    async setPackageToken(login, { enc, scopes, actor, expiresAt = null }) {
+      const rows = await sql`UPDATE gh_accounts SET package_enc = ${enc}, package_scopes = ${scopes},
+        package_actor = ${actor}, package_expires_at = ${expiresAt}
+        WHERE lower(login) = lower(${login}) RETURNING login`;
+      return rows.length === 1;
+    },
+    async clearPackageToken(login) {
+      const rows = await sql`UPDATE gh_accounts SET package_enc = NULL, package_scopes = NULL,
+        package_actor = NULL, package_expires_at = NULL WHERE lower(login) = lower(${login}) RETURNING login`;
       return rows.length === 1;
     },
     async setAccountPlan(login, planName) {

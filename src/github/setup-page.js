@@ -196,11 +196,18 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     }
     if (action === 'set-own-people') return await setOwnPeople(p, page);
     if (action === 'save-protected' || action === 'remove-protected') return await editProtected(action, p, page);
-    if (!['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic'].includes(action)) return page(400, { result: 'Unknown action.' });
+    if (!['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'add-package', 'remove-package'].includes(action)) return page(400, { result: 'Unknown action.' });
     if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
-    if (!credentials.keyConfigured()) return page(503, { keyHelp: 'The server has no encryption key, so it will not store anything. Set TOKEN_ENCRYPTION_KEY (see docs/DEPLOY.md) and reload.' });
     if (!isValidLogin(p.login)) return page(400, { result: 'Enter a valid GitHub account name.' });
     const account = p.login;
+    if (action === 'remove-package') {
+      const removed = await db.clearPackageToken(account);
+      return page(removed ? 200 : 404, { result: removed
+        ? 'Removed the stored package token. Revoke it on GitHub too if it is no longer needed.'
+        : 'That account is not set up on the server.' });
+    }
+
+    if (!credentials.keyConfigured()) return page(503, { keyHelp: 'The server has no encryption key, so it will not store anything. Set TOKEN_ENCRYPTION_KEY (see docs/DEPLOY.md) and reload.' });
 
     if (action === 'start-app') {
       const accountType = p.accountType === 'User' ? 'User' : 'Organization';
@@ -375,7 +382,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     return page(200, { result: `Production is now ON for ${row.login}. Connections made in production mode can change its real repositories, always asking you first.` });
   }
 
-  /** The two token boxes. A token is checked with GitHub before anything is stored, and only its last four characters are ever shown. */
+  /** The token boxes. A token is checked with GitHub before anything is stored, and only its last four characters are ever shown. */
   async function addToken(action, account, p, page) {
     const token = typeof p.token === 'string' ? p.token.trim() : '';
     if (token.length < 20 || /\s/.test(token)) return page(400, { result: 'That does not look like a GitHub token.' });
@@ -384,6 +391,28 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       return page(400, { result: `GitHub did not accept that token (${plainStatus(error)}). Nothing was saved.` });
     }
     const scopes = probe.headers['x-oauth-scopes'];
+    if (action === 'add-package') {
+      const list = String(scopes ?? '').split(',').map(s => s.trim()).filter(Boolean);
+      const allowed = ['read:packages', 'write:packages', 'delete:packages', 'repo'];
+      if (scopes === undefined || !list.includes('read:packages') || list.some(s => !allowed.includes(s)))
+        return page(400, { result: 'Use a classic token with read:packages and optional write:packages, delete:packages. Only repository-scoped registries need the additional repo scope. Nothing was saved.' });
+      const row = await db.getAccount(account);
+      if (!row) return page(404, { result: 'Set that account up first. Nothing was saved.' });
+      let actor;
+      try { actor = (await bareOctokit({ token, fetch }).request('GET /user')).data; }
+      catch (error) { return page(400, { result: `GitHub could not verify the package token owner (${plainStatus(error)}). Nothing was saved.` }); }
+      const expected = row.account_type === 'User' ? row.login : row.user_login;
+      if (!Number.isSafeInteger(actor?.id) || actor.id <= 0 || row.account_type === 'User' && actor.id !== row.account_id || !expected || typeof actor.login !== 'string' || actor.login.toLowerCase() !== expected.toLowerCase())
+        return page(400, { result: 'The package token must belong to this personal account or the person already signed in for this organization. Use Authorize as me first. Nothing was saved.' });
+      const expiry = Date.parse(probe.headers['github-authentication-token-expiration'] || '');
+      if (Number.isFinite(expiry) && expiry <= Date.now())
+        return page(400, { result: 'The package token has expired. Nothing was saved.' });
+      const saved = await credentials.storePackage(row.login, token, { scopes: list, actor: actor.login,
+        expiresAt: Number.isFinite(expiry) ? new Date(expiry) : null });
+      return page(saved ? 200 : 409, { result: saved
+        ? `Saved the encrypted package token for ${row.login}. Package-level access and organization SSO/token policy still apply.`
+        : 'The account changed during setup. Nothing was saved.' });
+    }
     if (action === 'add-fine-grained') {
       if (scopes !== undefined) return page(400, { result: 'That is a classic token. Classic tokens are not accepted here; create a fine-grained token instead. Nothing was saved.' });
       let owner;

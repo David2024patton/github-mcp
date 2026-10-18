@@ -280,7 +280,7 @@ export function createFakeDb({ clock = Date.now } = {}) {
         login, account_id: accountId, account_type: accountType, label, credential_kind: credentialKind, app_id: appId, installation_id: null,
         repository_selection: null, installation_permissions: null, installation_status: 'none', user_login: null, user_token_enc: null,
         user_token_expires_at: null, user_refresh_enc: null, user_refresh_expires_at: null, fine_grained_enc: null, fine_grained_last4: null,
-        fine_grained_expires_at: null, classic_enc: null, classic_scopes: null, classic_last4: null, plan_name: null, production_enabled: false,
+        fine_grained_expires_at: null, classic_enc: null, classic_scopes: null, classic_last4: null, package_enc: null, package_scopes: null, package_actor: null, package_expires_at: null, plan_name: null, production_enabled: false,
         spend_limit_cents: 0, spend_limit_explicit: false, is_default: ![...accountRows.values()].some((r) => r.is_default), is_scratch: isScratch, added_at: new Date(clock()), checked_at: null
       });
     },
@@ -300,7 +300,8 @@ export function createFakeDb({ clock = Date.now } = {}) {
         repository_selection: r.repository_selection, installation_status: r.installation_status, installation_permissions: structuredClone(r.installation_permissions),
         user_login: r.user_login, has_user_token: r.user_token_enc != null, user_token_expires_at: r.user_token_expires_at, has_fine_grained: r.fine_grained_enc != null,
         fine_grained_last4: r.fine_grained_last4, has_classic: r.classic_enc != null, classic_scopes: r.classic_scopes && [...r.classic_scopes], classic_last4: r.classic_last4,
-        plan_name: r.plan_name, production_enabled: r.production_enabled, spend_limit_cents: r.spend_limit_cents ?? 0, spend_limit_explicit: r.spend_limit_explicit === true, is_default: r.is_default, is_scratch: r.is_scratch, checked_at: r.checked_at
+        has_package: r.package_enc != null, package_scopes: structuredClone(r.package_scopes), package_actor: r.package_actor,
+        package_expires_at: r.package_expires_at, plan_name: r.plan_name, production_enabled: r.production_enabled, spend_limit_cents: r.spend_limit_cents ?? 0, spend_limit_explicit: r.spend_limit_explicit === true, is_default: r.is_default, is_scratch: r.is_scratch, checked_at: r.checked_at
       })).sort((a, b) => Number(b.is_default) - Number(a.is_default) || a.login.localeCompare(b.login));
     },
     async setInstallation(login, { installationId, repositorySelection, permissions, status }) {
@@ -335,6 +336,18 @@ export function createFakeDb({ clock = Date.now } = {}) {
       const r = accountRows.get(String(login).toLowerCase());
       if (!r) return false;
       Object.assign(r, { classic_enc: enc, classic_scopes: [...scopes], classic_last4: last4 });
+      return true;
+    },
+    async setPackageToken(login, { enc, scopes, actor, expiresAt = null }) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r) return false;
+      Object.assign(r, { package_enc: enc, package_scopes: [...scopes], package_actor: actor, package_expires_at: expiresAt });
+      return true;
+    },
+    async clearPackageToken(login) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r) return false;
+      Object.assign(r, { package_enc: null, package_scopes: null, package_actor: null, package_expires_at: null });
       return true;
     },
     async setAccountPlan(login, planName) {

@@ -41,7 +41,7 @@ export function signAppJwt({ appId, privateKey, now = Date.now }) {
  * @param {{ db: object, env?: object, fetch?: Function, now?: () => number }} options
  * @returns the credential API: `token({ account, cred, scope })` for the client, plus the storing and verifying calls the
  *   setup page uses. `cred`: `I` the account's main credential (App installation token, or its fine-grained token),
- *   `U` the owner's user authorization, `K` the classic notifications token.
+ *   `U` the owner's user authorization, `K` the notifications token, `P` the package-only classic token.
  */
 export function createCredentials({ db, env = process.env, fetch = globalThis.fetch, now = Date.now }) {
   let cachedKey = null;
@@ -65,6 +65,7 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
     userRefresh: (login) => `github-mcp/account/${lower(login)}/user_refresh`,
     fineGrained: (login) => `github-mcp/account/${lower(login)}/fine_grained`,
     classic: (login) => `github-mcp/account/${lower(login)}/classic`,
+    packages: (login) => `github-mcp/account/${lower(login)}/packages`,
     installation: (installationId, scopeKey) => `github-mcp/installation/${installationId}/${scopeKey}`,
     verifier: (state) => `github-mcp/setup/${state}/verifier`
   };
@@ -159,6 +160,14 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
       const row = await db.getAccount(account);
       if (!row) throw missing(account, 'it is not one of the accounts set up on this server.');
       if (cred === 'U') return await userToken(row);
+      if (cred === 'P') {
+        if (scope?.repositories?.length || scope?.permissions)
+          throw missing(row.login, 'a classic package token cannot be narrowed to this pass scope.');
+        if (!row.package_enc) throw missing(row.login, 'no package token has been added; use the private setup page.');
+        if (row.package_expires_at && new Date(row.package_expires_at).getTime() <= now())
+          throw missing(row.login, 'its package token has expired; replace it on the private setup page.');
+        return open(row.package_enc, contexts.packages(row.login));
+      }
       if (cred === 'K') {
         if (!row.classic_enc) throw missing(row.login, 'no notifications token has been added.');
         return open(row.classic_enc, contexts.classic(row.login));
@@ -208,6 +217,12 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
     async storeFineGrained(login, token, { expiresAt = null } = {}) {
       if (typeof token !== 'string' || token.length < 20) throw new TypeError('That does not look like a GitHub token.');
       return await db.setFineGrainedToken(login, { enc: seal(token, contexts.fineGrained(login)), last4: token.slice(-4), expiresAt });
+    },
+    async storePackage(login, token, { scopes, actor, expiresAt = null }) {
+      if (typeof token !== 'string' || token.length < 20) throw new TypeError('That does not look like a GitHub token.');
+      if (!Array.isArray(scopes) || !scopes.includes('read:packages') || scopes.some(s => !['read:packages', 'write:packages', 'delete:packages', 'repo'].includes(s)) || typeof actor !== 'string' || !actor)
+        throw new TypeError('Package credentials require a verified actor and package scopes.');
+      return await db.setPackageToken(login, { enc: seal(token, contexts.packages(login)), scopes: [...scopes], actor, expiresAt });
     },
     async storeClassic(login, token, scopes) {
       if (typeof token !== 'string' || token.length < 20) throw new TypeError('That does not look like a GitHub token.');
