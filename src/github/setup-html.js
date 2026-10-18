@@ -35,7 +35,7 @@ function accountCard(a) {
 /**
  * @param {object} view `{ csrf, result?, revealed?, show?, accounts?, manifestForm?, installLink?, blocked?, keyHelp? }`
  */
-export function renderSetup({ csrf, result = '', revealed = null, show = '', accounts = null, manifestForm = null, installLink = null, blocked = '', keyHelp = '', productionNames = null, protectedList = null, spendLimits = null, ownPeopleExtra = null, secretEntry = null, oauthReadiness = null }) {
+export function renderSetup({ csrf, result = '', revealed = null, show = '', accounts = null, manifestForm = null, installLink = null, blocked = '', keyHelp = '', productionNames = null, protectedList = null, spendLimits = null, ownPeopleExtra = null, secretEntry = null, oauthReadiness = null, connections = null }) {
   const form = (action, inner, button, extra = '') => `<form method="post" action="#setup-feedback" autocomplete="off">${hidden('csrf', csrf)}${hidden('action', action)}${extra}${inner}${passphrase}<button type="submit">${h(button)}</button></form>`;
   const login = '<label>GitHub account name (for example your organization or user name)<input name="login" required maxlength="39" autocomplete="off"></label>';
   const type = '<label>Account type<select name="accountType"><option value="Organization">Organization</option><option value="User">Personal user</option></select></label>';
@@ -59,6 +59,7 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
       <p>Custom server address: <code>${h(oauthReadiness.mcp_url)}</code></p>
       <p>${h(oauthReadiness.next_action)}</p>
       <p><small>These are counts only. No client IDs or bearer secrets are shown. Recorded sessions are not proof of real custom-MCP acceptance. Production permissions stay independently controlled.</small></p></div>` : '') +
+    (connections ? `<div class="card"><h2>Custom MCP connections (owner only)</h2><p>These identifiers are not passwords. Select the exact existing ChatGPT connection.</p><ul>${connections.map((c) => `<li><strong>${h(c.name)}</strong> — <code>${h(c.id)}</code> — ${h(c.mode.toUpperCase())} / ${h(c.profile)} — accounts: ${h(c.accounts.join(', '))}</li>`).join('')}</ul></div>` : '') +
     form('status', '', 'Show my accounts and check them with GitHub') +
     '<h2>1. Create the GitHub App for an account</h2><p>Private to that account. You will do this once for each account (your organization, and your personal account).</p>' +
     form('start-app', login + type, 'Prepare the GitHub App') +
@@ -74,6 +75,8 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
     form('start-user-auth', login.replace('GitHub account name (for example your organization or user name)', 'Account whose App you are authorizing'), 'Authorize on GitHub') +
     '<h2>4. Turn on production for an account</h2><p>Production lets a connection change real branches, releases and settings, always asking first. It is off until you do two steps: ask Claude to turn it on for the account, then confirm here within 10 minutes.</p>' +
     form('confirm-production', login.replace('GitHub account name (for example your organization or user name)', 'Account to turn production on for'), 'Turn on production') +
+    '<h2>Upgrade existing custom connection to PRODUCTION</h2><p>If ChatGPT used its own sign-in and kept a FULL/PREVIEW server connection, first press Show my accounts and copy that custom connection ID. The account must already have production enabled. This widens what this connection can request, but never bypasses separate write confirmations, GitHub permissions, spending or protected-resource rules. The official GitHub ChatGPT connector remains separate.</p>' +
+    form('upgrade-connection-production', login + '<label>Existing custom connection ID<input name="connection" required maxlength="128" autocomplete="off"></label>', 'Upgrade this connection to PRODUCTION') +
     '<h2>Names that count as production</h2><p>A repository\'s default branch, its protected branches, tags, releases, settings and environments named production, prod or live always count as production. Add more names here (separated by commas; * is a wildcard). Built-in names cannot be removed.</p>' +
     (productionNames ? `<p><small>Environments: ${h(productionNames.environments.join(', ') || 'none')} · Branches: ${h(productionNames.branches.join(', ') || 'none')}</small></p>` : '') +
     form('set-production-names', '<label>Extra environment names<input name="environments" maxlength="400" autocomplete="off"></label><label>Extra branch names<input name="branches" maxlength="400" autocomplete="off"></label>', 'Save production names') +
