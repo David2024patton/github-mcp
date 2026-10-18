@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-16",
+  "updated": "2026-10-18",
   "order": [
     "A",
     "B",
@@ -17,9 +17,10 @@
     "U",
     "R",
     "X",
-    "Y"
+    "Y",
+    "PUB"
   ],
-  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split — A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00). Owner-approved execution: adjacent small roadmap slices are grouped into cohesive outcome-sized PRs; session PR count comes only from the current owner prompt. See docs/SESSION-START.md. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain.",
+  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split — A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00). Owner-approved execution: adjacent small roadmap slices are grouped into cohesive outcome-sized PRs; session PR count comes only from the current owner prompt. See docs/SESSION-START.md. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain. 2026-10-18: owner-approved PRIVATE-first mobile+desktop and multi-user isolation completion expansion adds PUB-1..PUB-4 as APPROVED unfinished work and PUB-5 as BLOCKED publication gate; source/real-acceptance evidence remains separate, public Directory eligibility of an unofficial third-party connector cannot be presumed.",
   "cards": [
     {
       "id": "A-1",
@@ -1700,6 +1701,106 @@
       "pr": [
         233
       ]
+    },
+    {
+      "id": "PUB-1",
+      "title": "Tenant identity, boundary and additive Postgres isolation foundation",
+      "batch": "PUB",
+      "design": "docs/designs/PUBLIC-SCALE.md",
+      "dependencies": [],
+      "card": "docs/pr-cards/PUB-1.md",
+      "status": "APPROVED",
+      "migration": "tenancy (additive); owner migration gated",
+      "budget": 750,
+      "units": [
+        "PUB-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [],
+      "pr": []
+    },
+    {
+      "id": "PUB-2",
+      "title": "Provider-verified user enrollment, scoped OAuth and GitHub App delegation",
+      "batch": "PUB",
+      "design": "docs/designs/PUBLIC-SCALE.md",
+      "dependencies": [
+        "PUB-1"
+      ],
+      "card": "docs/pr-cards/PUB-2.md",
+      "status": "APPROVED",
+      "migration": "identity and credential scoping (additive)",
+      "budget": 800,
+      "units": [
+        "PUB-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [],
+      "pr": []
+    },
+    {
+      "id": "PUB-3",
+      "title": "Tenant-aware execution capacity, quotas, auditing and incident safeguards",
+      "batch": "PUB",
+      "design": "docs/designs/PUBLIC-SCALE.md",
+      "dependencies": [
+        "PUB-1",
+        "PUB-2"
+      ],
+      "card": "docs/pr-cards/PUB-3.md",
+      "status": "APPROVED",
+      "migration": "tenant index + runtime isolation (additive)",
+      "budget": 750,
+      "units": [
+        "PUB-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [],
+      "pr": []
+    },
+    {
+      "id": "PUB-4",
+      "title": "Private Android/iOS and desktop/web OAuth adapters with real dual-device acceptance",
+      "batch": "PUB",
+      "design": "docs/designs/PUBLIC-SCALE.md",
+      "dependencies": [
+        "PUB-2",
+        "PUB-3"
+      ],
+      "card": "docs/pr-cards/PUB-4.md",
+      "status": "APPROVED",
+      "migration": "no schema unless documented after drift",
+      "budget": 650,
+      "units": [
+        "PUB-4"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [],
+      "pr": []
+    },
+    {
+      "id": "PUB-5",
+      "title": "Pre-publication audit, provider/directory eligibility and owner launch decision",
+      "batch": "PUB",
+      "design": "docs/designs/PUBLIC-SCALE.md",
+      "dependencies": [
+        "PUB-1",
+        "PUB-2",
+        "PUB-3",
+        "PUB-4"
+      ],
+      "card": "docs/pr-cards/PUB-5.md",
+      "status": "BLOCKED",
+      "migration": "none; external gate",
+      "budget": 0,
+      "units": [
+        "PUB-5"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [
+        "IN-18"
+      ],
+      "pr": []
     }
   ],
   "gatewayBoundary": {
