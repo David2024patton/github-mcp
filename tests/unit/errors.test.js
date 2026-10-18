@@ -27,16 +27,18 @@ describe('every explanation has what, why, next and a technical line with the re
 
 describe('specific rules', () => {
   it('401 sends the owner to the setup page', () => expect(d(401, { message: 'Bad credentials' }).todo).toContain('setup page'));
-  it('403 with accepted permissions names the permission to add', () => {
+  it('403 with genuine accepted permissions provides conditional grant comparison', () => {
     const x = d(403, { message: 'Resource not accessible by integration' }, { 'x-accepted-github-permissions': 'pull_requests=write; issues=read' });
-    expect(x.kind).toBe('missing_permission');
-    expect(x.what).toContain('pull requests (write) or issues (read)');
+    expect(x.kind).toBe('forbidden');
+    expect(x.what).toContain('pull requests (write), issues (read)');
+    expect(x.todo).toContain('only if it is missing');
+    expect(x.cause).toContain('not a proven missing grant');
     expect(acceptedPermissions('a_b=read, c=admin')).toEqual([{ permission: 'a_b', level: 'read' }, { permission: 'c', level: 'admin' }]);
     expect(acceptedPermissions('')).toEqual([]);
     expect(acceptedPermissions('Bad Value!!')).toEqual([]);
   });
-  it('403 without a header still says the App lacks permission', () => {
-    expect(d(403, { message: 'Resource not accessible by integration' }).kind).toBe('missing_permission');
+  it('403 without a real grant header preserves integration refusal without inventing missing consent', () => {
+    expect(d(403, { message: 'Resource not accessible by integration' }).kind).toBe('forbidden');
   });
   it('separates primary from secondary rate limits and shows the reset in Denver time', () => {
     const primary = d(403, { message: 'API rate limit exceeded for installation' }, { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(Date.UTC(2026, 9, 10, 20, 0, 0) / 1000) });
@@ -121,5 +123,29 @@ describe('GraphQL errors', () => {
     expect(r.summary.startsWith('Partly succeeded.')).toBe(true);
     expect(describeGraphqlErrors([{ message: 'weird' }], { a: null }).partial).toBe(false);
     expect(describeGraphqlErrors(undefined).problems).toEqual([]);
+  });
+});
+
+describe('actual permissionless-header refusal regression',()=>{
+  it.each([
+    'allows_permissionless_access=true','allows_permissionless_access=write','organization_packages=write',
+    'contents=true','issues=unknown','contents','issues=read=write','allows_permissionless_access=true; contents=write'
+  ])('never synthesizes a grant from %s',header=>{
+    expect(acceptedPermissions(header)).toEqual([]);
+    const out=d(403,{message:'Resource not accessible by integration'},{'x-accepted-github-permissions':header});
+    expect(out.kind).toBe('forbidden');
+    expect(out.cause).toContain('does not establish');
+    expect(out.todo).toContain('supported credential type');
+    expect(out.what+' '+out.todo).not.toMatch(/needs the|add .*permission|allows permissionless access|organization packages/);
+    expect(out.technical).toContain('HTTP 403');expect(out.technical).toContain('request id AB12:34');
+  });
+  it('keeps genuine explicit grants while ignoring an invalid neighboring entry',()=>{
+    expect(acceptedPermissions('contents=write, metadata=read; members=admin, other=true')).toEqual([
+      {permission:'contents',level:'write'},{permission:'metadata',level:'read'},{permission:'members',level:'admin'}]);
+    expect(d(403,{message:'Resource not accessible by integration'},{'x-accepted-github-permissions':'contents=write'})).toMatchObject({kind:'forbidden',todo:expect.stringContaining('contents (write)')});
+  });
+  it('preserves rate-limit precedence over metadata flags',()=>{
+    const out=d(403,{message:'You have exceeded a secondary rate limit.'},{'x-accepted-github-permissions':'allows_permissionless_access=true','retry-after':'60'});
+    expect(out).toMatchObject({kind:'secondary_rate_limit',retryable:true});expect(out.todo).toContain('60 seconds');
   });
 });
