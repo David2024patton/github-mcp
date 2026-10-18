@@ -279,7 +279,7 @@ export function createFakeDb({ clock = Date.now } = {}) {
       accountRows.set(key, {
         login, account_id: accountId, account_type: accountType, label, credential_kind: credentialKind, app_id: appId, installation_id: null,
         repository_selection: null, installation_permissions: null, installation_status: 'none', user_login: null, user_token_enc: null,
-        user_token_expires_at: null, user_refresh_enc: null, user_refresh_expires_at: null, fine_grained_enc: null, fine_grained_last4: null,
+        user_token_expires_at: null, user_refresh_enc: null, user_refresh_expires_at: null, user_refresh_claim: null, user_refresh_claim_expires_at: null, fine_grained_enc: null, fine_grained_last4: null,
         fine_grained_expires_at: null, classic_enc: null, classic_scopes: null, classic_last4: null, package_enc: null, package_scopes: null, package_actor: null, package_expires_at: null, plan_name: null, production_enabled: false,
         spend_limit_cents: 0, spend_limit_explicit: false, is_default: ![...accountRows.values()].some((r) => r.is_default), is_scratch: isScratch, added_at: new Date(clock()), checked_at: null
       });
@@ -319,12 +319,47 @@ export function createFakeDb({ clock = Date.now } = {}) {
     async setUserAuthorization(login, { userLogin, tokenEnc, tokenExpiresAt, refreshEnc, refreshExpiresAt }) {
       const r = accountRows.get(String(login).toLowerCase());
       if (!r) return false;
-      Object.assign(r, { user_login: userLogin, user_token_enc: tokenEnc, user_token_expires_at: tokenExpiresAt, user_refresh_enc: refreshEnc, user_refresh_expires_at: refreshExpiresAt });
+      Object.assign(r, { user_login: userLogin, user_token_enc: tokenEnc, user_token_expires_at: tokenExpiresAt, user_refresh_enc: refreshEnc, user_refresh_expires_at: refreshExpiresAt, user_refresh_claim: null, user_refresh_claim_expires_at: null });
+      return true;
+    },
+    async claimUserRefresh(login, { expectedTokenEnc, claimId, at, expiresAt }) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r || r.user_token_enc !== expectedTokenEnc || !r.user_refresh_enc ||
+          (r.user_refresh_claim && new Date(r.user_refresh_claim_expires_at).getTime() > new Date(at).getTime())) return false;
+      r.user_refresh_claim = claimId; r.user_refresh_claim_expires_at = expiresAt;
+      return true;
+    },
+    async finishUserRefresh(login, { expectedTokenEnc, claimId, userLogin, tokenEnc, tokenExpiresAt, refreshEnc, refreshExpiresAt }) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r || r.user_token_enc !== expectedTokenEnc || r.user_refresh_claim !== claimId) return false;
+      Object.assign(r, { user_login: userLogin, user_token_enc: tokenEnc, user_token_expires_at: tokenExpiresAt,
+        user_refresh_enc: refreshEnc, user_refresh_expires_at: refreshExpiresAt,
+        user_refresh_claim: null, user_refresh_claim_expires_at: null });
+      return true;
+    },
+    async releaseUserRefreshClaim(login, claimId) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r || r.user_refresh_claim !== claimId) return false;
+      r.user_refresh_claim = null; r.user_refresh_claim_expires_at = null;
+      return true;
+    },
+    async clearUserAuthorizationIfClaim(login, expectedTokenEnc, claimId) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r || r.user_token_enc !== expectedTokenEnc || r.user_refresh_claim !== claimId) return false;
+      Object.assign(r, { user_login: null, user_token_enc: null, user_token_expires_at: null,
+        user_refresh_enc: null, user_refresh_expires_at: null, user_refresh_claim: null, user_refresh_claim_expires_at: null });
+      return true;
+    },
+    async clearUserAuthorizationIfCurrent(login, expectedTokenEnc) {
+      const r = accountRows.get(String(login).toLowerCase());
+      if (!r || r.user_token_enc !== expectedTokenEnc || r.user_refresh_claim) return false;
+      Object.assign(r, { user_login: null, user_token_enc: null, user_token_expires_at: null,
+        user_refresh_enc: null, user_refresh_expires_at: null, user_refresh_claim: null, user_refresh_claim_expires_at: null });
       return true;
     },
     async clearUserAuthorization(login) {
       const r = accountRows.get(String(login).toLowerCase());
-      if (r) Object.assign(r, { user_login: null, user_token_enc: null, user_token_expires_at: null, user_refresh_enc: null, user_refresh_expires_at: null });
+      if (r) Object.assign(r, { user_login: null, user_token_enc: null, user_token_expires_at: null, user_refresh_enc: null, user_refresh_expires_at: null, user_refresh_claim: null, user_refresh_claim_expires_at: null });
     },
     async setFineGrainedToken(login, { enc, last4, expiresAt = null }) {
       const r = accountRows.get(String(login).toLowerCase());
