@@ -499,6 +499,8 @@ Card(s): O-7. Source built in PR #205. Notifications require optional classic to
 
 Card(s): O-1. Every GitHub settings page is in the dashboard map (`src/data/dashboard-map.js`); settings with no API return structured steps from `github_where_is_setting` (contract §11).
 
+O-1 source correction PR #257: user-profile links in both guided entrypoints derive the chosen account's enrolled personal OAuth principal, never its organization name. Unknown/mismatched personal identity returns a null link; navigation and manual-only settings never prove a completed change. The owner guide describes guarded end-user paid and destructive capability accurately instead of importing developer-only spending/deletion restrictions.
+
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_admin_list_guided_settings` | Paginate structured repository, organization and user dashboard guides with explicit manual or provider verification | — | N | — | O | R | O-1 built #197/#224 |

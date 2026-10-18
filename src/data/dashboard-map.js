@@ -216,7 +216,7 @@ export const SETTINGS = Object.freeze([
       { action: 'Open the page', target: 'Account → Change username / Delete account' },
       { action: 'Type your username to confirm, yourself', target: 'Delete your account' }
     ],
-    expected: 'Deleting removes everything and cannot be undone. This server will never do it.'
+    expected: 'Deleting removes everything and cannot be undone. This guide does not delete the account. Any supported destructive action requires the user's exact authorization and confirmation.'
   },
   {
     id: 'repo-wiki-edit', scope: 'repo', title: 'Create the first page of a repository wiki (editing later: use the wiki tools)', page: 'Repository → Wiki',
