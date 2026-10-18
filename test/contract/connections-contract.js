@@ -53,7 +53,8 @@ export function runConnectionsContract(name, make) {
 
     it('upgrades one full single-account PREVIEW login only after production enabled, keeps bearer/refresh and isolates other logins', async () => {
       const db = await make();
-      await db.upsertAccount({ login: 'example-org', accountId: 445566, accountType: 'Organization', label: 'Example org' });
+      await db.upsertAccount({ login: 'example-org', accountId: 445566, accountType: 'Organization', label: 'Example org', credentialKind: 'app', appId: 445566, isScratch: true });
+      await db.setInstallation('example-org', { installationId: 445567, repositorySelection: 'all', permissions: { contents: 'write' }, status: 'active' });
       await login(db, 'full-one', 'ChatGPT', 'access-full', { accounts: ['example-org'], defaultAccount: 'example-org', profile: 'full' });
       await login(db, 'other-one', 'Other', 'access-other', { accounts: ['example-org'], defaultAccount: 'example-org', profile: 'full' });
       expect(await db.upgradeConnectionProductionMode('full-one', 'example-org')).toBe(0);
@@ -70,7 +71,8 @@ export function runConnectionsContract(name, make) {
     });
     it('refuses mixed-account, non-full, revoked and unknown client upgrades', async () => {
       const db = await make();
-      await db.upsertAccount({ login: 'example-org', accountId: 445566, accountType: 'Organization', label: 'Example org' });
+      await db.upsertAccount({ login: 'example-org', accountId: 445566, accountType: 'Organization', label: 'Example org', credentialKind: 'app', appId: 445566, isScratch: true });
+      await db.setInstallation('example-org', { installationId: 445567, repositorySelection: 'all', permissions: { contents: 'write' }, status: 'active' });
       await db.setProductionEnabled('example-org', true);
       await login(db, 'mixed-one', 'Mixed', 'mixed-first', { accounts: ['example-org'], defaultAccount: 'example-org', profile: 'full' });
       await db.createAccessToken({ clientId: 'mixed-one', accessToken: 'mixed-second', refreshToken: 'mixed-refresh',
@@ -84,6 +86,23 @@ export function runConnectionsContract(name, make) {
       expect(await db.upgradeConnectionProductionMode('revoked-one', 'example-org')).toBe(0);
       expect(await db.upgradeConnectionProductionMode('missing-id', 'example-org')).toBe(0);
     });
+    it('includes an expired access bearer if the refresh credential remains valid and blocks disconnected accounts', async () => {
+      const db = await make();
+      await db.upsertAccount({ login: 'example-org', accountId: 448001, accountType: 'Organization', label: 'Scratch', credentialKind: 'app', appId: 448001, isScratch: true });
+      await db.setInstallation('example-org', { installationId: 448002, repositorySelection: 'all', permissions: {}, status: 'active' });
+      await db.setProductionEnabled('example-org', true);
+      await login(db, 'idle-client', 'ChatGPT', 'idle-access', { accounts: ['example-org'], defaultAccount: 'example-org', profile: 'full', ttlSeconds: -10 });
+      // Every server lists bearer tokens only while unexpired, but refreshability survives expiry.
+      expect((await db.listConnections()).some((c) => c.client_id === 'idle-client')).toBe(false);
+      expect((await db.listUpgradeableConnections()).some((c) => c.client_id === 'idle-client')).toBe(true);
+      await db.setInstallationStatus('example-org', 'suspended');
+      expect(await db.upgradeConnectionProductionMode('idle-client', 'example-org')).toBe(0);
+      await db.setInstallationStatus('example-org', 'active');
+      expect(await db.upgradeConnectionProductionMode('idle-client', 'example-org')).toBe(1);
+      expect((await db.getTokenByRefreshToken('refresh-idle-access')).mode).toBe('production');
+      expect((await db.listUpgradeableConnections()).find((c) => c.client_id === 'idle-client').mode).toBe('production');
+    });
+
     it('notes when a connection was last used', async () => {
       const db = await make();
       await login(db, 'client-1', 'Claude', 'access-one');
