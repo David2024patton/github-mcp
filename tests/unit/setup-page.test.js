@@ -200,7 +200,8 @@ describe('protected connector OAuth readiness on owner setup',()=>{
     expect(active.body).toContain('A connector token record is present');
     expect(active.body).not.toContain('private-connector-access');
     expect(active.body).not.toContain('private-refresh');
-    expect(active.body).not.toContain('private-client-id');
+    // Only the authenticated owner-status response lists enrolled client IDs.
+    expect(active.body).toContain('private-client-id');
     noSecrets(active);
     await t.db.revokeAccessToken('private-connector-access');
     const revoked=await t.post({action:'status'});
