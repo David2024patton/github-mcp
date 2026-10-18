@@ -1,0 +1,68 @@
+# PUB-2 — Private delegated GitHub identity and scoped client OAuth
+
+**Stage: acceptance plan frozen, NO implementation/PR/public rollout yet.** Prior PUB-1 merged commit `692c38550217c84b6afa5fc4840ea753be8e049f` with exact-PR and merged-main green, providing dormant tenant directory/store. Requires no new owner decision for the private test code, but **public GitHub App distribution and Directory remain blocked by IN-18**.
+
+## Drift check A
+| Area | Today | PUB-2 target |
+|---|---|---|
+| Owner auth | `src/core/oauth-handlers.js` uses global `ADMIN_PASSPHRASE`, `src/oauth/policy.js` lists owner-account options | Preserve for owner; separate provider-verified tenant consent with no global password |
+| User proof | Protected setup page `start-user-auth` exchanges code, verifies `GET /user`, stores owner U | Reuse request/PKCE patterns only; new tenant context cannot overwrite owner authorization |
+| Storage | `createDb(sql)` owner namespace; dormant `src/tenancy/directory.js` supports isolated 28-table tenant storage | Bind client, grant, code/token, bearer dispatch and account authority to a verified tenant, no global fallback |
+| Distribution | Existing ChatGPT connectors private; custom desktop candidate shows Codex deep link on mobile | Private pilot consent only, no claim of supported mobile UX until PUB-4 |
+| Release | `main` ahead of READY `live`, scheduled 00:01 Denver only | Do not deploy manually, invite an outside user or enroll paid hosting |
+
+## Design/read anchors
+`src/core/oauth-handlers.js` §register/authorize/token; `src/core/oauth.js` PKCE/hash/replay; `src/oauth/policy.js` legacy owner account list; `src/github/setup-page.js` §start-user-auth/userCallback; `src/github/credentials.js` §clientCredentials/token refresh; `src/tenancy/directory.js` (PUB-1); `src/db.js` §OAuth session and tenant table families; `api/` routes and HTTP harness; `tests/db/connections.test.js`, `tests/unit/setup-page.test.js`. Inspect current symbols and provider-callback redirect registrations before coding.
+
+## Full original PUB-2 acceptance (no source credit before all pass)
+1. [ ] A private allowlisted prospective customer authenticates directly with real GitHub provider OAuth; the server independently checks stable numeric /user identity, tenant membership, App/repository delegation and single-use CSRF/PKCE; no email/login string or global owner passphrase grants access.
+2. [ ] Every custom MCP OAuth client, authorization code, scoped access/refresh token, saved account, connector session, job/result/audit, and revoke request is bound to one authorized tenant and validated on each call; no tenant ID may be taken from an untrusted request or inferred from a display name.
+3. [ ] Native desktop MCP and mobile-compatible future ChatGPT clients can both use the same backed provider identity and tenant-choosable PREVIEW/PRODUCTION, profile and account delegation without silently widening on refresh; actual UI/device acceptance remains independently tracked in PUB-4.
+4. [ ] Pilot registration remains disabled by default; enablement requires an owner-controlled allowlist and an already installed, legitimately delegated GitHub App, no new public App distribution or unauthorized GitHub resource mutation.
+5. [ ] Two-tenant overlapping GitHub login/client identifiers, replay, simultaneous code redemption, refresh revocation, forbidden account selection, inaccessible installation, provider sign-out and membership revocation are proven through real disposable PostgreSQL plus mocked GitHub API and HTTP, not merely fake in-memory stores.
+6. [ ] The legacy owner setup/connection works unchanged; all existing product write/production/spend/notification/protected-resource gates apply to each new customer according to that customer's own delegation, not the developer's $0 testing budget.
+
+## Private connection and privilege rules
+- The returning GitHub OAuth code is redeemed once by the service and GET /user must positively match a stable provider subject already granted membership in this tenant, together with actually authorized GitHub App installation/repositories. Never use a ChatGPT email or client-supplied login as proof.
+- The pilot must be default OFF and restricted to owner-enrolled pilot subjects/installations. No public customer creates a namespace without provider proof and private owner consent.
+- A raw OAuth client ID is not identity proof. Registered client, codes, bearer-hash locator, refresh credentials and attached policies must be tenant-bound **atomically**; never try the legacy global store when tenant lookup fails. Revoke invalidates all routes.
+- Preserve S256 PKCE, state nonce, exact redirect and resource target, CSRF, independent payer/spend/production/access confirmation, per-tenant service policies and provider plan limits. The old owner passphrase route remains unchanged.
+- Real PostgreSQL negative tests include one-use code, two clients racing refresh, overlapping account identities, revoked member, unknown tenant, suspended App, malicious return URI, and old-tenant session reuse. Never add real provider credentials or paid fixtures to tests.
+- Mobile and desktop HTTP client flows may be exercised synthetically here; **PUB-4** still requires authentic real client tool calls on supported Android/iOS and desktop/web. **PUB-5** remains blocked from public Directory submission without separate applicable provider eligibility and owner approval.
+
+## Verification / delivery
+Before coding: commit this card; run `npm run session:bundle -- --card docs/pr-cards/PUB-2.md` and the documented plan check; after code run type/lint, focused provider HTTP and real database checks, then the full CI suite on the final head. Record new production lines, independent self-review including AI-PR-READ-FIRST and original acceptance queue unchanged. Finish in a coherent whole PUB-2 PR (not a helper PR). If external credential or owner-dependent pilot callback settings are not yet available, implement and verify all synthetic/private safe behavior and record the exact external blocker without asserting a real acceptance pass.
+
+<!-- bundle-plan:start -->
+```json
+{
+  "workKind": "ENGINEERING",
+  "baseRevision": "692c38550217c84b6afa5fc4840ea753be8e049f",
+  "outcome": "Private allowlisted provider-verified delegated GitHub OAuth enrollment and tenant-bound MCP token routing, without public enrollment, global-owner credential exposure, or mobile/desktop acceptance claims.",
+  "integrationBoundary": "PUB-1 tenant registry and namespace, GitHub App OAuth provider, existing MCP protocol auth and dispatch, protected owner setup controls; no public Directory publishing, money, additional installations or live release.",
+  "newEngineering": "Verified GitHub identity and grant evidence, tenant-bound OAuth state/client/code/bearer/refresh mapping, fail-closed tenant dispatch, cryptographic replay/consent safeguards, private closed pilot and two-tenant real-Postgres/HTTP/provider tests.",
+  "estimatedProductionLines": 800,
+  "relatedWorkDecision": "Separate whole PUB-2 provider OAuth engineering subsection due its independent external GitHub identity boundary; PUB-3 capacity/abuse runtime and PUB-4 actual Android/desktop experience remain independent; no helper-only PR or completion credit until whole acceptance passes.",
+  "subsections": [
+    {
+      "id": "PUB-2",
+      "acceptance": [
+        "A private allowlisted prospective customer authenticates directly with real GitHub provider OAuth; the server independently checks stable numeric /user identity, tenant membership, App/repository delegation and single-use CSRF/PKCE; no email/login string or global owner passphrase grants access.",
+        "Every custom MCP OAuth client, authorization code, scoped access/refresh token, saved account, connector session, job/result/audit, and revoke request is bound to one authorized tenant and validated on each call; no tenant ID may be taken from an untrusted request or inferred from a display name.",
+        "Native desktop MCP and mobile-compatible future ChatGPT clients can both use the same backed provider identity and tenant-choosable PREVIEW/PRODUCTION, profile and account delegation without silently widening on refresh; actual UI/device acceptance remains independently tracked in PUB-4.",
+        "Pilot registration remains disabled by default; enablement requires an owner-controlled allowlist and an already installed, legitimately delegated GitHub App, no new public App distribution or unauthorized GitHub resource mutation.",
+        "Two-tenant overlapping GitHub login/client identifiers, replay, simultaneous code redemption, refresh revocation, forbidden account selection, inaccessible installation, provider sign-out and membership revocation are proven through real disposable PostgreSQL plus mocked GitHub API and HTTP, not merely fake in-memory stores.",
+        "The legacy owner setup/connection works unchanged; all existing product write/production/spend/notification/protected-resource gates apply to each new customer according to that customer's own delegation, not the developer's $0 testing budget."
+      ],
+      "remainingEngineering": [
+        "Map existing owner /api/github/user-callback and GitHub App token exchange into a separate private tenant authorization route using provider-verified GET /user ID and exact callback, not a user-typed tenant choice",
+        "Bind tenant namespace at client registration/code/token issue/refresh/revoke/MCP dispatcher without exposing bare hashes or routing to global legacy owner on lookup failure",
+        "Implement owner-managed allowlisted pilot opt-in OFF by default and resource/installation-bound authorization; no external GitHub App distribution",
+        "Run separate tenant A/B real Postgres contracts, exact HTTP OAuth/PKCE/provider fake, revoked owner and cross-tenant replay tests, and full suites",
+        "Preserve owner route, product policies, deployment controls and permanent docs; independently review exact head before merge"
+      ]
+    }
+  ]
+}
+```
+<!-- bundle-plan:end -->
