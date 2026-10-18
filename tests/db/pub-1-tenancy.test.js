@@ -105,7 +105,12 @@ describe('PUB-1 real PostgreSQL tenant scope and legacy preservation', () => {
     expect((await tenantA.db.getAccessToken('fixture-access-b'))).toBeNull();
     expect((await tenantA.db.getTokenByRefreshToken('fixture-refresh-b'))).toBeNull();
     expect((await tenantB.db.getTokenByRefreshToken('fixture-refresh-a'))).toBeNull();
-    expect((await tenantA.db.getAccessToken('fixture-access-a')).profile).toBe('read_only');
+    const rotated = await tenantA.db.rotateRefreshToken({ refreshToken: 'fixture-refresh-a',
+      clientId: 'shared-client-id', accessToken: 'fixture-access-a-new',
+      newRefreshToken: 'fixture-refresh-a-new' });
+    expect(rotated.profile).toBe('read_only');
+    expect((await tenantB.db.getAccessToken('fixture-access-a-new'))).toBeNull();
+    expect((await tenantA.db.getAccessToken('fixture-access-a-new')).profile).toBe('read_only');
     expect((await tenantB.db.getAccessToken('fixture-access-b')).profile).toBe('full');
   });
 
@@ -127,6 +132,10 @@ describe('PUB-1 real PostgreSQL tenant scope and legacy preservation', () => {
     }
     expect((await query(first, "SELECT summary FROM result_store"))[0].summary).toBe('Tenant A');
     expect((await query(second, "SELECT summary FROM result_store"))[0].summary).toBe('Tenant B');
+    expect((await tenantA.db.getResult('res_' + 'x'.repeat(24), 'same-connection')).body.owner).toBe('Tenant A');
+    expect((await tenantB.db.getResult('res_' + 'x'.repeat(24), 'same-connection')).body.owner).toBe('Tenant B');
+    expect((await tenantA.db.getJob('job_aaaaaaaaaaaaaaaa', 'same-connection')).state).toBe('pending');
+    expect((await tenantB.db.getJob('job_aaaaaaaaaaaaaaaa', 'same-connection')).state).toBe('pending');
     expect((await query(first, "SELECT reason FROM protected_resources WHERE target = 'overlap-org/same-repo'"))[0].reason).toBe('Tenant A');
     expect((await query(second, "SELECT reason FROM protected_resources WHERE target = 'overlap-org/same-repo'"))[0].reason).toBe('Tenant B');
     await query(first, "DELETE FROM dev_runs WHERE id = 'shared-fixture-run'");
