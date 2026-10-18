@@ -22,7 +22,7 @@ async function setup({ env = ENV, kind = 'app', install = true } = {}) {
   const fetch = async (url, init) => {
     if (String(url).startsWith('https://github.com/login/oauth/access_token')) {
       oauth.push(Object.fromEntries(new URLSearchParams(String(init.body))));
-      const r = respond.oauth(oauth.at(-1));
+      const r = respond.oauth(oauth.at(-1), init.signal);
       return new Response(JSON.stringify(r.body ?? {}), { status: r.status ?? 200, headers: { 'content-type': 'application/json' } });
     }
     return gh.fetch(url, init);
@@ -184,6 +184,102 @@ describe('user authorization', () => {
     respond.oauth = () => ({ body: { error: 'bad_refresh_token' } }); // this instance's refresh token was already spent
     expect(await createRacing(db, credentials)()).toBe('ghu_FAKEuseraccess9');
     expect((await db.getAccount('example-org')).user_token_enc).not.toBeNull();
+  });
+
+  it('serializes a one-use user refresh across two server instances and returns one persisted token', async () => {
+    const { db, credentials, clock, respond, oauth, fetch } = await authorized(3600);
+    clock.t += 55 * 60e3;
+    respond.oauth = () => ({ body: { access_token: 'ghu_FAKEuseraccess2', expires_in: 28800,
+      refresh_token: 'ghr_FAKEuserrefresh2', refresh_token_expires_in: 15811200 } });
+    let release, started;
+    const held = new Promise(resolve => { release = resolve; });
+    const underway = new Promise(resolve => { started = resolve; });
+    const first = createCredentials({ db, env: ENV, now: () => clock.t, fetch: (url, init) => {
+      if (String(url).includes('/login/oauth/access_token')) {
+        started();
+        return held.then(() => fetch(url, init));
+      }
+      return fetch(url, init);
+    } });
+    const a = first.token({ account: 'example-org', cred: 'U' });
+    await underway;
+    const second = credentials.token({ account: 'example-org', cred: 'U' });
+    release();
+    const values = await Promise.all([a, second]);
+    expect(values).toEqual(['ghu_FAKEuseraccess2', 'ghu_FAKEuseraccess2']);
+    expect(oauth).toHaveLength(1);
+    expect(await db.getAccount('example-org')).toMatchObject({ user_refresh_claim: null, user_refresh_claim_expires_at: null });
+  });
+
+  it('sends a bounded provider timeout before another worker may claim the one-use refresh token', async () => {
+    const { credentials, clock, respond } = await authorized(3600);
+    clock.t += 55 * 60e3;
+    let observed;
+    respond.oauth = (_fields, signal) => {
+      observed = signal;
+      return { body: { access_token: 'ghu_FAKErenewedaccess', expires_in: 28800,
+        refresh_token: 'ghr_FAKErenewedrefresh', refresh_token_expires_in: 15811200 } };
+    };
+    expect(await credentials.token({ account: 'example-org', cred: 'U' })).toBe('ghu_FAKErenewedaccess');
+    expect(observed).toBeInstanceOf(AbortSignal);
+    expect(observed.aborted).toBe(false);
+  });
+
+  it('does not erase valid encrypted authorization when GitHub OAuth temporarily fails', async () => {
+    const { db, credentials, clock, respond } = await authorized(3600);
+    clock.t += 55 * 60e3;
+    const before = await db.getAccount('example-org');
+    respond.oauth = () => ({ status: 503, body: { message: 'Service unavailable' } });
+    await expect(credentials.token({ account: 'example-org', cred: 'U' })).rejects.toMatchObject({
+      code: 'rate_limited', message: expect.stringContaining('not erased')
+    });
+    const after = await db.getAccount('example-org');
+    expect(after.user_token_enc).toBe(before.user_token_enc);
+    expect(after.user_refresh_enc).toBe(before.user_refresh_enc);
+    expect(after.user_refresh_claim).toBeNull();
+  });
+
+  it('cannot overwrite a fresh owner authorization while a stale refresh is in flight', async () => {
+    const { db, credentials, clock, respond, fetch } = await authorized(3600);
+    clock.t += 55 * 60e3;
+    respond.oauth = () => ({ body: { access_token: 'ghu_FAKEstaleaccess', expires_in: 28800,
+      refresh_token: 'ghr_FAKEstalerefresh', refresh_token_expires_in: 15811200 } });
+    let release, started;
+    const held = new Promise(resolve => { release = resolve; });
+    const underway = new Promise(resolve => { started = resolve; });
+    const oldInstance = createCredentials({ db, env: ENV, now: () => clock.t, fetch: (url, init) => {
+      if (String(url).includes('/login/oauth/access_token')) { started(); return held.then(() => fetch(url, init)); }
+      return fetch(url, init);
+    } });
+    const request = oldInstance.token({ account: 'example-org', cred: 'U' });
+    await underway;
+    await credentials.storeUserAuthorization('example-org', { userLogin: 'example-user',
+      accessToken: 'ghu_FAKEfreshowner', expiresIn: 28800,
+      refreshToken: 'ghr_FAKEfreshowner', refreshExpiresIn: 15811200 });
+    release();
+    expect(await request).toBe('ghu_FAKEfreshowner');
+    expect(await credentials.token({ account: 'example-org', cred: 'U' })).toBe('ghu_FAKEfreshowner');
+    expect((await db.getAccount('example-org')).user_refresh_claim).toBeNull();
+  });
+
+  it('cannot resurrect a revoked U authorization after an in-flight refresh', async () => {
+    const { db, credentials, clock, respond, fetch } = await authorized(3600);
+    clock.t += 55 * 60e3;
+    respond.oauth = () => ({ body: { access_token: 'ghu_FAKEstaleaccess', expires_in: 28800,
+      refresh_token: 'ghr_FAKEstalerefresh', refresh_token_expires_in: 15811200 } });
+    let release, started;
+    const held = new Promise(resolve => { release = resolve; });
+    const underway = new Promise(resolve => { started = resolve; });
+    const oldInstance = createCredentials({ db, env: ENV, now: () => clock.t, fetch: (url, init) => {
+      if (String(url).includes('/login/oauth/access_token')) { started(); return held.then(() => fetch(url, init)); }
+      return fetch(url, init);
+    } });
+    const request = oldInstance.token({ account: 'example-org', cred: 'U' });
+    await underway;
+    await credentials.forgetUserAuthorization('example-org');
+    release();
+    await expect(request).rejects.toMatchObject({ code: 'no_credentials' });
+    expect(await db.getAccount('example-org')).toMatchObject({ user_token_enc: null, user_refresh_enc: null, user_refresh_claim: null });
   });
 
   it('refuses when never authorized or when no refresh token was kept', async () => {
