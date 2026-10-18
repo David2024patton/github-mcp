@@ -13,7 +13,9 @@ async function fixture({payerType='Organization',recipientType='User',...options
     await w.db.upsertAccount({login:payer,accountId:1011,accountType:payerType,label:payer,credentialKind:'fine_grained'});
     await w.credentials.storeUserAuthorization(payer,{userLogin:payer,accessToken:'ghu_FAKE0123456789abcdefghij',expiresIn:28800});
   }
-  w.gh.when('GET /user').reply(200,options.me??{login:payerType==='User'?payer:'example-owner',id:payerType==='User'?1011:42,type:'User'});
+  let payerIdentityReads=0;
+  w.gh.when('GET /user').reply(200,()=>{ payerIdentityReads++; return options.me??{login:payerType==='User'?payer:'example-owner',id:payerType==='User'?1011:42,type:'User'}; });
+  w.payerIdentityReads=()=>payerIdentityReads;
   w.gh.when('GET /user/memberships/orgs/{org}').reply(200,options.membership??{state:'active',role:'admin'});
   w.gh.when('GET /users/{username}').reply(200,options.actor??{login:recipient,id:73,type:recipientType});
   let tierReads=0;
@@ -46,6 +48,7 @@ describe('Sponsors verified entity selection',()=>{
       expect(r).toMatchObject({payer:'example-org',recipient,active:null,sponsors_listing_available:true,
         tiers:[{id:'tier-5',one_time:false,price_cents:500}]});
       expect(w.gh.invalid).toEqual([]);
+      expect(w.payerIdentityReads()).toBe(1); // one verified U read for two simultaneous inventories
       expect(mutations(w.gh)).toEqual([]);
     });
   }
