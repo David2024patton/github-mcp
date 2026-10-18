@@ -83,7 +83,7 @@ export const SETTINGS = Object.freeze([
       { action: 'Choose', target: 'Upgrade or Change plan' },
       { action: 'Review the price shown, then confirm yourself', target: 'Payment' }
     ],
-    expected: 'The new plan shows on the page. This server never buys anything.'
+    expected: 'The new plan shows on the page. This is a navigation guide, not a purchase. Where the provider supports an API action, it requires the user’s delegated authority, cost disclosure and confirmation.'
   },
   {
     id: 'org-marketplace', scope: 'org', title: 'Buy or cancel a Marketplace app', page: 'GitHub Marketplace',
@@ -93,7 +93,7 @@ export const SETTINGS = Object.freeze([
       { action: 'Pick the plan and the account', target: 'Set up a plan' },
       { action: 'Review the price, then confirm yourself', target: 'Payment' }
     ],
-    expected: 'The app appears under the account\'s installed apps. This server never buys anything.'
+    expected: 'The app appears under the account\'s installed apps. This is a navigation guide, not a purchase. Where the provider supports an API action, it requires the user’s delegated authority, cost disclosure and confirmation.'
   },
   {
     id: 'org-oauth-app-policy', scope: 'org', title: 'OAuth app access policy', page: 'Organization settings → Third-party access',
@@ -143,7 +143,7 @@ export const SETTINGS = Object.freeze([
       { action: 'Open the page', target: 'Settings → Danger zone' },
       { action: 'Press the button and type the organization name yourself', target: 'Delete this organization' }
     ],
-    expected: 'The organization and all its repositories are gone. This cannot be undone and this server will never do it.'
+    expected: 'The organization and all its repositories are gone. This cannot be undone and this guide does not delete it. Any supported destructive action requires separate exact authorization and confirmation.'
   },
   {
     id: 'org-interaction-limit', scope: 'org', title: 'Interaction limits longer than six months', page: 'Organization settings → Moderation',
@@ -198,7 +198,7 @@ export const SETTINGS = Object.freeze([
       { action: 'Open the dashboard', target: 'Sponsors' },
       { action: 'Choose the account and set tiers or sponsorships — yourself', target: 'Your tiers / Your sponsorships' }
     ],
-    expected: 'The dashboard shows the change. This server never spends money.'
+    expected: 'The dashboard shows the change. This guide does not send payment. Actual supported sponsorship actions require the user’s delegated payment authorization and confirmed cost.'
   },
   {
     id: 'user-scheduled-reminders', scope: 'user', title: 'Scheduled reminders', page: 'Settings → Scheduled reminders',
