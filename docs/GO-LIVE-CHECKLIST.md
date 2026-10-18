@@ -50,6 +50,19 @@ Per-account onboarding for `Robinson-AI-Systems` and `christcr2012` is still pen
 | [x] | Owner completed scratch Organization, custom GitHub App and scratch designation (IN-06 setup stage) | Protected setup page | Active/all repositories; `is_scratch=true`; **production ON Oct 18 by separate owner passphrase**; product spend cap not configured, autonomous developer spend $0. Real custom connection remains PREVIEW until owner-authorized mode upgrade following next reviewed release. | Real server account status + separate connection `github_whoami` check; scratch writes/cleanup still require distinct approvals |
 | [ ] | Custom OAuth connection and connected scratch read/write/cleanup acceptance | Custom `/api/mcp` preview-only connection | OAuth connected and scratch reads verified (Oct 15); V-2 cleanup built; live write/cleanup acceptance pending | `github_list_accounts` says scratch true; after cleanup is safe, verify isolated run-owned seed and exact-object cleanup |
 
+## 4b. Private public-scale and dual-platform release gate (owner decision 2026-10-18)
+
+**Do not publish or enroll the public yet.** The standalone current service still has global owner passphrase/account configuration and is not a publicly usable multi-tenant service. Requirements, implementation order and test contract: `docs/designs/PUBLIC-SCALE.md`.
+
+| Done | Item | Who / where | How to verify |
+|---|---|---|---|
+| [ ] | Complete existing 57-row real-world release acceptance and independently approve any legitimate provider exception | Implementing agent and owner | `docs/STATUS.md` evidence, exact deployed SHA, not source CI alone |
+| [ ] | Complete secure PUB-1/PUB-2 tenant identity + OAuth/credentials isolation and private allowlisted pilot | Developer, zero spend | Genuine isolated PostgreSQL tenant A/B attack/permission tests and provider identity/grant proof |
+| [ ] | Complete PUB-3 rate/abuse/reliability/monitoring controls without unapproved spending | Developer | Tested realistic quotas, fault/replay and incident isolation under available no-spend capacity |
+| [ ] | Prove genuine Android/iOS AND desktop/web ChatGPT connections separately using private plugins and service-owned OAuth and full safeguards | Owner + agent | Two real `github_whoami` scope/mode readbacks and independently approved disposable provider read/write/revoke |
+| [ ] | Complete privacy, support, credentials revocation, retention, incident handling and public developer/business verification | Owner decision with evidence | Legal/operations readiness checklist and policy acceptance |
+| [ ] | **Owner separately approves public discoverability, public GitHub App installation and public customer enrollment** | Owner only, LAST | Explicit owner publication decision after all preceding gates; current PRIVATE state remains until then |
+
 ## 5. Projects (one section per profiled project)
 
 ### Appliance Desk
