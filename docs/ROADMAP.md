@@ -1,5 +1,11 @@
 # ROADMAP — ideas not being built now
 
+## Owner-approved completion expansion (2026-10-18): PUBLIC-SCALE, NOT PUBLISHED
+
+The owner explicitly requires GitHub MCP to support **both mobile and desktop** and to be **architected and verified for public multi-user scale**, while **all plugins and public enrollment stay PRIVATE** until production readiness and a separate owner publication decision. This is a binding completion requirement, not permission to expose the existing global-admin single-owner setup to outside users. The proposed security-first architecture and ordered PUB-1 through PUB-5 workstreams are in [PUBLIC-SCALE](designs/PUBLIC-SCALE.md). Before any implementation, write full PUB cards/acceptance into the work index and commit the prescribed plan, preserve all existing 57 original acceptance rows and developer $0/release policies. This cross-product expansion does not make original source-only tests or the new design a real-world acceptance pass. Neither the desktop direct plugin nor the Sites mobile candidate has passed dual-device acceptance.
+
+
+
 Not approved scope. An item moves into a design only with Chris's approval (a dated DECISIONS entry). The usual signal
 for hand-building something is repeated `github_api_*` / `github_graphql_*` calls for it in the change log.
 
