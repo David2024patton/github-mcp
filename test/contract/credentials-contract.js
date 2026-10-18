@@ -55,6 +55,47 @@ export function runCredentialsContract(name, make) {
       expect(await db.setInstallationStatus('nobody', 'active')).toBe(false);
     });
 
+    it('atomically reserves one U refresh, rejects stale completion and preserves owner reauthorization', async () => {
+      const db = await make();
+      await db.upsertAccount(ORG);
+      const original = { userLogin: 'example-user', tokenEnc: 'v1.old-token',
+        tokenExpiresAt: future(60e3), refreshEnc: 'v1.old-refresh', refreshExpiresAt: future(86400e3) };
+      await db.setUserAuthorization('example-org', original);
+      const at = new Date(Date.now()), lease = new Date(at.getTime() + 60e3);
+      expect(await db.claimUserRefresh('example-org', { expectedTokenEnc: original.tokenEnc, claimId: 'worker-a', at, expiresAt: lease })).toBe(true);
+      expect(await db.claimUserRefresh('EXAMPLE-ORG', { expectedTokenEnc: original.tokenEnc, claimId: 'worker-b', at, expiresAt: lease })).toBe(false);
+      const changed = { ...original, tokenEnc: 'v1.new-owner-token', refreshEnc: 'v1.new-owner-refresh' };
+      await db.setUserAuthorization('example-org', changed);
+      expect(await db.finishUserRefresh('example-org', { expectedTokenEnc: original.tokenEnc, claimId: 'worker-a',
+        ...original })).toBe(false);
+      expect(await db.clearUserAuthorizationIfClaim('example-org', original.tokenEnc, 'worker-a')).toBe(false);
+      expect(await db.releaseUserRefreshClaim('example-org', 'worker-a')).toBe(false);
+      expect(await db.clearUserAuthorizationIfCurrent('example-org', original.tokenEnc)).toBe(false);
+      expect(await db.getAccount('example-org')).toMatchObject({ user_token_enc: changed.tokenEnc,
+        user_refresh_enc: changed.refreshEnc, user_refresh_claim: null });
+    });
+
+    it('refreshes only under a current claim and clears only the invalid claimed authorization', async () => {
+      const db = await make();
+      await db.upsertAccount(ORG);
+      const before = { userLogin: 'example-user', tokenEnc: 'v1.initial',
+        tokenExpiresAt: future(60e3), refreshEnc: 'v1.initial-refresh', refreshExpiresAt: future(86400e3) };
+      await db.setUserAuthorization('example-org', before);
+      const at = new Date(Date.now()), expiresAt = new Date(at.getTime() + 60e3);
+      expect(await db.claimUserRefresh('example-org', { expectedTokenEnc: before.tokenEnc, claimId: 'worker-a', at, expiresAt })).toBe(true);
+      expect(await db.finishUserRefresh('example-org', { expectedTokenEnc: before.tokenEnc, claimId: 'worker-b',
+        ...before, tokenEnc: 'v1.wrong' })).toBe(false);
+      const good = { ...before, tokenEnc: 'v1.renewed', refreshEnc: 'v1.renewed-refresh' };
+      expect(await db.finishUserRefresh('example-org', { expectedTokenEnc: before.tokenEnc,
+        claimId: 'worker-a', ...good })).toBe(true);
+      expect(await db.clearUserAuthorizationIfClaim('example-org', before.tokenEnc, 'worker-a')).toBe(false);
+      expect(await db.getAccount('example-org')).toMatchObject({ user_token_enc: good.tokenEnc,
+        user_refresh_enc: good.refreshEnc, user_refresh_claim: null });
+      expect(await db.claimUserRefresh('example-org', { expectedTokenEnc: good.tokenEnc, claimId: 'worker-c', at, expiresAt })).toBe(true);
+      expect(await db.clearUserAuthorizationIfClaim('example-org', good.tokenEnc, 'worker-c')).toBe(true);
+      expect(await db.getAccount('example-org')).toMatchObject({ user_token_enc: null, user_refresh_enc: null, user_refresh_claim: null });
+    });
+
     it('stores user, fine-grained and classic credentials as ciphertext and clears the user authorization', async () => {
       const db = await make();
       await db.upsertAccount(ORG);
