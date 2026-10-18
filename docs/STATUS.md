@@ -1,3 +1,7 @@
+## 2026-10-18 — O-1 recognizes genuine enrolled personal authorization
+
+The owner-requested completion pass reproduced an unconditional personal-status refusal despite valid U. The corrective branch now verifies GET /user under U for organization-associated and personal accounts, matches enrolled identity, returns minimal actual status and preserves denied/foreign/withheld fields honestly. No new owner OAuth, App grant, server setting, production or spending change. Frozen local plan 270374b, published identical 667c17d7, implementation c2bdb909; original O-1 already counted, zero new subsection/bundle credit. Local full 8,155 tests/210 files and focused 23 passed before integration. Package PR #253 is merged as 86bb77be, every exact-head gate green at f5f6d34a and both review threads resolved; remote branch was automatically deleted. Combined source checks, CI/review and source-bearing scheduled release remain required; live is still independently READY 20389ae0. Original guided UI acceptance stays open.
+
 ## 2026-10-18 — package private-user and credential-removal review correction
 
 Independent PR #253 review found two P2 issues before merge: missing private personal authenticated package routes and package-token removal unnecessarily requiring an encryption key. Both are corrected with exact actor/account binding, numeric enrollment identity, protected keyless removal and provider-shape regressions. Self-review also requires curated routing for all twelve package delete/restore variants so the supported credential never unlocks weaker generic writes. Seven focused files pass 232 tests; corrected full unit suite passed 8,179/211 files, final focused 135 tests includes malformed-inventory refusal, and all 21 shapes passed. Fresh exact-head CI/review remains pending. No genuine package token or artifact mutation is involved.
@@ -741,14 +745,14 @@ open obligations, original fixture ownership, approvals and deployment provenanc
   {
     "id": "GITHUB-O1-OWNER-OVERVIEW",
     "priority": 2,
-    "requiredRevision": "a2e6ae766599e5333b8c9a3e14411af237389af4",
+    "requiredRevision": "c2bdb909a5c8a9bcf7552425df07118d7f94c594",
     "task": "After checked READY release of merged O-1 source, run real custom GitHub MCP organization/personal dashboard guidance, verification of exact org 2FA and bounded owner/security status; distinguish provider 403/plan and validate relevant UI links with actual owner/browser readback",
     "procedure": "docs/pr-cards/O-1.md",
     "gates": "Saved service-issued OAuth and enrolled org only; PREVIEW read-only, production OFF, no spend or destructive change; browser-only completion requires independent owner/browser confirmation",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-18 ancestry proves a2e6ae7 already deployed in independently READY 20389ae0. Actual custom admin overview reads all five repositories, production OFF, correctly unconfigured customer cap and genuine complete October billed usage $0 (not a cap). Summary 14 ok, 2 needs_attention, 2 unreadable, 2 plan-limited. Org 2FA remains false and independent org GET agrees. Real U is available, but source unconditionally labels personal-account unreadable without attempting U: a newly confirmed internal O-1 defect, not missing owner OAuth. Guided browser controls still require independent UI proof. No changes.",
-    "nextAction": "Fix unconditional personal-account unreadable stub to use verified enrolled U in a separate bounded O-1 correction; then source-bearing release and independent guided browser readback. Do not ask owner to reauthorize already valid OAuth."
+    "lastEvidence": "2026-10-18 actual native custom READY 20389ae0 proves owner-consented U works, while old admin overview unconditionally marks personal access unreadable. Source c2bdb909 corrects both org and personal branches: explicit U GET /user, enrolled login/type/numeric-identity checks, minimal id/login/optional 2FA/plan, null withheld fields and honest missing/401/403/foreign outcomes with no I fallback. Local full 8155/210 on a645 base plus fix, focused 23 pass; integrated main includes merged package PR #253. Fresh combined checks/CI and deployed/browser proof remain required; no new authorization, setting mutation, private profile leakage or spend.",
+    "nextAction": "After source-bearing scheduled READY release of c2bdb909, verify native actual U status matches independently known actor and complete original guided UI checks. Existing OAuth is available; do not request another authorization merely because the old code said unreadable."
   },
   {
     "id": "GITHUB-O2-ORG-ADMIN",
