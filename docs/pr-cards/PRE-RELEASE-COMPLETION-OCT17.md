@@ -67,7 +67,7 @@ Completion bundle remains CONTINUE with zero new bundle credit: the original com
 
 ## Final original acceptance accounting before publication
 
-All 56 ledger criteria considered separately against independently READY 20389ae0, native service OAuth PREVIEW/full and owner-consented I/U. Eleven recorded passes are retained/revalidated; the new supported-package check is queued. The table records the exact unfulfilled prerequisite, not a new product restriction. No general reconnect request is made: the native connection is working. A source pin is raised only for an identified reviewed fix, never merely because main is ahead.
+All 56 ledger criteria considered separately against independently READY 20389ae0, native service OAuth PREVIEW/full and owner-consented I/U. Twelve recorded passes are retained/revalidated; the new supported-package check is queued. The table records the exact unfulfilled prerequisite, not a new product restriction. No general reconnect request is made: the native connection is working. A source pin is raised only for an identified reviewed fix, never merely because main is ahead.
 
 | Original criterion | Remaining prerequisite / next action |
 | --- | --- |
@@ -84,7 +84,7 @@ All 56 ledger criteria considered separately against independently READY 20389ae
 | GITHUB-H3-ACCESS-LIFECYCLE | Exact disposable collaborator/key principal and independent access-widening, production and cleanup approval; no outside invitations or new keys inferred. |
 | GITHUB-H4-ALERT-TRIAGE | Real safe test alerts and exact dismissal/reopen authority are absent. Current public fixture has no Dependabot alerts, no code analysis and disabled secret scanning. |
 | GITHUB-H4-SETTINGS | Exact production-authorized disposable security-settings fixture required; current scanning is disabled. Do not enable paid/private features to manufacture acceptance. |
-| GITHUB-O1-OWNER-OVERVIEW | Release a2e6ae7 optional-cap/real-billing correction, then independently inspect guided GitHub UI controls; API state alone cannot close browser-only evidence. |
+| GITHUB-O1-OWNER-OVERVIEW | Earlier cap/billing fix is deployed and retested successfully. New internal defect: personal-account is unconditionally unreadable despite valid U. Implement verified U read, then deploy and independently verify guided UI controls. |
 | GITHUB-O2-ORG-ADMIN | Exact disposable organization policy/identity mutation and independent production/access approval; safe org reads report free plan and existing policy, not mutation acceptance. |
 | GITHUB-O3-TEAM-ROLES | Complete nine-role and empty-team read now works. Exact named team/principal and independent grant/role/production confirmation still required. |
 | GITHUB-W1-OPEN-PR | Actual existing PR reused at independently matching head; missing-label dry run returns preview, no mutation. Exact label application/notification test and cleanup authority still needed for full compound criterion. |
@@ -101,7 +101,7 @@ All 56 ledger criteria considered separately against independently READY 20389ae
 | GITHUB-W6-RELEASE | Exact disposable draft/tag lifecycle plus owner production/publish/cleanup approval; no release or publication is inferred from generic test authorization. |
 | GITHUB-W6-CLEANUP | Exact disposable merged/closed branch target and independent destructive cleanup authority with fresh full inventory required; do not delete uncertain original run resources. |
 | GITHUB-W7-NEW-REPO | Exact independently approved disposable repository desired state, organization creation/production authority and cleanup scope; no security or paid defaults silently enabled. |
-| GITHUB-W7-DIGEST | Release fe913a2 real nested billing-envelope correction; pre-correction deployed digest cannot establish truthful complete seven-day cost behavior. |
+| GITHUB-W7-DIGEST | Nested billing fix is already deployed: all seven daily bills read complete at actual $0. Overall digest remains partial because scanning/alerts are disabled or inaccessible; use legitimately enabled/readable fixtures. |
 | GITHUB-U1-REST-WRITE | Exact disposable non-curated operation and independent production/write/cleanup authority; preserve real readback/replay and scoped provider permissions. |
 | GITHUB-U2-GRAPHQL-WRITE | Squash source pin is reconciled and read proof revalidated. Exact disposable mutation and production/write/cleanup authority still absent; no source-release blocker remains. |
 | GITHUB-Y9D-HOSTED-READ | Provider now explicitly says hosted runners unsupported for this organization (404); existing plan is free. Use already eligible entitlement, without purchasing an upgrade. |
@@ -113,10 +113,15 @@ All 56 ledger criteria considered separately against independently READY 20389ae
 | GITHUB-O4-AUTH-CODESPACES-WRITE | Exact approved replacement organization membership policy and production authority, plus independent UI readback of this unreadable setting; no live access change inferred. |
 | GITHUB-Y7-AUTH-PREVIEW | Release corrected provider refusal/cursor behavior c552ab8 and use legitimately eligible security fixture; do not treat private-feature 403 as consent or buy eligibility. |
 | GITHUB-Y7-AUTH-PRIVATE-PAID-WRITE | Legitimate private paid-security entitlement and exact uncapped-cost/production/fixture authorization required; do not buy entitlement or alter original private visibility. |
-| GITHUB-U1-AUTH-PREVIEW | Release the reviewed exact method/path curated-router correction b9f22b8; current provider origin still serves pre-correction source. |
 | GITHUB-U1-AUTH-METERED-WRITE | Exact operation/body/target and unbounded-cost authorization with legitimate provider eligibility and production-enabled full principal; developer spending stays zero. |
 | GITHUB-G6-PACKAGE-AUTH | Release reviewed supported P source bb8b574, protected owner token enrollment and actual package access; exact disposable package production lifecycle needs independent write/disposal authority. No extra App permission solves it. |
 
 ## Developer/user policy audit
 
 Reviewed current spend-cap normalization, unknown-cost guard/classification, billing/Codespaces writers, security feature/configuration writers, production gating, universal curated routing and Y-9 runner/Copilot/task/Sponsors writers. Explicit end-user caps and scoped pass limits are distinct from developer $0 spending. Paid and production user operations remain executable through their genuine delegated guards; Marketplace purchase guidance reflects absent provider purchase API, not a blanket cost prohibition. Enterprise/App-JWT paths require separately verified authority. The explicit owner invariant never sending bypass_rules remains; it is not silently removed. The concrete unsupported-package credential defect was fixed on its separate plan. This focused audit is not a claim of every provider operation being live tested. Several earlier authority fixes are merged on main and await the scheduled deployment.
+
+## Final ancestry reconciliation and newly performed checks
+
+Exact ancestry, rather than the earlier handoff assumption, confirms O-1 a2e6ae7, U-1 b9f22b8 and W-7 fe913a2 are already in live 20389ae0. All were retested. U-1 auth-preview now PASSED on actual service scope/schema/curated/free-versus-unknown classifications and safe production refusals; no paid execution or configured-cap enforcement is implied. O-1 correctly reports no customer cap and actual $0 bill, but its unconditional personal-account unreadable stub is a newly confirmed code defect despite genuine U; it needs a separate source correction, not reauthorization. W-7 reads all seven complete real daily bills at $0, while full alert coverage stays partial for actual feature/plan state. The table above reflects these corrected prerequisites. Y-7 c552ab8 and the new supported package credential remain genuine source-bearing release waits.
+
+PR preview availability: Vercel deployment query for exact PR head 4540d93e returned zero deployments, so no PR preview home-page/browser count proof is claimed. Existing setup rendering tests and new explicit nonproduction add/remove-package refusal assertions cover the new setup controls; required real CI includes database, RTC and shapes. No manual deployment was created.

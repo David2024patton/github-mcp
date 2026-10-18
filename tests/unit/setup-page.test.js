@@ -103,7 +103,7 @@ describe('the setup page', () => {
   it('refuses every credential step off the production deployment, but still shows status', async () => {
     const t = await build({ env: { ...PROD, VERCEL_ENV: 'preview' } });
     await t.open();
-    for (const action of ['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'reveal']) {
+    for (const action of ['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'add-package', 'remove-package', 'reveal']) {
       const res = await t.post({ action, login: 'example-org', token: 'ghp_FAKE'.padEnd(40, 'x') });
       expect(res.statusCode, action).toBe(403);
       expect(res.body).toContain('production deployment');
