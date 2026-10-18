@@ -53,3 +53,7 @@ Merged main 86bb77be (PR #253) into this isolated worktree without conflict, pre
 ## Final local publication proof
 
 Integrated focused suite: 170 tests across six files, including O-1, package credentials, setup, universal routing, server status and persistence contract. All 21 provider request-shape tests and npm check pass. Pre-integration full O-1 suite: 8,155/210 files; merged package tree independently passed full units and every exact-head CI family. No relevant shared behavior changed on integration: the new optional fixture flag defaults false, credential stores and request guards remain independent. Required fresh CI verifies the complete combined tree. Meaningful production diff excluding comments/blanks: 26 added/5 removed, a bounded correction to already merged O-1, zero new subsection/bundle credit. Original live identity/UI proof remains pending.
+
+## Review correction before merge
+
+First exact-head CI at 057de7db passed all required families. Independent review correctly identified that a valid id/login without the provider-required type could pass. The helper now requires literal type User, with missing and empty type payloads added to malformed-identity regression cases. No good provider response, permission, output field or account scope changes. Focused/shapes/check proof and fresh exact-head CI are required before merge; the live queue must pin this stricter implementation.

@@ -249,7 +249,7 @@ describe('O-1 enrolled personal authority read',()=>{
     expect(personal(await call(w,'github_admin_overview'))).toMatchObject({status:'not_readable',reason:expect.stringContaining('HTTP '+status)});
     expect(w.gh.calls.filter(x=>x.route==='GET /user')).toHaveLength(1);
   });
-  it.each([{id:2,login:'outsider',type:'User'},{id:1,login:'example-owner',type:'Organization'},{login:'example-owner'},{id:0,login:'example-owner'}])('refuses mismatched or unverifiable user identity: %j',async user=>{
+  it.each([{id:1,login:'example-owner'},{id:1,login:'example-owner',type:''},{id:2,login:'outsider',type:'User'},{id:1,login:'example-owner',type:'Organization'},{login:'example-owner'},{id:0,login:'example-owner'}])('refuses mismatched or unverifiable user identity: %j',async user=>{
     const w=await makeWorld({profile:'read_only'});arrange(w);w.gh.when('GET /user').reply(200,user);
     expect(personal(await call(w,'github_admin_overview'))).toMatchObject({status:'not_readable',reason:expect.stringContaining('does not match')});
   });

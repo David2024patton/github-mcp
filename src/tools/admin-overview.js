@@ -44,7 +44,7 @@ async function personalStatus(items,owner,row,ctx,id='personal-account'){
   },user=>{
     const expected=row.account_type==='User'?row.login:row.user_login;
     if(!Number.isSafeInteger(user?.id)||user.id<=0||typeof user.login!=='string'||
-       user.type&&user.type!=='User'||typeof expected!=='string'||
+       user.type!=='User'||typeof expected!=='string'||
        user.login.toLowerCase()!==expected.toLowerCase()||
        row.account_type==='User'&&user.id!==row.account_id)
       return unreadable(id,'personal','The authorized GitHub user does not match this account’s enrolled personal identity. Nothing was inferred from installation credentials.');
