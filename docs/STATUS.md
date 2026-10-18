@@ -1244,14 +1244,14 @@ open obligations, original fixture ownership, approvals and deployment provenanc
   {
     "id": "GITHUB-G6-PACKAGE-AUTH",
     "priority": 1,
-    "requiredRevision": "bb8b574afe6db3f3f36475b11f52ae3fe05c9389",
+    "requiredRevision": "4fed65b97dd7f02c97b47edbecb7241b0cef489d",
     "task": "Verify dedicated supported package credential enrollment, exact-account read and guarded delete/restore with independent package readback, denial/replay and cleanup on an explicitly disposable fixture.",
     "procedure": "docs/pr-cards/PACKAGE-CREDENTIAL-CORRECTION.md; docs/pr-cards/G-6.md",
     "gates": "Reviewed source in independently verified READY deployed ancestry; owner enrolls genuine supported classic package token through protected setup, required scopes and package-level access; exact disposable package and separately authorized production write/cleanup. No token in chat, paid publication or real artifact destruction inferred.",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-18 source-only correction: dedicated encrypted P with actor/scope-verified enrollment/removal, account/package URL restriction and original write guards. Local 8173 units and 21 provider shapes passed; no genuine package token was enrolled, no real package operation is accepted. Current serving source is 20389ae0.",
-    "nextAction": "After scheduled source-bearing release, use protected setup to enroll the optional genuine package token, then perform safe list and exact disposable lifecycle only under its independent write authority."
+    "lastEvidence": "2026-10-18 reviewed source correction includes dedicated encrypted P, verified actor/account IDs, exact org and authenticated private personal package routes, curated mutation routing for all twelve variants, and protected removal without decryption. Full local units 8179/211 plus final focused 135 (including one added malformed-list test), shapes 21, check pass; real DB passed prior heads with unchanged additive schema. Fresh final CI/review required. No genuine package token enrolled, no real package mutation accepted; serving source remains 20389ae0.",
+    "nextAction": "After source-bearing scheduled release of at least 4fed65b9, enroll genuine package token through protected setup; safely verify actual org/personal reads and exact disposable guarded lifecycle only under independently granted write/disposal authority."
   }
 ]
 ```
