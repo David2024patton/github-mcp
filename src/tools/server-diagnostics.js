@@ -5,6 +5,7 @@ import { GithubClientError } from '../github/errors.js';
 import { formatDenver } from '../github/errors.js';
 import { AREAS, LEVELS } from '../data/permission-needs.js';
 import { MAP_STATUS, SETTINGS, findSettings, fill } from '../data/dashboard-map.js';
+import { enrolledGuideUser, restrictUnknownUserLink } from './guide-personal.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
 const when = (value) => (value ? formatDenver(value) : null);
@@ -100,14 +101,16 @@ async function whereIsSetting(args, ctx) {
   if (args.org && !org) throw new TypeError(`"${args.org}" is not one of the GitHub accounts this connection may use (${ctx.connection.accounts.join(', ')}).`);
   const matches = findSettings(args.query, { max: args.detail === 'full' ? 5 : 2 });
   if (!matches.length) return { found: 0, map: MAP_STATUS, note: 'Nothing in the map matches. If GitHub has an API for it, one of the other tools does it; otherwise it has not been mapped yet.', try_words: SETTINGS.map((s) => s.title).slice(0, 8) };
+  const user = matches.some((s) => s.scope === 'user')
+    ? await enrolledGuideUser(ctx, org ?? ctx.connection.default_account) : null;
   return {
     found: matches.length, map: MAP_STATUS,
-    settings: matches.map((s) => fill({
+    settings: matches.map((s) => restrictUnknownUserLink(fill({
       setting: s.title, where: s.page, url: s.url, scope: s.scope,
       steps: s.steps.map((step, i) => ({ n: i + 1, ...step })), expected: s.expected,
       ...(s.verifyWith ? { verifyWith: s.verifyWith } : { verifyWith: null, check: 'GitHub gives no way to read this back; tell me when it is done and I will note it.' })
-    }, { org: org ?? (s.scope === 'org' ? ctx.connection.default_account : null), user: s.scope === 'user' ? ctx.connection.default_account : null,
-      repo: args.repo ?? null }))
+    }, { org: org ?? (s.scope === 'org' ? ctx.connection.default_account : null), user: s.scope === 'user' ? user : null,
+      repo: args.repo ?? null }), s.url, user))
   };
 }
 
