@@ -61,7 +61,8 @@ Per-account onboarding for `Robinson-AI-Systems` and `christcr2012` is still pen
 | [ ] | Complete PUB-3 rate/abuse/reliability/monitoring controls without unapproved spending | Developer | Tested realistic quotas, fault/replay and incident isolation under available no-spend capacity |
 | [ ] | Prove genuine Android/iOS AND desktop/web ChatGPT connections separately using private plugins and service-owned OAuth and full safeguards | Owner + agent | Two real `github_whoami` scope/mode readbacks and independently approved disposable provider read/write/revoke |
 | [ ] | Complete privacy, support, credentials revocation, retention, incident handling and public developer/business verification | Owner decision with evidence | Legal/operations readiness checklist and policy acceptance |
-| [ ] | **Owner separately approves public discoverability, public GitHub App installation and public customer enrollment** | Owner only, LAST | Explicit owner publication decision after all preceding gates; current PRIVATE state remains until then |
+| [ ] | **Confirm third-party distribution eligibility before any public Directory work (IN-18)** | Owner + OpenAI/GitHub policy/authorization, BEFORE public implementation | Current directory policy says unofficial third-party connectors are not approvable; stop Directory submission unless written authorization and applicable eligibility are established. PRIVATE/workspace distribution remains the fallback. |
+| [ ] | **Owner separately approves any eligible public discoverability, public GitHub App installation and outside-user enrollment** | Owner only, LAST | Explicit eligibility proof plus fresh owner publication decision after all other gates; current PRIVATE state remains until then |
 
 ## 5. Projects (one section per profiled project)
 

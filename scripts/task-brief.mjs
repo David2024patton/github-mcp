@@ -3,9 +3,10 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const CARD = /^[A-Z][0-9]?-[0-9]+$/;
+// Batch IDs may have several uppercase letters (for example PUB-1) while staying bounded.
+const CARD = /^[A-Z][A-Z0-9]{0,7}-[0-9]+$/;
 export function buildTaskBrief(index, cardId, source='') {
-  if(!CARD.test(cardId??'')) throw new TypeError('Use an exact card ID, for example V-1.');
+  if(!CARD.test(cardId??'')) throw new TypeError('Use an exact card ID, for example V-1 or PUB-1.');
   const row=index.cards?.find(x=>x.id===cardId);
   if(!row) throw new TypeError(`Unknown card: ${cardId}`);
   const paths=[...new Set([...source.matchAll(/`((?:src|test|tests|docs|scripts|api|packages)\/[a-zA-Z0-9_./*-]+)`/g)]
