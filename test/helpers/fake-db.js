@@ -213,6 +213,17 @@ export function createFakeDb({ clock = Date.now } = {}) {
         .map((r) => ({ client_id: r.client_id, kind: r.kind, ...(r.pass ? { pass: { ...r.pass } } : {}), client_name: clients.get(r.client_id)?.client_name ?? null, default_account: r.default_account, accounts: [...r.accounts], mode: r.mode,
           profile: r.profile, listing: r.listing, expires_at: new Date(r.expires_at), last_used_at: r.last_used_at ? new Date(r.last_used_at) : null, created_at: new Date(r.created_at) }));
     },
+    async listUpgradeableConnections() {
+      return [...tokens.values()]
+        .filter((r) => r.kind === 'connector' && r.revoked_at == null &&
+          (r.expires_at > clock() || r.refresh_hash !== null))
+        .sort((a, b) => b.created_at - a.created_at)
+        .map((r) => ({ client_id: r.client_id, kind: r.kind,
+          client_name: clients.get(r.client_id)?.client_name ?? null,
+          default_account: r.default_account, accounts: [...r.accounts],
+          mode: r.mode, profile: r.profile, listing: r.listing,
+          expires_at: new Date(r.expires_at), created_at: new Date(r.created_at) }));
+    },
     async revokeConnection(clientId) {
       let n = 0;
       for (const r of tokens.values()) if (r.client_id === clientId && ['connector', 'pass'].includes(r.kind) && r.revoked_at == null) { r.revoked_at = clock(); n += 1; }
@@ -228,11 +239,17 @@ export function createFakeDb({ clock = Date.now } = {}) {
           typeof account !== 'string' || !/^[A-Za-z0-9-]{1,39}$/.test(account)) return 0;
       const owner = accountRows.get(account.toLowerCase());
       const candidates = [...tokens.values()].filter((t) => t.client_id === clientId && t.kind === 'connector' && t.revoked_at == null);
-      if (!owner || owner.production_enabled !== true || !candidates.length ||
-          candidates.some((t) => t.mode !== 'preview' || t.profile !== 'full' ||
+      const active = candidates.filter((t) => t.expires_at > clock() || t.refresh_hash !== null);
+      const credentialReady = owner?.credential_kind === 'app'
+        ? owner.installation_status === 'active' && owner.installation_id != null
+        : owner?.credential_kind === 'fine_grained' && owner.fine_grained_enc != null &&
+          (!owner.fine_grained_expires_at || new Date(owner.fine_grained_expires_at).getTime() > clock());
+      if (!owner || owner.account_type !== 'Organization' || owner.is_scratch !== true ||
+          owner.production_enabled !== true || !credentialReady || !active.length ||
+          active.some((t) => t.mode !== 'preview' || t.profile !== 'full' ||
             t.default_account.toLowerCase() !== account.toLowerCase() || t.accounts.length !== 1 || t.accounts[0] !== account)) return 0;
-      for (const t of candidates) t.mode = 'production';
-      return candidates.length;
+      for (const t of active) t.mode = 'production';
+      return active.length;
     },
     async listChanges({ repo = null, tool = null, account = null, accounts = null, since = null, includePreviews = false, limit = 20 } = {}) {
       const only = Array.isArray(accounts) ? accounts.map((a) => String(a).toLowerCase()) : null;
