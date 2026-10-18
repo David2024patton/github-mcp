@@ -161,6 +161,31 @@ describe('github_where_is_setting', () => {
     expect(pw.check).toContain('tell me when it is done');
     expect(pw.url).toBe('https://github.com/settings/security');
   });
+  it('uses the selected enrolled personal identity for user-profile links and no other org', async()=>{
+    const w=await makeWorld({profile:'read_only',accounts:['example-org','alternate-account']});
+    const row=await w.db.getAccount('alternate-account');
+    await w.db.setUserAuthorization('alternate-account',{
+      userLogin:'another-owner',tokenEnc:row.user_token_enc,
+      tokenExpiresAt:row.user_token_expires_at,refreshEnc:row.user_refresh_enc,
+      refreshExpiresAt:row.user_refresh_expires_at});
+    const first=await call('github_where_is_setting',w,{query:'pinned repositories'});
+    expect(first.settings.find(s=>s.scope==='user').url).toBe('https://github.com/example-owner');
+    const chosen=await call('github_where_is_setting',w,{query:'pinned repositories',org:'alternate-account'});
+    expect(chosen.settings.find(s=>s.scope==='user').url).toBe('https://github.com/another-owner');
+    expect(JSON.stringify(chosen.settings)).not.toContain('https://github.com/alternate-account');
+    expect(w.gh.calls).toHaveLength(0);
+  });
+  it('withholds profile links instead of using the organization when personal U is absent',async()=>{
+    const w=await makeWorld({profile:'read_only'});
+    await w.db.clearUserAuthorization('example-org');
+    const out=await call('github_where_is_setting',w,{query:'pinned repositories'});
+    expect(out.settings.find(s=>s.scope==='user')).toMatchObject({
+      url:null,identity:'not_verified',reason:expect.stringContaining('not be inferred')
+    });
+    const org=await call('github_where_is_setting',w,{query:'require two-factor'});
+    expect(org.settings.find(s=>s.scope==='org').url).toContain('organizations/example-org/');
+    expect(w.gh.calls).toHaveLength(0);
+  });
   it('admits when nothing matches and refuses an empty query or an outside organization', async () => {
     const w = await makeWorld({ profile: 'read_only' });
     const none = await call('github_where_is_setting', w, { query: 'zzzz qqqq' });

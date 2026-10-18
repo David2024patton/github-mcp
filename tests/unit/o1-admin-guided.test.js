@@ -113,6 +113,60 @@ describe('O-1 full guided GitHub settings inventory and verification',()=>{
     expect(w.gh.calls).toHaveLength(0);
   });
 });
+describe('O-1 bound personal navigation identity',()=>{
+  it('uses the enrolled org user U for personal profile links, not its organization login',async()=>{
+    const w=await makeWorld({profile:'read_only'});
+    const r=await call(w,'github_admin_list_guided_settings',{owner:'example-org',scope:'user',max:100});
+    const pinned=r.settings.find(s=>s.id==='user-pinned');
+    expect(pinned.url).toBe('https://github.com/example-owner');
+    expect(r.settings.find(s=>s.id==='user-profile-readme').url).toBe('https://github.com/example-owner');
+    expect(pinned.url).not.toContain('example-org');
+    const orgGuide=await call(w,'github_admin_list_guided_settings',{scope:'org',max:100});
+    expect(orgGuide.settings.find(s=>s.id==='org-require-2fa').url).toContain('/organizations/example-org/');
+    expect(w.gh.calls).toHaveLength(0);
+  });
+  it('never fabricates a personal profile URL when U is absent or malformed',async()=>{
+    const w=await makeWorld({profile:'read_only'});
+    await w.db.clearUserAuthorization('example-org');
+    const r=await call(w,'github_admin_list_guided_settings',{scope:'user',max:100});
+    const pinned=r.settings.find(s=>s.id==='user-pinned');
+    expect(pinned).toMatchObject({url:null,identity:'not_verified'});
+    expect(pinned.reason).toContain('not be inferred');
+    expect(r.settings.find(s=>s.id==='user-password').url).toBe('https://github.com/settings/security');
+    const invalid=await makeWorld({profile:'read_only'});
+    const row=await invalid.db.getAccount('example-org');
+    await invalid.db.setUserAuthorization('example-org',{
+      userLogin:'bad/redirect',tokenEnc:row.user_token_enc,
+      tokenExpiresAt:row.user_token_expires_at,refreshEnc:row.user_refresh_enc,
+      refreshExpiresAt:row.user_refresh_expires_at});
+    const bad=await call(invalid,'github_admin_list_guided_settings',{scope:'user',max:100});
+    expect(bad.settings.find(s=>s.id==='user-pinned').url).toBeNull();
+    expect(w.gh.calls).toHaveLength(0);
+    expect(invalid.gh.calls).toHaveLength(0);
+  });
+  it('requires a personal-account U matching the enrolled account ID and name',async()=>{
+    const w=await makeWorld({profile:'read_only',accounts:['example-person'],packageUser:true});
+    const mismatch=await call(w,'github_admin_list_guided_settings',{scope:'user',max:100});
+    expect(mismatch.settings.find(s=>s.id==='user-pinned').url).toBeNull();
+    const row=await w.db.getAccount('example-person');
+    await w.db.setUserAuthorization('example-person',{
+      userLogin:'example-person',tokenEnc:row.user_token_enc,
+      tokenExpiresAt:row.user_token_expires_at,refreshEnc:row.user_refresh_enc,
+      refreshExpiresAt:row.user_refresh_expires_at});
+    const bound=await call(w,'github_admin_list_guided_settings',{scope:'user',max:100});
+    expect(bound.settings.find(s=>s.id==='user-pinned').url).toBe('https://github.com/example-person');
+  });
+  it('keeps developer spending bans out of completed-product purchase and destruction guidance',()=>{
+    const rows=SETTINGS.filter(x=>['org-plan','org-marketplace','org-delete','user-sponsors','user-delete-account'].includes(x.id));
+    expect(rows).toHaveLength(5);
+    for(const item of rows){
+      expect(item.expected).not.toMatch(/server (never|will never)/i);
+      expect(item.expected).toMatch(/guide/i);
+    }
+    expect(SETTINGS.find(x=>x.id==='user-recovery-codes').expected).toMatch(/Never paste/i);
+  });
+});
+
 describe('O-1 actual owner and security overview',()=>{
   it('categorizes verified service, organization and security state without a false all-clear',async()=>{
     const w=await makeWorld({profile:'read_only'});
