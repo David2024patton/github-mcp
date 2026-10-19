@@ -222,6 +222,26 @@ export function createTenantDirectory(sql) {
         membershipRevision: Number(row.membership_revision), pilotRevision: Number(row.pilot_revision) });
     },
 
+    /** Resolve a previously provider-verified identity from a SERVER-SIGNED token
+     * on every request, not from a caller-supplied tenant ID. Both membership
+     * and private pilot allowlist must be live. Revocation takes effect at once. */
+    async authorizedPilotIdentity(tenantId, identityId) {
+      const t = validUuid(tenantId), i = validUuid(identityId);
+      const rows = await sql`SELECT t.id,t.namespace,m.role,m.revision AS membership_revision,
+          p.revision AS pilot_revision
+        FROM gh_tenants t
+        JOIN gh_tenant_memberships m ON m.tenant_id=t.id
+        JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=t.id AND p.identity_id=m.identity_id
+        WHERE t.id=${t}::uuid AND m.identity_id=${i}::uuid
+          AND t.status='active' AND m.active=TRUE AND p.active=TRUE`;
+      if (rows.length !== 1) return null;
+      const v = rows[0];
+      return Object.freeze({ tenantId: String(v.id), identityId: i,
+        namespace: v.namespace, role: v.role,
+        membershipRevision: Number(v.membership_revision),
+        pilotRevision: Number(v.pilot_revision) });
+    },
+
     /** Membership widening is owner-controlled: no public self-grant. */
     async grant(tenantId, actorIdentityId, targetIdentityId, role) {
       const t = validUuid(tenantId), actor = validUuid(actorIdentityId), target = validUuid(targetIdentityId);
