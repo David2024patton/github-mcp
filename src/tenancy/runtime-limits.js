@@ -89,54 +89,7 @@ export async function initTenantRuntimeSchema(sql) {
     tenant_used:=t;
     client_used:=c;
     RETURN NEXT;
-  END $body// PUB-3 PRIVATE capacity budget for independently authenticated tenant schemas.
-// Owner legacy connections are intentionally outside this runtime. The limits
-// defend shared infrastructure, not which GitHub capabilities a customer can
-// authorize or the developer's separate zero-spend restrictions.
-import { createHash } from 'node:crypto';
-
-export const TENANT_RUNTIME_LIMITS = Object.freeze({
-  mcpClientPerMinute: 120,
-  mcpTenantPerMinute: 600,
-  oauthClientPerMinute: 30,
-  oauthTenantPerMinute: 150,
-  jobsClientPerDay: 32,
-  jobsTenantPerDay: 200,
-  resultMaxBytes: 256 * 1024,
-  resultsClientBytesPerDay: 8 * 1024 * 1024,
-  resultsTenantBytesPerDay: 40 * 1024 * 1024,
-  jobMaxTtlMinutes: 1440,
-  resultMaxTtlSeconds: 86400
-});
-
-const allowedKinds = new Set(['mcp', 'oauth', 'job', 'result']);
-const allowedEvents = new Set(['mcp', 'oauth', 'job', 'result', 'provider', 'refresh']);
-const allowedOutcomes = new Set(['ok', 'refused', 'throttled', 'error']);
-const bound = (number, low, high) => Number.isSafeInteger(number) && number >= low && number <= high;
-const bucketFor = ms => ms < 100 ? 'lt100ms' : ms < 500 ? 'lt500ms' : ms < 2000 ? 'lt2s' : 'gte2s';
-const digest = value => createHash('sha256').update(value).digest('hex').slice(0, 24);
-
-export class TenantCapacityError extends Error {
-  constructor(operation, waitSeconds) {
-    super('The private tenant is temporarily busy. Retry after the indicated interval.');
-    this.name = 'TenantCapacityError';
-    this.operation = operation;
-    this.retryAfterSeconds = waitSeconds;
-  }
-}
-
-/** Execute only on a TENANT-BOUND connection after exact search_path has been
- * independently verified. Non-public provisioning/migration owns DDL; no MCP
- * request is permitted to create or silently migrate tables at runtime. */
-export async function initTenantRuntimeSchema(sql) {
-  await sql`CREATE TABLE IF NOT EXISTS gh_tenant_budget_windows (
-    scope TEXT NOT NULL CHECK (length(scope) BETWEEN 2 AND 80),
-    window_start TIMESTAMPTZ NOT NULL,
-    used BIGINT NOT NULL CHECK (used >= 0),
-    expires_at TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (scope, window_start)
-  )`;
-;
+  END $body$`;
   await sql`CREATE INDEX IF NOT EXISTS gh_tenant_budget_expiry
     ON gh_tenant_budget_windows (expires_at)`;
   await sql`CREATE TABLE IF NOT EXISTS gh_tenant_runtime_metrics (
