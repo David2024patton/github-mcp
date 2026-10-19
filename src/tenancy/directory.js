@@ -159,6 +159,21 @@ export function createTenantDirectory(sql) {
     },
 
     /** Called only after a real provider lookup has established this numeric user ID. */
+    /** Only an authenticated owner flow that just verified GitHub may call
+     * this. One transaction serializes duplicate taps for the same owner. */
+    async provisionPilotForOwnerAccount(identityId, accountLogin) {
+      const id=validUuid(identityId);
+      if(typeof accountLogin!=='string' ||
+          !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin))
+        throw new TypeError('Invalid private pilot account name.');
+      const proposed=randomUUID();
+      const rows=await sql`SELECT gh_bootstrap_private_pilot(
+        ${id}::uuid,${accountLogin},${proposed}::uuid) AS tenant_id`;
+      if(rows.length!==1 || !rows[0].tenant_id)
+        throw new Error('Private pilot creation is unavailable.');
+      return String(rows[0].tenant_id);
+    },
+
     async enrollVerifiedGithubSubject(subject) {
       if (typeof subject !== 'string' || !GITHUB_SUBJECT.test(subject))
         throw new TypeError('A verified numeric GitHub subject is required.');
