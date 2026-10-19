@@ -82,6 +82,11 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
       '<label>Exact HTTPS callback URL from the MCP client<input name="redirectUri" type="url" required maxlength="2048" autocomplete="off"></label>' +
       '<label>Confirmation<select name="confirmPilot"><option value="no">Do not create a client</option><option value="yes">Issue one private client for my scratch App</option></select></label>',
       'Issue private MCP client — reveal once') +
+    '<h2>Revoke a private pilot — emergency stop</h2><p>Immediately disable all private pilot tokens and clients for the exact organization. Works even after GitHub sign-in is lost. No repositories, customers or database contents are deleted. A later separate owner-approved re-enrollment is required.</p>' +
+    form('revoke-private-pilot', login +
+      '<label>Re-type exact organization to revoke<input name="confirmLogin" required maxlength="39" autocomplete="off"></label>' +
+      '<label>Explicit revoke confirmation<select name="confirmPilot"><option value="no">Keep existing access</option><option value="revoke">Revoke all private pilot sessions for this account</option></select></label>',
+      'Revoke private pilot access') +
     '<h2>3. Authorize as me (optional, for personal settings)</h2>' +
     form('start-user-auth', login.replace('GitHub account name (for example your organization or user name)', 'Account whose App you are authorizing'), 'Authorize on GitHub') +
     '<h2>4. Turn on production for an account</h2><p>Production lets a connection change real branches, releases and settings, always asking first. It is off until you do two steps: ask Claude to turn it on for the account, then confirm here within 10 minutes.</p>' +
