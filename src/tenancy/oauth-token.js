@@ -60,7 +60,8 @@ export async function privateTenantToken(req, res, {
     return send(res, 503, { error: 'temporarily_unavailable' });
   } finally {
     if(tenantSql) await recordTenantMetric(tenantSql,{
-      event:'oauth',outcome,durationMs:Math.max(0,Date.now()-started)
+      event:params?.grant_type==='refresh_token'?'refresh':'oauth',
+      outcome,durationMs:Math.max(0,Date.now()-started)
     }).catch(()=>{});
   }
 }
