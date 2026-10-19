@@ -21,6 +21,8 @@ import { dollars as money } from '../github/prices.js';
 import { validateGrant } from '../rtc/pass-scope.js';
 import { bootstrapPrivateOwnerPilot } from '../tenancy/owner-bootstrap.js';
 import { registerPrivatePilotClient } from '../tenancy/client-registration.js';
+import { createTenantDirectory } from '../tenancy/directory.js';
+import { neon } from '@neondatabase/serverless';
 
 const HTML = 'text/html; charset=utf-8';
 const CSP = "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://github.com; base-uri 'none'; frame-ancestors 'none'";
@@ -137,6 +139,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'upgrade-connection-production') return await upgradeConnectionProduction(p, page);
     if (action === 'bootstrap-private-pilot') return await setupPrivatePilot(p, page);
     if (action === 'register-private-pilot-client') return await registerPrivateOwnerClient(p, page);
+    if (action === 'revoke-private-pilot') return await revokePrivateOwnerPilot(p, page);
     if (action === 'set-spend-limit') return await setSpendLimit(p, page);
     if (action === 'set-scratch') return await setScratch(p, page);
     if (action === 'create-rtc-pass') {
@@ -453,6 +456,33 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       return page(409,{result:'Private client registration refused. Verify the account, '+
         'App grant, exact supported redirect URI and private pilot configuration. '+
         'No public access was enabled.'});
+    }
+  }
+
+  /** Emergency owner revocation also works when private OAuth is disabled or
+   * GitHub's user token is no longer refreshable. */
+  async function revokePrivateOwnerPilot(p,page) {
+    if (!isProduction()) return page(403,{blocked:NOT_PRODUCTION});
+    const account=String(p.login||'').trim().toLowerCase();
+    if (!isValidLogin(account) ||
+        String(p.confirmLogin||'').trim().toLowerCase()!==account ||
+        String(p.confirmPilot||'')!=='revoke')
+      return page(400,{result:'Confirm the exact account and that all its private pilot sessions must stop.'});
+    try {
+      const row=await db.getAccount(account);
+      if (!row || row.account_type!=='Organization' || !env.DATABASE_URL)
+        return page(404,{result:'This account has no private pilot to revoke.'});
+      const dir=createTenantDirectory(neon(env.DATABASE_URL));
+      const stopped=await dir.revokePrivatePilotsForAccount(account);
+      await db.recordChange({account,mode:'setup',tool:'setup_revoke_private_pilot',
+        target:account,
+        summary:'Owner revoked all private pilot authorizations for this account',
+        confirmed:true,production:false,accessWidening:false}).catch(()=>{});
+      return page(200,{result:'Revoked '+stopped+
+        ' active private pilot grant(s) for '+account+
+        '. Old client IDs and tokens cannot be reactivated without a new protected owner action.'});
+    }catch {
+      return page(503,{result:'The private pilot revocation could not be verified. Disable the pilot deployment flag as a fallback and retry from the protected setup page.'});
     }
   }
 
