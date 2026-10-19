@@ -261,7 +261,7 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
       if(url==='https://api.github.com/user')
         return {ok:true,status:200,json:async()=>({id:verifiedId,login:'private-pilot-owner',type:'User'})};
       if(url==='https://api.github.com/user/installations?per_page=100')
-        return {ok:true,json:async()=>({total_count:1,installations:installationVisible?
+        return {ok:true,status:200,json:async()=>({total_count:1,installations:installationVisible?
           [{id:82001,app_id:80001,account:{id:81001},suspended_at:null}]:
           [{id:82002,app_id:80001,account:{id:81001},suspended_at:null}]})};
       throw Error('Unknown fixture provider URL');
