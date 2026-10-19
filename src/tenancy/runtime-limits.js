@@ -73,8 +73,9 @@ export async function claimTenantBudget(sql, { operation, clientId, amount = 1,
   const at = window === 'minute' ? 'minute' : 'day';
   const tenant = await sql`INSERT INTO gh_tenant_budget_windows
       (scope,window_start,used,expires_at)
-    VALUES (${tenantScope},date_trunc(${at},now()),${amount},
-      date_trunc(${at},now())+make_interval(secs => ${length}))
+    SELECT ${tenantScope},date_trunc(${at},now()),${amount},
+      date_trunc(${at},now())+make_interval(secs => ${length})
+    WHERE ${amount}<=${tenantMax}
     ON CONFLICT (scope,window_start) DO UPDATE
       SET used=gh_tenant_budget_windows.used+EXCLUDED.used
       WHERE gh_tenant_budget_windows.used+EXCLUDED.used<=${tenantMax}
@@ -82,8 +83,9 @@ export async function claimTenantBudget(sql, { operation, clientId, amount = 1,
   if (tenant.length !== 1) throw new TenantCapacityError(operation,length);
   const client = await sql`INSERT INTO gh_tenant_budget_windows
       (scope,window_start,used,expires_at)
-    VALUES (${clientScope},date_trunc(${at},now()),${amount},
-      date_trunc(${at},now())+make_interval(secs => ${length}))
+    SELECT ${clientScope},date_trunc(${at},now()),${amount},
+      date_trunc(${at},now())+make_interval(secs => ${length})
+    WHERE ${amount}<=${clientMax}
     ON CONFLICT (scope,window_start) DO UPDATE
       SET used=gh_tenant_budget_windows.used+EXCLUDED.used
       WHERE gh_tenant_budget_windows.used+EXCLUDED.used<=${clientMax}
