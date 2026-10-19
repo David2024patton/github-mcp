@@ -73,3 +73,8 @@ Before coding: commit this card; run `npm run session:bundle -- --card docs/pr-c
 }
 ```
 <!-- bundle-plan:end -->
+
+
+## 2026-10-18/19: continued synthetic integration proof (still not complete)
+
+Built signed tenant-only `tcl_` client / `tac_` access / `trf_` refresh routing, custom tenant-only MCP and OAuth routes, a private GitHub user installation verifier, one-use registry callback state, mobile-sized mode/profile consent form and restricted client registration. Synthetic and real disposable PostgreSQL tests exercise code exchange, stored token/refresh hash and revocation. Draft source `cbd9412e6ab86bd4c71574370b35312ac0ff9755` passed full `ci 39182803768` and Daily live policy `39182803752`. **This is a source-only test pass, not real Android/desktop or provider acceptance.** The private pilot remains disabled by default with no production credentials configured. Remaining original PUB-2 engineering: owner-operable safe provisioning/enrollment, native OAuth discovery/registration from actual ChatGPT clients, fully concurrent verification/cleanup, and genuinely delegated App install/revoke acceptance. Preserve entire original card as unfinished, draft PR #264 not ready for merge, no publication. The final documentation source revision must itself pass exact-head CI.
