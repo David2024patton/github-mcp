@@ -25,7 +25,9 @@ export async function resolvePrivateTenantMcpBearer({
     const directory = createTenantDirectory(rootSqlFactory(env.DATABASE_URL));
     const authorized = await directory.authorizedPilotIdentity(claim.tenantId, claim.identityId);
     if (!authorized || authorized.tenantId !== claim.tenantId ||
-        authorized.identityId !== claim.identityId) return null;
+        authorized.identityId !== claim.identityId ||
+        authorized.membershipRevision !== claim.membershipRevision ||
+        authorized.pilotRevision !== claim.pilotRevision) return null;
     const { db, tenant } = await openAuthorizedTenantDb({
       directory, tenantId: claim.tenantId, verifiedIdentityId: claim.identityId,
       connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory
@@ -39,7 +41,9 @@ export async function resolvePrivateTenantMcpBearer({
     const client = grant?.client_id &&
       verifyTenantCredential(grant.client_id, 'tcl', env);
     if (!client || client.tenantId !== claim.tenantId ||
-        client.identityId !== claim.identityId) return null;
+        client.identityId !== claim.identityId ||
+        client.membershipRevision !== claim.membershipRevision ||
+        client.pilotRevision !== claim.pilotRevision) return null;
     return { db, credentials: createCredentials({ db, env, fetch: fetchImpl }),
       tenant: Object.freeze({ ...authorized }) };
   } catch {
