@@ -1730,15 +1730,17 @@
         "PUB-1"
       ],
       "card": "docs/pr-cards/PUB-2.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "identity and credential scoping (additive)",
       "budget": 800,
       "units": [
         "PUB-2"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [],
-      "pr": []
+      "pr": [
+        264
+      ]
     },
     {
       "id": "PUB-3",
