@@ -144,6 +144,10 @@ export async function recordTenantMetric(sql, { event, outcome, durationMs }) {
     VALUES (date_trunc('hour',now()),${event},${outcome},${latency},1)
     ON CONFLICT (hour,event,outcome,latency_bucket) DO UPDATE
       SET count=gh_tenant_runtime_metrics.count+1`;
+  // Opportunistic bounded cleanup amortizes database IO instead of issuing
+  // extra delete queries for every request. Private pilot admin revocation
+  // performs explicit cleanup; no paid cron/database feature is enabled.
+  if (Math.random() < 1/128) await purgeExpiredTenantRuntime(sql).catch(()=>{});
 }
 
 export async function purgeExpiredTenantRuntime(sql) {
