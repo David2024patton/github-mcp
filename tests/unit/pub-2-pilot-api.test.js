@@ -26,7 +26,7 @@ describe('PUB-2 private browser entry routes',()=>{
   });
   it('offers a mobile-sized form with zero tenant account disclosure and requires signed client',async()=>{
     const env=makeEnv();
-    const clientId=issueTenantCredential('tcl',{tenantId,identityId},env);
+    const clientId=issueTenantCredential('tcl',{tenantId,identityId,membershipRevision:1,pilotRevision:1},env);
     const params={client_id:clientId,redirect_uri:'https://app.example.test/cb',
       resource:origin+'/api/mcp',response_type:'code',code_challenge:'a'.repeat(43),
       code_challenge_method:'S256',state:'testcaller'};
@@ -48,7 +48,7 @@ describe('PUB-2 private browser entry routes',()=>{
   it('does not offer PRODUCTION choices on a nonproduction deployment',async()=>{
     const env=makeEnv();
     vi.stubEnv('VERCEL_ENV','preview');
-    const token=issueTenantCredential('tcl',{tenantId,identityId},env);
+    const token=issueTenantCredential('tcl',{tenantId,identityId,membershipRevision:1,pilotRevision:1},env);
     const response=await call(consentPage,request('GET',{client_id:token}));
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('<option value="preview">');
