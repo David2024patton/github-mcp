@@ -44,6 +44,17 @@ export async function resolvePrivateTenantMcpBearer({
         client.identityId !== claim.identityId ||
         client.membershipRevision !== claim.membershipRevision ||
         client.pilotRevision !== claim.pilotRevision) return null;
+    const selectedAccount = grant.default_account;
+    if (!Array.isArray(grant.accounts) || grant.accounts.length !== 1 ||
+        grant.accounts[0] !== selectedAccount) return null;
+    const account = await db.getAccount(selectedAccount);
+    if (!account || account.credential_kind !== 'app' ||
+        account.installation_status !== 'active' ||
+        !Number.isSafeInteger(account.installation_id) || account.installation_id <= 0 ||
+        !Number.isSafeInteger(account.app_id) ||
+        account.app_id !== Number(env.GITHUB_PILOT_APP_ID) ||
+        (grant.mode === 'production' &&
+          (env.VERCEL_ENV !== 'production' || account.production_enabled !== true))) return null;
     return { db, credentials: createCredentials({ db, env, fetch: fetchImpl }),
       tenant: Object.freeze({ ...authorized }) };
   } catch {
