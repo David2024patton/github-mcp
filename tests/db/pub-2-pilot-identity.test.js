@@ -425,7 +425,10 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(first).toBe(true);
     expect(await directory.grant(a.id,ownerA,ownerB,'member')).toBe(true);
     expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerB)).toBe(true);
-    const base={token:async()=>{throw Error('shared user token must not be consulted')}};
+    const base={token:async({cred})=>{
+      if (cred==='I') return 'fixture-App-token-for-tenant-owner';
+      throw Error('shared user token must not be consulted');
+    }};
     for(const [identityId,userLogin,token] of [
       [ownerA,'alice','alice-personal-github-oauth-token'],
       [ownerB,'bob','bob-personal-github-oauth-token']]){
@@ -433,11 +436,16 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
         userLogin,accessToken:token,expiresIn:3600,env});
     }
     const forUser=identityId=>createTenantScopedCredentials({
-      base,directory,tenant:{tenantId:a.id,identityId},env});
+      base,directory,tenant:{tenantId:a.id,identityId,
+        role:identityId===ownerA?'owner':'member'},env});
     expect(await forUser(ownerA).token({account,cred:'U'}))
       .toBe('alice-personal-github-oauth-token');
     expect(await forUser(ownerB).token({account,cred:'U'}))
       .toBe('bob-personal-github-oauth-token');
+    expect(await forUser(ownerA).token({account,cred:'I'}))
+      .toBe('fixture-App-token-for-tenant-owner');
+    await expect(forUser(ownerB).token({account,cred:'I'}))
+      .rejects.toThrow(/authorization/);
     expect((await db.getAccount(account)).user_token_enc).toBeNull();
     expect(await directory.getPilotUserAuthorization(a.id,ownerA,account))
       .not.toEqual(await directory.getPilotUserAuthorization(a.id,ownerB,account));
