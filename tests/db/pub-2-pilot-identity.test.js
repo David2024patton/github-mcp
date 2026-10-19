@@ -92,12 +92,19 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     const { randomBytes } = await import('node:crypto');
     const env={GITHUB_PRIVATE_TENANT_PILOT:'enabled',
       GITHUB_TENANT_ROUTING_KEY:randomBytes(32).toString('base64url'),
+      GITHUB_PILOT_APP_ID:'987001',
       DATABASE_URL:process.env.TEST_DATABASE_URL};
     const { root }={root:sqlFor(admin)};
     const tenantDbA=createDb(tenantA);
     const tenantDbB=createDb(tenantB);
     const claimA={tenantId:a.id,identityId:ownerA};
     const claimB={tenantId:b.id,identityId:ownerB};
+    for(const db of [tenantDbA,tenantDbB]){
+      await db.upsertAccount({login:'overlap-org',accountId:987002,accountType:'Organization',
+        label:'Pilot fixture',credentialKind:'app',appId:987001});
+      await db.setInstallation('overlap-org',{installationId:987003,
+        repositorySelection:'all',permissions:{contents:'read'},status:'active'});
+    }
     expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerA)).toBe(true);
     expect(await directory.allowlistPilotIdentity(b.id,ownerB,ownerB)).toBe(true);
     const clientA=await signed('tcl',claimA,env);
@@ -124,6 +131,19 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect((await two.db.getAccessToken(tokenB)).profile).toBe('read_only');
     expect(await one.db.getAccessToken(tokenB)).toBeNull();
     expect(await two.db.getAccessToken(tokenA)).toBeNull();
+    // Already-issued connections cannot survive App suspension, credential
+    // removal, or a mismatched installed App. Restore only for the next test.
+    await tenantDbA.setInstallationStatus('overlap-org','suspended');
+    expect(await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenA})).toBeNull();
+    expect(await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenB})).not.toBeNull();
+    await tenantDbA.setInstallationStatus('overlap-org','active');
+    expect(await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenA})).not.toBeNull();
+    await tenantDbA.upsertAccount({login:'overlap-org',accountId:987002,accountType:'Organization',
+      label:'Mismatched App',credentialKind:'app',appId:987004});
+    expect(await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenA})).toBeNull();
+    await tenantDbA.upsertAccount({login:'overlap-org',accountId:987002,accountType:'Organization',
+      label:'Restored App',credentialKind:'app',appId:987001});
+    expect(await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenA})).not.toBeNull();
     expect(await resolvePrivateTenantMcpBearer({...overrides,
       authorization:'Bearer '+tokenA,env:{...env,GITHUB_PRIVATE_TENANT_PILOT:'disabled'}})).toBeNull();
     expect(await directory.revokePilotIdentity(a.id,ownerA,ownerA)).toBe(true);
