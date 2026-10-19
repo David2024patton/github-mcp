@@ -127,6 +127,24 @@ export function createTenantDirectory(sql) {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         PRIMARY KEY (tenant_id, identity_id)
       )`;
+      // Individual GitHub App user credentials are never kept on the shared
+      // gh_accounts row. Each verified human in one tenant has a separate
+      // encrypted grant, including when their accounts/installations overlap.
+      await sql`CREATE TABLE IF NOT EXISTS gh_tenant_user_authorizations (
+        tenant_id UUID NOT NULL REFERENCES gh_tenants(id),
+        identity_id UUID NOT NULL REFERENCES gh_tenant_identities(id),
+        account_login TEXT NOT NULL,
+        user_login TEXT NOT NULL,
+        access_enc TEXT NOT NULL,
+        access_expires_at TIMESTAMPTZ NOT NULL,
+        refresh_enc TEXT,
+        refresh_expires_at TIMESTAMPTZ,
+        refresh_claim_id TEXT,
+        refresh_claim_expires_at TIMESTAMPTZ,
+        revision BIGINT NOT NULL DEFAULT 1,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (tenant_id,identity_id,account_login)
+      )`;
       // GitHub redirect state lives in the private registry only long enough
       // to finish one GitHub authorization. Store a hash of the browser secret.
       await sql`CREATE TABLE IF NOT EXISTS gh_tenant_oauth_flows (
@@ -307,6 +325,75 @@ export function createTenantDirectory(sql) {
         namespace: v.namespace, role: v.role,
         membershipRevision: Number(v.membership_revision),
         pilotRevision: Number(v.pilot_revision) });
+    },
+
+    /** Save only encrypted provider tokens after verified GitHub /user +
+     * installation proof. Atomic eligibility check prevents stale pilot
+     * approvals from writing a shared credential or another tenant's row. */
+    async storePilotUserAuthorization({ tenantId, identityId, accountLogin,
+      userLogin, accessEnc, accessExpiresAt, refreshEnc = null,
+      refreshExpiresAt = null }) {
+      const t=validUuid(tenantId), i=validUuid(identityId);
+      if (typeof accountLogin!=='string' ||
+          !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin) ||
+          typeof userLogin!=='string' || userLogin.length<1 || userLogin.length>39 ||
+          typeof accessEnc!=='string' || !accessEnc.startsWith('v1.') ||
+          (refreshEnc!==null && (typeof refreshEnc!=='string' || !refreshEnc.startsWith('v1.'))) ||
+          !(accessExpiresAt instanceof Date) || !Number.isFinite(accessExpiresAt.valueOf()) ||
+          (refreshExpiresAt!==null && (!(refreshExpiresAt instanceof Date) ||
+            !Number.isFinite(refreshExpiresAt.valueOf())))) {
+        throw new TypeError('A verified, encrypted tenant user authorization is required.');
+      }
+      const rows=await sql`INSERT INTO gh_tenant_user_authorizations (
+        tenant_id,identity_id,account_login,user_login,access_enc,access_expires_at,
+        refresh_enc,refresh_expires_at)
+        SELECT ${t}::uuid,${i}::uuid,${accountLogin},${userLogin},
+          ${accessEnc},${accessExpiresAt},${refreshEnc},${refreshExpiresAt}
+        WHERE EXISTS (SELECT 1 FROM gh_tenants t
+          JOIN gh_tenant_memberships m ON m.tenant_id=t.id
+          JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=t.id AND p.identity_id=m.identity_id
+          WHERE t.id=${t}::uuid AND t.status='active'
+            AND m.identity_id=${i}::uuid AND m.active=TRUE AND p.active=TRUE)
+        ON CONFLICT (tenant_id,identity_id,account_login) DO UPDATE SET
+          user_login=EXCLUDED.user_login,access_enc=EXCLUDED.access_enc,
+          access_expires_at=EXCLUDED.access_expires_at,
+          refresh_enc=EXCLUDED.refresh_enc,
+          refresh_expires_at=EXCLUDED.refresh_expires_at,
+          refresh_claim_id=NULL,refresh_claim_expires_at=NULL,
+          revision=gh_tenant_user_authorizations.revision+1,updated_at=now()
+        RETURNING revision`;
+      return rows.length===1;
+    },
+
+    /** Retrieval always checks fresh tenant membership and pilot allowlist;
+     * the credential NEVER belongs to a shared account login alone. */
+    async getPilotUserAuthorization(tenantId,identityId,accountLogin) {
+      const t=validUuid(tenantId), i=validUuid(identityId);
+      if (typeof accountLogin!=='string' ||
+          !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)) return null;
+      const rows=await sql`SELECT u.user_login,u.access_enc,u.access_expires_at,
+          u.refresh_enc,u.refresh_expires_at,u.refresh_claim_id,
+          u.refresh_claim_expires_at,u.revision
+        FROM gh_tenant_user_authorizations u
+        JOIN gh_tenants t ON t.id=u.tenant_id
+        JOIN gh_tenant_memberships m ON m.tenant_id=t.id AND m.identity_id=u.identity_id
+        JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=t.id AND p.identity_id=u.identity_id
+        WHERE u.tenant_id=${t}::uuid AND u.identity_id=${i}::uuid
+          AND u.account_login=${accountLogin} AND t.status='active'
+          AND m.active=TRUE AND p.active=TRUE`;
+      return rows.length===1 ? rows[0] : null;
+    },
+
+    /** Revoking user consent does not revoke or damage the organization's
+     * separate installation or any other team member's personal credentials. */
+    async revokePilotUserAuthorization(tenantId,identityId,accountLogin) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      if (typeof accountLogin!=='string' ||
+          !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)) return false;
+      const rows=await sql`DELETE FROM gh_tenant_user_authorizations
+        WHERE tenant_id=${t}::uuid AND identity_id=${i}::uuid
+          AND account_login=${accountLogin} RETURNING identity_id`;
+      return rows.length===1;
     },
 
     /** One-use GitHub callback state; all OAuth settings are saved by the
