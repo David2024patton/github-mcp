@@ -19,7 +19,6 @@ describe('PUB-2 signed private tenant credentials',()=>{
       expect(verifyTenantCredential(token,kind,on)).toEqual({tenantId:A,identityId:B});
       expect(verifyTenantCredential(token,kind==='tac'?'trf':'tac',on)).toBeNull();
       expect(isPrivateTenantBearer('Bearer '+token)).toBe(true);
-      const chars=token.split('_');
       // Alter the signed nonce, tenant bytes, kind and digest independently.
       const other=token.replace(/.$/,token.endsWith('a')?'b':'a');
       expect(verifyTenantCredential(other,kind,on)).toBeNull();
