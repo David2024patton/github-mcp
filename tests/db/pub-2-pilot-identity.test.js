@@ -70,47 +70,6 @@ afterAll(async () => {
 });
 
 describe('PUB-2 private-only provider identity and tenant pilot allowlist in REAL PostgreSQL', () => {
-  it('allows only protected owner invitation with verified GitHub user and no copied credential',async()=>{
-    const env={VERCEL_ENV:'production',GITHUB_PRIVATE_TENANT_PILOT:'enabled',
-      GITHUB_TENANT_ROUTING_KEY:crypto.randomBytes(32).toString('base64url'),
-      GITHUB_PILOT_APP_ID:'91001',DATABASE_URL:process.env.TEST_DATABASE_URL};
-    const db=createDb(tenantA);
-    await db.upsertAccount({login:'pilot-invite-fixture',accountId:91002,
-      accountType:'Organization',label:'Private invitation fixture',
-      credentialKind:'app',appId:91001});
-    await db.setInstallation('pilot-invite-fixture',{
-      installationId:91003,repositorySelection:'all',
-      permissions:{contents:'read'},status:'active'});
-    let targetId=20002;
-    const fetchImpl=async url=>{
-      if(url==='https://api.github.com/user')
-        return {ok:true,status:200,json:async()=>({id:20001,login:'owner-fixture',type:'User'})};
-      if(url==='https://api.github.com/users/member-fixture')
-        return {ok:true,status:200,json:async()=>({id:targetId,login:'member-fixture',type:'User'})};
-      throw Error('Unexpected GitHub API in private test');
-    };
-    const args={accountLogin:'pilot-invite-fixture',targetLogin:'member-fixture',
-      redirectUri:'https://private-agent.example.test/oauth/callback',
-      rootDb:{},ownerCredentials:{token:async()=> 'fixture-owner-github-user-access'},
-      env,fetchImpl,bootstrap:async()=>({account:'pilot-invite-fixture',tenantId:a.id}),
-      rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:()=>tenantA};
-    const invited=await invitePrivatePilotMember(args);
-    expect(invited.githubLogin).toBe('member-fixture');
-    expect(invited.tenantId).toBe(a.id);
-    expect(invited.client_id).toMatch(/^tcl_/);
-    expect(invited.client_secret).toHaveLength(43);
-    expect(JSON.stringify(await db.getOAuthClient(invited.client_id)))
-      .not.toContain(invited.client_secret);
-    expect(await directory.resolveAllowlistedPilotSubject(a.id,'20002'))
-      .toMatchObject({identityId:ownerB,role:'member'});
-    expect((await db.getAccount('pilot-invite-fixture')).user_login).toBeNull();
-    targetId=20001;
-    await expect(invitePrivatePilotMember(args)).rejects.toThrow(/not verified/);
-    targetId=20002;
-    await expect(invitePrivatePilotMember({...args,
-      env:{...env,GITHUB_PRIVATE_TENANT_PILOT:'disabled'}})).rejects.toThrow(/not verified/);
-  });
-
   it('creates exactly one private tenant under concurrent owner retries using genuine PostgreSQL transactions', async () => {
     const clientTwo=await connect(process.env.TEST_DATABASE_URL);
     await clientTwo.query('SET search_path TO "' + namespace + '"');
@@ -734,4 +693,46 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(await directory.enrollVerifiedGithubSubject('20002')).toBe(ownerB);
     expect(await directory.resolveAllowlistedPilotSubject(b.id, '20001')).toBeNull();
   });
+  it('allows only protected owner invitation with verified GitHub user and no copied credential',async()=>{
+    const env={VERCEL_ENV:'production',GITHUB_PRIVATE_TENANT_PILOT:'enabled',
+      GITHUB_TENANT_ROUTING_KEY:crypto.randomBytes(32).toString('base64url'),
+      GITHUB_PILOT_APP_ID:'91001',DATABASE_URL:process.env.TEST_DATABASE_URL};
+    const db=createDb(tenantA);
+    await db.upsertAccount({login:'pilot-invite-fixture',accountId:91002,
+      accountType:'Organization',label:'Private invitation fixture',
+      credentialKind:'app',appId:91001});
+    await db.setInstallation('pilot-invite-fixture',{
+      installationId:91003,repositorySelection:'all',
+      permissions:{contents:'read'},status:'active'});
+    let targetId=20002;
+    const fetchImpl=async url=>{
+      if(url==='https://api.github.com/user')
+        return {ok:true,status:200,json:async()=>({id:20001,login:'owner-fixture',type:'User'})};
+      if(url==='https://api.github.com/users/member-fixture')
+        return {ok:true,status:200,json:async()=>({id:targetId,login:'member-fixture',type:'User'})};
+      throw Error('Unexpected GitHub API in private test');
+    };
+    const args={accountLogin:'pilot-invite-fixture',targetLogin:'member-fixture',
+      redirectUri:'https://private-agent.example.test/oauth/callback',
+      rootDb:{},ownerCredentials:{token:async()=> 'fixture-owner-github-user-access'},
+      env,fetchImpl,bootstrap:async()=>({account:'pilot-invite-fixture',tenantId:a.id}),
+      rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:()=>tenantA};
+    const invited=await invitePrivatePilotMember(args);
+    expect(invited.githubLogin).toBe('member-fixture');
+    expect(invited.tenantId).toBe(a.id);
+    expect(invited.client_id).toMatch(/^tcl_/);
+    expect(invited.client_secret).toHaveLength(43);
+    expect(JSON.stringify(await db.getOAuthClient(invited.client_id)))
+      .not.toContain(invited.client_secret);
+    expect(await directory.resolveAllowlistedPilotSubject(a.id,'20002'))
+      .toMatchObject({identityId:ownerB,role:'member'});
+    expect((await db.getAccount('pilot-invite-fixture')).user_login).toBeNull();
+    targetId=20001;
+    await expect(invitePrivatePilotMember(args)).rejects.toThrow(/could not be verified/);
+    targetId=20002;
+    await expect(invitePrivatePilotMember({...args,
+      env:{...env,GITHUB_PRIVATE_TENANT_PILOT:'disabled'}})).rejects.toThrow(/could not be verified/);
+  });
+
+
 });
