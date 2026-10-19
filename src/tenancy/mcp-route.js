@@ -6,6 +6,7 @@ import { neon } from '@neondatabase/serverless';
 import { createTenantDirectory, openAuthorizedTenantDb } from './directory.js';
 import { isTenantRoutedCredential, verifyTenantCredential } from './routed-credential.js';
 import { createCredentials } from '../github/credentials.js';
+import { createTenantScopedCredentials } from './user-authorization.js';
 
 export const isPrivateTenantBearer = (authorization) =>
   typeof authorization === 'string' &&
@@ -55,8 +56,11 @@ export async function resolvePrivateTenantMcpBearer({
         account.app_id !== Number(env.GITHUB_PILOT_APP_ID) ||
         (grant.mode === 'production' &&
           (env.VERCEL_ENV !== 'production' || account.production_enabled !== true))) return null;
-    return { db, credentials: createCredentials({ db, env, fetch: fetchImpl }),
-      tenant: Object.freeze({ ...authorized }) };
+    const base = createCredentials({ db, env, fetch: fetchImpl });
+    const credentials = createTenantScopedCredentials({
+      base, directory, tenant: authorized, env
+    });
+    return { db, credentials, tenant: Object.freeze({ ...authorized }) };
   } catch {
     // Missing private registry, driver search_path refusal, revocation, and
     // database failure are all a closed authentication failure. No SQL details.
