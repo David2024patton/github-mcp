@@ -5,6 +5,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { createTenantDirectory, openAuthorizedTenantDb } from './directory.js';
+import { admitTenantOAuth } from './runtime-limits.js';
 import { verifyTenantCredential } from './routed-credential.js';
 import { verifyGithubBearerIdentity, verifyGithubUserInstallation } from './github-identity.js';
 import { storePilotUserGrant } from './user-authorization.js';
@@ -54,7 +55,8 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
     const pilot=await dir.authorizedPilotIdentity(claim.tenantId,claim.identityId);
     if (!pilot || pilot.membershipRevision!==claim.membershipRevision ||
         pilot.pilotRevision!==claim.pilotRevision) throw refused();
-    const { db }=await scoped(dir,claim);
+    const { db,sql }=await scoped(dir,claim);
+    await admitTenantOAuth(sql,claim.tenantId+':'+claim.identityId);
     const client=await db.getOAuthClient(p.client_id);
     if (!client || !client.redirect_uris.includes(p.redirect_uri)) throw refused();
     // Standard MCP OAuth clients don't carry custom account selections. For
