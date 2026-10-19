@@ -14,6 +14,7 @@ import { createTenantDirectory, tenantConnectionString, tenantSchemaName,
 
 let admin, tenantA, tenantB, directory, a, b, ownerA, ownerB, namespace;
 const clients = [];
+const extraTenantIds = [];
 const connect = async (url) => {
   const p = new pg.Client({ connectionString: url });
   await p.connect(); clients.push(p); return p;
@@ -56,7 +57,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (admin) {
-    for (const tenant of [a, b]) {
+    for (const tenant of [a, b, ...extraTenantIds.map(id=>({id}))]) {
       if (tenant?.id) await admin.query('DROP SCHEMA IF EXISTS "' + tenantSchemaName(tenant.id) + '" CASCADE').catch(() => {});
     }
     if (namespace) await admin.query('DROP SCHEMA IF EXISTS "' + namespace + '" CASCADE').catch(() => {});
@@ -65,6 +66,27 @@ afterAll(async () => {
 });
 
 describe('PUB-2 private-only provider identity and tenant pilot allowlist in REAL PostgreSQL', () => {
+  it('creates exactly one private tenant under concurrent owner retries using genuine PostgreSQL transactions', async () => {
+    const clientTwo=await connect(process.env.TEST_DATABASE_URL);
+    await clientTwo.query('SET search_path TO "' + namespace + '"');
+    const otherDirectory=createTenantDirectory(sqlFor(clientTwo));
+    const ids=await Promise.all(Array.from({length:8},(_,i)=>(i%2?directory:otherDirectory)
+      .provisionPilotForOwnerAccount(ownerA,'pilot-once-org')));
+    expect(new Set(ids).size).toBe(1);
+    const id=ids[0];
+    extraTenantIds.push(id);
+    const rows=await admin.query('SELECT count(*)::integer AS n FROM gh_tenant_pilot_bootstraps WHERE account_login=$1',["pilot-once-org"]);
+    expect(rows.rows[0].n).toBe(1);
+    expect(await directory.authorized(id,ownerB)).toBeNull();
+    const dbClient=await connect(tenantConnectionString(process.env.TEST_DATABASE_URL,id));
+    await initializeProvisionedTenant({tenantId:id,connectionString:process.env.TEST_DATABASE_URL,
+      sqlFactory:()=>sqlFor(dbClient)});
+    expect(await directory.activate(id,tenantSchemaName(id))).toBe(true);
+    expect((await directory.authorized(id,ownerA)).role).toBe('owner');
+    expect(await otherDirectory.provisionPilotForOwnerAccount(ownerA,'pilot-once-org')).toBe(id);
+    expect(await directory.activate(id,tenantSchemaName(id))).toBe(false);
+  });
+
   it('does not allow an unknown, cross-tenant, or merely invited identity into a pilot', async () => {
     expect(await directory.resolveAllowlistedPilotSubject(a.id, '20001')).toBeNull();
     expect(await directory.resolveAllowlistedPilotSubject(a.id, '20002')).toBeNull();
