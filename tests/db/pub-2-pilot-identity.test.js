@@ -7,6 +7,7 @@ import { privateTenantToken } from '../../src/tenancy/oauth-token.js';
 import { createPrivateGitHubConsent } from '../../src/tenancy/github-consent.js';
 import { registerPrivatePilotClient } from '../../src/tenancy/client-registration.js';
 import { createCredentials } from '../../src/github/credentials.js';
+import { createTenantScopedCredentials, storePilotUserGrant } from '../../src/tenancy/user-authorization.js';
 import { bootstrapPrivateOwnerPilot } from '../../src/tenancy/owner-bootstrap.js';
 import { encryptSecret } from '../../src/core/crypto.js';
 import { call, json, request } from '../../test/helpers/http-harness.js';
@@ -410,6 +411,47 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     installation=85001;
     await expect(registerPrivatePilotClient({...args,redirectUris:['http://evil.example.test/cb']})).rejects.toThrow(/registration/);
     await expect(registerPrivatePilotClient({...args,env:{...env,GITHUB_PRIVATE_TENANT_PILOT:'disabled'}})).rejects.toThrow(/disabled/);
+  });
+
+  it('keeps U grants separate for two humans sharing one organization, including revoke and disallowed K/P',async()=>{
+    const env={TOKEN_ENCRYPTION_KEY:crypto.randomBytes(32).toString('base64url')};
+    const account='same-tenant-user-test';
+    const db=createDb(tenantA);
+    await db.upsertAccount({login:account,accountId:99101,accountType:'Organization',
+      label:'Shared App account',credentialKind:'app',appId:99102});
+    await db.setInstallation(account,{installationId:99103,
+      repositorySelection:'all',permissions:{contents:'read'},status:'active'});
+    const first=await directory.allowlistPilotIdentity(a.id,ownerA,ownerA);
+    expect(first).toBe(true);
+    expect(await directory.grant(a.id,ownerA,ownerB,'member')).toBe(true);
+    expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerB)).toBe(true);
+    const base={token:async()=>{throw Error('shared user token must not be consulted')}};
+    for(const [identityId,userLogin,token] of [
+      [ownerA,'alice','alice-personal-github-oauth-token'],
+      [ownerB,'bob','bob-personal-github-oauth-token']]){
+      await storePilotUserGrant({directory,tenantId:a.id,identityId,account,
+        userLogin,accessToken:token,expiresIn:3600,env});
+    }
+    const forUser=identityId=>createTenantScopedCredentials({
+      base,directory,tenant:{tenantId:a.id,identityId},env});
+    expect(await forUser(ownerA).token({account,cred:'U'}))
+      .toBe('alice-personal-github-oauth-token');
+    expect(await forUser(ownerB).token({account,cred:'U'}))
+      .toBe('bob-personal-github-oauth-token');
+    expect((await db.getAccount(account)).user_token_enc).toBeNull();
+    expect(await directory.getPilotUserAuthorization(a.id,ownerA,account))
+      .not.toEqual(await directory.getPilotUserAuthorization(a.id,ownerB,account));
+    await expect(forUser(ownerA).token({account,cred:'K'}))
+      .rejects.toThrow(/authorization/);
+    await expect(forUser(ownerB).token({account,cred:'P'}))
+      .rejects.toThrow(/authorization/);
+    expect(await directory.revokePilotUserAuthorization(a.id,ownerB,account)).toBe(true);
+    await expect(forUser(ownerB).token({account,cred:'U'})).rejects.toThrow();
+    expect(await forUser(ownerA).token({account,cred:'U'}))
+      .toBe('alice-personal-github-oauth-token');
+    expect(await directory.revokePilotIdentity(a.id,ownerA,ownerA)).toBe(true);
+    await expect(forUser(ownerA).token({account,cred:'U'})).rejects.toThrow();
+    expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerA)).toBe(true);
   });
 
   it('proves real tenant GitHub consent state, browser CSRF, installation scope, PKCE and token issuance',async()=>{
