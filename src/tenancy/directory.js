@@ -384,6 +384,75 @@ export function createTenantDirectory(sql) {
       return rows.length===1 ? rows[0] : null;
     },
 
+    /** A single PostgreSQL UPDATE claims each one-use provider refresh token
+     * for one exact tenant member. A second Vercel instance cannot refresh the
+     * same stored value while the first lease is active. */
+    async claimPilotUserRefresh({tenantId,identityId,accountLogin,
+      expectedAccessEnc,claimId}) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      if(typeof accountLogin!=='string' || !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin) ||
+        typeof expectedAccessEnc!=='string' || !expectedAccessEnc.startsWith('v1.') ||
+        typeof claimId!=='string' || !/^[a-f0-9-]{36}$/.test(claimId)) return null;
+      const rows=await sql`UPDATE gh_tenant_user_authorizations u
+        SET refresh_claim_id=${claimId},
+          refresh_claim_expires_at=now()+interval '30 seconds'
+        WHERE u.tenant_id=${t}::uuid AND u.identity_id=${i}::uuid
+          AND u.account_login=${accountLogin}
+          AND u.access_enc=${expectedAccessEnc}
+          AND u.refresh_enc IS NOT NULL AND u.refresh_expires_at>now()
+          AND (u.refresh_claim_id IS NULL OR u.refresh_claim_expires_at<now())
+          AND EXISTS (SELECT 1 FROM gh_tenant_memberships m
+            JOIN gh_tenants ten ON ten.id=m.tenant_id
+            JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=m.tenant_id
+              AND p.identity_id=m.identity_id
+            WHERE m.tenant_id=${t}::uuid AND m.identity_id=${i}::uuid
+              AND m.active=TRUE AND ten.status='active' AND p.active=TRUE)
+        RETURNING u.refresh_enc,u.user_login`;
+      return rows.length===1?rows[0]:null;
+    },
+
+    async finishPilotUserRefresh({tenantId,identityId,accountLogin,
+      expectedAccessEnc,claimId,accessEnc,accessExpiresAt,
+      refreshEnc,refreshExpiresAt}) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      const rows=await sql`UPDATE gh_tenant_user_authorizations u
+        SET access_enc=${accessEnc},access_expires_at=${accessExpiresAt},
+          refresh_enc=${refreshEnc},refresh_expires_at=${refreshExpiresAt},
+          refresh_claim_id=NULL,refresh_claim_expires_at=NULL,
+          revision=u.revision+1,updated_at=now()
+        WHERE u.tenant_id=${t}::uuid AND u.identity_id=${i}::uuid
+          AND u.account_login=${accountLogin} AND u.access_enc=${expectedAccessEnc}
+          AND u.refresh_claim_id=${claimId}
+          AND EXISTS (SELECT 1 FROM gh_tenant_memberships m
+            JOIN gh_tenants ten ON ten.id=m.tenant_id
+            JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=m.tenant_id AND p.identity_id=m.identity_id
+            WHERE m.tenant_id=${t}::uuid AND m.identity_id=${i}::uuid
+              AND m.active=TRUE AND ten.status='active' AND p.active=TRUE)
+        RETURNING u.revision`;
+      return rows.length===1;
+    },
+
+    async releasePilotUserRefresh({tenantId,identityId,accountLogin,claimId}) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      await sql`UPDATE gh_tenant_user_authorizations
+        SET refresh_claim_id=NULL,refresh_claim_expires_at=NULL
+        WHERE tenant_id=${t}::uuid AND identity_id=${i}::uuid
+          AND account_login=${accountLogin} AND refresh_claim_id=${claimId}`;
+    },
+
+    async getPilotVerifiedSubject(tenantId,identityId) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      const rows=await sql`SELECT ident.provider_subject
+        FROM gh_tenant_identities ident
+        JOIN gh_tenant_memberships m ON m.identity_id=ident.id
+        JOIN gh_tenants ten ON ten.id=m.tenant_id
+        JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=ten.id AND p.identity_id=ident.id
+        WHERE ten.id=${t}::uuid AND ident.id=${i}::uuid
+          AND ten.status='active' AND m.active=TRUE AND p.active=TRUE
+          AND ident.provider='github'`;
+      return rows.length===1?rows[0].provider_subject:null;
+    },
+
     /** Revoking user consent does not revoke or damage the organization's
      * separate installation or any other team member's personal credentials. */
     async revokePilotUserAuthorization(tenantId,identityId,accountLogin) {
