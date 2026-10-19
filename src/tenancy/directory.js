@@ -82,6 +82,17 @@ export function createTenantDirectory(sql) {
       )`;
       await sql`CREATE INDEX IF NOT EXISTS gh_tenant_memberships_identity
         ON gh_tenant_memberships (identity_id, active)`;
+      // PUB-2 closed PRIVATE pilot. This registry never grants tenant access by
+      // itself: live, active membership AND an owner-issued pilot allowlist entry
+      // are required. There is deliberately no public enrollment endpoint.
+      await sql`CREATE TABLE IF NOT EXISTS gh_tenant_pilot_allowlist (
+        tenant_id UUID NOT NULL REFERENCES gh_tenants(id),
+        identity_id UUID NOT NULL REFERENCES gh_tenant_identities(id),
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        revision BIGINT NOT NULL DEFAULT 1 CHECK (revision > 0),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (tenant_id, identity_id)
+      )`;
       // This function only accepts server-generated opaque namespaces. Unlike
       // concatenating raw SQL in JS, %I quotes the identifier within PostgreSQL.
       // It is SECURITY INVOKER (no privilege elevation) and has no public HTTP route.
@@ -153,6 +164,62 @@ export function createTenantDirectory(sql) {
       return rows.length === 1 ? { tenantId: String(rows[0].id),
         namespace: rows[0].namespace, role: rows[0].role,
         membershipRevision: Number(rows[0].revision) } : null;
+    },
+
+    /** Private owner-only test allowlisting; never enough without live membership
+     * and a verified GitHub numeric subject. It cannot create a membership. */
+    async allowlistPilotIdentity(tenantId, ownerIdentityId, targetIdentityId) {
+      const t = validUuid(tenantId), owner = validUuid(ownerIdentityId), target = validUuid(targetIdentityId);
+      const rows = await sql`INSERT INTO gh_tenant_pilot_allowlist (tenant_id,identity_id,active)
+        SELECT ${t}::uuid,${target}::uuid,TRUE
+        WHERE EXISTS (SELECT 1 FROM gh_tenant_memberships m
+          JOIN gh_tenants ten ON ten.id=m.tenant_id
+          WHERE m.tenant_id=${t}::uuid AND m.identity_id=${owner}::uuid
+            AND m.role='owner' AND m.active=TRUE AND ten.status='active')
+          AND EXISTS (SELECT 1 FROM gh_tenant_memberships target
+            WHERE target.tenant_id=${t}::uuid AND target.identity_id=${target}::uuid
+              AND target.active=TRUE)
+        ON CONFLICT (tenant_id,identity_id) DO UPDATE SET active=TRUE,
+          revision=gh_tenant_pilot_allowlist.revision+1,updated_at=now()
+        RETURNING identity_id`;
+      return rows.length === 1;
+    },
+
+    /** Owner can shut off a pilot session. No other tenant or ordinary member
+     * can revoke someone else's pilot authorization. */
+    async revokePilotIdentity(tenantId, ownerIdentityId, targetIdentityId) {
+      const t = validUuid(tenantId), owner = validUuid(ownerIdentityId), target = validUuid(targetIdentityId);
+      const rows = await sql`UPDATE gh_tenant_pilot_allowlist p
+        SET active=FALSE, revision=p.revision+1, updated_at=now()
+        WHERE p.tenant_id=${t}::uuid AND p.identity_id=${target}::uuid AND p.active=TRUE
+          AND EXISTS (SELECT 1 FROM gh_tenant_memberships m
+            WHERE m.tenant_id=${t}::uuid AND m.identity_id=${owner}::uuid
+              AND m.role='owner' AND m.active=TRUE)
+        RETURNING p.identity_id`;
+      return rows.length === 1;
+    },
+
+    /** Called ONLY AFTER independent GET /user verification; caller input
+     * alone is not proof. No unapproved member, disabled pilot identity,
+     * provisioning tenant or global legacy fallback can appear here. */
+    async resolveAllowlistedPilotSubject(tenantId, verifiedSubject) {
+      const t = validUuid(tenantId);
+      if (typeof verifiedSubject !== 'string' || !GITHUB_SUBJECT.test(verifiedSubject))
+        throw new TypeError('Verified numeric GitHub subject required.');
+      const rows = await sql`SELECT i.id AS identity_id, t.id AS tenant_id,
+          t.namespace,m.role,m.revision AS membership_revision,p.revision AS pilot_revision
+        FROM gh_tenant_identities i
+        JOIN gh_tenant_memberships m ON m.identity_id=i.id
+        JOIN gh_tenants t ON t.id=m.tenant_id
+        JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=t.id AND p.identity_id=i.id
+        WHERE i.provider='github' AND i.provider_subject=${verifiedSubject}
+          AND t.id=${t}::uuid AND t.status='active'
+          AND m.active=TRUE AND p.active=TRUE`;
+      if (rows.length !== 1) return null;
+      const row=rows[0];
+      return Object.freeze({ identityId: String(row.identity_id), tenantId: String(row.tenant_id),
+        namespace: row.namespace, role: row.role,
+        membershipRevision: Number(row.membership_revision), pilotRevision: Number(row.pilot_revision) });
     },
 
     /** Membership widening is owner-controlled: no public self-grant. */
