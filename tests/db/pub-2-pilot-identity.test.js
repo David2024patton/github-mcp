@@ -527,6 +527,46 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(await other.token({account,cred:'U'})).toBe('other-member-valid-bearer');
   });
 
+  it('never lets a late invalid_grant erase a newer GitHub user sign-in',async()=>{
+    const env={TOKEN_ENCRYPTION_KEY:crypto.randomBytes(32).toString('base64url'),
+      GITHUB_PILOT_APP_CLIENT_ID:'fixture-reauth-app',
+      GITHUB_PILOT_APP_CLIENT_SECRET:'fixture-reauth-secret'};
+    const account='reauth-race-fixture';
+    await directory.allowlistPilotIdentity(a.id,ownerA,ownerA);
+    await storePilotUserGrant({directory,tenantId:a.id,identityId:ownerA,account,
+      userLogin:'owner-user',accessToken:'old-expiring-user-bearer',
+      refreshToken:'old-one-use-refresh',expiresIn:60,refreshExpiresIn:3600,env});
+    let started,release;
+    const began=new Promise(resolve=>{started=resolve;});
+    const pause=new Promise(resolve=>{release=resolve;});
+    const credentials=createTenantScopedCredentials({
+      base:{token:async()=>{throw Error('shared U must not be used');}},
+      db:createDb(tenantA),directory,tenant:{tenantId:a.id,identityId:ownerA,role:'owner'},
+      env,fetchImpl:async url=>{
+        expect(url).toBe('https://github.com/login/oauth/access_token');
+        started();
+        await pause;
+        return {ok:false,json:async()=>({error:'invalid_grant'})};
+      }});
+    const oldRenewal=credentials.token({account,cred:'U'});
+    await began;
+    const oldRecord=await directory.getPilotUserAuthorization(a.id,ownerA,account);
+    expect(oldRecord.refresh_claim_id).not.toBeNull();
+    expect(new Date(oldRecord.refresh_claim_expires_at).getTime()-Date.now())
+      .toBeGreaterThan(50_000);
+    // A new provider login replaces this principal's access and refresh tokens
+    // while the older, failed provider refresh is still in flight.
+    await storePilotUserGrant({directory,tenantId:a.id,identityId:ownerA,account,
+      userLogin:'owner-user',accessToken:'fresh-after-new-consent',
+      refreshToken:'new-consent-refresh',expiresIn:3600,refreshExpiresIn:3600,env});
+    release();
+    await expect(oldRenewal).rejects.toThrow(/authorization/);
+    expect(await credentials.token({account,cred:'U'}))
+      .toBe('fresh-after-new-consent');
+    expect((await directory.getPilotUserAuthorization(a.id,ownerA,account)).revision)
+      .toBeGreaterThan(oldRecord.revision);
+  });
+
   it('proves real tenant GitHub consent state, browser CSRF, installation scope, PKCE and token issuance',async()=>{
     const env={PUBLIC_BASE_URL:'https://pilot.github.example.test',VERCEL_ENV:'production',
       GITHUB_PRIVATE_TENANT_PILOT:'enabled',

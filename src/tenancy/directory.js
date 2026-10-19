@@ -395,7 +395,7 @@ export function createTenantDirectory(sql) {
         typeof claimId!=='string' || !/^[a-f0-9-]{36}$/.test(claimId)) return null;
       const rows=await sql`UPDATE gh_tenant_user_authorizations u
         SET refresh_claim_id=${claimId},
-          refresh_claim_expires_at=now()+interval '30 seconds'
+          refresh_claim_expires_at=now()+interval '60 seconds'
         WHERE u.tenant_id=${t}::uuid AND u.identity_id=${i}::uuid
           AND u.account_login=${accountLogin}
           AND u.access_enc=${expectedAccessEnc}
