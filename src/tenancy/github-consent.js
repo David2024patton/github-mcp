@@ -159,11 +159,12 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
           (typeof data.refresh_token!=='string' ||
            data.refresh_token.length<8 || data.refresh_token.length>4096))) throw refused();
     const credentials=createCredentials({db,env,fetch:fetchImpl});
-    await credentials.storeUserAuthorization(account.login,{
+    const saved=await credentials.storeUserAuthorization(account.login,{
       userLogin:principal.login,accessToken:data.access_token,
       expiresIn,refreshToken:data.refresh_token??null,
       refreshExpiresIn
     });
+    if (!saved) throw refused();
     const mcpCode=random(32);
     await db.createAuthCode({code:mcpCode,clientId:flow.clientId,
       redirectUri:flow.redirectUri,codeChallenge:flow.codeChallenge,
