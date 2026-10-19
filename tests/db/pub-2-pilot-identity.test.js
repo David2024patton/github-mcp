@@ -17,6 +17,12 @@ const connect = async (url) => {
   const p = new pg.Client({ connectionString: url });
   await p.connect(); clients.push(p); return p;
 };
+async function signed(kind,scope,env){
+  const latest=await directory.authorizedPilotIdentity(scope.tenantId,scope.identityId);
+  if(!latest) throw new Error('The real pilot membership must exist before signing.');
+  return issueTenantCredential(kind,{...scope,
+    membershipRevision:latest.membershipRevision,pilotRevision:latest.pilotRevision},env);
+}
 const sqlFor = (client) => async (template, ...values) => {
   let query = template[0];
   for (let i = 0; i < values.length; i++) query += '$' + (i + 1) + template[i + 1];
@@ -94,11 +100,11 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     const claimB={tenantId:b.id,identityId:ownerB};
     expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerA)).toBe(true);
     expect(await directory.allowlistPilotIdentity(b.id,ownerB,ownerB)).toBe(true);
-    const clientA=issueTenantCredential('tcl',claimA,env);
-    const tokenA=issueTenantCredential('tac',claimA,env);
-    const refreshA=issueTenantCredential('trf',claimA,env);
-    const clientB=issueTenantCredential('tcl',claimB,env);
-    const tokenB=issueTenantCredential('tac',claimB,env);
+    const clientA=await signed('tcl',claimA,env);
+    const tokenA=await signed('tac',claimA,env);
+    const refreshA=await signed('trf',claimA,env);
+    const clientB=await signed('tcl',claimB,env);
+    const tokenB=await signed('tac',claimB,env);
     await tenantDbA.createOAuthClient({clientId:clientA,clientSecret:'fixture-a-test-secret',
       redirectUris:['https://pilot.example.test/cb'],clientName:'A'});
     await tenantDbB.createOAuthClient({clientId:clientB,clientSecret:'fixture-b-test-secret',
@@ -106,7 +112,7 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     await tenantDbA.createAccessToken({clientId:clientA,accessToken:tokenA,refreshToken:refreshA,
       defaultAccount:'overlap-org',accounts:['overlap-org'],mode:'preview',profile:'full',listing:'compact'});
     await tenantDbB.createAccessToken({clientId:clientB,accessToken:tokenB,
-      refreshToken:issueTenantCredential('trf',claimB,env),defaultAccount:'overlap-org',
+      refreshToken:await signed('trf',claimB,env),defaultAccount:'overlap-org',
       accounts:['overlap-org'],mode:'preview',profile:'read_only',listing:'compact'});
     const overrides={env,rootSqlFactory:()=>root,tenantSqlFactory:(url)=>
       url.includes(tenantSchemaName(a.id))?tenantA:tenantB};
@@ -122,6 +128,9 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
       authorization:'Bearer '+tokenA,env:{...env,GITHUB_PRIVATE_TENANT_PILOT:'disabled'}})).toBeNull();
     expect(await directory.revokePilotIdentity(a.id,ownerA,ownerA)).toBe(true);
     expect(await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenA})).toBeNull();
+    // Re-allowlisting grants a NEW epoch; old signed clients/tokens cannot revive.
+    expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerA)).toBe(true);
+    expect(await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenA})).toBeNull();
     expect(await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenB})).not.toBeNull();
     expect(await tenantDbB.revokeAccessToken(tokenB)).toBe(true);
     expect(await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenB})).toBeNull();
@@ -136,8 +145,8 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     const other={tenantId:b.id,identityId:ownerB};
     expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerA)).toBe(true);
     expect(await directory.allowlistPilotIdentity(b.id,ownerB,ownerB)).toBe(true);
-    const clientA=issueTenantCredential('tcl',grant,env);
-    const clientB=issueTenantCredential('tcl',other,env);
+    const clientA=await signed('tcl',grant,env);
+    const clientB=await signed('tcl',other,env);
     const clientSecret='fixture-private-tenant-a-secret';
     const clientSecretB='fixture-private-tenant-b-secret';
     const dbA=createDb(tenantA),dbB=createDb(tenantB);
@@ -239,7 +248,9 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
       GITHUB_PILOT_APP_ID:'80001',
       DATABASE_URL:process.env.TEST_DATABASE_URL};
     const dbA=createDb(tenantA), dbB=createDb(tenantB);
-    const clientA=issueTenantCredential('tcl',{tenantId:a.id,identityId:ownerA},env);
+    expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerA)).toBe(true);
+    expect(await directory.allowlistPilotIdentity(b.id,ownerB,ownerB)).toBe(true);
+    const clientA=await signed('tcl',{tenantId:a.id,identityId:ownerA},env);
     const secretA='fixture-owner-a-private-client-secret';
     const account='fixture-app-owner';
     await dbA.upsertAccount({login:account,accountId:81001,accountType:'Organization',
@@ -248,10 +259,9 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
       repositorySelection:'all',permissions:{contents:'write'},status:'active'});
     await dbA.createOAuthClient({clientId:clientA,clientSecret:secretA,
       redirectUris:['https://private-pilot.example.test/cb'],clientName:'private-pilot-A'});
-    const clientB=issueTenantCredential('tcl',{tenantId:b.id,identityId:ownerB},env);
+    const clientB=await signed('tcl',{tenantId:b.id,identityId:ownerB},env);
     await dbB.createOAuthClient({clientId:clientB,clientSecret:'other-fixture-secret',
       redirectUris:['https://private-pilot.example.test/cb'],clientName:'private-pilot-B'});
-    expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerA)).toBe(true);
     let installationVisible=true,verifiedId=20001,exchangeCalls=0;
     const fetchImpl=async (url)=>{
       if(url==='https://github.com/login/oauth/access_token'){
