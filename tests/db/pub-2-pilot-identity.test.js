@@ -462,6 +462,68 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerA)).toBe(true);
   });
 
+  it('rotates an expired member user grant once across concurrent requests without leaking a second member',async()=>{
+    const env={TOKEN_ENCRYPTION_KEY:crypto.randomBytes(32).toString('base64url'),
+      GITHUB_PILOT_APP_CLIENT_ID:'fixture-private-refresh-app',
+      GITHUB_PILOT_APP_CLIENT_SECRET:'fixture-private-refresh-secret'};
+    const account='individual-refresh-test';
+    const db=createDb(tenantA);
+    await db.upsertAccount({login:account,accountId:99201,
+      accountType:'Organization',label:'Refresh fixture',credentialKind:'app',appId:99202});
+    await db.setInstallation(account,{installationId:99203,
+      repositorySelection:'all',permissions:{contents:'read'},status:'active'});
+    await directory.allowlistPilotIdentity(a.id,ownerA,ownerA);
+    await directory.grant(a.id,ownerA,ownerB,'member');
+    await directory.allowlistPilotIdentity(a.id,ownerA,ownerB);
+    await storePilotUserGrant({directory,tenantId:a.id,identityId:ownerA,
+      account,userLogin:'user-one',accessToken:'owner-expiring-bearer',
+      refreshToken:'one-use-owner-refresh',expiresIn:60,refreshExpiresIn:3600,env});
+    await storePilotUserGrant({directory,tenantId:a.id,identityId:ownerB,
+      account,userLogin:'user-two',accessToken:'other-member-valid-bearer',
+      refreshToken:'other-member-untouched-refresh',expiresIn:3600,refreshExpiresIn:3600,env});
+    let refreshed=0;
+    const fetchImpl=async (url,opts)=>{
+      if(url==='https://github.com/login/oauth/access_token'){
+        refreshed++;
+        expect(opts.body.get('grant_type')).toBe('refresh_token');
+        expect(opts.body.get('refresh_token')).toBe('one-use-owner-refresh');
+        return {ok:true,json:async()=>({
+          access_token:'owner-renewed-bearer',
+          refresh_token:'owner-new-refresh-value',
+          expires_in:3600,refresh_token_expires_in:3600})};
+      }
+      if(url==='https://api.github.com/user')return {ok:true,status:200,
+        json:async()=>({id:20001,login:'owner-one',type:'User'})};
+      if(url==='https://api.github.com/user/installations?per_page=100')return{
+        ok:true,status:200,json:async()=>({total_count:1,installations:[
+          {id:99203,app_id:99202,account:{id:99201},suspended_at:null}]})};
+      throw Error('Unknown fixture provider endpoint');
+    };
+    const owner=createTenantScopedCredentials({
+      base:{token:async()=>{throw Error('global token not allowed');}},
+      db,directory,tenant:{tenantId:a.id,identityId:ownerA,role:'owner'},
+      env,fetchImpl
+    });
+    const other=createTenantScopedCredentials({
+      base:{token:async()=>{throw Error('global token not allowed');}},
+      db,directory,tenant:{tenantId:a.id,identityId:ownerB,role:'member'},
+      env,fetchImpl
+    });
+    const pair=await Promise.allSettled([
+      owner.token({account,cred:'U'}),owner.token({account,cred:'U'})]);
+    expect(refreshed).toBe(1);
+    expect(pair.filter(x=>x.status==='fulfilled')).toHaveLength(1);
+    expect(pair.find(x=>x.status==='fulfilled').value).toBe('owner-renewed-bearer');
+    expect(await owner.token({account,cred:'U'})).toBe('owner-renewed-bearer');
+    expect(await other.token({account,cred:'U'})).toBe('other-member-valid-bearer');
+    const stored=await directory.getPilotUserAuthorization(a.id,ownerA,account);
+    expect(stored.access_enc).toMatch(/^v1\\./);
+    expect(JSON.stringify(stored)).not.toContain('owner-new-refresh-value');
+    expect(await directory.revokePilotUserAuthorization(a.id,ownerA,account)).toBe(true);
+    await expect(owner.token({account,cred:'U'})).rejects.toThrow();
+    expect(await other.token({account,cred:'U'})).toBe('other-member-valid-bearer');
+  });
+
   it('proves real tenant GitHub consent state, browser CSRF, installation scope, PKCE and token issuance',async()=>{
     const env={PUBLIC_BASE_URL:'https://pilot.github.example.test',VERCEL_ENV:'production',
       GITHUB_PRIVATE_TENANT_PILOT:'enabled',
