@@ -85,6 +85,40 @@ export function createTenantDirectory(sql) {
       // PUB-2 closed PRIVATE pilot. This registry never grants tenant access by
       // itself: live, active membership AND an owner-issued pilot allowlist entry
       // are required. There is deliberately no public enrollment endpoint.
+      await sql`CREATE TABLE IF NOT EXISTS gh_tenant_pilot_bootstraps (
+        identity_id UUID NOT NULL REFERENCES gh_tenant_identities(id),
+        account_login TEXT NOT NULL CHECK (
+          account_login = lower(account_login) AND
+          account_login ~ '^[a-z0-9][a-z0-9-]{0,38}$'),
+        tenant_id UUID NOT NULL UNIQUE REFERENCES gh_tenants(id),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (identity_id, account_login)
+      )`;
+      await sql`CREATE OR REPLACE FUNCTION gh_bootstrap_private_pilot(
+        principal_id UUID, account_name TEXT, proposed_id UUID
+      ) RETURNS UUID LANGUAGE plpgsql SECURITY INVOKER AS $body$
+      DECLARE existing_id UUID;
+      DECLARE schema_name TEXT;
+      BEGIN
+        IF account_name !~ '^[a-z0-9][a-z0-9-]{0,38}$'
+          OR account_name <> lower(account_name) THEN
+          RAISE EXCEPTION 'Invalid private pilot account';
+        END IF;
+        PERFORM id FROM gh_tenant_identities WHERE id = principal_id FOR UPDATE;
+        IF NOT FOUND THEN RAISE EXCEPTION 'Private pilot identity absent'; END IF;
+        SELECT tenant_id INTO existing_id FROM gh_tenant_pilot_bootstraps
+          WHERE identity_id=principal_id AND account_login=account_name;
+        IF existing_id IS NOT NULL THEN RETURN existing_id; END IF;
+        schema_name := 'gh_t_' || replace(proposed_id::text, '-', '');
+        INSERT INTO gh_tenants (id,namespace,status)
+          VALUES (proposed_id,schema_name,'provisioning');
+        INSERT INTO gh_tenant_memberships (tenant_id,identity_id,role)
+          VALUES (proposed_id,principal_id,'owner');
+        INSERT INTO gh_tenant_pilot_bootstraps (identity_id,account_login,tenant_id)
+          VALUES (principal_id,account_name,proposed_id);
+        PERFORM gh_provision_tenant_namespace(schema_name);
+        RETURN proposed_id;
+      END $body$`;
       await sql`CREATE TABLE IF NOT EXISTS gh_tenant_pilot_allowlist (
         tenant_id UUID NOT NULL REFERENCES gh_tenants(id),
         identity_id UUID NOT NULL REFERENCES gh_tenant_identities(id),
