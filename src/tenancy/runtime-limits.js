@@ -45,6 +45,98 @@ export async function initTenantRuntimeSchema(sql) {
     expires_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (scope, window_start)
   )`;
+  // An inner PL/pgSQL exception subtransaction rolls back BOTH counter claims
+  // when either limit would be exceeded. Without this, a client over its
+  // burst cap could reserve all shared tenant slots and starve other clients.
+  await sql`CREATE OR REPLACE FUNCTION gh_claim_tenant_capacity(
+    tenant_scope TEXT, client_scope TEXT, window_kind TEXT,
+    window_seconds INTEGER, amount_to_claim BIGINT,
+    max_tenant BIGINT, max_client BIGINT
+  ) RETURNS TABLE (tenant_used BIGINT, client_used BIGINT)
+  LANGUAGE plpgsql SECURITY INVOKER AS $body$
+  DECLARE t BIGINT;
+  DECLARE c BIGINT;
+  DECLARE at_time TIMESTAMPTZ;
+  BEGIN
+    IF window_kind NOT IN ('minute','day') OR amount_to_claim < 1
+      OR max_client < 1 OR max_tenant < max_client
+      OR window_seconds NOT IN (60,86400) THEN
+      RETURN;
+    END IF;
+    at_time:=date_trunc(window_kind,now());
+    BEGIN
+      INSERT INTO gh_tenant_budget_windows (scope,window_start,used,expires_at)
+        SELECT tenant_scope,at_time,amount_to_claim,
+          at_time+make_interval(secs=>window_seconds)
+        WHERE amount_to_claim<=max_tenant
+        ON CONFLICT(scope,window_start) DO UPDATE
+          SET used=gh_tenant_budget_windows.used+EXCLUDED.used
+          WHERE gh_tenant_budget_windows.used+EXCLUDED.used<=max_tenant
+        RETURNING used INTO t;
+      IF t IS NULL THEN RAISE EXCEPTION 'quota refused' USING ERRCODE='P0001'; END IF;
+      INSERT INTO gh_tenant_budget_windows (scope,window_start,used,expires_at)
+        SELECT client_scope,at_time,amount_to_claim,
+          at_time+make_interval(secs=>window_seconds)
+        WHERE amount_to_claim<=max_client
+        ON CONFLICT(scope,window_start) DO UPDATE
+          SET used=gh_tenant_budget_windows.used+EXCLUDED.used
+          WHERE gh_tenant_budget_windows.used+EXCLUDED.used<=max_client
+        RETURNING used INTO c;
+      IF c IS NULL THEN RAISE EXCEPTION 'quota refused' USING ERRCODE='P0001'; END IF;
+    EXCEPTION WHEN SQLSTATE 'P0001' THEN
+      RETURN;
+    END;
+    tenant_used:=t;
+    client_used:=c;
+    RETURN NEXT;
+  END $body// PUB-3 PRIVATE capacity budget for independently authenticated tenant schemas.
+// Owner legacy connections are intentionally outside this runtime. The limits
+// defend shared infrastructure, not which GitHub capabilities a customer can
+// authorize or the developer's separate zero-spend restrictions.
+import { createHash } from 'node:crypto';
+
+export const TENANT_RUNTIME_LIMITS = Object.freeze({
+  mcpClientPerMinute: 120,
+  mcpTenantPerMinute: 600,
+  oauthClientPerMinute: 30,
+  oauthTenantPerMinute: 150,
+  jobsClientPerDay: 32,
+  jobsTenantPerDay: 200,
+  resultMaxBytes: 256 * 1024,
+  resultsClientBytesPerDay: 8 * 1024 * 1024,
+  resultsTenantBytesPerDay: 40 * 1024 * 1024,
+  jobMaxTtlMinutes: 1440,
+  resultMaxTtlSeconds: 86400
+});
+
+const allowedKinds = new Set(['mcp', 'oauth', 'job', 'result']);
+const allowedEvents = new Set(['mcp', 'oauth', 'job', 'result', 'provider', 'refresh']);
+const allowedOutcomes = new Set(['ok', 'refused', 'throttled', 'error']);
+const bound = (number, low, high) => Number.isSafeInteger(number) && number >= low && number <= high;
+const bucketFor = ms => ms < 100 ? 'lt100ms' : ms < 500 ? 'lt500ms' : ms < 2000 ? 'lt2s' : 'gte2s';
+const digest = value => createHash('sha256').update(value).digest('hex').slice(0, 24);
+
+export class TenantCapacityError extends Error {
+  constructor(operation, waitSeconds) {
+    super('The private tenant is temporarily busy. Retry after the indicated interval.');
+    this.name = 'TenantCapacityError';
+    this.operation = operation;
+    this.retryAfterSeconds = waitSeconds;
+  }
+}
+
+/** Execute only on a TENANT-BOUND connection after exact search_path has been
+ * independently verified. Non-public provisioning/migration owns DDL; no MCP
+ * request is permitted to create or silently migrate tables at runtime. */
+export async function initTenantRuntimeSchema(sql) {
+  await sql`CREATE TABLE IF NOT EXISTS gh_tenant_budget_windows (
+    scope TEXT NOT NULL CHECK (length(scope) BETWEEN 2 AND 80),
+    window_start TIMESTAMPTZ NOT NULL,
+    used BIGINT NOT NULL CHECK (used >= 0),
+    expires_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (scope, window_start)
+  )`;
+;
   await sql`CREATE INDEX IF NOT EXISTS gh_tenant_budget_expiry
     ON gh_tenant_budget_windows (expires_at)`;
   await sql`CREATE TABLE IF NOT EXISTS gh_tenant_runtime_metrics (
@@ -66,32 +158,13 @@ export async function claimTenantBudget(sql, { operation, clientId, amount = 1,
   const length = window === 'minute' ? 60 : 86400;
   const clientScope = operation + ':client:' + digest(clientId);
   const tenantScope = operation + ':tenant';
-  // PostgreSQL row-level UPSERT serialization prevents concurrent instances
-  // from both accepting a request at the final slot. Two limit claims are
-  // intentionally conservative: tenant capacity can be reserved when the
-  // client claim fails, but neither limit can be exceeded or borrowed.
+  // The PostgreSQL function uses row-level UPSERT serialization plus an
+  // exception subtransaction. Both counters commit or both roll back.
   const at = window === 'minute' ? 'minute' : 'day';
-  const tenant = await sql`INSERT INTO gh_tenant_budget_windows
-      (scope,window_start,used,expires_at)
-    SELECT ${tenantScope},date_trunc(${at},now()),${amount},
-      date_trunc(${at},now())+make_interval(secs => ${length})
-    WHERE ${amount}<=${tenantMax}
-    ON CONFLICT (scope,window_start) DO UPDATE
-      SET used=gh_tenant_budget_windows.used+EXCLUDED.used
-      WHERE gh_tenant_budget_windows.used+EXCLUDED.used<=${tenantMax}
-    RETURNING used`;
-  if (tenant.length !== 1) throw new TenantCapacityError(operation,length);
-  const client = await sql`INSERT INTO gh_tenant_budget_windows
-      (scope,window_start,used,expires_at)
-    SELECT ${clientScope},date_trunc(${at},now()),${amount},
-      date_trunc(${at},now())+make_interval(secs => ${length})
-    WHERE ${amount}<=${clientMax}
-    ON CONFLICT (scope,window_start) DO UPDATE
-      SET used=gh_tenant_budget_windows.used+EXCLUDED.used
-      WHERE gh_tenant_budget_windows.used+EXCLUDED.used<=${clientMax}
-    RETURNING used`;
-  if (client.length !== 1) throw new TenantCapacityError(operation,length);
-  return { allowed: true, clientUsed: Number(client[0].used), tenantUsed: Number(tenant[0].used) };
+  const rows=await sql`SELECT tenant_used,client_used FROM gh_claim_tenant_capacity(
+    ${tenantScope},${clientScope},${at},${length},${amount},${tenantMax},${clientMax})`;
+  if (rows.length!==1) throw new TenantCapacityError(operation,length);
+  return { allowed: true, clientUsed: Number(rows[0].client_used), tenantUsed: Number(rows[0].tenant_used) };
 }
 
 export async function admitTenantMcp(sql, clientId) {
