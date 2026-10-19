@@ -1,8 +1,10 @@
-import crypto from 'node:crypto';
+import crypto, { createHash } from 'node:crypto';
 import pg from 'pg';
 import { createDb } from '../../src/db.js';
 import { issueTenantCredential } from '../../src/tenancy/routed-credential.js';
 import { resolvePrivateTenantMcpBearer } from '../../src/tenancy/mcp-route.js';
+import { privateTenantToken } from '../../src/tenancy/oauth-token.js';
+import { call, json, request } from '../../test/helpers/http-harness.js';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { createTenantDirectory, tenantConnectionString, tenantSchemaName,
   initializeProvisionedTenant } from '../../src/tenancy/directory.js';
@@ -121,6 +123,68 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenB})).not.toBeNull();
     expect(await tenantDbB.revokeAccessToken(tokenB)).toBe(true);
     expect(await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenB})).toBeNull();
+  });
+
+  it('redeems tenant-scoped OAuth code exactly once, rotates refresh atomically, and denies wrong clients',async()=>{
+    const env={PUBLIC_BASE_URL:'https://pilot.github.example.test',
+      GITHUB_PRIVATE_TENANT_PILOT:'enabled',
+      GITHUB_TENANT_ROUTING_KEY:crypto.randomBytes(32).toString('base64url'),
+      DATABASE_URL:process.env.TEST_DATABASE_URL};
+    const grant={tenantId:a.id,identityId:ownerA};
+    const other={tenantId:b.id,identityId:ownerB};
+    expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerA)).toBe(true);
+    expect(await directory.allowlistPilotIdentity(b.id,ownerB,ownerB)).toBe(true);
+    const clientA=issueTenantCredential('tcl',grant,env);
+    const clientB=issueTenantCredential('tcl',other,env);
+    const clientSecret='fixture-private-tenant-a-secret';
+    const clientSecretB='fixture-private-tenant-b-secret';
+    const dbA=createDb(tenantA),dbB=createDb(tenantB);
+    const redirect='https://pilot.example.test/callback';
+    const verifier='z'.repeat(43);
+    const challenge=createHash('sha256').update(verifier).digest('base64url');
+    await dbA.createOAuthClient({clientId:clientA,clientSecret,redirectUris:[redirect],clientName:'tenant-A-pilot'});
+    await dbB.createOAuthClient({clientId:clientB,clientSecret:clientSecretB,redirectUris:[redirect],clientName:'tenant-B-pilot'});
+    const code='fixture-signed-pilot-code';
+    await dbA.createAuthCode({code,clientId:clientA,redirectUri:redirect,codeChallenge:challenge,
+      codeChallengeMethod:'S256',defaultAccount:'overlap-org',accounts:['overlap-org'],
+      mode:'preview',profile:'full',listing:'compact'});
+    const route=(url)=>url.includes(tenantSchemaName(a.id))?tenantA:tenantB;
+    const handler=(req,res)=>privateTenantToken(req,res,{env,rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:route});
+    const form={grant_type:'authorization_code',client_id:clientA,client_secret:clientSecret,
+      redirect_uri:redirect,code,code_verifier:verifier,resource:env.PUBLIC_BASE_URL+'/api/mcp'};
+    const wrongClient=await call(handler,request('POST',{...form,client_id:clientB,client_secret:clientSecretB}));
+    expect(wrongClient.statusCode).toBe(400);
+    const redeemed=await call(handler,request('POST',form));
+    expect(redeemed.statusCode).toBe(200);
+    const first=json(redeemed);
+    expect(first.access_token).toMatch(/^tac_/);
+    expect(first.refresh_token).toMatch(/^trf_/);
+    expect((await dbA.getAccessToken(first.access_token)).profile).toBe('full');
+    expect(await dbB.getAccessToken(first.access_token)).toBeNull();
+    expect((await call(handler,request('POST',form))).statusCode).toBe(400);
+    const tokenRoute=await resolvePrivateTenantMcpBearer({
+      authorization:'Bearer '+first.access_token,env,
+      rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:route});
+    expect(tokenRoute.tenant.tenantId).toBe(a.id);
+    const rotation={grant_type:'refresh_token',client_id:clientA,client_secret:clientSecret,
+      refresh_token:first.refresh_token,resource:env.PUBLIC_BASE_URL+'/api/mcp'};
+    const refreshed=await call(handler,request('POST',rotation));
+    expect(refreshed.statusCode).toBe(200);
+    const second=json(refreshed);
+    expect(second.access_token).toMatch(/^tac_/);
+    expect(second.access_token).not.toBe(first.access_token);
+    expect((await call(handler,request('POST',rotation))).statusCode).toBe(400);
+    expect(await dbA.getAccessToken(first.access_token)).toBeNull();
+    expect((await dbA.getAccessToken(second.access_token)).profile).toBe('full');
+    expect((await call(handler,request('POST',{...rotation,client_id:clientB,
+      client_secret:clientSecretB,refresh_token:second.refresh_token}))).statusCode).toBe(400);
+    expect(await directory.revokePilotIdentity(a.id,ownerA,ownerA)).toBe(true);
+    expect((await call(handler,request('POST',{...rotation,
+      refresh_token:second.refresh_token}))).statusCode).toBe(401);
+    expect(await dbA.getAccessToken(second.access_token)).not.toBeNull();
+    expect(await resolvePrivateTenantMcpBearer({
+      authorization:'Bearer '+second.access_token,env,
+      rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:route})).toBeNull();
   });
 
   it('cannot reactivate a revoked tenant member through the allowlist alone', async () => {
