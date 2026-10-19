@@ -7,7 +7,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const WIRE = /^(tac|trf|tcl)_([A-Za-z0-9_-]{86})_([A-Za-z0-9_-]{43})$/;
 const KINDS = new Set(['tac', 'trf', 'tcl']);
-const INFO = Buffer.from('robinson-github-tenant-routing-v1');
+const INFO = Buffer.from('robinson-github-tenant-routing-v2-revocation');
 
 function keyFor(env) {
   if (env?.GITHUB_PRIVATE_TENANT_PILOT !== 'enabled')
@@ -36,10 +36,17 @@ function mac(key, kind, payload) {
 export function isTenantRoutedCredential(value) {
   return typeof value === 'string' && /^(?:tac|trf|tcl)_/.test(value);
 }
-export function issueTenantCredential(kind, { tenantId, identityId }, env = process.env) {
+export function issueTenantCredential(kind, { tenantId, identityId, membershipRevision, pilotRevision }, env = process.env) {
   if (!KINDS.has(kind)) throw new TypeError('Unknown tenant credential kind.');
   const key = keyFor(env);
-  const payload = Buffer.concat([bytesOf(tenantId), bytesOf(identityId), randomBytes(32)]);
+  // Re-allowlisting must NEVER resurrect a previously revoked client, access
+  // or refresh token. Pin both monotonic revisions into the signed payload.
+  if (![membershipRevision, pilotRevision].every(v=>Number.isInteger(v) && v>0 && v<=0xffffffff))
+    throw new TypeError('Current pilot and membership revisions are required.');
+  const revision=Buffer.alloc(8);
+  revision.writeUInt32BE(membershipRevision,0);
+  revision.writeUInt32BE(pilotRevision,4);
+  const payload=Buffer.concat([bytesOf(tenantId),bytesOf(identityId),revision,randomBytes(24)]);
   return `${kind}_${payload.toString('base64url')}_${mac(key, kind, payload).toString('base64url')}`;
 }
 export function verifyTenantCredential(value, expectedKind, env = process.env) {
@@ -57,6 +64,9 @@ export function verifyTenantCredential(value, expectedKind, env = process.env) {
       payload.toString('base64url') !== found[2] ||
       signature.toString('base64url') !== found[3] ||
       !timingSafeEqual(mac(key, expectedKind, payload), signature)) return null;
-  return Object.freeze({ tenantId: uuidOf(payload.subarray(0, 16)),
-    identityId: uuidOf(payload.subarray(16, 32)) });
+  const membershipRevision=payload.readUInt32BE(32);
+  const pilotRevision=payload.readUInt32BE(36);
+  if (membershipRevision===0 || pilotRevision===0) return null;
+  return Object.freeze({ tenantId:uuidOf(payload.subarray(0,16)),
+    identityId:uuidOf(payload.subarray(16,32)),membershipRevision,pilotRevision });
 }
