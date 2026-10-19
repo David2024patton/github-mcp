@@ -67,6 +67,38 @@ describe('the setup page', () => {
     expect(t.page.csrf).toHaveLength(43);
   });
 
+  it('keeps private tenant bootstrap behind production, explicit confirmation, owner passphrase and CSRF', async () => {
+    const t=await build();const page=await t.open();
+    expect(page.body).toContain('Prepare my private GitHub pilot tenant');
+    expect(page.body).toContain('Issue private MCP client');
+    expect(page.body).toContain('Revoke private pilot access');
+    const action={action:'bootstrap-private-pilot',login:'example-org',
+      confirmLogin:'example-org',confirmPilot:'yes'};
+    expect((await t.post(action,{origin:'https://outside.invalid'})).statusCode).toBe(403);
+    expect((await t.post(action,{csrf:'wrong'})).statusCode).toBe(403);
+    expect((await t.post({...action,passphrase:'wrong'})).statusCode).toBe(401);
+    expect((await t.post({...action,confirmPilot:'no'})).statusCode).toBe(400);
+    expect((await t.post({...action,confirmLogin:'different'})).statusCode).toBe(400);
+    const issue={action:'register-private-pilot-client',login:'example-org',
+      confirmLogin:'example-org',confirmPilot:'yes',
+      redirectUri:'https://client.example.test/callback'};
+    expect((await t.post({...issue,confirmPilot:'no'})).statusCode).toBe(400);
+    expect((await t.post({...issue,redirectUri:'http://unsafe.example/cb'})).statusCode).toBe(400);
+    expect((await t.post(issue)).statusCode).toBe(409);
+    const revoke={action:'revoke-private-pilot',login:'example-org',
+      confirmLogin:'example-org',confirmPilot:'revoke'};
+    expect((await t.post({...revoke,confirmPilot:'no'})).statusCode).toBe(400);
+    expect((await t.post({...revoke,confirmLogin:'other'})).statusCode).toBe(400);
+    expect((await t.post(revoke)).statusCode).toBe(404);
+    const closed=await t.post(action);
+    expect(closed.statusCode).toBe(409);
+    expect(closed.body).toContain('could not be safely initialized');
+    noSecrets(closed);
+    const preview=await build({env:{...PROD,VERCEL_ENV:'preview'}});
+    await preview.open();
+    expect((await preview.post(action)).statusCode).toBe(403);
+  });
+
   it('refuses a wrong method, an unset PUBLIC_BASE_URL and an unset passphrase without leaking anything', async () => {
     const t = await build();
     expect((await call(t.handlers.setup, request('DELETE', {}))).statusCode).toBe(405);
