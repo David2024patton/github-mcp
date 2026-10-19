@@ -4,6 +4,7 @@ import { createDb } from '../../src/db.js';
 import { issueTenantCredential } from '../../src/tenancy/routed-credential.js';
 import { resolvePrivateTenantMcpBearer } from '../../src/tenancy/mcp-route.js';
 import { privateTenantToken } from '../../src/tenancy/oauth-token.js';
+import { createPrivateGitHubConsent } from '../../src/tenancy/github-consent.js';
 import { call, json, request } from '../../test/helpers/http-harness.js';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { createTenantDirectory, tenantConnectionString, tenantSchemaName,
@@ -185,6 +186,100 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(await resolvePrivateTenantMcpBearer({
       authorization:'Bearer '+second.access_token,env,
       rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:route})).toBeNull();
+  });
+
+  it('proves real tenant GitHub consent state, browser CSRF, installation scope, PKCE and token issuance',async()=>{
+    const env={PUBLIC_BASE_URL:'https://pilot.github.example.test',VERCEL_ENV:'production',
+      GITHUB_PRIVATE_TENANT_PILOT:'enabled',
+      GITHUB_TENANT_ROUTING_KEY:crypto.randomBytes(32).toString('base64url'),
+      GITHUB_PILOT_APP_CLIENT_ID:'gh-pilot-test-client',
+      GITHUB_PILOT_APP_CLIENT_SECRET:'fixture-only-not-real',
+      GITHUB_PILOT_APP_ID:'80001',
+      DATABASE_URL:process.env.TEST_DATABASE_URL};
+    const dbA=createDb(tenantA), dbB=createDb(tenantB);
+    const clientA=issueTenantCredential('tcl',{tenantId:a.id,identityId:ownerA},env);
+    const secretA='fixture-owner-a-private-client-secret';
+    const account='fixture-app-owner';
+    await dbA.upsertAccount({login:account,accountId:81001,accountType:'Organization',
+      label:'Private pilot org',credentialKind:'app',appId:80001});
+    await dbA.setInstallation(account,{installationId:82001,
+      repositorySelection:'all',permissions:{contents:'write'},status:'active'});
+    await dbA.createOAuthClient({clientId:clientA,clientSecret:secretA,
+      redirectUris:['https://private-pilot.example.test/cb'],clientName:'private-pilot-A'});
+    const clientB=issueTenantCredential('tcl',{tenantId:b.id,identityId:ownerB},env);
+    await dbB.createOAuthClient({clientId:clientB,clientSecret:'other-fixture-secret',
+      redirectUris:['https://private-pilot.example.test/cb'],clientName:'private-pilot-B'});
+    expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerA)).toBe(true);
+    let installationVisible=true,verifiedId=20001,exchangeCalls=0;
+    const fetchImpl=async (url)=>{
+      if(url==='https://github.com/login/oauth/access_token'){
+        exchangeCalls++;
+        return {ok:true,json:async()=>({access_token:'fixture-ephemeral-github-user-token'})};
+      }
+      if(url==='https://api.github.com/user')
+        return {ok:true,status:200,json:async()=>({id:verifiedId,login:'private-pilot-owner',type:'User'})};
+      if(url==='https://api.github.com/user/installations?per_page=100')
+        return {ok:true,json:async()=>({total_count:1,installations:installationVisible?
+          [{id:82001,app_id:80001,account:{id:81001},suspended_at:null}]:
+          [{id:82002,app_id:80001,account:{id:81001},suspended_at:null}]})};
+      throw Error('Unknown fixture provider URL');
+    };
+    const route=url=>url.includes(tenantSchemaName(a.id))?tenantA:tenantB;
+    const consent=createPrivateGitHubConsent({env,fetchImpl,
+      rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:route});
+    const verifier='v'.repeat(43);
+    const challenge=createHash('sha256').update(verifier).digest('base64url');
+    const form={client_id:clientA,response_type:'code',
+      redirect_uri:'https://private-pilot.example.test/cb',
+      code_challenge:challenge,code_challenge_method:'S256',state:'caller-nonce',
+      resource:env.PUBLIC_BASE_URL+'/api/mcp',account,mode:'preview',
+      profile:'full',listing:'compact'};
+    const first=await consent.start(form);
+    expect(first.url).toContain('https://github.com/login/oauth/authorize?');
+    expect(first.url).toContain('code_challenge_method=S256');
+    await expect(consent.finish({state:first.csrfState,code:'fake-github-code',
+      browserCsrf:'invalid-cookie'})).rejects.toThrow(/not verified/);
+    expect(exchangeCalls).toBe(0);
+    const target=await consent.finish({state:first.csrfState,code:'fake-github-code',
+      browserCsrf:first.csrfState});
+    const redirected=new URL(target);
+    expect(redirected.origin).toBe('https://private-pilot.example.test');
+    expect(redirected.searchParams.get('state')).toBe('caller-nonce');
+    const mcpCode=redirected.searchParams.get('code');
+    expect(mcpCode.length).toBeGreaterThan(30);
+    expect(exchangeCalls).toBe(1);
+    await expect(consent.finish({state:first.csrfState,code:'fake-github-code',
+      browserCsrf:first.csrfState})).rejects.toThrow(/not verified/);
+    const handler=(req,res)=>privateTenantToken(req,res,{
+      env,rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:route});
+    const exchanged=await call(handler,request('POST',{
+      grant_type:'authorization_code',client_id:clientA,client_secret:secretA,
+      redirect_uri:form.redirect_uri,code:mcpCode,code_verifier:verifier,
+      resource:form.resource}));
+    expect(exchanged.statusCode).toBe(200);
+    const token=json(exchanged);
+    expect(token.access_token).toMatch(/^tac_/);
+    expect((await dbA.getAccessToken(token.access_token)).accounts).toEqual([account]);
+    expect(await dbB.getAccessToken(token.access_token)).toBeNull();
+    // A provider-reported wrong installation can never complete the handoff.
+    const second=await consent.start(form);
+    installationVisible=false;
+    await expect(consent.finish({state:second.csrfState,code:'another-code',
+      browserCsrf:second.csrfState})).rejects.toThrow(/not verified/);
+    installationVisible=true;
+    // A different provider identity must not inherit this signed client.
+    const third=await consent.start(form);
+    verifiedId=20002;
+    await expect(consent.finish({state:third.csrfState,code:'third-code',
+      browserCsrf:third.csrfState})).rejects.toThrow(/not verified/);
+    verifiedId=20001;
+    const fourth=await consent.start(form);
+    expect(await directory.revokePilotIdentity(a.id,ownerA,ownerA)).toBe(true);
+    await expect(consent.finish({state:fourth.csrfState,code:'fourth-code',
+      browserCsrf:fourth.csrfState})).rejects.toThrow(/not verified/);
+    await directory.allowlistPilotIdentity(a.id,ownerA,ownerA);
+    await expect(consent.finish({state:fourth.csrfState,code:'fourth-code',
+      browserCsrf:fourth.csrfState})).rejects.toThrow(/not verified/);
   });
 
   it('cannot reactivate a revoked tenant member through the allowlist alone', async () => {
