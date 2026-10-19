@@ -563,8 +563,8 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     await expect(oldRenewal).rejects.toThrow(/authorization/);
     expect(await credentials.token({account,cred:'U'}))
       .toBe('fresh-after-new-consent');
-    expect((await directory.getPilotUserAuthorization(a.id,ownerA,account)).revision)
-      .toBeGreaterThan(oldRecord.revision);
+    expect(Number((await directory.getPilotUserAuthorization(a.id,ownerA,account)).revision))
+      .toBeGreaterThan(Number(oldRecord.revision));
   });
 
   it('proves real tenant GitHub consent state, browser CSRF, installation scope, PKCE and token issuance',async()=>{
