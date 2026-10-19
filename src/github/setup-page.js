@@ -19,6 +19,7 @@ import { OWN_PEOPLE_KEY, cleanLogins, extraOwnPeople } from '../tools/people-gua
 import { spendStatus } from '../tools/spend-guard.js';
 import { dollars as money } from '../github/prices.js';
 import { validateGrant } from '../rtc/pass-scope.js';
+import { bootstrapPrivateOwnerPilot } from '../tenancy/owner-bootstrap.js';
 
 const HTML = 'text/html; charset=utf-8';
 const CSP = "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://github.com; base-uri 'none'; frame-ancestors 'none'";
@@ -133,6 +134,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'set-production-names') return await setProductionNames(p, page);
     if (action === 'confirm-production') return await confirmProduction(p, page);
     if (action === 'upgrade-connection-production') return await upgradeConnectionProduction(p, page);
+    if (action === 'bootstrap-private-pilot') return await setupPrivatePilot(p, page);
     if (action === 'set-spend-limit') return await setSpendLimit(p, page);
     if (action === 'set-scratch') return await setScratch(p, page);
     if (action === 'create-rtc-pass') {
@@ -383,6 +385,31 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     await db.recordChange({ account: row.login, mode: 'setup', tool: 'setup_confirm_production', target: row.login, summary: `Production turned ON for ${row.login} from the setup page`,
       production: true, accessWidening: true, confirmed: true }).catch(() => {});
     return page(200, { result: `Production is now ON for ${row.login}. Connections made in production mode can change its real repositories, always asking you first.` });
+  }
+
+  /** This action inherits passphrase lockout, CSRF and exact Origin guards
+   * from setupPost. It cannot create a tenant on preview or a normal account. */
+  async function setupPrivatePilot(p,page) {
+    if (!isProduction()) return page(403,{blocked:NOT_PRODUCTION});
+    const account=String(p.login||'').trim().toLowerCase();
+    if (!isValidLogin(account) ||
+        String(p.confirmLogin||'').trim().toLowerCase()!==account ||
+        String(p.confirmPilot||'')!=='yes')
+      return page(400,{result:'Confirm the exact disposable scratch organization and private pilot scope.'});
+    try {
+      const receipt=await bootstrapPrivateOwnerPilot({
+        accountLogin:account,rootDb:db,ownerCredentials:credentials,
+        env,fetchImpl:fetch
+      });
+      await db.recordChange({account,mode:'setup',tool:'setup_private_pilot',
+        target:receipt.tenantId,
+        summary:'Owner verified GitHub and prepared isolated PRIVATE scratch pilot',
+        production:false,accessWidening:false,confirmed:true}).catch(()=>{});
+      return page(200,{result:'Private tenant ready for '+receipt.account+
+        ' (tenant '+receipt.tenantId+'). No public signup, production connection or new provider permission was enabled.'});
+    }catch {
+      return page(409,{result:'The private pilot could not be safely initialized. Verify your active scratch App, owner GitHub authorization and private pilot configuration. No public access was enabled.'});
+    }
   }
 
   /** Passphrase/CSRF-protected owner upgrade with exact connected client and account. */
