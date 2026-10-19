@@ -6,6 +6,7 @@ import { resolvePrivateTenantMcpBearer } from '../../src/tenancy/mcp-route.js';
 import { privateTenantToken } from '../../src/tenancy/oauth-token.js';
 import { createPrivateGitHubConsent } from '../../src/tenancy/github-consent.js';
 import { registerPrivatePilotClient } from '../../src/tenancy/client-registration.js';
+import { createCredentials } from '../../src/github/credentials.js';
 import { call, json, request } from '../../test/helpers/http-harness.js';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { createTenantDirectory, tenantConnectionString, tenantSchemaName,
@@ -265,6 +266,7 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
       GITHUB_TENANT_ROUTING_KEY:crypto.randomBytes(32).toString('base64url'),
       GITHUB_PILOT_APP_CLIENT_ID:'gh-pilot-test-client',
       GITHUB_PILOT_APP_CLIENT_SECRET:'fixture-only-not-real',
+      TOKEN_ENCRYPTION_KEY:crypto.randomBytes(32).toString('base64url'),
       GITHUB_PILOT_APP_ID:'80001',
       DATABASE_URL:process.env.TEST_DATABASE_URL};
     const dbA=createDb(tenantA), dbB=createDb(tenantB);
@@ -286,7 +288,9 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     const fetchImpl=async (url)=>{
       if(url==='https://github.com/login/oauth/access_token'){
         exchangeCalls++;
-        return {ok:true,json:async()=>({access_token:'fixture-ephemeral-github-user-token'})};
+        return {ok:true,json:async()=>({access_token:'fixture-ephemeral-github-user-token',
+          refresh_token:'fixture-ephemeral-user-refresh',expires_in:28800,
+          refresh_token_expires_in:15000000})};
       }
       if(url==='https://api.github.com/user')
         return {ok:true,status:200,json:async()=>({id:verifiedId,login:'private-pilot-owner',type:'User'})};
@@ -320,6 +324,14 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     const mcpCode=redirected.searchParams.get('code');
     expect(mcpCode.length).toBeGreaterThan(30);
     expect(exchangeCalls).toBe(1);
+    const authorizedAccount=await dbA.getAccount(account);
+    expect(authorizedAccount.user_login).toBe('private-pilot-owner');
+    expect(authorizedAccount.user_token_enc).toMatch(/^v1\\./);
+    expect(authorizedAccount.user_refresh_enc).toMatch(/^v1\\./);
+    expect(JSON.stringify(authorizedAccount)).not.toContain('fixture-ephemeral-github-user-token');
+    expect((await dbB.getAccount(account))).toBeNull();
+    expect(await createCredentials({db:dbA,env,fetch:fetchImpl}).token({
+      account,cred:'U'})).toBe('fixture-ephemeral-github-user-token');
     await expect(consent.finish({state:first.csrfState,code:'fake-github-code',
       browserCsrf:first.csrfState})).rejects.toThrow(/not verified/);
     const handler=(req,res)=>privateTenantToken(req,res,{
