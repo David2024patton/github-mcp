@@ -7,6 +7,7 @@ import { createTenantDirectory, openAuthorizedTenantDb } from './directory.js';
 import { isTenantRoutedCredential, verifyTenantCredential } from './routed-credential.js';
 import { createCredentials } from '../github/credentials.js';
 import { createTenantScopedCredentials } from './user-authorization.js';
+import { withTenantStorageLimits } from './runtime-limits.js';
 
 export const isPrivateTenantBearer = (authorization) =>
   typeof authorization === 'string' &&
@@ -29,7 +30,7 @@ export async function resolvePrivateTenantMcpBearer({
         authorized.identityId !== claim.identityId ||
         authorized.membershipRevision !== claim.membershipRevision ||
         authorized.pilotRevision !== claim.pilotRevision) return null;
-    const { db, tenant } = await openAuthorizedTenantDb({
+    const { db, tenant, sql } = await openAuthorizedTenantDb({
       directory, tenantId: claim.tenantId, verifiedIdentityId: claim.identityId,
       connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory
     });
@@ -60,7 +61,9 @@ export async function resolvePrivateTenantMcpBearer({
     const credentials = createTenantScopedCredentials({
       base, directory, tenant: authorized, db, env, fetchImpl
     });
-    return { db, credentials, tenant: Object.freeze({ ...authorized }) };
+    return { db: withTenantStorageLimits(db,sql,grant.client_id), credentials,
+      sql, clientId: grant.client_id,
+      tenant: Object.freeze({ ...authorized }) };
   } catch {
     // Missing private registry, driver search_path refusal, revocation, and
     // database failure are all a closed authentication failure. No SQL details.
