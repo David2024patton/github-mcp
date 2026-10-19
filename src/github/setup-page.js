@@ -21,6 +21,7 @@ import { dollars as money } from '../github/prices.js';
 import { validateGrant } from '../rtc/pass-scope.js';
 import { bootstrapPrivateOwnerPilot } from '../tenancy/owner-bootstrap.js';
 import { invitePrivatePilotMember } from '../tenancy/private-invite.js';
+import { purgeRevokedTenantArtifacts } from '../tenancy/incident-cleanup.js';
 import { registerPrivatePilotClient } from '../tenancy/client-registration.js';
 import { createTenantDirectory } from '../tenancy/directory.js';
 import { neon } from '@neondatabase/serverless';
@@ -514,14 +515,31 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       if (!row || row.account_type!=='Organization' || !env.DATABASE_URL)
         return page(404,{result:'This account has no private pilot to revoke.'});
       const dir=createTenantDirectory(neon(env.DATABASE_URL));
+      const tenants=await dir.listPilotsForAccount(account);
       const stopped=await dir.revokePrivatePilotsForAccount(account);
+      // Authorization is disabled FIRST. If cleanup fails, further private
+      // calls already fail closed and the owner may safely retry the action.
+      let cleaned={tokens:0,codes:0,clients:0,jobs:0,results:0};
+      for(const tenant of tenants){
+        const item=await purgeRevokedTenantArtifacts({
+          directory:dir,tenantId:tenant.tenantId,
+          ownerIdentityId:tenant.ownerIdentityId,
+          connectionString:env.DATABASE_URL
+        });
+        for(const key of Object.keys(cleaned))cleaned[key]+=item[key];
+      }
+      const secrets=await dir.purgePrivatePilotRootSecrets(account);
+      if(!secrets)throw new Error('Private credential cleanup was not verified.');
       await db.recordChange({account,mode:'setup',tool:'setup_revoke_private_pilot',
         target:account,
-        summary:'Owner revoked all private pilot authorizations for this account',
+        summary:'Owner revoked private pilot sessions and cleared retained client data',
         confirmed:true,production:false,accessWidening:false}).catch(()=>{});
       return page(200,{result:'Revoked '+stopped+
         ' active private pilot grant(s) for '+account+
-        '. Old client IDs and tokens cannot be reactivated without a new protected owner action.'});
+        '; removed '+cleaned.clients+' MCP clients, '+cleaned.tokens+
+        ' bearer grants, '+cleaned.codes+' pending codes, '+cleaned.jobs+
+        ' tracked jobs, '+cleaned.results+' retained results and '+
+        secrets.userGrants+' encrypted user grants. Other accounts were untouched.'});
     }catch {
       return page(503,{result:'The private pilot revocation could not be verified. Disable the pilot deployment flag as a fallback and retry from the protected setup page.'});
     }
