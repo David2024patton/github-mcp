@@ -46,7 +46,8 @@ export async function registerPrivatePilotClient({
       again.pilotRevision!==tenant.pilotRevision)
     throw new Error('The private pilot membership changed during registration.');
   const clientId=issueTenantCredential('tcl',{
-    tenantId:tenant.tenantId,identityId:tenant.identityId
+    tenantId:tenant.tenantId,identityId:tenant.identityId,
+    membershipRevision:again.membershipRevision,pilotRevision:again.pilotRevision
   },env);
   const clientSecret=randomBytes(32).toString('base64url');
   await db.createOAuthClient({clientId,clientSecret,redirectUris,clientName:clientName||'GitHub private pilot'});
