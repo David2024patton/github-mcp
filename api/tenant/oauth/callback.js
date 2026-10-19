@@ -1,7 +1,7 @@
 import { createPrivateGitHubConsent } from '../../../src/tenancy/github-consent.js';
 import { send } from '../../../src/core/http.js';
 
-const stateCookie=req=>
+export const stateCookie=req=>
   /(?:^|;\s*)gh_tenant_pilot_state=([A-Za-z0-9_-]{32,256})(?:;|$)/
     .exec(String(req.headers?.cookie||''))?.[1]||null;
 
