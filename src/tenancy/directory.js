@@ -354,6 +354,22 @@ export function createTenantDirectory(sql) {
         providerVerifier:row.provider_verifier } : null;
     },
 
+    /** Owner emergency stop. The calling setup route must have already
+     * authenticated its owner/passphrase; no MCP caller invokes this method.
+     * All existing bearer/client/code epochs for this account become stale. */
+    async revokePrivatePilotsForAccount(accountLogin) {
+      if (typeof accountLogin!=='string' ||
+          !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin))
+        throw new TypeError('An exact private pilot account is required.');
+      const rows=await sql`UPDATE gh_tenant_pilot_allowlist p
+        SET active=FALSE,revision=p.revision+1,updated_at=now()
+        WHERE p.active=TRUE AND EXISTS (
+          SELECT 1 FROM gh_tenant_pilot_bootstraps b
+          WHERE b.tenant_id=p.tenant_id AND b.account_login=${accountLogin})
+        RETURNING p.tenant_id`;
+      return rows.length;
+    },
+
     /** Membership widening is owner-controlled: no public self-grant. */
     async grant(tenantId, actorIdentityId, targetIdentityId, role) {
       const t = validUuid(tenantId), actor = validUuid(actorIdentityId), target = validUuid(targetIdentityId);
