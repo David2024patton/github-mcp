@@ -3,6 +3,8 @@
 // another member's user bearer through the organization account name.
 import { encryptSecret, decryptSecret, readEncryptionKey } from '../core/crypto.js';
 import { GithubClientError } from '../github/errors.js';
+import { randomUUID } from 'node:crypto';
+import { verifyGithubBearerIdentity, verifyGithubUserInstallation } from './github-identity.js';
 
 const aad=(tenantId,identityId,account,kind)=>
   `github-mcp/private-tenant/${tenantId}/identity/${identityId}/account/${account.toLowerCase()}/${kind}`;
@@ -35,11 +37,86 @@ export async function storePilotUserGrant({ directory, tenantId, identityId,
   return true;
 }
 
+/** Refresh belongs to one user/tenant/account, not an installation-wide
+ * gh_accounts row. PostgreSQL permits at most one process to spend the stored
+ * refresh token. GitHub validates the *new* bearer and App installation before
+ * the replacement is committed. No secret is ever included in an error. */
+async function renewPilotUser({ directory, tenant, db, account, row, env, now, fetchImpl }) {
+  if (!row.refresh_enc || !row.refresh_expires_at ||
+      new Date(row.refresh_expires_at).getTime()<=now() ||
+      typeof directory.claimPilotUserRefresh!=='function' || !db ||
+      !env.GITHUB_PILOT_APP_CLIENT_ID || !env.GITHUB_PILOT_APP_CLIENT_SECRET)
+    throw denied();
+  const scope={tenantId:tenant.tenantId,identityId:tenant.identityId,
+    accountLogin:account.toLowerCase()};
+  const claimId=randomUUID();
+  const got=await directory.claimPilotUserRefresh({
+    ...scope,expectedAccessEnc:row.access_enc,claimId
+  });
+  if (!got) throw new GithubClientError('rate_limited',
+    'Your personal GitHub authorization is being renewed. Retry shortly.');
+  let invalidGrant=false;
+  try {
+    const key=readEncryptionKey(env);
+    const refreshToken=decryptSecret(got.refresh_enc,{
+      aad:aad(tenant.tenantId,tenant.identityId,account,'refresh'),key
+    });
+    const result=await fetchImpl('https://github.com/login/oauth/access_token',{
+      method:'POST',signal:AbortSignal.timeout(15000),
+      headers:{accept:'application/json','content-type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({client_id:env.GITHUB_PILOT_APP_CLIENT_ID,
+        client_secret:env.GITHUB_PILOT_APP_CLIENT_SECRET,
+        grant_type:'refresh_token',refresh_token:refreshToken})
+    });
+    const data=await result.json();
+    if (!result.ok || data?.error) {
+      invalidGrant=['invalid_grant','bad_refresh_token'].includes(data?.error);
+      throw denied();
+    }
+    const access=data?.access_token,refresh=data?.refresh_token;
+    const expiresIn=Number(data?.expires_in);
+    const refreshIn=Number(data?.refresh_token_expires_in);
+    if (typeof access!=='string' || access.length<8 || access.length>4096 ||
+        typeof refresh!=='string' || refresh.length<8 || refresh.length>4096 ||
+        !Number.isSafeInteger(expiresIn) || expiresIn<60 || expiresIn>31536000 ||
+        !Number.isSafeInteger(refreshIn) || refreshIn<60 || refreshIn>31536000)
+      throw denied();
+    const actual=await verifyGithubBearerIdentity(access,{fetchImpl});
+    const expected=await directory.getPilotVerifiedSubject(scope.tenantId,scope.identityId);
+    const app=await db.getAccount(account);
+    if (!expected || actual.subject!==expected || !app ||
+        app.credential_kind!=='app' || app.installation_status!=='active' ||
+        !await verifyGithubUserInstallation(access,{
+          installationId:app.installation_id,appId:app.app_id,
+          accountId:app.account_id,fetchImpl
+        })) throw denied();
+    const newer=await directory.finishPilotUserRefresh({
+      ...scope,expectedAccessEnc:row.access_enc,claimId,
+      accessEnc:encryptSecret(access,{
+        aad:aad(scope.tenantId,scope.identityId,account,'access'),key}),
+      accessExpiresAt:new Date(now()+expiresIn*1000),
+      refreshEnc:encryptSecret(refresh,{
+        aad:aad(scope.tenantId,scope.identityId,account,'refresh'),key}),
+      refreshExpiresAt:new Date(now()+refreshIn*1000)
+    });
+    if (!newer) throw denied();
+    return access;
+  } catch {
+    if (invalidGrant && typeof directory.invalidatePilotUserRefresh==='function')
+      await directory.invalidatePilotUserRefresh({
+        ...scope,expectedAccessEnc:row.access_enc,claimId
+      }).catch(()=>{});
+    throw denied();
+  } finally {
+    await directory.releasePilotUserRefresh({...scope,claimId}).catch(()=>{});
+  }
+}
+
 /** Returns the ordinary scoped installation credential API unchanged for
  * 'I', but forbids P/K sharing and uses identity-bound U data exclusively.
  * Every user token read enforces fresh membership/allowlist via directory. */
-export function createTenantScopedCredentials({ base, directory, tenant,
-  env = process.env, now = Date.now }) {
+export function createTenantScopedCredentials({ base, directory, tenant, db,
+  env = process.env, now = Date.now, fetchImpl = fetch }) {
   if (!base || typeof base.token!=='function' ||
       !directory || typeof directory.getPilotUserAuthorization!=='function' ||
       !tenant?.tenantId || !tenant?.identityId)
@@ -61,9 +138,10 @@ export function createTenantScopedCredentials({ base, directory, tenant,
       if (typeof args.account!=='string') throw denied();
       const row=await directory.getPilotUserAuthorization(
         tenant.tenantId,tenant.identityId,args.account.toLowerCase());
-      if (!row || !row.access_enc ||
-          new Date(row.access_expires_at).getTime()<=now()+60_000)
-        throw denied();
+      if (!row || !row.access_enc) throw denied();
+      if (new Date(row.access_expires_at).getTime()<=now()+60_000)
+        return renewPilotUser({directory,tenant,db,account:args.account,
+          row,env,now,fetchImpl});
       try {
         return decryptSecret(row.access_enc,{
           aad:aad(tenant.tenantId,tenant.identityId,args.account,'access'),key:key()
