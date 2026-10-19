@@ -93,6 +93,36 @@ test('real git refs and ancestry drive the offline CLI without network/mutations
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('Hub integration rows stay visible and blocked, but only provider-owned RTC stays required', () => {
+  const relay = { ...row('GITHUB-RTC-RELAY'), status: 'BLOCKED', completionGate: false };
+  const sandbox = { ...row('GITHUB-RTC-SANDBOX'), status: 'BLOCKED', completionGate: false };
+  const direct = { ...row('GITHUB-RTC-DIRECT'), status: 'BLOCKED' };
+  const plan = planQueue(readQueue(block([relay, sandbox, direct])), obs, ancestor);
+  assert.equal(plan.length, 3);
+  assert.equal(plan.find(x => x.id === 'GITHUB-RTC-RELAY').disposition, 'OPTIONAL_HUB_OWNED');
+  assert.equal(plan.find(x => x.id === 'GITHUB-RTC-SANDBOX').disposition, 'OPTIONAL_HUB_OWNED');
+  assert.equal(plan.find(x => x.id === 'GITHUB-RTC-DIRECT').disposition, 'RECHECK_EXTERNAL_GATE');
+  const summary = acceptanceSummary(plan, 10).join('\n');
+  assert.match(summary, /Optional Hub-owned integration checks: 2/);
+  assert.doesNotMatch(summary, /RELAY RECHECK_EXTERNAL_GATE/);
+  assert.match(summary, /DIRECT RECHECK_EXTERNAL_GATE/);
+  const snapshot = acceptanceSnapshot(plan);
+  assert.notEqual(snapshot, acceptanceSnapshot(plan.filter(x => x.id !== 'GITHUB-RTC-RELAY')));
+  const requiredOnly = [{ id: 'GITHUB-RTC-DIRECT', requiredRevision: a,
+    disposition: 'RECHECK_EXTERNAL_GATE', outcome: 'DEFERRED',
+    evidence: 'No live direct RTC pass currently available',
+    prerequisite: 'Private service-issued RTC pass',
+    remedy: 'Reviewed actual standalone provider state',
+    nextAction: 'Run genuine bounded direct RTC evidence' }];
+  const report = { snapshot, deployed: b, deploymentState: 'READY', tasks: requiredOnly };
+  assert.match(reviewAcceptance(plan, obs, report), /accounting checked/);
+  assert.throws(() => reviewAcceptance(plan, obs, { ...report, tasks: [] }), /Unreviewed acceptance/);
+  for (const item of [{ ...relay, completionGate: true },
+    { ...row('GITHUB-NATIVE'), completionGate: false },
+    { ...sandbox, completionGate: 'optional' }])
+    assert.throws(() => readQueue(block([item])), /Only approved Hub-owned/);
+});
+
 test('roadmap progress counts coarse indexed units without promoting in-progress or blocked work', () => {
   const before = JSON.stringify(fixtureRoadmap);
   const summary = summarizeRoadmap(fixtureRoadmap);
