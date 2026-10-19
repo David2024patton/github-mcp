@@ -477,13 +477,14 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(mcpCode.length).toBeGreaterThan(30);
     expect(exchangeCalls).toBe(1);
     const authorizedAccount=await dbA.getAccount(account);
-    expect(authorizedAccount.user_login).toBe('private-pilot-owner');
-    expect(authorizedAccount.user_token_enc).toMatch(/^v1\./);
-    expect(authorizedAccount.user_refresh_enc).toMatch(/^v1\./);
-    expect(JSON.stringify(authorizedAccount)).not.toContain('fixture-ephemeral-github-user-token');
+    expect(authorizedAccount.user_token_enc).toBeNull();
+    expect(authorizedAccount.user_refresh_enc).toBeNull();
+    const individual=await directory.getPilotUserAuthorization(a.id,ownerA,account);
+    expect(individual.user_login).toBe('private-pilot-owner');
+    expect(individual.access_enc).toMatch(/^v1\./);
+    expect(individual.refresh_enc).toMatch(/^v1\./);
+    expect(JSON.stringify(individual)).not.toContain('fixture-ephemeral-github-user-token');
     expect((await dbB.getAccount(account))).toBeNull();
-    expect(await createCredentials({db:dbA,env,fetch:fetchImpl}).token({
-      account,cred:'U'})).toBe('fixture-ephemeral-github-user-token');
     await expect(consent.finish({state:first.csrfState,code:'fake-github-code',
       browserCsrf:first.csrfState})).rejects.toThrow(/not verified/);
     const handler=(req,res)=>privateTenantToken(req,res,{
@@ -495,6 +496,11 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(exchanged.statusCode).toBe(200);
     const token=json(exchanged);
     expect(token.access_token).toMatch(/^tac_/);
+    const scopedRoute=await resolvePrivateTenantMcpBearer({
+      authorization:'Bearer '+token.access_token,env,fetchImpl,
+      rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:route});
+    expect(await scopedRoute.credentials.token({account,cred:'U'}))
+      .toBe('fixture-ephemeral-github-user-token');
     expect((await dbA.getAccessToken(token.access_token)).accounts).toEqual([account]);
     expect(await dbB.getAccessToken(token.access_token)).toBeNull();
     // A provider-reported wrong installation can never complete the handoff.
