@@ -432,6 +432,18 @@ export function createTenantDirectory(sql) {
       return rows.length===1;
     },
 
+    /** On GitHub invalid_grant, clear only the failed one-use claim;
+     * a newer reauthorization can never be erased by a late response. */
+    async invalidatePilotUserRefresh({tenantId,identityId,accountLogin,
+      expectedAccessEnc,claimId}) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      const rows=await sql`DELETE FROM gh_tenant_user_authorizations
+        WHERE tenant_id=${t}::uuid AND identity_id=${i}::uuid
+          AND account_login=${accountLogin} AND access_enc=${expectedAccessEnc}
+          AND refresh_claim_id=${claimId} RETURNING identity_id`;
+      return rows.length===1;
+    },
+
     async releasePilotUserRefresh({tenantId,identityId,accountLogin,claimId}) {
       const t=validUuid(tenantId),i=validUuid(identityId);
       await sql`UPDATE gh_tenant_user_authorizations
