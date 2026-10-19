@@ -103,7 +103,7 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     await rootDb.saveApp({id:app,slug:'private-pilot-app',ownerLogin:org,
       ownerType:'Organization',clientId:'fixture-client-id',
       clientSecretEnc:appClient,privateKeyEnc:appKey,
-      webhookSecretEnc:null,permissions:{contents:'read'}});
+      webhookSecretEnc:secret('fixture-webhook-secret','webhook_secret'),permissions:{contents:'read'}});
     await rootDb.upsertAccount({login:org,accountId:920003,
       accountType:'Organization',label:'Owner scratch pilot',
       credentialKind:'app',appId:app,isScratch:true});
@@ -251,6 +251,7 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
   it('redeems tenant-scoped OAuth code exactly once, rotates refresh atomically, and denies wrong clients',async()=>{
     const env={PUBLIC_BASE_URL:'https://pilot.github.example.test',
       GITHUB_PRIVATE_TENANT_PILOT:'enabled',
+      GITHUB_PILOT_APP_ID:'987001',
       GITHUB_TENANT_ROUTING_KEY:crypto.randomBytes(32).toString('base64url'),
       DATABASE_URL:process.env.TEST_DATABASE_URL};
     const grant={tenantId:a.id,identityId:ownerA};
@@ -262,6 +263,12 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     const clientSecret='fixture-private-tenant-a-secret';
     const clientSecretB='fixture-private-tenant-b-secret';
     const dbA=createDb(tenantA),dbB=createDb(tenantB);
+    for(const db of [dbA,dbB]){
+      await db.upsertAccount({login:'overlap-org',accountId:987002,accountType:'Organization',
+        label:'Isolated OAuth fixture',credentialKind:'app',appId:987001});
+      await db.setInstallation('overlap-org',{installationId:987003,
+        repositorySelection:'all',permissions:{contents:'read'},status:'active'});
+    }
     const redirect='https://pilot.example.test/callback';
     const verifier='z'.repeat(43);
     const challenge=createHash('sha256').update(verifier).digest('base64url');
@@ -417,8 +424,8 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(exchangeCalls).toBe(1);
     const authorizedAccount=await dbA.getAccount(account);
     expect(authorizedAccount.user_login).toBe('private-pilot-owner');
-    expect(authorizedAccount.user_token_enc).toMatch(/^v1\\./);
-    expect(authorizedAccount.user_refresh_enc).toMatch(/^v1\\./);
+    expect(authorizedAccount.user_token_enc).toMatch(/^v1\./);
+    expect(authorizedAccount.user_refresh_enc).toMatch(/^v1\./);
     expect(JSON.stringify(authorizedAccount)).not.toContain('fixture-ephemeral-github-user-token');
     expect((await dbB.getAccount(account))).toBeNull();
     expect(await createCredentials({db:dbA,env,fetch:fetchImpl}).token({

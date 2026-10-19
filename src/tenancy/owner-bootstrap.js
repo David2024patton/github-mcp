@@ -27,7 +27,7 @@ export async function bootstrapPrivateOwnerPilot({
       account.app_id!==Number(env.GITHUB_PILOT_APP_ID) ||
       !Number.isSafeInteger(account.installation_id) ||
       account.installation_id<=0 || !app ||
-      !app.client_secret_enc || !app.private_key_enc)
+      !app.client_secret_enc || !app.private_key_enc || !app.webhook_secret_enc)
     throw new Error('A verified installed scratch GitHub App is required.');
   // The owner's already-encrypted, user-authorized GitHub U credential proves
   // their principal. Never trust an account name typed into the setup form.
