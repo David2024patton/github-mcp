@@ -7,6 +7,8 @@ import { privateTenantToken } from '../../src/tenancy/oauth-token.js';
 import { createPrivateGitHubConsent } from '../../src/tenancy/github-consent.js';
 import { registerPrivatePilotClient } from '../../src/tenancy/client-registration.js';
 import { createCredentials } from '../../src/github/credentials.js';
+import { bootstrapPrivateOwnerPilot } from '../../src/tenancy/owner-bootstrap.js';
+import { encryptSecret } from '../../src/core/crypto.js';
 import { call, json, request } from '../../test/helpers/http-harness.js';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { createTenantDirectory, tenantConnectionString, tenantSchemaName,
@@ -85,6 +87,73 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect((await directory.authorized(id,ownerA)).role).toBe('owner');
     expect(await otherDirectory.provisionPilotForOwnerAccount(ownerA,'pilot-once-org')).toBe(id);
     expect(await directory.activate(id,tenantSchemaName(id))).toBe(false);
+  });
+
+  it('owner bootstrap verifies live GitHub, copies only sealed App data and reuses one tenant on retry',async()=>{
+    const rootDb=createDb(sqlFor(admin));
+    await rootDb.initSchema();
+    const env={VERCEL_ENV:'production',GITHUB_PRIVATE_TENANT_PILOT:'enabled',
+      GITHUB_PILOT_APP_ID:'920001',DATABASE_URL:process.env.TEST_DATABASE_URL,
+      TOKEN_ENCRYPTION_KEY:crypto.randomBytes(32).toString('base64url')};
+    const app=920001,org='owner-pilot-fixture',installation=920002;
+    const secret=(text,kind)=>encryptSecret(text,{
+      aad:'github-mcp/app/'+app+'/'+kind,key:Buffer.from(env.TOKEN_ENCRYPTION_KEY,'base64url')});
+    const appKey=secret('fixture-private-key-material','private_key');
+    const appClient=secret('fixture-client-secret-value','client_secret');
+    await rootDb.saveApp({id:app,slug:'private-pilot-app',ownerLogin:org,
+      ownerType:'Organization',clientId:'fixture-client-id',
+      clientSecretEnc:appClient,privateKeyEnc:appKey,
+      webhookSecretEnc:null,permissions:{contents:'read'}});
+    await rootDb.upsertAccount({login:org,accountId:920003,
+      accountType:'Organization',label:'Owner scratch pilot',
+      credentialKind:'app',appId:app,isScratch:true});
+    await rootDb.setInstallation(org,{installationId:installation,
+      repositorySelection:'all',permissions:{contents:'read'},status:'active'});
+    const fetchImpl=async url=>{
+      if(url==='https://api.github.com/user')
+        return {ok:true,status:200,json:async()=>({id:20001,login:'real-owner-fixture',type:'User'})};
+      if(url==='https://api.github.com/user/installations?per_page=100')
+        return {ok:true,status:200,json:async()=>({total_count:1,
+          installations:[{id:installation,app_id:app,account:{id:920003},suspended_at:null}]})};
+      throw Error('Unrecognized fixture GitHub read');
+    };
+    const rootCredentials=createCredentials({db:rootDb,env,fetch:fetchImpl});
+    await rootCredentials.storeUserAuthorization(org,{
+      userLogin:'real-owner-fixture',accessToken:'fixture-owner-auth-test-token',
+      expiresIn:28800,refreshToken:null});
+    const sqlPool=new Map();
+    const tenantSqlFactory=url=>{
+      if(!sqlPool.has(url)){
+        const clientPromise=connect(url);
+        sqlPool.set(url,async(parts,...params)=>sqlFor(await clientPromise)(parts,...params));
+      }
+      return sqlPool.get(url);
+    };
+    const args={accountLogin:org,rootDb,ownerCredentials:rootCredentials,
+      env,fetchImpl,rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory};
+    const one=await bootstrapPrivateOwnerPilot(args);
+    const two=await bootstrapPrivateOwnerPilot(args);
+    expect(two.tenantId).toBe(one.tenantId);
+    expect(one.account).toBe(org);
+    expect(one.githubUser).toBe('real-owner-fixture');
+    extraTenantIds.push(one.tenantId);
+    expect((await directory.authorized(one.tenantId,ownerA)).role).toBe('owner');
+    const userSql=tenantSqlFactory(tenantConnectionString(env.DATABASE_URL,one.tenantId));
+    const tenantDb=createDb(userSql);
+    const savedApp=await tenantDb.getApp(app);
+    const savedOrg=await tenantDb.getAccount(org);
+    expect(savedApp.private_key_enc).toBe(appKey);
+    expect(savedApp.client_secret_enc).toBe(appClient);
+    expect(savedOrg.production_enabled).toBe(false);
+    expect(savedOrg.user_token_enc).toBeNull();
+    expect(savedOrg.installation_status).toBe('active');
+    expect(JSON.stringify(two)).not.toContain('fixture-owner-auth-test-token');
+    expect(await directory.resolveAllowlistedPilotSubject(one.tenantId,'20001')).not.toBeNull();
+    await expect(bootstrapPrivateOwnerPilot({...args,env:{...env,VERCEL_ENV:'preview'}}))
+      .rejects.toThrow(/not enabled/);
+    await rootDb.setInstallationStatus(org,'suspended');
+    await expect(bootstrapPrivateOwnerPilot(args)).rejects.toThrow(/scratch GitHub App/);
+    await rootDb.setInstallationStatus(org,'active');
   });
 
   it('does not allow an unknown, cross-tenant, or merely invited identity into a pilot', async () => {
