@@ -444,8 +444,10 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
       .toBe('bob-personal-github-oauth-token');
     expect(await forUser(ownerA).token({account,cred:'I'}))
       .toBe('fixture-App-token-for-tenant-owner');
-    await expect(forUser(ownerB).token({account,cred:'I'}))
-      .rejects.toThrow(/authorization/);
+    // Default I-mode tools run as the invited user's own delegated GitHub
+    // App USER token, never through the owner's installation-wide bearer.
+    expect(await forUser(ownerB).token({account,cred:'I'}))
+      .toBe('bob-personal-github-oauth-token');
     expect((await db.getAccount(account)).user_token_enc).toBeNull();
     expect(await directory.getPilotUserAuthorization(a.id,ownerA,account))
       .not.toEqual(await directory.getPilotUserAuthorization(a.id,ownerB,account));
