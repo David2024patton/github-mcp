@@ -1,3 +1,7 @@
+## 2026-10-19 — PUB-2 private tenant authorization security continuation
+
+Owner-approved PUB-2 remains **DRAFT #264, NOT MERGED / NOT DEPLOYED / NOT COMPLETED**. Source changes after the previous green checkpoint now isolate each GitHub App user's encrypted U token by BOTH tenant and verified identity, keep organization-wide I credentials restricted to the tenant owner until individual repository delegation can be proven, rotate expiring personal GitHub grants with a one-use PostgreSQL lease, verify provider identity and installed App again on renewal, and reject stale refresh claims without erasing newer sign-ins. Same-owner bootstrap is idempotent. Callback cookie parsing and suspended App refusal are repaired with disposable PostgreSQL security tests. **Fresh exact-head CI remains pending; none of these new tests can be called passed yet.** Private pilot stays OFF, custom mobile/desktop acceptance remains unverified, original real provider acceptance 14 PASSED / 28 PENDING / 15 BLOCKED. Merged `main` includes updated optional Hub-owned routing acceptance; standalone RTC1 compatibility remains mandatory. No production migration, outside-user enrollment, app publication, live release, or developer spending.
+
 ## 2026-10-18/19 — PUB-2 draft #264: private GitHub OAuth implementation expanded; INCOMPLETE
 
 **Verified draft source head before docs:** `cbd9412e6ab86bd4c71574370b35312ac0ff9755`, GitHub Actions `ci 39182803768 SUCCESS` (both unit shards, real disposable PostgreSQL, shapes, RTC and check) and `Daily live policy 39182803752 SUCCESS`. The normal daily production release has NOT been triggered by this PR; `main=692c38550217c84b6afa5fc4840ea753be8e049f` and last independently verified `live=f1397503be40ab4cb2bbff70c19c43b146c7c6d3`. Original provider acceptance unchanged: **57 criteria, 14 PASSED / 28 PENDING / 15 BLOCKED**.
@@ -9,6 +13,11 @@
 ## 2026-10-18 — PUB-2 private provider identity and pilot allowlist PARTIAL, in progress
 
 Working branch `ai/chatgpt/pub-2-private-delegated-oauth-plan-20261018` contains pre-code frozen full card `docs/pr-cards/PUB-2.md` at `dc9e8c7bf18e03df7561a17c287d5d615af60a0b`; current `main=692c38550217c84b6afa5fc4840ea753be8e049f`, `live=f1397503be40ab4cb2bbff70c19c43b146c7c6d3`. Added `src/tenancy/github-identity.js` with genuine fixed-endpoint GitHub GET /user stable numeric subject verification and fail-closed private-pilot resolver, together with additive owner-only per-tenant pilot-allowlist storage in `src/tenancy/directory.js`. New focused `tests/unit/pub-2-pilot-identity.test.js` and genuine `tests/db/pub-2-pilot-identity.test.js` cover provider success/refusal, disabled pilot, two tenants, no cross-tenant permission, and allowlist/membership revocation. **No public route imports these helpers**, and GITHUB_PRIVATE_TENANT_PILOT is default disabled. **PUB-2 remains IN_PROGRESS and incomplete:** independent provider-verified OAuth registration, tenant-bound auth code/token/refresh routing, actual App/repo delegation, full HTTP contract, no legacy fallback and private end-to-end pilot are still unbuilt. No real provider acceptance, production deployment, mobile/desktop UI pass, public listing, customer enrollment or paid operation is claimed. Use one draft PR to run focused/CI checks and finish the same whole subsection before merge; do not split into helper PRs. Original 57 real provider acceptance stays **14 PASSED / 28 PENDING / 15 BLOCKED**.
+
+
+## 2026-10-19 — Owner: Hub connection is NOT a GitHub MCP completion gate (source review pending)
+
+The Hub initiates discovery, authorization, connection and routing. GitHub MCP must implement and verify the current [Hub connector specification](https://github.com/Robinson-AI-Systems/robinsons-toolkit-hub/blob/3cc7f4ad4332155d639125b23e8a5c4c13804a3d/docs/HUB-CONNECTION-SPEC.md) **on its standalone server**, including truthful RTC1 metadata, direct-service authentication/denial/revocation, bounded meta tools and independently deployed direct MCP and RTC conformance. A working Hub relay, Sandbox-mediated connection, Hub discovery or Hub-owned live sign-in is **not required** to complete this provider. Retain historical `GITHUB-RTC-RELAY` and `GITHUB-RTC-SANDBOX` as BLOCKED and separately optional (`completionGate:false`) without false passes or deleting them. Direct provider `GITHUB-RTC-DIRECT` remains required and BLOCKED pending genuine service-issued RTC acceptance. **Historical original queue unchanged: 57 entries, 14 PASSED, 28 PENDING, 15 BLOCKED; required provider queue 55, 14 PASSED, 28 PENDING, 13 BLOCKED** plus 2 optional Hub-only route checks. Owner decision changes only acceptance ownership, not tested contract truth, release, credentials, security or public distribution. Latest independently READY `main=live=f98b45c4e53a154b369d126c59cda35b7a1886fa`; Hub reviewed spec `3cc7f4ad4332155d639125b23e8a5c4c13804a3d`. PUB-2 #264 remains separate unfinished draft and does not become a pass.
 
 ## 2026-10-18 — PUB-1 private tenant boundary implementation IN PROGRESS (not accepted)
 
@@ -980,6 +989,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Service read-only subset is live; actual Hub health is foundation ready, federation not_configured, providerCallsEnabled=false, contractVersion=0, accessibleUpstreams=0. Hub namespaces denied RTC tool not granted to caller. Need configured authorized service grant/relay and compatible deployed Hub route.",
     "dependsOn": [],
     "status": "BLOCKED",
+    "completionGate": false,
     "lastEvidence": "2026-10-15 restored adapter: Adapter recovery does not configure optional Hub federation or grant its denied namespaces. Prior actual Hub evidence remains foundation-only. Next: Configured authorized service grant/relay and compatible Hub route. Hub owner configures explicit grant before route acceptance; no provider-specific workaround.",
     "nextAction": "Optional Hub must be explicitly configured with upstream RTC pass and connection permission; observed federation not_configured/provider calls disabled. Standalone native MCP stays independent."
   },
@@ -992,6 +1002,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Live subset present; need authorized compatible Sandbox runner/project and short-lived scoped service RTC pass, provider-enforced zero spending, genuine direct route and cleanup/revocation authority. Hub federation currently not configured where route depends on Hub.",
     "dependsOn": [],
     "status": "BLOCKED",
+    "completionGate": false,
     "lastEvidence": "2026-10-15 restored adapter: Adapter recovery supplies neither scoped RTC pass nor authorized Sandbox route/project. Next: Approved compatible Sandbox runner, scoped service pass and zero-spend cleanup authority. Owner supplies authorized runner/grant; do not provision paid resources.",
     "nextAction": "Authorized compatible Sandbox project/runner plus direct scoped RTC pass and zero-spend enforcement/cleanup authority; no new paid Sandbox is provisioned."
   },
