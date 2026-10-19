@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { call, request } from '../../test/helpers/http-harness.js';
 import consentPage from '../../api/tenant/oauth/authorize.js';
-import consentCallback from '../../api/tenant/oauth/callback.js';
+import consentCallback, { stateCookie } from '../../api/tenant/oauth/callback.js';
 import { issueTenantCredential } from '../../src/tenancy/routed-credential.js';
 
 const tenantId='5ca85cbb-2222-4222-8222-333333333333';
@@ -18,6 +18,14 @@ const makeEnv=()=>{
 afterEach(()=>vi.unstubAllEnvs());
 
 describe('PUB-2 private browser entry routes',()=>{
+  it('reads the GitHub callback state from a normal spaced multi-cookie header',()=>{
+    const secret='Q'.repeat(43);
+    expect(stateCookie({headers:{cookie:'session=fixture; gh_tenant_pilot_state='+secret+
+      '; other=one'}})).toBe(secret);
+    expect(stateCookie({headers:{cookie:'session=fixture; gh_tenant_pilot_state=bad'}}))
+      .toBeNull();
+    expect(stateCookie({headers:{cookie:'unrelated=one'}})).toBeNull();
+  });
   it('denies all browser authorization and callbacks by default, including POST',async()=>{
     vi.stubEnv('GITHUB_PRIVATE_TENANT_PILOT','disabled');
     expect((await call(consentPage,request('GET',{client_id:'unknown'}))).statusCode).toBe(403);
