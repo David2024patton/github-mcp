@@ -24,7 +24,9 @@ export async function privateTenantToken(req, res, {
   try {
     const directory = createTenantDirectory(rootSqlFactory(env.DATABASE_URL));
     const pilot = await directory.authorizedPilotIdentity(claim.tenantId, claim.identityId);
-    if (!pilot || pilot.tenantId !== claim.tenantId || pilot.identityId !== claim.identityId)
+    if (!pilot || pilot.tenantId !== claim.tenantId || pilot.identityId !== claim.identityId ||
+        pilot.membershipRevision !== claim.membershipRevision ||
+        pilot.pilotRevision !== claim.pilotRevision)
       return send(res, 401, { error: 'invalid_client' });
     const scope = await openAuthorizedTenantDb({
       directory, tenantId: claim.tenantId, verifiedIdentityId: claim.identityId,
