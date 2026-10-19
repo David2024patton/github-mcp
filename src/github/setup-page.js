@@ -20,6 +20,7 @@ import { spendStatus } from '../tools/spend-guard.js';
 import { dollars as money } from '../github/prices.js';
 import { validateGrant } from '../rtc/pass-scope.js';
 import { bootstrapPrivateOwnerPilot } from '../tenancy/owner-bootstrap.js';
+import { invitePrivatePilotMember } from '../tenancy/private-invite.js';
 import { registerPrivatePilotClient } from '../tenancy/client-registration.js';
 import { createTenantDirectory } from '../tenancy/directory.js';
 import { neon } from '@neondatabase/serverless';
@@ -139,6 +140,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'upgrade-connection-production') return await upgradeConnectionProduction(p, page);
     if (action === 'bootstrap-private-pilot') return await setupPrivatePilot(p, page);
     if (action === 'register-private-pilot-client') return await registerPrivateOwnerClient(p, page);
+    if (action === 'invite-private-pilot-user') return await invitePrivateOwnerUser(p, page);
     if (action === 'revoke-private-pilot') return await revokePrivateOwnerPilot(p, page);
     if (action === 'set-spend-limit') return await setSpendLimit(p, page);
     if (action === 'set-scratch') return await setScratch(p, page);
@@ -456,6 +458,45 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       return page(409,{result:'Private client registration refused. Verify the account, '+
         'App grant, exact supported redirect URI and private pilot configuration. '+
         'No public access was enabled.'});
+    }
+  }
+
+  /** Controlled testing invitation only, not the final customer enrollment.
+   * setupPost already enforces owner passphrase, lockout, origin, and CSRF. */
+  async function invitePrivateOwnerUser(p,page) {
+    if (!isProduction()) return page(403,{blocked:NOT_PRODUCTION});
+    if (!oneTimeStore) return page(503,{keyHelp:'Set the encryption key first.'});
+    const account=String(p.login||'').trim().toLowerCase();
+    const user=String(p.targetLogin||'').trim();
+    const redirect=String(p.redirectUri||'').trim();
+    if (!isValidLogin(account) ||
+        String(p.confirmLogin||'').trim().toLowerCase()!==account ||
+        !isValidLogin(user) || String(p.confirmPilot||'')!=='yes' ||
+        redirect.length>2048 || !redirect.startsWith('https://'))
+      return page(400,{result:'Confirm the exact scratch organization, GitHub user and private callback.'});
+    try {
+      const invite=await invitePrivatePilotMember({
+        accountLogin:account,targetLogin:user,redirectUri:redirect,
+        rootDb:db,ownerCredentials:credentials,env,fetchImpl:fetch
+      });
+      const one=await oneTimeStore.issue({
+        account,kind:'private-pilot-member-mcp-client',
+        secret:JSON.stringify({client_id:invite.client_id,
+          client_secret:invite.client_secret,
+          redirect_uris:invite.redirect_uris})
+      });
+      await db.recordChange({account,mode:'setup',tool:'setup_invite_private_pilot',
+        target:invite.tenantId,
+        summary:'Owner authorized a verified GitHub member for a PRIVATE test tenant',
+        confirmed:true,production:false,accessWidening:false}).catch(()=>{});
+      return page(200,{result:'Private pilot client prepared for GitHub user '+
+        invite.githubLogin+'. Open '+one.setupPath+
+        ' in this protected browser to reveal the one-time client configuration. '+
+        'Their GitHub sign-in and installation consent are still required. '+
+        'No public enrollment or invitation email was enabled.'});
+    }catch {
+      return page(409,{result:'Private member could not be verified or safely allowed. '+
+        'Recheck the authorized scratch organization, GitHub user, App and pilot configuration.'});
     }
   }
 

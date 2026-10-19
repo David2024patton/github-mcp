@@ -82,6 +82,13 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
       '<label>Exact HTTPS callback URL from the MCP client<input name="redirectUri" type="url" required maxlength="2048" autocomplete="off"></label>' +
       '<label>Confirmation<select name="confirmPilot"><option value="no">Do not create a client</option><option value="yes">Issue one private client for my scratch App</option></select></label>',
       'Issue private MCP client — reveal once') +
+    '<h2>Invite another GitHub user to the PRIVATE test pilot — owner only</h2><p>Only controlled test access, NOT the permanent signup method for customers. GitHub must independently verify the invited person when they connect. No notification or public enrollment is sent.</p>' +
+    form('invite-private-pilot-user',login+
+      '<label>Re-type scratch organization<input name="confirmLogin" required maxlength="39" autocomplete="off"></label>'+
+      '<label>Exact GitHub user to allowlist<input name="targetLogin" required maxlength="39" autocomplete="off"></label>'+
+      '<label>Exact HTTPS callback from pilot client<input name="redirectUri" type="url" required maxlength="2048" autocomplete="off"></label>'+
+      '<label>Confirmation<select name="confirmPilot"><option value="no">Do not allow anyone</option><option value="yes">Allow this specific private test user</option></select></label>',
+      'Prepare one private pilot user connection')+
     '<h2>Revoke a private pilot — emergency stop</h2><p>Immediately disable all private pilot tokens and clients for the exact organization. Works even after GitHub sign-in is lost. No repositories, customers or database contents are deleted. A later separate owner-approved re-enrollment is required.</p>' +
     form('revoke-private-pilot', login +
       '<label>Re-type exact organization to revoke<input name="confirmLogin" required maxlength="39" autocomplete="off"></label>' +
