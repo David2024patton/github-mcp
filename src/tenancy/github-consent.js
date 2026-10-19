@@ -7,7 +7,7 @@ import { neon } from '@neondatabase/serverless';
 import { createTenantDirectory, openAuthorizedTenantDb } from './directory.js';
 import { verifyTenantCredential } from './routed-credential.js';
 import { verifyGithubBearerIdentity, verifyGithubUserInstallation } from './github-identity.js';
-import { createCredentials } from '../github/credentials.js';
+import { storePilotUserGrant } from './user-authorization.js';
 import { validRedirectUri } from '../core/oauth.js';
 import { publicOrigin } from '../core/http.js';
 
@@ -158,11 +158,11 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
         (data.refresh_token!==undefined &&
           (typeof data.refresh_token!=='string' ||
            data.refresh_token.length<8 || data.refresh_token.length>4096))) throw refused();
-    const credentials=createCredentials({db,env,fetch:fetchImpl});
-    const saved=await credentials.storeUserAuthorization(account.login,{
-      userLogin:principal.login,accessToken:data.access_token,
-      expiresIn,refreshToken:data.refresh_token??null,
-      refreshExpiresIn
+    const saved=await storePilotUserGrant({
+      directory:dir,tenantId:claim.tenantId,identityId:claim.identityId,
+      account:account.login,userLogin:principal.login,
+      accessToken:data.access_token,expiresIn,
+      refreshToken:data.refresh_token??null,refreshExpiresIn,env
     });
     if (!saved) throw refused();
     const mcpCode=random(32);
