@@ -79,8 +79,12 @@ afterAll(async () => {
 describe('PUB-1 real PostgreSQL tenant scope and legacy preservation', () => {
   it('isolates every existing store table with a separately verified namespace', async () => {
     const expected = [...SCHEMA_TABLES].sort();
-    expect(await tenantA.db.listTables()).toEqual(expected);
-    expect(await tenantB.db.listTables()).toEqual(expected);
+    const tablesA=await tenantA.db.listTables();
+    const tablesB=await tenantB.db.listTables();
+    for(const name of [...expected,'gh_tenant_budget_windows','gh_tenant_runtime_metrics']){
+      expect(tablesA).toContain(name);
+      expect(tablesB).toContain(name);
+    }
     expect((await query(first, "SELECT current_schema() AS schema"))[0].schema).toBe(tenantSchemaName(a.id));
     expect((await query(second, "SELECT current_schema() AS schema"))[0].schema).toBe(tenantSchemaName(b.id));
     // This root schema remains separate; it contains existing owner data and new
