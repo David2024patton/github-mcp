@@ -126,15 +126,13 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
     ...base,
     async token(args={}) {
       const cred=args.cred??'I';
-      // An invited member's U permission is not authority to use the
-      // organization-wide installation token. That App may grant access to
-      // repositories the individual cannot reach. Until PUB-2 proves live
-      // per-repo delegation, only the tenant's owner can use I.
-      if (cred==='I') {
-        if (tenant.role!=='owner') throw denied();
-        return base.token(args);
-      }
-      if (cred!=='U') throw denied();
+      // GitHub explicitly limits an App USER token to the intersection of
+      // the user's and the App's permissions. An invited member must NEVER
+      // inherit an installation-wide I token; route ordinary I-mode tools
+      // through that member's own U token instead. The provider will refuse
+      // App-only endpoints the user is not authorized to call.
+      if (cred==='I' && tenant.role==='owner') return base.token(args);
+      if (cred!=='U' && cred!=='I') throw denied();
       if (typeof args.account!=='string') throw denied();
       const row=await directory.getPilotUserAuthorization(
         tenant.tenantId,tenant.identityId,args.account.toLowerCase());
