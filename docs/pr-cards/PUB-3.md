@@ -2,7 +2,7 @@
 
 **Stage: frozen full approved acceptance criteria, implementation pending**. Source baseline `3c68af7dfe0a2352d53f490a395908bc3b2be260`. Existing private tenant OAuth was merged in PR #264; no live/private device acceptance is asserted. Keep plugins private and do not create a customer signup or pay for load testing.
 
-## Drift, shared caller paths and safety policy
+## Drift check A — shared caller paths and safety policy
 
 - Existing GitHub rate limiter `src/github/rate.js` uses **per-tenant isolated database** for per-account/installation provider blocks; owner global legacy path unchanged. Private tenant aggregate budgets and abuse limits are missing.
 - Existing `src/db.js` result_store and gh_async_jobs retain 24-hour entries, but have no per-tenant storage ceiling/concurrency cap. Private namespaces already isolate all tables; avoid weakening provider permissions or user abilities to solve capacity.
