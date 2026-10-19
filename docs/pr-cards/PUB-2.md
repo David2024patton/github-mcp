@@ -1,6 +1,6 @@
 # PUB-2 — Private delegated GitHub identity and scoped client OAuth
 
-**Stage: IN_PROGRESS / substantial private-source implementation, but real-provider/client acceptance remains open; DRAFT PR #264 NOT merged, not deployed.** Prior PUB-1 merged commit `692c38550217c84b6afa5fc4840ea753be8e049f` with exact-PR and merged-main green, providing dormant tenant directory/store. Requires no new owner decision for the private test code, but **public GitHub App distribution and Directory remain blocked by IN-18**.
+**Stage: source implementation verified in disposable Postgres and simulated GitHub contract; PR #264 exact-head final CI/review/merge outstanding; deployed/provider/mobile/desktop acceptance separately open.** Prior PUB-1 merged commit `692c38550217c84b6afa5fc4840ea753be8e049f` with exact-PR and merged-main green, providing dormant tenant directory/store. Requires no new owner decision for the private test code, but **public GitHub App distribution and Directory remain blocked by IN-18**.
 
 ## Drift check A
 | Area | Today | PUB-2 target |
@@ -92,3 +92,9 @@ Built signed tenant-only `tcl_` client / `tac_` access / `trf_` refresh routing,
 ## Product boundary (owner clarification 2026-10-19)
 
 Private pilot is a controlled test/early-access facility, **not** a permanent customer onboarding policy. Finished customers will authorize their own GitHub identities in the supported native MCP OAuth workflow, without Robinson AI Systems administrator passphrase or scratch account. The owner-approved pilot invitation source is strictly a private test aid for multi-user isolation and is never an alternative public signup. **Implementation tests and merge gates** are separate from real **deployed/provider/mobile/desktop acceptance**; a CI-green implementation may be merged under repository rules even if external proof is pending. Neither CI nor source merge marks live acceptance passed.
+
+## 2026-10-19 — final-source implementation audit, distinct from live acceptance
+
+**Implementation** now contains source and reviewable contract tests for all six original PUB-2 engineering behaviors: private tenant identity proof, signed client and bearer routing, one-use PKCE/callback and refresh, per-person encrypted delegated U tokens, owner-scope App installation validation, revoked App/identity immediate refusal, repeat-safe protected tenant bootstrap, controlled second-person invitation and standard MCP client discovery authorization endpoint. CI `39299501837` passed every job at source head `bb2b8b134178221e82abad3332398f6ceccc23eb`, including real disposable PostgreSQL concurrency/revocation and separate OAuth/HTTP unit tests. Final docs-only head still requires its own exact-head CI and full review before merge. No evidence claims a real GitHub OAuth login, enrolled outside user, released tenant runtime, Android/desktop client connection, public availability, or provider entitlement. Those remain in the **original 57-row live acceptance queue / PUB-4**, not a reason to rewrite implemented code.
+
+**Pilot policy**: the owner-only scratch App enrollment, protected invitation and one-time reveal are explicitly controlled **test facilities**, not mandatory signup prerequisites for permanent customer use. Any future permitted general-use enrollment belongs to the independent deployment, tenancy/capacity and customer OAuth/distribution work; never expose this private admin surface as an end-user onboarding requirement.

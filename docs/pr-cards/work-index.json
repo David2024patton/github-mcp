@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-18",
+  "updated": "2026-10-19",
   "order": [
     "A",
     "B",
@@ -1730,7 +1730,7 @@
         "PUB-1"
       ],
       "card": "docs/pr-cards/PUB-2.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "identity and credential scoping (additive)",
       "budget": 800,
       "units": [
