@@ -5,6 +5,7 @@ import { issueTenantCredential } from '../../src/tenancy/routed-credential.js';
 import { resolvePrivateTenantMcpBearer } from '../../src/tenancy/mcp-route.js';
 import { privateTenantToken } from '../../src/tenancy/oauth-token.js';
 import { createPrivateGitHubConsent } from '../../src/tenancy/github-consent.js';
+import { registerPrivatePilotClient } from '../../src/tenancy/client-registration.js';
 import { call, json, request } from '../../test/helpers/http-harness.js';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { createTenantDirectory, tenantConnectionString, tenantSchemaName,
@@ -186,6 +187,47 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(await resolvePrivateTenantMcpBearer({
       authorization:'Bearer '+second.access_token,env,
       rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:route})).toBeNull();
+  });
+
+  it('registers a pilot client only after real GitHub numeric identity and App installation proof',async()=>{
+    const env={PUBLIC_BASE_URL:'https://pilot.github.example.test',
+      GITHUB_PRIVATE_TENANT_PILOT:'enabled',
+      GITHUB_TENANT_ROUTING_KEY:crypto.randomBytes(32).toString('base64url'),
+      GITHUB_PILOT_APP_ID:'83001',DATABASE_URL:process.env.TEST_DATABASE_URL};
+    const dbA=createDb(tenantA);
+    await dbA.upsertAccount({login:'client-register-fixture',accountId:84001,
+      accountType:'Organization',label:'Trusted provider fixture',
+      credentialKind:'app',appId:83001});
+    await dbA.setInstallation('client-register-fixture',{
+      installationId:85001,repositorySelection:'all',permissions:{contents:'write'},status:'active'});
+    expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerA)).toBe(true);
+    let providerId=20001, installation=85001;
+    const fetchImpl=async(url)=>{
+      if(url==='https://api.github.com/user')
+        return {ok:true,status:200,json:async()=>({id:providerId,login:'registered-owner',type:'User'})};
+      if(url==='https://api.github.com/user/installations?per_page=100')
+        return {ok:true,status:200,json:async()=>({total_count:1,
+          installations:[{id:installation,app_id:83001,account:{id:84001},suspended_at:null}]})};
+      throw Error('unrecognized fixture route');
+    };
+    const args={oauthBearer:'fixture-github-oauth-bearer',trustedTenantId:a.id,
+      accountLogin:'client-register-fixture',
+      redirectUris:['https://private-tenant.example.test/oauth/callback'],
+      clientName:'private-client',env,fetchImpl,
+      rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:url=>
+        url.includes(tenantSchemaName(a.id))?tenantA:tenantB};
+    const info=await registerPrivatePilotClient(args);
+    expect(info.client_id).toMatch(/^tcl_/);
+    expect(info.client_secret).toHaveLength(43);
+    expect((await dbA.getOAuthClient(info.client_id)).client_secret_hash).toBeDefined();
+    expect(JSON.stringify(await dbA.getOAuthClient(info.client_id))).not.toContain(info.client_secret);
+    providerId=20002;
+    await expect(registerPrivatePilotClient(args)).rejects.toThrow(/private tenant pilot/);
+    providerId=20001;installation=85002;
+    await expect(registerPrivatePilotClient(args)).rejects.toThrow(/has not been delegated/);
+    installation=85001;
+    await expect(registerPrivatePilotClient({...args,redirectUris:['http://evil.example.test/cb']})).rejects.toThrow(/registration/);
+    await expect(registerPrivatePilotClient({...args,env:{...env,GITHUB_PRIVATE_TENANT_PILOT:'disabled'}})).rejects.toThrow(/disabled/);
   });
 
   it('proves real tenant GitHub consent state, browser CSRF, installation scope, PKCE and token issuance',async()=>{
