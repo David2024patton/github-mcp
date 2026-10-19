@@ -7,6 +7,7 @@ import { neon } from '@neondatabase/serverless';
 import { createTenantDirectory, openAuthorizedTenantDb } from './directory.js';
 import { verifyTenantCredential } from './routed-credential.js';
 import { verifyGithubBearerIdentity, verifyGithubUserInstallation } from './github-identity.js';
+import { createCredentials } from '../github/credentials.js';
 import { validRedirectUri } from '../core/oauth.js';
 import { publicOrigin } from '../core/http.js';
 
@@ -142,6 +143,27 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
         latest.pilotRevision!==claim.pilotRevision ||
         latest.membershipRevision!==validated.membershipRevision ||
         latest.pilotRevision!==validated.pilotRevision) throw refused();
+    // A successful GitHub user-to-server consent must also authorize the
+    // tenant's U-credential tools; a verified identity alone cannot perform
+    // personal-user API calls. Save only sealed provider credentials into the
+    // tenant's isolated account row using the existing audited crypto layer.
+    // Expiry claims must be numeric and bounded; refuse malformed tokens.
+    const expiresIn=Number(data.expires_in ?? 28800);
+    const refreshExpiresIn=data.refresh_token_expires_in==null
+      ? null : Number(data.refresh_token_expires_in);
+    if (!Number.isSafeInteger(expiresIn) || expiresIn<60 || expiresIn>31536000 ||
+        (refreshExpiresIn!==null &&
+          (!Number.isSafeInteger(refreshExpiresIn) || refreshExpiresIn<60 ||
+            refreshExpiresIn>31536000)) ||
+        (data.refresh_token!==undefined &&
+          (typeof data.refresh_token!=='string' ||
+           data.refresh_token.length<8 || data.refresh_token.length>4096))) throw refused();
+    const credentials=createCredentials({db,env,fetch:fetchImpl});
+    await credentials.storeUserAuthorization(account.login,{
+      userLogin:principal.login,accessToken:data.access_token,
+      expiresIn,refreshToken:data.refresh_token??null,
+      refreshExpiresIn
+    });
     const mcpCode=random(32);
     await db.createAuthCode({code:mcpCode,clientId:flow.clientId,
       redirectUri:flow.redirectUri,codeChallenge:flow.codeChallenge,
