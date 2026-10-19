@@ -6,23 +6,17 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { createTenantDirectory, openAuthorizedTenantDb } from './directory.js';
 import { verifyTenantCredential } from './routed-credential.js';
-import { verifyGithubBearerIdentity } from './github-identity.js';
+import { verifyGithubBearerIdentity, verifyGithubUserInstallation } from './github-identity.js';
 import { validRedirectUri } from '../core/oauth.js';
 import { publicOrigin } from '../core/http.js';
 
 const gitAuthorize = 'https://github.com/login/oauth/authorize';
 const gitToken = 'https://github.com/login/oauth/access_token';
-const installationsApi = 'https://api.github.com/user/installations?per_page=100';
 const challengeValid = /^[A-Za-z0-9_-]{43}$/;
 const codeValid = /^[A-Za-z0-9_-]{8,256}$/;
 const stateValid = /^[A-Za-z0-9_-]{32,256}$/;
 const sha = text => createHash('sha256').update(text).digest('hex');
 const random = n => randomBytes(n).toString('base64url');
-const providerOptions = bearer => ({
-  headers: { accept: 'application/vnd.github+json', authorization: 'Bearer '+bearer,
-    'x-github-api-version':'2022-11-28' },
-  signal: AbortSignal.timeout(10000)
-});
 const refused = () => new Error('Private GitHub authorization was not verified.');
 
 export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetch,
@@ -119,16 +113,11 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
     const validated=await dir.resolveAllowlistedPilotSubject(claim.tenantId,principal.subject);
     if (!validated || validated.identityId!==claim.identityId ||
         validated.membershipRevision!==pilot.membershipRevision) throw refused();
-    const response=await fetchImpl(installationsApi,providerOptions(data.access_token));
-    if (!response.ok) throw refused();
-    const listed=await response.json();
-    if (!Array.isArray(listed?.installations) ||
-        !Number.isSafeInteger(listed.total_count) ||
-        listed.total_count>100 || listed.total_count<0) throw refused();
-    const delegated=listed.installations.some(i=>
-      i.id===account.installation_id && i.app_id===Number(env.GITHUB_PILOT_APP_ID) &&
-      i.account?.id===account.account_id && !i.suspended_at);
-    if (!delegated) throw refused();
+    if (!await verifyGithubUserInstallation(data.access_token,{
+      installationId:account.installation_id,
+      appId:Number(env.GITHUB_PILOT_APP_ID),
+      accountId:account.account_id,fetchImpl
+    })) throw refused();
     const latest=await dir.authorizedPilotIdentity(claim.tenantId,claim.identityId);
     if (!latest || latest.membershipRevision!==validated.membershipRevision ||
         latest.pilotRevision!==validated.pilotRevision) throw refused();
