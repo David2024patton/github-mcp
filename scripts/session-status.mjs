@@ -10,6 +10,9 @@ const SHA = /^[a-f0-9]{40}$/;
 const START = '<!-- release-acceptance:start -->';
 const END = '<!-- release-acceptance:end -->';
 const states = new Set(['PENDING', 'PASSED', 'BLOCKED']);
+// Preserve historical Hub-route rows without letting arbitrary safety tests
+// be quietly removed from GitHub MCP completion requirements.
+const OPTIONAL_HUB_OWNED_IDS = new Set(['GITHUB-RTC-RELAY', 'GITHUB-RTC-SANDBOX']);
 
 export function readQueue(text) {
   if (text.split(START).length !== 2 || text.split(END).length !== 2) {
@@ -25,6 +28,9 @@ export function readQueue(text) {
     if (!row || !/^[A-Z0-9][A-Z0-9-]{0,63}$/.test(row.id) || ids.has(row.id)) throw new Error('Invalid or duplicate acceptance ID.');
     ids.add(row.id);
     if (!SHA.test(row.requiredRevision) || !states.has(row.status)) throw new Error(`Invalid revision/status: ${row.id}`);
+    if (row.completionGate !== undefined &&
+        (row.completionGate !== false || !OPTIONAL_HUB_OWNED_IDS.has(row.id)))
+      throw new Error(`Only approved Hub-owned external route checks may be optional: ${row.id}`);
     if (!Number.isSafeInteger(row.priority) || row.priority < 1) throw new Error(`Invalid priority: ${row.id}`);
     for (const key of ['task', 'procedure', 'gates', 'lastEvidence']) {
       if (typeof row[key] !== 'string' || !row[key].trim() || row[key].length > 1200) throw new Error(`Missing/bounded ${key}: ${row.id}`);
@@ -62,7 +68,8 @@ export function planQueue(rows, observation, isAncestor) {
   const included = row => ready && isAncestor(row.requiredRevision, deployed) === true;
   return [...rows].sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id)).map(row => {
     let disposition;
-    if (!ready) disposition = 'VERIFY_DEPLOYMENT';
+    if (row.completionGate === false) disposition = 'OPTIONAL_HUB_OWNED';
+    else if (!ready) disposition = 'VERIFY_DEPLOYMENT';
     else if (!included(row)) disposition = row.status === 'PASSED' ? 'RECHECK_AFTER_ROLLBACK' : 'WAIT_RELEASE_OR_FETCH_HISTORY';
     else if (row.status === 'PASSED') disposition = 'RECORDED_PASS';
     else if (row.status === 'BLOCKED') disposition = 'RECHECK_EXTERNAL_GATE';
@@ -124,9 +131,11 @@ export function acceptanceSnapshot(plan) {
 /** Actionable acceptance is displayed before waiting work, independently of main lag. */
 export function acceptanceSummary(plan, limit = 10) {
   const action = plan.filter(row => ['DEPLOYED_CANDIDATE_CHECK_GATES', 'RECHECK_EXTERNAL_GATE'].includes(row.disposition));
-  const waiting = plan.filter(row => !['DEPLOYED_CANDIDATE_CHECK_GATES', 'RECHECK_EXTERNAL_GATE', 'RECORDED_PASS'].includes(row.disposition));
-  const passed = plan.length - action.length - waiting.length;
+  const optional = plan.filter(row => row.disposition === 'OPTIONAL_HUB_OWNED');
+  const waiting = plan.filter(row => !['DEPLOYED_CANDIDATE_CHECK_GATES', 'RECHECK_EXTERNAL_GATE', 'RECORDED_PASS', 'OPTIONAL_HUB_OWNED'].includes(row.disposition));
+  const passed = plan.length - action.length - waiting.length - optional.length;
   const lines = [`Acceptance first: ${action.length} deployed tasks to act on/recheck; ${waiting.length} waiting/verification tasks; ${passed} usable deployed passes.`,
+    `Optional Hub-owned integration checks: ${optional.length}; NOT standalone GitHub MCP completion gates, NOT passes. Evidence preserved.`,
     'Main ahead of live does not defer included checks. Listing a task is NOT executing it.',
     'Acceptance snapshot: ' + acceptanceSnapshot(plan)];
   for (const [label, rows] of [['ACT OR RECHECK GATES NOW', action], ['WAITING OR VERIFY SPECIFIC PREREQUISITE', waiting]]) {
@@ -165,7 +174,7 @@ export function reviewAcceptance(plan, observation, report, isAncestor = () => n
       throw new Error('Acceptance review outcome must be PERFORMED, DEFERRED or a recorded REUSED pass.');
     }
   }
-  const missing = plan.filter(row => row.disposition !== 'RECORDED_PASS' && !seen.has(row.id));
+  const missing = plan.filter(row => !['RECORDED_PASS', 'OPTIONAL_HUB_OWNED'].includes(row.disposition) && !seen.has(row.id));
   if (missing.length) throw new Error('Unreviewed acceptance tasks: ' + missing.map(row => row.id).join(', '));
   return 'Acceptance accounting checked for this snapshot; evidence truth, authorization and required workflow remain independently reviewed.';
 }
@@ -201,7 +210,8 @@ export function run(root, args) {
   const plan = planQueue(rows, observation, ancestor);
   const limit = flags['--limit'] === undefined ? 10 : Number(flags['--limit']);
   if (flags['--limit'] !== undefined && (!/^\d+$/.test(flags['--limit']) || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000)) throw new Error('Limit must be an integer from 1 to 1000.');
-  const active = plan.filter(row => row.disposition !== 'RECORDED_PASS');
+  const optional = plan.filter(row => row.disposition === 'OPTIONAL_HUB_OWNED');
+  const active = plan.filter(row => !['RECORDED_PASS', 'OPTIONAL_HUB_OWNED'].includes(row.disposition));
   const lines = [`Repository: ${policy.repository}`, `Read: ${policy.instructions}`, `Ledger: ${policy.ledger}`,
     `main=${observation.main || 'UNKNOWN'} live=${observation.live || 'UNKNOWN'}`,
     `Observed production=${observation.deployed || 'UNKNOWN'} state=${observation.deploymentState}`,
@@ -232,7 +242,7 @@ export function run(root, args) {
   }
   lines.push('ENGINEERING PR planning averages: 400–800 changed production lines and 2–5 fully completed predefined batch subsections; count only whole predefined batch subsections with evidence, never helpers or packet subtasks.');
   lines.push('PR work unit = one whole predefined batch subsection (such as H-3 or B-5). Technical slices, functions, tools, UI wiring, guards and packet tasks do not count separately. Partial subsection = zero completed batch subsections.');
-  lines.push(`Queue: ${plan.length} total; ${rows.filter(row => row.status === 'PASSED').length} recorded passes; ${active.length} tasks require planner consideration.`);
+  lines.push(`Queue: ${plan.length} historical rows; ${plan.length - optional.length} required for GitHub MCP; ${rows.filter(row => row.status === 'PASSED').length} recorded passes; ${active.length} required tasks need consideration; ${optional.length} Hub-owned external route checks (not passed, not standalone blockers).`);
 
   return lines.join('\n');
 }
