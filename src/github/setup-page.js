@@ -20,6 +20,7 @@ import { spendStatus } from '../tools/spend-guard.js';
 import { dollars as money } from '../github/prices.js';
 import { validateGrant } from '../rtc/pass-scope.js';
 import { bootstrapPrivateOwnerPilot } from '../tenancy/owner-bootstrap.js';
+import { registerPrivatePilotClient } from '../tenancy/client-registration.js';
 
 const HTML = 'text/html; charset=utf-8';
 const CSP = "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://github.com; base-uri 'none'; frame-ancestors 'none'";
@@ -135,6 +136,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'confirm-production') return await confirmProduction(p, page);
     if (action === 'upgrade-connection-production') return await upgradeConnectionProduction(p, page);
     if (action === 'bootstrap-private-pilot') return await setupPrivatePilot(p, page);
+    if (action === 'register-private-pilot-client') return await registerPrivateOwnerClient(p, page);
     if (action === 'set-spend-limit') return await setSpendLimit(p, page);
     if (action === 'set-scratch') return await setScratch(p, page);
     if (action === 'create-rtc-pass') {
@@ -409,6 +411,48 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
         ' (tenant '+receipt.tenantId+'). No public signup, production connection or new provider permission was enabled.'});
     }catch {
       return page(409,{result:'The private pilot could not be safely initialized. Verify your active scratch App, owner GitHub authorization and private pilot configuration. No public access was enabled.'});
+    }
+  }
+
+  /** Owner-only, single-use delivery of a private MCP client's credentials.
+   * No anonymous dynamic client registration or public tenant invitation. */
+  async function registerPrivateOwnerClient(p,page) {
+    if (!isProduction()) return page(403,{blocked:NOT_PRODUCTION});
+    if (!oneTimeStore) return page(503,{keyHelp:'Set the encryption key first.'});
+    const account=String(p.login||'').trim().toLowerCase();
+    const redirect=String(p.redirectUri||'').trim();
+    if (!isValidLogin(account) ||
+        String(p.confirmLogin||'').trim().toLowerCase()!==account ||
+        String(p.confirmPilot||'')!=='yes' ||
+        redirect.length>2048 || !redirect.startsWith('https://'))
+      return page(400,{result:'Confirm your exact scratch account, secure redirect URI and private scope.'});
+    try {
+      const pilot=await bootstrapPrivateOwnerPilot({
+        accountLogin:account,rootDb:db,ownerCredentials:credentials,env,fetchImpl:fetch
+      });
+      const bearer=await credentials.token({account,cred:'U'});
+      const enrolled=await registerPrivatePilotClient({
+        oauthBearer:bearer,trustedTenantId:pilot.tenantId,
+        accountLogin:account,redirectUris:[redirect],
+        clientName:'Owner-approved private GitHub MCP client',env,fetchImpl:fetch
+      });
+      const one=await oneTimeStore.issue({
+        account,kind:'private-pilot-mcp-client',
+        secret:JSON.stringify({client_id:enrolled.client_id,
+          client_secret:enrolled.client_secret,
+          redirect_uris:enrolled.redirect_uris})
+      });
+      await db.recordChange({account,mode:'setup',tool:'setup_private_pilot_client',
+        target:pilot.tenantId,
+        summary:'Owner issued one scoped, secret-protected private MCP client for a verified GitHub tenant',
+        confirmed:true,production:false,accessWidening:false}).catch(()=>{});
+      return page(200,{result:'Private MCP client created for '+account+
+        '. Open '+one.setupPath+' in this browser to reveal the one-time client configuration. '+
+        'Do not paste the client secret into ChatGPT chat.'});
+    }catch {
+      return page(409,{result:'Private client registration refused. Verify the account, '+
+        'App grant, exact supported redirect URI and private pilot configuration. '+
+        'No public access was enabled.'});
     }
   }
 
