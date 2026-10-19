@@ -5,6 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { validRedirectUri } from '../core/oauth.js';
 import { createTenantDirectory, openAuthorizedTenantDb } from './directory.js';
+import { admitTenantOAuth } from './runtime-limits.js';
 import { issueTenantCredential } from './routed-credential.js';
 import { resolvePrivatePilotIdentity, verifyGithubUserInstallation } from './github-identity.js';
 
@@ -26,10 +27,11 @@ export async function registerPrivatePilotClient({
   const { tenant }=await resolvePrivatePilotIdentity({
     oauthBearer,trustedTenantId,directory,env,fetchImpl
   });
-  const { db }=await openAuthorizedTenantDb({
+  const { db,sql }=await openAuthorizedTenantDb({
     directory,tenantId:tenant.tenantId,verifiedIdentityId:tenant.identityId,
     connectionString:env.DATABASE_URL,sqlFactory:tenantSqlFactory
   });
+  await admitTenantOAuth(sql,tenant.identityId);
   const account=await db.getAccount(accountLogin);
   if (!account || account.credential_kind!=='app' ||
       account.app_id!==Number(env.GITHUB_PILOT_APP_ID) ||
