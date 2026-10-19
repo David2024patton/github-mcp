@@ -1,5 +1,8 @@
 import crypto from 'node:crypto';
 import pg from 'pg';
+import { createDb } from '../../src/db.js';
+import { issueTenantCredential } from '../../src/tenancy/routed-credential.js';
+import { resolvePrivateTenantMcpBearer } from '../../src/tenancy/mcp-route.js';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { createTenantDirectory, tenantConnectionString, tenantSchemaName,
   initializeProvisionedTenant } from '../../src/tenancy/directory.js';
@@ -73,6 +76,51 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(await directory.revokePilotIdentity(b.id, ownerA, ownerB)).toBe(false);
     expect(await directory.revokePilotIdentity(a.id, ownerA, ownerB)).toBe(true);
     expect(await directory.resolveAllowlistedPilotSubject(a.id, '20002')).toBeNull();
+  });
+
+  it('routes valid signed access into only its own tenant store; revoked and forged routes stay closed',async()=>{
+    const { randomBytes } = await import('node:crypto');
+    const env={GITHUB_PRIVATE_TENANT_PILOT:'enabled',
+      GITHUB_TENANT_ROUTING_KEY:randomBytes(32).toString('base64url'),
+      DATABASE_URL:process.env.TEST_DATABASE_URL};
+    const { root }={root:sqlFor(admin)};
+    const tenantDbA=createDb(tenantA);
+    const tenantDbB=createDb(tenantB);
+    const claimA={tenantId:a.id,identityId:ownerA};
+    const claimB={tenantId:b.id,identityId:ownerB};
+    expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerA)).toBe(true);
+    expect(await directory.allowlistPilotIdentity(b.id,ownerB,ownerB)).toBe(true);
+    const clientA=issueTenantCredential('tcl',claimA,env);
+    const tokenA=issueTenantCredential('tac',claimA,env);
+    const refreshA=issueTenantCredential('trf',claimA,env);
+    const clientB=issueTenantCredential('tcl',claimB,env);
+    const tokenB=issueTenantCredential('tac',claimB,env);
+    await tenantDbA.createOAuthClient({clientId:clientA,clientSecret:'fixture-a-test-secret',
+      redirectUris:['https://pilot.example.test/cb'],clientName:'A'});
+    await tenantDbB.createOAuthClient({clientId:clientB,clientSecret:'fixture-b-test-secret',
+      redirectUris:['https://pilot.example.test/cb'],clientName:'B'});
+    await tenantDbA.createAccessToken({clientId:clientA,accessToken:tokenA,refreshToken:refreshA,
+      defaultAccount:'overlap-org',accounts:['overlap-org'],mode:'preview',profile:'full',listing:'compact'});
+    await tenantDbB.createAccessToken({clientId:clientB,accessToken:tokenB,
+      refreshToken:issueTenantCredential('trf',claimB,env),defaultAccount:'overlap-org',
+      accounts:['overlap-org'],mode:'preview',profile:'read_only',listing:'compact'});
+    const overrides={env,rootSqlFactory:()=>root,tenantSqlFactory:(url)=>
+      url.includes(tenantSchemaName(a.id))?tenantA:tenantB};
+    const one=await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenA});
+    const two=await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenB});
+    expect(one.tenant).toMatchObject({tenantId:a.id,identityId:ownerA});
+    expect(two.tenant).toMatchObject({tenantId:b.id,identityId:ownerB});
+    expect((await one.db.getAccessToken(tokenA)).profile).toBe('full');
+    expect((await two.db.getAccessToken(tokenB)).profile).toBe('read_only');
+    expect(await one.db.getAccessToken(tokenB)).toBeNull();
+    expect(await two.db.getAccessToken(tokenA)).toBeNull();
+    expect(await resolvePrivateTenantMcpBearer({...overrides,
+      authorization:'Bearer '+tokenA,env:{...env,GITHUB_PRIVATE_TENANT_PILOT:'disabled'}})).toBeNull();
+    expect(await directory.revokePilotIdentity(a.id,ownerA,ownerA)).toBe(true);
+    expect(await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenA})).toBeNull();
+    expect(await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenB})).not.toBeNull();
+    expect(await tenantDbB.revokeAccessToken(tokenB)).toBe(true);
+    expect(await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenB})).toBeNull();
   });
 
   it('cannot reactivate a revoked tenant member through the allowlist alone', async () => {
