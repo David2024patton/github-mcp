@@ -51,7 +51,8 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
           (typeof p.account!=='string' || !/^[A-Za-z0-9-]{1,39}$/.test(p.account)))) throw refused();
     const dir=directory();
     const pilot=await dir.authorizedPilotIdentity(claim.tenantId,claim.identityId);
-    if (!pilot) throw refused();
+    if (!pilot || pilot.membershipRevision!==claim.membershipRevision ||
+        pilot.pilotRevision!==claim.pilotRevision) throw refused();
     const { db }=await scoped(dir,claim);
     const client=await db.getOAuthClient(p.client_id);
     if (!client || !client.redirect_uris.includes(p.redirect_uri)) throw refused();
@@ -105,7 +106,8 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
     if (!claim || claim.tenantId!==flow.tenantId ||
         claim.identityId!==flow.identityId) throw refused();
     const pilot=await dir.authorizedPilotIdentity(claim.tenantId,claim.identityId);
-    if (!pilot) throw refused();
+    if (!pilot || pilot.membershipRevision!==claim.membershipRevision ||
+        pilot.pilotRevision!==claim.pilotRevision) throw refused();
     const { db }=await scoped(dir,claim);
     const account=await db.getAccount(flow.accountLogin);
     const client=await db.getOAuthClient(flow.clientId);
@@ -136,7 +138,9 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
       accountId:account.account_id,fetchImpl
     })) throw refused();
     const latest=await dir.authorizedPilotIdentity(claim.tenantId,claim.identityId);
-    if (!latest || latest.membershipRevision!==validated.membershipRevision ||
+    if (!latest || latest.membershipRevision!==claim.membershipRevision ||
+        latest.pilotRevision!==claim.pilotRevision ||
+        latest.membershipRevision!==validated.membershipRevision ||
         latest.pilotRevision!==validated.pilotRevision) throw refused();
     const mcpCode=random(32);
     await db.createAuthCode({code:mcpCode,clientId:flow.clientId,
