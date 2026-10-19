@@ -58,7 +58,7 @@ export async function resolvePrivateTenantMcpBearer({
           (env.VERCEL_ENV !== 'production' || account.production_enabled !== true))) return null;
     const base = createCredentials({ db, env, fetch: fetchImpl });
     const credentials = createTenantScopedCredentials({
-      base, directory, tenant: authorized, env
+      base, directory, tenant: authorized, db, env, fetchImpl
     });
     return { db, credentials, tenant: Object.freeze({ ...authorized }) };
   } catch {
