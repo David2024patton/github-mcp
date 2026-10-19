@@ -149,6 +149,12 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(savedOrg.installation_status).toBe('active');
     expect(JSON.stringify(two)).not.toContain('fixture-owner-auth-test-token');
     expect(await directory.resolveAllowlistedPilotSubject(one.tenantId,'20001')).not.toBeNull();
+    expect(await directory.revokePrivatePilotsForAccount(org)).toBe(1);
+    expect(await directory.resolveAllowlistedPilotSubject(one.tenantId,'20001')).toBeNull();
+    expect(await directory.revokePrivatePilotsForAccount(org)).toBe(0);
+    const recovered=await bootstrapPrivateOwnerPilot(args);
+    expect(recovered.tenantId).toBe(one.tenantId);
+    expect(await directory.resolveAllowlistedPilotSubject(one.tenantId,'20001')).not.toBeNull();
     await expect(bootstrapPrivateOwnerPilot({...args,env:{...env,VERCEL_ENV:'preview'}}))
       .rejects.toThrow(/not enabled/);
     await rootDb.setInstallationStatus(org,'suspended');
