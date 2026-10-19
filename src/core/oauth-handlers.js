@@ -13,7 +13,7 @@ const bad = (res, status, code, description) => send(res, status, { error: code,
 const html = (res, status, page) => send(res, status, page, 'text/html; charset=utf-8');
 const str = (x) => (typeof x === 'string' ? x : '');
 
-export function createOAuthHandlers({ db, env = process.env, policy }) {
+export function createOAuthHandlers({ db, env = process.env, policy, issueTokens = () => ({ accessToken: randomToken(32), refreshToken: randomToken(32) }) }) {
   if (!policy || ['choices', 'page', 'validate', 'tokenSettings'].some((name) => typeof policy[name] !== 'function')) {
     throw new TypeError('createOAuthHandlers needs a policy with choices, page, validate and tokenSettings.');
   }
@@ -91,16 +91,20 @@ export function createOAuthHandlers({ db, env = process.env, policy }) {
       if (!record || record.client_id !== p.client_id || record.redirect_uri !== p.redirect_uri || !verifyPkce(p.code_verifier, record.code_challenge, record.code_challenge_method)) {
         return bad(res, 400, 'invalid_grant', 'Code is expired, used, or failed PKCE');
       }
-      const accessToken = randomToken(32);
-      const refreshToken = randomToken(32);
+      const { accessToken, refreshToken } = issueTokens({ clientId: p.client_id });
+      if (typeof accessToken !== 'string' || typeof refreshToken !== 'string' ||
+          accessToken === refreshToken || accessToken.length < 30 || refreshToken.length < 30)
+        return bad(res, 503, 'server_not_configured', 'Token issuer unavailable');
       // Every connection setting is copied from the issuing code row, never defaulted (hub contract §2).
       await db.createAccessToken({ accessToken, refreshToken, clientId: p.client_id, ...policy.tokenSettings(record) });
       return send(res, 200, tokenResponse(accessToken, refreshToken));
     }
     if (p.grant_type === 'refresh_token') {
       if (!str(p.refresh_token)) return bad(res, 400, 'invalid_grant', 'Missing refresh token');
-      const accessToken = randomToken(32);
-      const refreshToken = randomToken(32);
+      const { accessToken, refreshToken } = issueTokens({ clientId: p.client_id });
+      if (typeof accessToken !== 'string' || typeof refreshToken !== 'string' ||
+          accessToken === refreshToken || accessToken.length < 30 || refreshToken.length < 30)
+        return bad(res, 503, 'server_not_configured', 'Token issuer unavailable');
       // The store rotates the credential in place on the same row, so every setting stays as issued.
       const rotated = await db.rotateRefreshToken({ refreshToken: p.refresh_token, clientId: p.client_id, accessToken, newRefreshToken: refreshToken });
       if (!rotated) return bad(res, 400, 'invalid_grant', 'Refresh credential is expired, used, or revoked');
