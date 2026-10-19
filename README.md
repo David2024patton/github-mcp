@@ -1,5 +1,7 @@
 # Robinson GitHub MCP
 
+**Hub compatibility:** This server remains independently usable. Its coding agents should follow the [shared Hub compatibility checklist](docs/HUB-COMPATIBILITY.md) and the linked canonical Hub RTC contract; Hub initiates discovery and keeps provider schemas out of the agent's default tool menu.
+
 A hosted MCP server that lets Chris Robinson's AI agents work in his GitHub accounts safely — for every project:
 repositories, pull requests, CI, releases, issues, rules, security, members, apps and billing. Previews before changes,
 a separate "production" switch for anything that touches `main`, releases or settings, merges only when CI is green at
