@@ -49,7 +49,14 @@ export function createTenantScopedCredentials({ base, directory, tenant,
     ...base,
     async token(args={}) {
       const cred=args.cred??'I';
-      if (cred==='I') return base.token(args);
+      // An invited member's U permission is not authority to use the
+      // organization-wide installation token. That App may grant access to
+      // repositories the individual cannot reach. Until PUB-2 proves live
+      // per-repo delegation, only the tenant's owner can use I.
+      if (cred==='I') {
+        if (tenant.role!=='owner') throw denied();
+        return base.token(args);
+      }
       if (cred!=='U') throw denied();
       if (typeof args.account!=='string') throw denied();
       const row=await directory.getPilotUserAuthorization(
