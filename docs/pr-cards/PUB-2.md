@@ -1,6 +1,6 @@
 # PUB-2 — Private delegated GitHub identity and scoped client OAuth
 
-**Stage: acceptance plan frozen, NO implementation/PR/public rollout yet.** Prior PUB-1 merged commit `692c38550217c84b6afa5fc4840ea753be8e049f` with exact-PR and merged-main green, providing dormant tenant directory/store. Requires no new owner decision for the private test code, but **public GitHub App distribution and Directory remain blocked by IN-18**.
+**Stage: IN_PROGRESS / partial implementation on this frozen card; NOT accepted or deployed.** Prior PUB-1 merged commit `692c38550217c84b6afa5fc4840ea753be8e049f` with exact-PR and merged-main green, providing dormant tenant directory/store. Requires no new owner decision for the private test code, but **public GitHub App distribution and Directory remain blocked by IN-18**.
 
 ## Drift check A
 | Area | Today | PUB-2 target |
@@ -29,6 +29,13 @@
 - Preserve S256 PKCE, state nonce, exact redirect and resource target, CSRF, independent payer/spend/production/access confirmation, per-tenant service policies and provider plan limits. The old owner passphrase route remains unchanged.
 - Real PostgreSQL negative tests include one-use code, two clients racing refresh, overlapping account identities, revoked member, unknown tenant, suspended App, malicious return URI, and old-tenant session reuse. Never add real provider credentials or paid fixtures to tests.
 - Mobile and desktop HTTP client flows may be exercised synthetically here; **PUB-4** still requires authentic real client tool calls on supported Android/iOS and desktop/web. **PUB-5** remains blocked from public Directory submission without separate applicable provider eligibility and owner approval.
+
+## Work started after plan (2026-10-18; INCOMPLETE)
+
+- Dormant `src/tenancy/github-identity.js` verifies real GitHub `GET /user` immutable numeric subject using an OAuth bearer without storing or echoing it, and denies missing/stale pilot membership. A `GITHUB_PRIVATE_TENANT_PILOT=enabled` opt-in exists but is **not set** and no public or ChatGPT route invokes it.
+- Internal `src/tenancy/directory.js` owner-issuable `gh_tenant_pilot_allowlist` maps a verified numeric identity to an active tenant membership; allowlist revocation and membership revocation are independent and fail closed. Private real PostgreSQL and fake provider tests added.
+- Remaining: full provider OAuth consent/state/PKCE callback, client/code/bearer/refresh scoped through tenant, per-App installation and repository verification, end-to-end MCP dispatch and two-tenant HTTP acceptance. No public enrollment or owner credential migration.
+- This checkpoint is **partial engineering** and 0 completed PUB-2 criteria until the whole original acceptance and exact-head CI/review pass. Do not merge as a finished PUB-2 unit, or pretend unit helper tests prove real client functionality.
 
 ## Verification / delivery
 Before coding: commit this card; run `npm run session:bundle -- --card docs/pr-cards/PUB-2.md` and the documented plan check; after code run type/lint, focused provider HTTP and real database checks, then the full CI suite on the final head. Record new production lines, independent self-review including AI-PR-READ-FIRST and original acceptance queue unchanged. Finish in a coherent whole PUB-2 PR (not a helper PR). If external credential or owner-dependent pilot callback settings are not yet available, implement and verify all synthetic/private safe behavior and record the exact external blocker without asserting a real acceptance pass.
