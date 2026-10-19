@@ -1,3 +1,9 @@
+## 2026-10-19 — PUB-3 PRIVATE tenant capacity and incident protection (source only)
+
+Tenant runtime admission uses `src/tenancy/runtime-limits.js` on each separately verified PostgreSQL schema and does not alter the legacy owner connection. The tenant-scoped quota function `gh_claim_tenant_capacity` atomically reserves BOTH tenant and individual client capacity using an inner PL/pgSQL rollback savepoint, so a client over its own cap cannot starve another authorized user. Per-tenant minute MCP/OAuth admission happens before handling real private MCP or private token/GitHub-browser consent, while bounded daily job starts and retained JSON bytes are enforced through a tenant-only `createDb` facade. Limits are fair-use capacity controls, not permission/spend/production grants. Missing schema/function or revoked tenant returns a narrow failure and never falls back to the global owner's account.
+
+Only aggregate event/outcome/latency buckets in fixed enums are recorded; signed client IDs are SHA-256 hashed for quota keys, not exposed. A best-effort 1/128 opportunity cleans bounded expired quota/aggregate metric records, while jobs/results already have 24h TTL and bounded expiry deletion. `src/tenancy/incident-cleanup.js`, the server-owned tenant directory and the protected owner setup emergency revoke coordinate tenant-scoped removal of pending auth codes, bearer sessions, clients, jobs/results and encrypted per-user U grants; no public or ordinary MCP user invokes this action. No customer credential, provider operation, scheduled release or public product setting is activated by this PR. Full acceptance requires real concurrent PostgreSQL and original safety suite, exact-head CI/review and later PRIVATE first-hand client testing.
+
 # ARCHITECTURE — runtime facts, as built
 
 This file describes what **exists**, and is updated in the same PR that ships it (DRIFT-PROTOCOL checklist B). What the
