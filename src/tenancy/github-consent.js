@@ -38,27 +38,44 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
   async function start(p) {
     active();
     const claim = verifyTenantCredential(p.client_id,'tcl',env);
+    const mode=p.mode??'preview', profile=p.profile??'everyday',
+      listing=p.listing??'compact';
     if (!claim || p.response_type !== 'code' || p.code_challenge_method !== 'S256' ||
         !challengeValid.test(String(p.code_challenge || '')) ||
         p.resource !== active()+'/api/mcp' || !validRedirectUri(p.redirect_uri) ||
         (p.state !== undefined && (typeof p.state !== 'string' || p.state.length > 256)) ||
-        !['preview','production'].includes(p.mode) ||
-        !['full','everyday','read_only'].includes(p.profile) ||
-        !['compact','catalog'].includes(p.listing) ||
-        typeof p.account !== 'string' || !/^[A-Za-z0-9-]{1,39}$/.test(p.account)) throw refused();
+        !['preview','production'].includes(mode) ||
+        !['full','everyday','read_only'].includes(profile) ||
+        !['compact','catalog'].includes(listing) ||
+        (p.account!==undefined &&
+          (typeof p.account!=='string' || !/^[A-Za-z0-9-]{1,39}$/.test(p.account)))) throw refused();
     const dir=directory();
     const pilot=await dir.authorizedPilotIdentity(claim.tenantId,claim.identityId);
     if (!pilot) throw refused();
     const { db }=await scoped(dir,claim);
     const client=await db.getOAuthClient(p.client_id);
     if (!client || !client.redirect_uris.includes(p.redirect_uri)) throw refused();
-    const account=await db.getAccount(p.account);
+    // Standard MCP OAuth clients don't carry custom account selections. For
+    // the first private pilot, infer an account ONLY if exactly one active
+    // installation of this service-owned App exists in that tenant. Never
+    // silently select between two accounts or fall back to the owner's DB.
+    const available=await db.listAccounts();
+    const candidates=available.filter(row =>
+      row.credential_kind==='app' &&
+      row.app_id===Number(env.GITHUB_PILOT_APP_ID) &&
+      row.installation_status==='active' &&
+      Number.isSafeInteger(row.installation_id) && row.installation_id>0);
+    const selected=p.account!==undefined
+      ? candidates.find(row=>row.login.toLowerCase()===p.account.toLowerCase())
+      : candidates.length===1?candidates[0]:null;
+    if (!selected) throw refused();
+    const account=await db.getAccount(selected.login);
     if (!account || account.credential_kind!=='app' ||
         account.app_id!==Number(env.GITHUB_PILOT_APP_ID) ||
         !Number.isSafeInteger(account.installation_id) || account.installation_id<=0 ||
         account.installation_status!=='active' ||
         !['all','selected'].includes(account.repository_selection) ||
-        (p.mode==='production' && (env.VERCEL_ENV!=='production' ||
+        (mode==='production' && (env.VERCEL_ENV!=='production' ||
           account.production_enabled!==true))) throw refused();
     const state=random(32), verifier=random(48);
     const challenge=createHash('sha256').update(verifier).digest('base64url');
@@ -66,7 +83,7 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
       tenantId:claim.tenantId,identityId:claim.identityId,clientId:p.client_id,
       redirectUri:p.redirect_uri,clientState:p.state??null,
       codeChallenge:p.code_challenge,accountLogin:account.login,
-      mode:p.mode,profile:p.profile,listing:p.listing,providerVerifier:verifier});
+      mode,profile,listing,providerVerifier:verifier});
     if (!stored) throw refused();
     const q=new URLSearchParams({client_id:env.GITHUB_PILOT_APP_CLIENT_ID,
       redirect_uri:callback(),state,code_challenge:challenge,
