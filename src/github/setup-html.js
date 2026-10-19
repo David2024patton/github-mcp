@@ -76,6 +76,12 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
       '<label>Re-type the exact scratch organization<input name="confirmLogin" required maxlength="39" autocomplete="off"></label>' +
       '<label>Private-only confirmation<select name="confirmPilot"><option value="no">Do not create anything</option><option value="yes">I authorize a private, isolated scratch tenant</option></select></label>',
       'Prepare my private GitHub pilot tenant') +
+    '<h2>Issue a private MCP client — owner only</h2><p>After GitHub confirms your disposable scratch App, register one exact client callback. The client ID and secret are revealed together on this protected page, once, for ten minutes. This is private testing, not a public connection or user invitation.</p>' +
+    form('register-private-pilot-client', login +
+      '<label>Re-type your scratch organization<input name="confirmLogin" required maxlength="39" autocomplete="off"></label>' +
+      '<label>Exact HTTPS callback URL from the MCP client<input name="redirectUri" type="url" required maxlength="2048" autocomplete="off"></label>' +
+      '<label>Confirmation<select name="confirmPilot"><option value="no">Do not create a client</option><option value="yes">Issue one private client for my scratch App</option></select></label>',
+      'Issue private MCP client — reveal once') +
     '<h2>3. Authorize as me (optional, for personal settings)</h2>' +
     form('start-user-auth', login.replace('GitHub account name (for example your organization or user name)', 'Account whose App you are authorizing'), 'Authorize on GitHub') +
     '<h2>4. Turn on production for an account</h2><p>Production lets a connection change real branches, releases and settings, always asking first. It is off until you do two steps: ask Claude to turn it on for the account, then confirm here within 10 minutes.</p>' +
