@@ -323,6 +323,54 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
       rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:route})).toBeNull();
   });
 
+  it('atomically redeems one code and refresh token across two independent PostgreSQL connections',async()=>{
+    const env={PUBLIC_BASE_URL:'https://pilot.github.example.test',
+      GITHUB_PRIVATE_TENANT_PILOT:'enabled',GITHUB_PILOT_APP_ID:'987001',
+      GITHUB_TENANT_ROUTING_KEY:crypto.randomBytes(32).toString('base64url'),
+      DATABASE_URL:process.env.TEST_DATABASE_URL};
+    const dbA=createDb(tenantA);
+    await dbA.upsertAccount({login:'overlap-org',accountId:987002,
+      accountType:'Organization',label:'Concurrent private pilot',credentialKind:'app',appId:987001});
+    await dbA.setInstallation('overlap-org',{installationId:987003,
+      repositorySelection:'all',permissions:{contents:'read'},status:'active'});
+    expect(await directory.allowlistPilotIdentity(a.id,ownerA,ownerA)).toBe(true);
+    const claim={tenantId:a.id,identityId:ownerA};
+    const clientId=await signed('tcl',claim,env);
+    const clientSecret='fixture-concurrent-oauth-client-secret';
+    const redirectUri='https://pilot-concurrent.example.test/cb';
+    await dbA.createOAuthClient({clientId,clientSecret,redirectUris:[redirectUri],
+      clientName:'concurrent private pilot'});
+    const code='fixture-code-'+crypto.randomBytes(18).toString('hex');
+    const verifier='q'.repeat(43);
+    const challenge=createHash('sha256').update(verifier).digest('base64url');
+    await dbA.createAuthCode({code,clientId,redirectUri,codeChallenge:challenge,
+      codeChallengeMethod:'S256',defaultAccount:'overlap-org',
+      accounts:['overlap-org'],mode:'preview',profile:'full',listing:'compact'});
+    const connectionOne=await connect(tenantConnectionString(env.DATABASE_URL,a.id));
+    const connectionTwo=await connect(tenantConnectionString(env.DATABASE_URL,a.id));
+    const handler=conn=>(req,res)=>privateTenantToken(req,res,{env,
+      rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:()=>sqlFor(conn)});
+    const h1=handler(connectionOne),h2=handler(connectionTwo);
+    const form={grant_type:'authorization_code',client_id:clientId,client_secret:clientSecret,
+      code,redirect_uri:redirectUri,code_verifier:verifier,
+      resource:env.PUBLIC_BASE_URL+'/api/mcp'};
+    const first=await Promise.all([call(h1,request('POST',form)),call(h2,request('POST',form))]);
+    expect(first.map(x=>x.statusCode).sort()).toEqual([200,400]);
+    const granted=json(first.find(x=>x.statusCode===200));
+    expect(granted.access_token).toMatch(/^tac_/);
+    const renew={grant_type:'refresh_token',client_id:clientId,client_secret:clientSecret,
+      refresh_token:granted.refresh_token,resource:env.PUBLIC_BASE_URL+'/api/mcp'};
+    const second=await Promise.all([call(h2,request('POST',renew)),call(h1,request('POST',renew))]);
+    expect(second.map(x=>x.statusCode).sort()).toEqual([200,400]);
+    const refreshed=json(second.find(x=>x.statusCode===200));
+    expect(refreshed.access_token).not.toBe(granted.access_token);
+    expect(await dbA.getAccessToken(granted.access_token)).toBeNull();
+    expect((await dbA.getAccessToken(refreshed.access_token)).profile).toBe('full');
+    expect((await call(h1,request('POST',renew))).statusCode).toBe(400);
+    const dbB=createDb(tenantB);
+    expect(await dbB.getAccessToken(refreshed.access_token)).toBeNull();
+  });
+
   it('registers a pilot client only after real GitHub numeric identity and App installation proof',async()=>{
     const env={PUBLIC_BASE_URL:'https://pilot.github.example.test',
       GITHUB_PRIVATE_TENANT_PILOT:'enabled',
