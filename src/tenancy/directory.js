@@ -635,7 +635,8 @@ export async function initializeProvisionedTenant({ tenantId, connectionString =
   const tables=await db.listTables();
   if (!SCHEMA_TABLES.every(name=>tables.includes(name)) ||
       !tables.includes('gh_tenant_budget_windows') ||
-      !tables.includes('gh_tenant_runtime_metrics'))
+      !tables.includes('gh_tenant_runtime_metrics') ||
+      !tables.includes('gh_tenant_storage_slots'))
     throw new Error('Tenant schema is not fully initialized. No tenant was activated.');
   return { namespace, db };
 }
