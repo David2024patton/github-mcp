@@ -23,7 +23,8 @@ import { bootstrapPrivateOwnerPilot } from '../tenancy/owner-bootstrap.js';
 import { invitePrivatePilotMember } from '../tenancy/private-invite.js';
 import { purgeRevokedTenantArtifacts } from '../tenancy/incident-cleanup.js';
 import { registerPrivatePilotClient } from '../tenancy/client-registration.js';
-import { createTenantDirectory } from '../tenancy/directory.js';
+import { createTenantDirectory, openAuthorizedTenantDb } from '../tenancy/directory.js';
+import { saveTenantRuntimePolicy } from '../tenancy/runtime-limits.js';
 import { neon } from '@neondatabase/serverless';
 
 const HTML = 'text/html; charset=utf-8';
@@ -143,6 +144,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'register-private-pilot-client') return await registerPrivateOwnerClient(p, page);
     if (action === 'invite-private-pilot-user') return await invitePrivateOwnerUser(p, page);
     if (action === 'revoke-private-pilot') return await revokePrivateOwnerPilot(p, page);
+    if (action === 'set-private-tenant-capacity') return await setPrivateTenantCapacity(p, page);
     if (action === 'set-spend-limit') return await setSpendLimit(p, page);
     if (action === 'set-scratch') return await setScratch(p, page);
     if (action === 'create-rtc-pass') {
@@ -498,6 +500,49 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     }catch {
       return page(409,{result:'Private member could not be verified or safely allowed. '+
         'Recheck the authorized scratch organization, GitHub user, App and pilot configuration.'});
+    }
+  }
+
+  /** Existing passphrase, origin, CSRF and lockout checks protect this owner
+   * setting. Budgets are separate from GitHub permissions and developer spend. */
+  async function setPrivateTenantCapacity(p,page) {
+    if (!isProduction()) return page(403,{blocked:NOT_PRODUCTION});
+    const account=String(p.login||'').trim().toLowerCase();
+    const clientRate=Number(p.clientRate),tenantRate=Number(p.tenantRate);
+    if (!isValidLogin(account) ||
+        String(p.confirmLogin||'').trim().toLowerCase()!==account ||
+        String(p.confirmPilot||'')!=='yes' ||
+        !Number.isSafeInteger(clientRate) || clientRate<1 || clientRate>600 ||
+        !Number.isSafeInteger(tenantRate) || tenantRate<clientRate || tenantRate>6000)
+      return page(400,{result:'Confirm the exact private tenant and valid client/tenant rates.'});
+    if (env.GITHUB_PRIVATE_TENANT_PILOT!=='enabled' || !env.DATABASE_URL)
+      return page(409,{result:'Private tenant configuration is disabled.'});
+    try {
+      const row=await db.getAccount(account);
+      if (row?.account_type!=='Organization' || !row.is_scratch ||
+          row.installation_status!=='active') throw new Error('Not a protected scratch account.');
+      const directory=createTenantDirectory(neon(env.DATABASE_URL));
+      const tenants=await directory.listPilotsForAccount(account);
+      if (tenants.length!==1) throw new Error('Ambiguous private tenant.');
+      const owner=await directory.authorizedPilotIdentity(
+        tenants[0].tenantId,tenants[0].ownerIdentityId);
+      if (!owner || owner.role!=='owner') throw new Error('Owner consent missing.');
+      const context=await openAuthorizedTenantDb({
+        directory,tenantId:owner.tenantId,verifiedIdentityId:owner.identityId,
+        connectionString:env.DATABASE_URL
+      });
+      await saveTenantRuntimePolicy(context.sql,{
+        mcpClientPerMinute:clientRate,mcpTenantPerMinute:tenantRate
+      });
+      await db.recordChange({account,mode:'setup',tool:'setup_private_tenant_capacity',
+        target:owner.tenantId,
+        summary:'Owner changed private tenant fair-use request budgets',
+        confirmed:true,production:false,accessWidening:false}).catch(()=>{});
+      return page(200,{result:'Private request limits saved for '+account+': '+
+        clientRate+' per client and '+tenantRate+' per tenant per minute. '+
+        'GitHub authority and spending permissions unchanged.'});
+    } catch {
+      return page(409,{result:'Private tenant policy was not verified or saved. Nothing else changed.'});
     }
   }
 
