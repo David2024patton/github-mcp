@@ -45,7 +45,7 @@ export default async function privateTenantAuthorize(req,res,{env=process.env,
       res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
       res.setHeader('Referrer-Policy','no-referrer');
       const fields=hidden.map(k=>'<input type="hidden" name="'+k+'" value="'+escapeHtml(p[k]??'')+'">').join('');
-      const modes=inspected.productionAllowed?['preview','production']:['preview'];
+      const modes=env.VERCEL_ENV==='production' && inspected.productionAllowed?['preview','production']:['preview'];
       const html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
         '<title>Connect GitHub by Robinson AI Systems</title><style>body{font:16px system-ui,sans-serif;max-width:430px;margin:6vh auto;padding:20px}form{display:grid;gap:14px}input,select,button{font:inherit;padding:10px}p{line-height:1.5}</style></head><body>'+
         '<h1>Connect GitHub by Robinson AI Systems</h1>'+
