@@ -231,7 +231,11 @@ describe('PUB-3 tenant capacity with REAL PostgreSQL',()=>{
       expect((await dbA.getJob(job,'tenant-A')).state).toBe('pending');
       expect((await dbA.getResult(result,'tenant-A')).body).toEqual({ok:true});
     } finally {
-      await saveTenantRuntimePolicy(sqlA,policy);
+      // Persist only owner-configurable fields, not resolved fixed maxima.
+      await saveTenantRuntimePolicy(sqlA,{
+        jobsClientPending:policy.jobsClientPending,
+        resultsClientActive:policy.resultsClientActive
+      });
     }
   });
 
