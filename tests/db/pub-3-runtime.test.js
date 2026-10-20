@@ -2,6 +2,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import pg from 'pg';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { createDb } from '../../src/db.js';
+import { purgeRevokedTenantArtifacts } from '../../src/tenancy/incident-cleanup.js';
 import { createTenantDirectory, initializeProvisionedTenant,
   tenantConnectionString, tenantSchemaName } from '../../src/tenancy/directory.js';
 import { claimTenantBudget, admitTenantMcp, admitTenantOAuth,
@@ -231,6 +232,39 @@ describe('PUB-3 tenant capacity with REAL PostgreSQL',()=>{
       .rejects.toBeInstanceOf(TenantCapacityError);
     await expect(admitTenantOAuth(sqlB,'configured-ratelimit'))
       .resolves.toMatchObject({allowed:true});
+  });
+
+  it('emergency revocation fails closed first and cleans only the selected owner tenant',async()=>{
+    const ownerRows=await root.query(
+      'SELECT identity_id FROM gh_tenant_memberships WHERE tenant_id=$1 AND role=$2',[a.id,'owner']);
+    const outsiderRows=await root.query(
+      'SELECT identity_id FROM gh_tenant_memberships WHERE tenant_id=$1 AND role=$2',[b.id,'owner']);
+    const ownerId=String(ownerRows.rows[0]?.identity_id);
+    const outsiderId=String(outsiderRows.rows[0]?.identity_id);
+    expect(ownerId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(await ownerDir.allowlistPilotIdentity(a.id,ownerId,ownerId)).toBe(true);
+    const key='res_'+randomBytes(16).toString('base64url');
+    await dbA.putResult({handle:key,connection:'revoked-fixture',summary:'delete-on-revoke',
+      body:{message:'only tenant A'}});
+    await reserveTenantStorage(sqlA,'result','revoke-test-client',key,600);
+    const otherTenantBefore=await sqlB`SELECT count(*)::integer AS n FROM gh_tenant_storage_slots`;
+    const otherResultsBefore=await sqlB`SELECT count(*)::integer AS n FROM result_store`;
+    const opts={directory:ownerDir,tenantId:a.id,ownerIdentityId:outsiderId,
+      connectionString:process.env.TEST_DATABASE_URL,
+      sqlFactory:url=>url.includes(tenantSchemaName(a.id))?sqlA:sqlB};
+    await expect(purgeRevokedTenantArtifacts(opts)).rejects.toThrow(/owner/);
+    expect((await dbA.getResult(key,'revoked-fixture')).body).toEqual({message:'only tenant A'});
+    expect(await ownerDir.revokePilotIdentity(a.id,ownerId,ownerId)).toBe(true);
+    expect(await ownerDir.authorizedPilotIdentity(a.id,ownerId)).toBeNull();
+    const cleaned=await purgeRevokedTenantArtifacts({...opts,ownerIdentityId:ownerId});
+    expect(cleaned.results).toBeGreaterThanOrEqual(1);
+    expect(await dbA.getResult(key,'revoked-fixture')).toBeNull();
+    const slots=await sqlA`SELECT count(*)::integer AS n FROM gh_tenant_storage_slots`;
+    expect(slots[0].n).toBe(0);
+    expect(await sqlB`SELECT count(*)::integer AS n FROM gh_tenant_storage_slots`)
+      .toEqual(otherTenantBefore);
+    expect(await sqlB`SELECT count(*)::integer AS n FROM result_store`)
+      .toEqual(otherResultsBefore);
   });
 
 });
