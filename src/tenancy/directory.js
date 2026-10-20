@@ -4,6 +4,7 @@
 import { randomUUID } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { createDb, SCHEMA_TABLES } from '../db.js';
+import { initTenantRuntimeSchema } from './runtime-limits.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SCHEMA = /^gh_t_[0-9a-f]{32}$/;
@@ -522,6 +523,41 @@ export function createTenantDirectory(sql) {
         providerVerifier:row.provider_verifier } : null;
     },
 
+    /** Privileged owner setup only: list the trusted server-bootstrap tenants
+     * for one exact account. No public API takes an arbitrary tenant ID. */
+    async listPilotsForAccount(accountLogin) {
+      if(typeof accountLogin!=='string' ||
+          !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin))
+        throw new TypeError('Invalid private pilot account.');
+      const rows=await sql`SELECT tenant_id,identity_id FROM gh_tenant_pilot_bootstraps
+        WHERE account_login=${accountLogin} ORDER BY created_at`;
+      return rows.map(row=>({tenantId:String(row.tenant_id),
+        ownerIdentityId:String(row.identity_id)}));
+    },
+
+    /** Remove private pilot's encrypted user grants and pending browser states
+     * for this exact owner-verified account after all pilot sessions are revoked.
+     * Server-owned App keys are not touched and no other account is queried. */
+    async purgePrivatePilotRootSecrets(accountLogin) {
+      if(typeof accountLogin!=='string' ||
+          !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin))
+        throw new TypeError('Invalid private pilot account.');
+      const rows=await sql`WITH auth AS (
+        DELETE FROM gh_tenant_user_authorizations a
+        WHERE EXISTS (SELECT 1 FROM gh_tenant_pilot_bootstraps p
+          WHERE p.tenant_id=a.tenant_id AND p.account_login=${accountLogin})
+        RETURNING identity_id
+      ), states AS (
+        DELETE FROM gh_tenant_oauth_flows f
+        WHERE EXISTS (SELECT 1 FROM gh_tenant_pilot_bootstraps p
+          WHERE p.tenant_id=f.tenant_id AND p.account_login=${accountLogin})
+        RETURNING state_hash
+      ) SELECT (SELECT count(*)::integer FROM auth) AS user_grants,
+        (SELECT count(*)::integer FROM states) AS pending_states`;
+      return rows.length===1?{userGrants:Number(rows[0].user_grants),
+        pendingStates:Number(rows[0].pending_states)}:null;
+    },
+
     /** Owner emergency stop. The calling setup route must have already
      * authenticated its owner/passphrase; no MCP caller invokes this method.
      * All existing bearer/client/code epochs for this account become stale. */
@@ -595,7 +631,12 @@ export async function initializeProvisionedTenant({ tenantId, connectionString =
   const namespace = await assertTenantSearchPath(sql, tenantId);
   const db = createDb(sql);
   await db.initSchema();
-  if (JSON.stringify(await db.listTables()) !== JSON.stringify([...SCHEMA_TABLES].sort()))
+  await initTenantRuntimeSchema(sql);
+  const tables=await db.listTables();
+  if (!SCHEMA_TABLES.every(name=>tables.includes(name)) ||
+      !tables.includes('gh_tenant_budget_windows') ||
+      !tables.includes('gh_tenant_runtime_metrics') ||
+      !tables.includes('gh_tenant_storage_slots'))
     throw new Error('Tenant schema is not fully initialized. No tenant was activated.');
   return { namespace, db };
 }

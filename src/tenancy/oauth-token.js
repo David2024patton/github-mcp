@@ -9,6 +9,7 @@ import { verifyTenantCredential, issueTenantCredential } from './routed-credenti
 import { createOAuthHandlers } from '../core/oauth-handlers.js';
 import { createGithubPolicy } from '../oauth/policy.js';
 import { paramsOf, send } from '../core/http.js';
+import { admitTenantOAuth, TenantCapacityError, recordTenantMetric } from './runtime-limits.js';
 
 export async function privateTenantToken(req, res, {
   env = process.env, rootSqlFactory = neon, tenantSqlFactory = neon
@@ -21,6 +22,9 @@ export async function privateTenantToken(req, res, {
   try { params = paramsOf(req); } catch { return send(res, 400, { error: 'invalid_request' }); }
   const claim = verifyTenantCredential(params.client_id, 'tcl', env);
   if (!claim || !env.DATABASE_URL) return send(res, 401, { error: 'invalid_client' });
+  let tenantSql=null;
+  const started=Date.now();
+  let outcome='error';
   try {
     const directory = createTenantDirectory(rootSqlFactory(env.DATABASE_URL));
     const pilot = await directory.authorizedPilotIdentity(claim.tenantId, claim.identityId);
@@ -35,6 +39,8 @@ export async function privateTenantToken(req, res, {
     if (scope.tenant.namespace !== pilot.namespace ||
         scope.tenant.membershipRevision !== pilot.membershipRevision)
       return send(res, 401, { error: 'invalid_client' });
+    tenantSql=scope.sql;
+    await admitTenantOAuth(tenantSql,params.client_id);
     const handlers = createOAuthHandlers({
       db: scope.db, env, policy: createGithubPolicy({ env }),
       issueTokens: () => ({
@@ -42,8 +48,20 @@ export async function privateTenantToken(req, res, {
         refreshToken: issueTenantCredential('trf', claim, env)
       })
     });
-    return await handlers.token(req, res);
-  } catch {
+    const result=await handlers.token(req, res);
+    outcome=res.statusCode>=400?'refused':'ok';
+    return result;
+  } catch (error) {
+    if (error instanceof TenantCapacityError) {
+      outcome='throttled';
+      res.setHeader('Retry-After',String(error.retryAfterSeconds));
+      return send(res,429,{error:'rate_limited',retry_after_seconds:error.retryAfterSeconds});
+    }
     return send(res, 503, { error: 'temporarily_unavailable' });
+  } finally {
+    if(tenantSql) await recordTenantMetric(tenantSql,{
+      event:params?.grant_type==='refresh_token'?'refresh':'oauth',
+      outcome,durationMs:Math.max(0,Date.now()-started)
+    }).catch(()=>{});
   }
 }

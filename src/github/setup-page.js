@@ -21,8 +21,10 @@ import { dollars as money } from '../github/prices.js';
 import { validateGrant } from '../rtc/pass-scope.js';
 import { bootstrapPrivateOwnerPilot } from '../tenancy/owner-bootstrap.js';
 import { invitePrivatePilotMember } from '../tenancy/private-invite.js';
+import { purgeRevokedTenantArtifacts } from '../tenancy/incident-cleanup.js';
 import { registerPrivatePilotClient } from '../tenancy/client-registration.js';
-import { createTenantDirectory } from '../tenancy/directory.js';
+import { createTenantDirectory, openAuthorizedTenantDb } from '../tenancy/directory.js';
+import { saveTenantRuntimePolicy } from '../tenancy/runtime-limits.js';
 import { neon } from '@neondatabase/serverless';
 
 const HTML = 'text/html; charset=utf-8';
@@ -142,6 +144,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'register-private-pilot-client') return await registerPrivateOwnerClient(p, page);
     if (action === 'invite-private-pilot-user') return await invitePrivateOwnerUser(p, page);
     if (action === 'revoke-private-pilot') return await revokePrivateOwnerPilot(p, page);
+    if (action === 'set-private-tenant-capacity') return await setPrivateTenantCapacity(p, page);
     if (action === 'set-spend-limit') return await setSpendLimit(p, page);
     if (action === 'set-scratch') return await setScratch(p, page);
     if (action === 'create-rtc-pass') {
@@ -500,6 +503,49 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     }
   }
 
+  /** Existing passphrase, origin, CSRF and lockout checks protect this owner
+   * setting. Budgets are separate from GitHub permissions and developer spend. */
+  async function setPrivateTenantCapacity(p,page) {
+    if (!isProduction()) return page(403,{blocked:NOT_PRODUCTION});
+    const account=String(p.login||'').trim().toLowerCase();
+    const clientRate=Number(p.clientRate),tenantRate=Number(p.tenantRate);
+    if (!isValidLogin(account) ||
+        String(p.confirmLogin||'').trim().toLowerCase()!==account ||
+        String(p.confirmPilot||'')!=='yes' ||
+        !Number.isSafeInteger(clientRate) || clientRate<1 || clientRate>600 ||
+        !Number.isSafeInteger(tenantRate) || tenantRate<clientRate || tenantRate>6000)
+      return page(400,{result:'Confirm the exact private tenant and valid client/tenant rates.'});
+    if (env.GITHUB_PRIVATE_TENANT_PILOT!=='enabled' || !env.DATABASE_URL)
+      return page(409,{result:'Private tenant configuration is disabled.'});
+    try {
+      const row=await db.getAccount(account);
+      if (row?.account_type!=='Organization' || !row.is_scratch ||
+          row.installation_status!=='active') throw new Error('Not a protected scratch account.');
+      const directory=createTenantDirectory(neon(env.DATABASE_URL));
+      const tenants=await directory.listPilotsForAccount(account);
+      if (tenants.length!==1) throw new Error('Ambiguous private tenant.');
+      const owner=await directory.authorizedPilotIdentity(
+        tenants[0].tenantId,tenants[0].ownerIdentityId);
+      if (!owner || owner.role!=='owner') throw new Error('Owner consent missing.');
+      const context=await openAuthorizedTenantDb({
+        directory,tenantId:owner.tenantId,verifiedIdentityId:owner.identityId,
+        connectionString:env.DATABASE_URL
+      });
+      await saveTenantRuntimePolicy(context.sql,{
+        mcpClientPerMinute:clientRate,mcpTenantPerMinute:tenantRate
+      });
+      await db.recordChange({account,mode:'setup',tool:'setup_private_tenant_capacity',
+        target:owner.tenantId,
+        summary:'Owner changed private tenant fair-use request budgets',
+        confirmed:true,production:false,accessWidening:false}).catch(()=>{});
+      return page(200,{result:'Private request limits saved for '+account+': '+
+        clientRate+' per client and '+tenantRate+' per tenant per minute. '+
+        'GitHub authority and spending permissions unchanged.'});
+    } catch {
+      return page(409,{result:'Private tenant policy was not verified or saved. Nothing else changed.'});
+    }
+  }
+
   /** Emergency owner revocation also works when private OAuth is disabled or
    * GitHub's user token is no longer refreshable. */
   async function revokePrivateOwnerPilot(p,page) {
@@ -514,14 +560,31 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       if (!row || row.account_type!=='Organization' || !env.DATABASE_URL)
         return page(404,{result:'This account has no private pilot to revoke.'});
       const dir=createTenantDirectory(neon(env.DATABASE_URL));
+      const tenants=await dir.listPilotsForAccount(account);
       const stopped=await dir.revokePrivatePilotsForAccount(account);
+      // Authorization is disabled FIRST. If cleanup fails, further private
+      // calls already fail closed and the owner may safely retry the action.
+      let cleaned={tokens:0,codes:0,clients:0,jobs:0,results:0};
+      for(const tenant of tenants){
+        const item=await purgeRevokedTenantArtifacts({
+          directory:dir,tenantId:tenant.tenantId,
+          ownerIdentityId:tenant.ownerIdentityId,
+          connectionString:env.DATABASE_URL
+        });
+        for(const key of Object.keys(cleaned))cleaned[key]+=item[key];
+      }
+      const secrets=await dir.purgePrivatePilotRootSecrets(account);
+      if(!secrets)throw new Error('Private credential cleanup was not verified.');
       await db.recordChange({account,mode:'setup',tool:'setup_revoke_private_pilot',
         target:account,
-        summary:'Owner revoked all private pilot authorizations for this account',
+        summary:'Owner revoked private pilot sessions and cleared retained client data',
         confirmed:true,production:false,accessWidening:false}).catch(()=>{});
       return page(200,{result:'Revoked '+stopped+
         ' active private pilot grant(s) for '+account+
-        '. Old client IDs and tokens cannot be reactivated without a new protected owner action.'});
+        '; removed '+cleaned.clients+' MCP clients, '+cleaned.tokens+
+        ' bearer grants, '+cleaned.codes+' pending codes, '+cleaned.jobs+
+        ' tracked jobs, '+cleaned.results+' retained results and '+
+        secrets.userGrants+' encrypted user grants. Other accounts were untouched.'});
     }catch {
       return page(503,{result:'The private pilot revocation could not be verified. Disable the pilot deployment flag as a fallback and retry from the protected setup page.'});
     }

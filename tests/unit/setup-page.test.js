@@ -67,6 +67,28 @@ describe('the setup page', () => {
     expect(t.page.csrf).toHaveLength(43);
   });
 
+  it('keeps private tenant fair-use configuration behind verified owner confirmation',async()=>{
+    const t=await build();const page=await t.open();
+    expect(page.body).toContain('Save private fair-use limits');
+    const form={action:'set-private-tenant-capacity',login:'example-org',
+      confirmLogin:'example-org',confirmPilot:'yes',
+      clientRate:'120',tenantRate:'600'};
+    expect((await t.post(form,{origin:'https://untrusted.invalid'})).statusCode).toBe(403);
+    expect((await t.post(form,{csrf:'tampered'})).statusCode).toBe(403);
+    expect((await t.post({...form,passphrase:'wrong'})).statusCode).toBe(401);
+    expect((await t.post({...form,confirmPilot:'no'})).statusCode).toBe(400);
+    expect((await t.post({...form,confirmLogin:'different'})).statusCode).toBe(400);
+    expect((await t.post({...form,clientRate:'601'})).statusCode).toBe(400);
+    expect((await t.post({...form,clientRate:'200',tenantRate:'100'})).statusCode).toBe(400);
+    const closed=await t.post(form);
+    expect(closed.statusCode).toBe(409);
+    expect(closed.body).toContain('Private tenant configuration is disabled');
+    noSecrets(closed);
+    const preview=await build({env:{...PROD,VERCEL_ENV:'preview'}});
+    await preview.open();
+    expect((await preview.post(form)).statusCode).toBe(403);
+  });
+
   it('keeps private tenant bootstrap behind production, explicit confirmation, owner passphrase and CSRF', async () => {
     const t=await build();const page=await t.open();
     expect(page.body).toContain('Prepare my private GitHub pilot tenant');
