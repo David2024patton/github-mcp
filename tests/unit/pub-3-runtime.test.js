@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { claimTenantBudget, recordTenantMetric,
   withTenantStorageLimits, TenantCapacityError,
-  TENANT_RUNTIME_LIMITS } from '../../src/tenancy/runtime-limits.js';
+  TENANT_RUNTIME_LIMITS, validateTenantRuntimePolicy, readTenantRuntimePolicy,
+  saveTenantRuntimePolicy } from '../../src/tenancy/runtime-limits.js';
 
 describe('PUB-3 scoped runtime fail-closed validation',()=>{
   it('rejects malformed/untrusted scope and nonfinite limits before SQL',async()=>{
@@ -57,5 +58,26 @@ describe('PUB-3 scoped runtime fail-closed validation',()=>{
     ];
     for(const v of bad)await expect(recordTenantMetric(sql,v)).rejects.toThrow();
     expect(sql).not.toHaveBeenCalled();
+  });
+
+  it('validates independent owner limits, rejects unknown keys and refuses corruption',async()=>{
+    expect(validateTenantRuntimePolicy({})).toMatchObject(TENANT_RUNTIME_LIMITS);
+    expect(validateTenantRuntimePolicy({mcpClientPerMinute:250,mcpTenantPerMinute:1200})
+      .mcpClientPerMinute).toBe(250);
+    for(const invalid of [
+      null,[],{'__proto__':null}, {mcpClientPerMinute:-1},
+      {mcpClientPerMinute:1.5}, {mcpClientPerMinute:9999},
+      {mcpClientPerMinute:700,mcpTenantPerMinute:400},
+      {secretToken:'not safe'}, {oauthClientPerMinute:10,oauthTenantPerMinute:5}
+    ]) if(invalid!==null || true) expect(()=>validateTenantRuntimePolicy(invalid)).toThrow();
+    const sql=vi.fn(async()=>[{value:{mcpClientPerMinute:150,mcpTenantPerMinute:800}}]);
+    expect((await readTenantRuntimePolicy(sql)).mcpClientPerMinute).toBe(150);
+    const store=vi.fn(async()=>[]);
+    await expect(saveTenantRuntimePolicy(store,{mcpClientPerMinute:50,
+      mcpTenantPerMinute:500})).resolves.toMatchObject({mcpClientPerMinute:50});
+    expect(store).toHaveBeenCalledOnce();
+    expect(store.mock.calls[0].slice(1).join('|')).not.toMatch(/token|email|secret/i);
+    await expect(readTenantRuntimePolicy(async()=>[{value:{unauthorized:'raw'}}]))
+      .rejects.toThrow(/policy/);
   });
 });
