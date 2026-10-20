@@ -22,7 +22,11 @@ const params={
   state:'client-owned-csrf',
   resource:ENV.PUBLIC_BASE_URL+'/api/mcp'
 };
-const handler=(req,res)=>privateTenantAuthorize(req,res,{env:ENV});
+const consentFactory=()=>({
+  inspect:async()=>({productionAllowed:true}),
+  start:async()=>{throw Error('Provider sign-in intentionally unavailable in unit fixture');}
+});
+const handler=(req,res)=>privateTenantAuthorize(req,res,{env:ENV,consentFactory});
 
 describe('PUB-4 mobile-sized private GitHub consent is also standards-compliant for desktop',()=>{
   it('renders a responsive OAuth form with exact native request fields and no tenant account inventory',async()=>{
@@ -52,13 +56,31 @@ describe('PUB-4 mobile-sized private GitHub consent is also standards-compliant 
 
   it('does not offer production in nonproduction and never shows a disabled private pilot',async()=>{
     const preview=await call((req,res)=>privateTenantAuthorize(req,res,{
-      env:{...ENV,VERCEL_ENV:'preview'}}),request('GET',params));
+      env:{...ENV,VERCEL_ENV:'preview'},consentFactory:()=>({inspect:async()=>({productionAllowed:false})})}),request('GET',params));
     expect(preview.statusCode).toBe(200);
     expect(preview.body).not.toContain('value="production"');
     const disabled=await call((req,res)=>privateTenantAuthorize(req,res,{
-      env:{...ENV,GITHUB_PRIVATE_TENANT_PILOT:'disabled'}}),request('GET',params));
+      env:{...ENV,GITHUB_PRIVATE_TENANT_PILOT:'disabled'},consentFactory}),request('GET',params));
     expect(disabled.statusCode).toBe(403);
     expect(disabled.body).not.toContain(client);
+  });
+
+  it('refuses signed but revoked/missing tenant OAuth clients without displaying login',async()=>{
+    const checked=await call((req,res)=>privateTenantAuthorize(req,res,{
+      env:ENV,consentFactory:()=>({inspect:async()=>{throw Error('revoked grant');}})
+    }),request('GET',params));
+    expect(checked.statusCode).toBe(403);
+    expect(checked.body).not.toContain('Continue to GitHub');
+    expect(checked.body).not.toContain(client);
+  });
+
+  it('hides PRODUCTION for an account with the production switch OFF on a real production deployment',async()=>{
+    const denied=await call((req,res)=>privateTenantAuthorize(req,res,{
+      env:ENV,consentFactory:()=>({inspect:async()=>({productionAllowed:false})})
+    }),request('GET',params));
+    expect(denied.statusCode).toBe(200);
+    expect(denied.body).toContain('value="preview"');
+    expect(denied.body).not.toContain('value="production"');
   });
 
   it('refuses missing signed clients, malformed form CSRF, and unsupported methods before tenant access',async()=>{
