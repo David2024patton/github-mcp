@@ -64,3 +64,11 @@ A plugin display name is not account authority; adapter sign-in does not prove G
 }
 ```
 <!-- bundle-plan:end -->
+
+## 2026-10-20 engineering continuation (source draft; real client criteria still open)
+
+- Added a read-only `createPrivateGitHubConsent.inspect` preflight that checks server-signed client, live private tenant owner/member allowlist and revisions, registered redirect, exact bound GitHub App installation, and independently enabled production setting before the mobile/desktop OAuth form appears. POST invokes the same shared check and further binds browser-CSRF/state/PKCE to provider GitHub sign-in.
+- Corrected `api/tenant/oauth/authorize.js` to display PRODUCTION only when inspected account/deployment allows it; expired/suspended/revoked/wrong client sessions no longer present a misleading chooser.
+- New unit and disposable PostgreSQL regression exercises refused client, absent production, suspended installation, wrong redirect, revocation and restored eligibility. CI and security review are required before declaring engineering green, and none of six full PUB-4 user-device acceptance lines are yet passed.
+- Supported Android/iOS app entry point and independent desktop/web real sign-in/WHOAMI/write/refusal remain external acceptance requirements. Hosted Sites adapter source/presentation remains outside this standalone service and is not falsely claimed fixed by this change. Both candidate plugins PRIVATE, owner single-account original OAuth unaffected; no release requested.
+
