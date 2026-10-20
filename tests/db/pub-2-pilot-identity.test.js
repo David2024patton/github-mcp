@@ -591,6 +591,43 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
       .toBeGreaterThan(Number(oldRecord.revision));
   });
 
+  it('preflights the genuine tenant OAuth client and exact App before displaying a mobile/desktop consent page',async()=>{
+    const env={PUBLIC_BASE_URL:'https://pilot.github.example.test',VERCEL_ENV:'production',
+      GITHUB_PRIVATE_TENANT_PILOT:'enabled',
+      GITHUB_TENANT_ROUTING_KEY:crypto.randomBytes(32).toString('base64url'),
+      GITHUB_PILOT_APP_CLIENT_ID:'fixture-inspect-client',
+      GITHUB_PILOT_APP_CLIENT_SECRET:'fixture-not-a-real-secret',
+      GITHUB_PILOT_APP_ID:'92001',DATABASE_URL:process.env.TEST_DATABASE_URL};
+    const db=createDb(tenantA);
+    const account='inspect-ready';
+    await db.upsertAccount({login:account,accountId:92002,accountType:'Organization',
+      label:'Private consent inspection',credentialKind:'app',appId:92001,isScratch:true});
+    await db.setInstallation(account,{installationId:92003,
+      repositorySelection:'all',permissions:{contents:'read'},status:'active'});
+    await directory.allowlistPilotIdentity(a.id,ownerA,ownerA);
+    const client=await signed('tcl',{tenantId:a.id,identityId:ownerA},env);
+    const redirect='https://private-inspect.example.test/callback';
+    await db.createOAuthClient({clientId:client,clientSecret:'fixture-inspect-secret',
+      redirectUris:[redirect],clientName:'Android or desktop',authorizedAccount:account});
+    const consent=createPrivateGitHubConsent({env,
+      rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:()=>tenantA});
+    const fields={client_id:client,redirect_uri:redirect,response_type:'code',
+      code_challenge:'x'.repeat(43),code_challenge_method:'S256',
+      resource:env.PUBLIC_BASE_URL+'/api/mcp'};
+    expect(await consent.inspect(fields)).toEqual({productionAllowed:false});
+    await db.setProductionEnabled(account,true);
+    expect(await consent.inspect(fields)).toEqual({productionAllowed:true});
+    await expect(consent.inspect({...fields,redirect_uri:'https://wrong.example.test/cb'}))
+      .rejects.toThrow(/not verified/);
+    await db.setInstallationStatus(account,'suspended');
+    await expect(consent.inspect(fields)).rejects.toThrow(/not verified/);
+    await db.setInstallationStatus(account,'active');
+    expect(await consent.inspect(fields)).toEqual({productionAllowed:true});
+    await directory.revokePilotIdentity(a.id,ownerA,ownerA);
+    await expect(consent.inspect(fields)).rejects.toThrow(/not verified/);
+    await directory.allowlistPilotIdentity(a.id,ownerA,ownerA);
+  });
+
   it('proves real tenant GitHub consent state, browser CSRF, installation scope, PKCE and token issuance',async()=>{
     const env={PUBLIC_BASE_URL:'https://pilot.github.example.test',VERCEL_ENV:'production',
       GITHUB_PRIVATE_TENANT_PILOT:'enabled',
