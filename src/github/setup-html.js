@@ -89,6 +89,13 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
       '<label>Exact HTTPS callback from pilot client<input name="redirectUri" type="url" required maxlength="2048" autocomplete="off"></label>'+
       '<label>Confirmation<select name="confirmPilot"><option value="no">Do not allow anyone</option><option value="yes">Allow this specific private test user</option></select></label>',
       'Prepare one private pilot user connection')+
+    '<h2>Private tenant fair-use limits — owner only</h2><p>Adjust request capacity for one verified disposable private tenant; not GitHub permission grants, account spending controls or the developer testing budget. A client cannot consume another tenant\'s quota. Default is 120 requests/client/minute and 600 requests/tenant/minute.</p>' +
+    form('set-private-tenant-capacity',login+
+      '<label>Re-type exact scratch organization<input name="confirmLogin" required maxlength="39" autocomplete="off"></label>'+
+      '<label>Per-client requests per minute (1–600)<input type="number" name="clientRate" min="1" max="600" value="120" required></label>'+
+      '<label>Whole tenant requests per minute (at least client rate; max 6000)<input type="number" name="tenantRate" min="1" max="6000" value="600" required></label>'+
+      '<label>Confirmation<select name="confirmPilot"><option value="no">Do not change limits</option><option value="yes">Save my private tenant capacity</option></select></label>',
+      'Save private fair-use limits') +
     '<h2>Revoke a private pilot — emergency stop</h2><p>Immediately disable all private pilot tokens and clients for the exact organization. Works even after GitHub sign-in is lost. No repositories, customers or database contents are deleted. A later separate owner-approved re-enrollment is required.</p>' +
     form('revoke-private-pilot', login +
       '<label>Re-type exact organization to revoke<input name="confirmLogin" required maxlength="39" autocomplete="off"></label>' +
