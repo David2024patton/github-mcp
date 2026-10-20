@@ -37,7 +37,7 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
   });
   const callback = () => active()+'/api/tenant/oauth/callback';
 
-  async function start(p) {
+  async function preflight(p) {
     active();
     const claim = verifyTenantCredential(p.client_id,'tcl',env);
     const mode=p.mode??'preview', profile=p.profile??'everyday',
@@ -56,7 +56,6 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
     if (!pilot || pilot.membershipRevision!==claim.membershipRevision ||
         pilot.pilotRevision!==claim.pilotRevision) throw refused();
     const { db,sql }=await scoped(dir,claim);
-    await admitTenantOAuth(sql,claim.tenantId+':'+claim.identityId);
     const client=await db.getOAuthClient(p.client_id);
     if (!client || !client.redirect_uris.includes(p.redirect_uri)) throw refused();
     // Standard MCP OAuth clients don't carry custom account selections. For
@@ -93,6 +92,22 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
         !['all','selected'].includes(account.repository_selection) ||
         (mode==='production' && (env.VERCEL_ENV!=='production' ||
           account.production_enabled!==true))) throw refused();
+    return { claim, mode, profile, listing, dir, db, sql, account,
+      productionAllowed: env.VERCEL_ENV === 'production' &&
+        account.production_enabled === true };
+  }
+
+  /** Read-only consent readiness: anonymous visitors never see tenant details
+   * or production choices for an expired/revoked/unauthorized client. */
+  async function inspect(p) {
+    const result=await preflight({ ...p, mode:'preview',
+      profile:'everyday',listing:'compact' });
+    return Object.freeze({ productionAllowed: result.productionAllowed });
+  }
+
+  async function start(p) {
+    const {claim,mode,profile,listing,dir,sql,account}=await preflight(p);
+    await admitTenantOAuth(sql,claim.tenantId+':'+claim.identityId);
     const state=random(32), verifier=random(48);
     const challenge=createHash('sha256').update(verifier).digest('base64url');
     const stored=await dir.createPilotOAuthFlow({stateHash:sha(state),
@@ -202,5 +217,5 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
       }).catch(()=>{});
     }
   }
-  return {start,finish};
+  return {inspect,start,finish};
 }
