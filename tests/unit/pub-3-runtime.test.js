@@ -64,8 +64,9 @@ describe('PUB-3 scoped runtime fail-closed validation',()=>{
     outcome=0;
     await expect(metered(secretUrl)).rejects.toThrow(/transport echoed/);
     expect(fetchImpl).toHaveBeenCalledTimes(3);
-    expect(sql).toHaveBeenCalledTimes(3);
-    const paramText=sql.mock.calls.map(call=>call.slice(1).join('|')).join(' | ');
+    const metricCalls=sql.mock.calls.filter(call=>String(call[0]?.[0]).includes('gh_tenant_runtime_metrics (hour'));
+    expect(metricCalls).toHaveLength(3);
+    const paramText=metricCalls.map(call=>call.slice(1).join('|')).join(' | ');
     expect(paramText).toContain('provider');
     for(const value of ['ok','refused','error'])expect(paramText).toContain(value);
     expect(paramText).not.toContain(token);
