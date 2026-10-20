@@ -7,7 +7,7 @@ import { createTenantDirectory, openAuthorizedTenantDb } from './directory.js';
 import { isTenantRoutedCredential, verifyTenantCredential } from './routed-credential.js';
 import { createCredentials } from '../github/credentials.js';
 import { createTenantScopedCredentials } from './user-authorization.js';
-import { withTenantStorageLimits } from './runtime-limits.js';
+import { withTenantStorageLimits, withTenantProviderMetrics } from './runtime-limits.js';
 
 export const isPrivateTenantBearer = (authorization) =>
   typeof authorization === 'string' &&
@@ -57,9 +57,12 @@ export async function resolvePrivateTenantMcpBearer({
         account.app_id !== Number(env.GITHUB_PILOT_APP_ID) ||
         (grant.mode === 'production' &&
           (env.VERCEL_ENV !== 'production' || account.production_enabled !== true))) return null;
-    const base = createCredentials({ db, env, fetch: fetchImpl });
+    // Keep transport events in this tenant's validated SQL namespace. Metrics
+    // contain no URL, GitHub subject, repository, token or exception text.
+    const meteredFetch=withTenantProviderMetrics(sql,fetchImpl);
+    const base = createCredentials({ db, env, fetch: meteredFetch });
     const credentials = createTenantScopedCredentials({
-      base, directory, tenant: authorized, db, env, fetchImpl
+      base, directory, tenant: authorized, db, env, fetchImpl:meteredFetch
     });
     return { db: withTenantStorageLimits(db,sql,grant.client_id), credentials,
       sql, clientId: grant.client_id,
