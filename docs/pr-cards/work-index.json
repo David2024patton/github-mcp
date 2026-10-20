@@ -1774,15 +1774,17 @@
         "PUB-3"
       ],
       "card": "docs/pr-cards/PUB-4.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "no schema unless documented after drift",
       "budget": 650,
       "units": [
         "PUB-4"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [],
-      "pr": []
+      "pr": [
+        268
+      ]
     },
     {
       "id": "PUB-5",
