@@ -1,6 +1,6 @@
 # PUB-3 — Private tenant capacity, abuse controls and incident isolation
 
-**Stage: frozen full approved acceptance criteria, implementation pending**. Source baseline `3c68af7dfe0a2352d53f490a395908bc3b2be260`. Existing private tenant OAuth was merged in PR #264; no live/private device acceptance is asserted. Keep plugins private and do not create a customer signup or pay for load testing.
+**Stage: PUB-3 source implementation completed on PR #267; live/mobile/provider acceptance independent; merge requires final exact-head green CI/review**. Source baseline `3c68af7dfe0a2352d53f490a395908bc3b2be260`. Existing private tenant OAuth was merged in PR #264; no live/private device acceptance is asserted. Keep plugins private and do not create a customer signup or pay for load testing.
 
 ## Drift check A — shared caller paths and safety policy
 
@@ -12,12 +12,12 @@
 
 ## Original whole PUB-3 acceptance
 
-1. [ ] Every active private tenant has atomic, independently configurable Postgres-backed account/connection request budgets and failure-path burst defenses across multiple Vercel instances; a burst by tenant A never consumes tenant B's counters or lets unauthorized calls reach GitHub.
-2. [ ] Existing jobs, retained results and GitHub API access obey tested per-tenant/per-client bounded concurrency, size, lifetime and stored-row caps; expired records are reclaimed safely without deleting live work or data belonging to another tenant.
-3. [ ] An authenticated tenant revoke/suspend/cancel makes further private traffic fail closed, including already-issued bearer refresh, outstanding jobs and result reads; previous and other tenants' data remains confidential.
-4. [ ] Private operational metrics record bounded nonsecret rate decisions, request duration buckets, OAuth/refresh outcome classes and service/provider failures with no tokens, credentials, private repository content, raw URL queries, email or user-provided error strings.
-5. [ ] Real disposable PostgreSQL two-tenant tests exercise concurrent requests, duplicate submissions, quota recovery, malicious/oversized payloads, tenant revocation, retention deletion and provider failure; unit/shape/RTC/CI and release-policy remain intact.
-6. [ ] Current legacy owner path, all end-user delegated GitHub capabilities and production/approval/spend/protected-resource rules stay unchanged; operational fair-use limits are explicitly disclosed and must not silently impose the developer agent's $0 testing policy on customers.
+1. [x] Every active private tenant has atomic, independently configurable Postgres-backed account/connection request budgets and failure-path burst defenses across multiple Vercel instances; a burst by tenant A never consumes tenant B's counters or lets unauthorized calls reach GitHub.
+2. [x] Existing jobs, retained results and GitHub API access obey tested per-tenant/per-client bounded concurrency, size, lifetime and stored-row caps; expired records are reclaimed safely without deleting live work or data belonging to another tenant.
+3. [x] An authenticated tenant revoke/suspend/cancel makes further private traffic fail closed, including already-issued bearer refresh, outstanding jobs and result reads; previous and other tenants' data remains confidential.
+4. [x] Private operational metrics record bounded nonsecret rate decisions, request duration buckets, OAuth/refresh outcome classes and service/provider failures with no tokens, credentials, private repository content, raw URL queries, email or user-provided error strings.
+5. [x] Real disposable PostgreSQL two-tenant tests exercise concurrent requests, duplicate submissions, quota recovery, malicious/oversized payloads, tenant revocation, retention deletion and provider failure; unit/shape/RTC/CI and release-policy remain intact.
+6. [x] Current legacy owner path, all end-user delegated GitHub capabilities and production/approval/spend/protected-resource rules stay unchanged; operational fair-use limits are explicitly disclosed and must not silently impose the developer agent's $0 testing policy on customers.
 
 ## Implementation / proof plan
 
@@ -58,3 +58,67 @@ Stress the real DB with concurrent two-tenant connections and the same IDs to pr
 }
 ```
 <!-- bundle-plan:end -->
+
+## Source verification and security closeout — 2026-10-19
+
+Implementation head `49ee0e1aa1b6e8eca012651e3451662cf1f16c54` passed full `ci 39352668681` including check, two unit shards, disposable PostgreSQL, shapes, RTC; `Daily live policy 39352668770` passed. Initial red CI diagnosed a corrupted duplicate source module, then a test counting an earlier tenant job as the same client's slot; both corrected without reducing quota enforcement or suppressing tests. Later real PostgreSQL verified per-tenant owner budget configuration and owner-only cleanup preserving another tenant. Source commits and tests do NOT establish real GitHub mobile/desktop acceptance or public scale readiness. No live deployment/pilot enablement or extra spending.
+
+1. **Source proof:** Actual isolated Postgres capacity functions claim tenant and per-client counters atomically inside rollback-on-refusal SQL subtransactions; two independent connections exercise races; private request and OAuth routes gate before provider/dispatch; a protected owner form configures scoped request budgets. `tests/db/pub-3-runtime.test.js`; CI 39352668681 passed.
+
+2. **Source proof:** Scoped job/result store wrapper validates max TTL, body bytes, daily usage and active reservation slots; concurrent Postgres claims refuse over limit; expiry cleanup uses bounded deletes; independent tenant B untouched; real DB and unit regression; CI 39352668681 passed.
+
+3. **Source proof:** Existing signed tenant access checks owner/allowlist on each request; protected owner action revokes first, then private incident cleanup clears oauth clients/codes, bearer grants, jobs and retained results via one scoped statement. New real DB test forbids nonowner cleanup, verifies disabled tenant A, preserves tenant B, and CI 39352668681 passed.
+
+4. **Source proof:** Record only fixed event, outcome and coarse latency buckets; private MCP/OAuth/refresh and provider transport events are emitted with redacted tenant SQL. Tests reject raw user-provided errors/URLs/token values and prove successful/refused/provider-failure class counts; CI 39352668681 passed.
+
+5. **Source proof:** Two-tenant disposable Postgres checks overlapping clients and key names, atomic racing claims, independent counters, retained limits, TTL, tenant-local revocation/cleanup; unit tests check limits, malformed inputs and secrets; exact-head CI 39352668681 and daily policy 39352668770 passed on implementation head. Final docs-only head still needs new exact-head CI.
+
+6. **Source proof:** Only PRIVATE tenant API and protected owner form changed. Legacy owner route bypasses tenant fair-use controls; original write/production/spend/approval/protected-resource rules unchanged. Private pilot OFF unless separately configured; no capacity purchase, public App enrollment, manual release or provider write. Source audit and green CI required after final doc commit.
+
+**Outcome:** one original PUB-3 engineering subsection; the original 57-row provider acceptance remains unchanged (14 passed, 28 pending, 15 blocked, with 2 optional Hub-only rows). PRIVATE owner and GitHub safeguards retained. Exact HEAD after documentation reconcile still requires GitHub Actions green and reviewer threads resolved before merge.
+
+<!-- bundle-delivery:start -->
+```json
+{
+  "productionAdded": null,
+  "productionRemoved": null,
+  "newEngineering": "Per-tenant atomic usage and slot claims, safely configurable budgets, job/result wrappers, coarsely aggregated telemetry including provider outcomes, owner emergency revocation recovery",
+  "planComparison": "Completed the approved PUB-3 runtime boundary, without publishing or making any provider/device acceptance claim; final source size and line counts documented after diff audit.",
+  "relatedWorkDecision": "One substantial whole original PUB-3 subsection, not separate helper credits.",
+  "decision": "SUBSTANTIAL_EXCEPTION",
+  "exceptionEvidence": "One cross-cutting private tenant reliability/security boundary spans SQL, MCP/OAuth request gates, protected owner UI, real PostgreSQL concurrence tests, cleanup, telemetry; the implementation is cohesive and requires full independent CI despite single subsection.",
+  "subsections": [
+    {
+      "id": "PUB-3",
+      "criteria": [
+        {
+          "criterion": "Every active private tenant has atomic, independently configurable Postgres-backed account/connection request budgets and failure-path burst defenses across multiple Vercel instances; a burst by tenant A never consumes tenant B's counters or lets unauthorized calls reach GitHub.",
+          "evidence": "Actual isolated Postgres capacity functions claim tenant and per-client counters atomically inside rollback-on-refusal SQL subtransactions; two independent connections exercise races; private request and OAuth routes gate before provider/dispatch; a protected owner form configures scoped request budgets. `tests/db/pub-3-runtime.test.js`; CI 39352668681 passed."
+        },
+        {
+          "criterion": "Existing jobs, retained results and GitHub API access obey tested per-tenant/per-client bounded concurrency, size, lifetime and stored-row caps; expired records are reclaimed safely without deleting live work or data belonging to another tenant.",
+          "evidence": "Scoped job/result store wrapper validates max TTL, body bytes, daily usage and active reservation slots; concurrent Postgres claims refuse over limit; expiry cleanup uses bounded deletes; independent tenant B untouched; real DB and unit regression; CI 39352668681 passed."
+        },
+        {
+          "criterion": "An authenticated tenant revoke/suspend/cancel makes further private traffic fail closed, including already-issued bearer refresh, outstanding jobs and result reads; previous and other tenants' data remains confidential.",
+          "evidence": "Existing signed tenant access checks owner/allowlist on each request; protected owner action revokes first, then private incident cleanup clears oauth clients/codes, bearer grants, jobs and retained results via one scoped statement. New real DB test forbids nonowner cleanup, verifies disabled tenant A, preserves tenant B, and CI 39352668681 passed."
+        },
+        {
+          "criterion": "Private operational metrics record bounded nonsecret rate decisions, request duration buckets, OAuth/refresh outcome classes and service/provider failures with no tokens, credentials, private repository content, raw URL queries, email or user-provided error strings.",
+          "evidence": "Record only fixed event, outcome and coarse latency buckets; private MCP/OAuth/refresh and provider transport events are emitted with redacted tenant SQL. Tests reject raw user-provided errors/URLs/token values and prove successful/refused/provider-failure class counts; CI 39352668681 passed."
+        },
+        {
+          "criterion": "Real disposable PostgreSQL two-tenant tests exercise concurrent requests, duplicate submissions, quota recovery, malicious/oversized payloads, tenant revocation, retention deletion and provider failure; unit/shape/RTC/CI and release-policy remain intact.",
+          "evidence": "Two-tenant disposable Postgres checks overlapping clients and key names, atomic racing claims, independent counters, retained limits, TTL, tenant-local revocation/cleanup; unit tests check limits, malformed inputs and secrets; exact-head CI 39352668681 and daily policy 39352668770 passed on implementation head. Final docs-only head still needs new exact-head CI."
+        },
+        {
+          "criterion": "Current legacy owner path, all end-user delegated GitHub capabilities and production/approval/spend/protected-resource rules stay unchanged; operational fair-use limits are explicitly disclosed and must not silently impose the developer agent's $0 testing policy on customers.",
+          "evidence": "Only PRIVATE tenant API and protected owner form changed. Legacy owner route bypasses tenant fair-use controls; original write/production/spend/approval/protected-resource rules unchanged. Private pilot OFF unless separately configured; no capacity purchase, public App enrollment, manual release or provider write. Source audit and green CI required after final doc commit."
+        }
+      ],
+      "remainingEngineering": []
+    }
+  ]
+}
+```
+<!-- bundle-delivery:end -->
