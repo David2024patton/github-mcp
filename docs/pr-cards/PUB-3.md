@@ -80,8 +80,8 @@ Implementation head `49ee0e1aa1b6e8eca012651e3451662cf1f16c54` passed full `ci 3
 <!-- bundle-delivery:start -->
 ```json
 {
-  "productionAdded": null,
-  "productionRemoved": null,
+  "productionAdded": 604,
+  "productionRemoved": 15,
   "newEngineering": "Per-tenant atomic usage and slot claims, safely configurable budgets, job/result wrappers, coarsely aggregated telemetry including provider outcomes, owner emergency revocation recovery",
   "planComparison": "Completed the approved PUB-3 runtime boundary, without publishing or making any provider/device acceptance claim; final source size and line counts documented after diff audit.",
   "relatedWorkDecision": "One substantial whole original PUB-3 subsection, not separate helper credits.",
@@ -122,3 +122,11 @@ Implementation head `49ee0e1aa1b6e8eca012651e3451662cf1f16c54` passed full `ci 3
 }
 ```
 <!-- bundle-delivery:end -->
+
+## 2026-10-19 — Final reservation-admission correction (awaiting exact-head CI/review)
+
+An additional security review after the green `dbc364e` head discovered that the original storage facade debited daily job/result quota before validating the job ID/result handle or reserving an active slot. That let malformed or saturated requests exhaust a legitimate customer's daily quota even when no job/result could be stored. In `src/tenancy/runtime-limits.js`, the facade now validates all required input before any reservation, acquires the bounded active-resource slot first, then claims daily usage and creates the resource within a release-on-failure try/catch. The previously enforced byte-size, lifetime, per-client and per-tenant capacity limits remain unchanged.
+
+A new **genuine disposable PostgreSQL** regression in `tests/db/pub-3-runtime.test.js` checks that malformed and slot-capped job/result attempts leave their daily usage untouched, then tests successful writes and proper daily charge after releasing the occupied slot. Initial red run `39353890112` was a strict policy-writer rejection of passing read-only resolved defaults back during test cleanup, not an application failure; the cleanup now restores only supported owner-configurable override fields. Database shard `118404882897` passed at `5b8fbcd0263ba256c95c94d13112c910773f9c21`; full-CI completion remains an exact-head gate, **not yet claimed here**.
+
+**Measured changed production source (GitHub PR files API): 604 added / 15 removed** across `api/` and `src/`; no tests/docs/generated lines counted. One substantial whole original PUB-3 outcome with six acceptance criteria, not extra helper-card credit. Existing live/provider acceptance remains separate, original 57-case queue unchanged, private plugins remain PRIVATE, and no money, public signup, data migration or release is authorized.
