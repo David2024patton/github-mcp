@@ -6,6 +6,7 @@ import { createTenantDirectory, initializeProvisionedTenant,
   tenantConnectionString, tenantSchemaName } from '../../src/tenancy/directory.js';
 import { claimTenantBudget, admitTenantMcp, admitTenantOAuth,
   recordTenantMetric, purgeExpiredTenantRuntime, withTenantStorageLimits,
+  reserveTenantStorage, releaseTenantStorage,
   TenantCapacityError, TENANT_RUNTIME_LIMITS } from '../../src/tenancy/runtime-limits.js';
 
 const clients=[];
@@ -123,6 +124,56 @@ describe('PUB-3 tenant capacity with REAL PostgreSQL',()=>{
     await expect(first.createJob({id:'job_'+randomBytes(8).toString('hex'),
       connection:'tenant-A',owner:'fixture-org',kind:'autofix',ttlMinutes:1441}))
       .rejects.toBeInstanceOf(TenantCapacityError);
+  });
+
+  it('serializes active pending job slots across instances and isolates tenants',async()=>{
+    const key='concurrency-client';
+    const jobs=Array.from({length:TENANT_RUNTIME_LIMITS.jobsClientPending+3},
+      ()=> 'job_'+randomBytes(8).toString('hex'));
+    const requests=await Promise.allSettled(jobs.map((id,i)=>
+      reserveTenantStorage(i%2?sqlA2:sqlA,'job',key,id,60)));
+    expect(requests.filter(x=>x.status==='fulfilled')).toHaveLength(
+      TENANT_RUNTIME_LIMITS.jobsClientPending);
+    expect(requests.filter(x=>x.status==='rejected')).toHaveLength(3);
+    expect(requests.filter(x=>x.status==='rejected').every(x=>
+      x.reason instanceof TenantCapacityError)).toBe(true);
+    // A matching client identifier in B has a DIFFERENT namespace and pool.
+    await expect(reserveTenantStorage(sqlB,'job',key,jobs[0],60))
+      .resolves.toBeUndefined();
+    await releaseTenantStorage(sqlA,'job',key,jobs[0]);
+    await expect(reserveTenantStorage(sqlA,'job',key,jobs.at(-1),60))
+      .resolves.toBeUndefined();
+    await expect(reserveTenantStorage(sqlB,'job',key,jobs[0],60))
+      .rejects.toBeInstanceOf(TenantCapacityError);
+    const aRows=await sqlA`SELECT count(*)::integer AS n FROM gh_tenant_storage_slots
+      WHERE kind='job' AND expires_at>now()`;
+    const bRows=await sqlB`SELECT count(*)::integer AS n FROM gh_tenant_storage_slots
+      WHERE kind='job' AND expires_at>now()`;
+    expect(aRows[0].n).toBe(TENANT_RUNTIME_LIMITS.jobsClientPending);
+    expect(bRows[0].n).toBe(1);
+  });
+
+  it('limits stored result handle rows and cleans only expired reservations',async()=>{
+    const client='result-row-fixture';
+    const ids=Array.from({length:TENANT_RUNTIME_LIMITS.resultsClientActive+1},
+      ()=> 'res_'+randomBytes(16).toString('base64url'));
+    const claims=await Promise.allSettled(ids.map((id,i)=>
+      reserveTenantStorage(i%2?sqlA:sqlA2,'result',client,id,60)));
+    expect(claims.filter(x=>x.status==='fulfilled')).toHaveLength(
+      TENANT_RUNTIME_LIMITS.resultsClientActive);
+    expect(claims.filter(x=>x.status==='rejected')).toHaveLength(1);
+    const reservation=await sqlB`SELECT count(*)::integer AS n FROM gh_tenant_storage_slots
+      WHERE kind='result'`;
+    expect(reservation[0].n).toBe(1); // Earlier tenant-B retained result
+    await sqlA`UPDATE gh_tenant_storage_slots SET expires_at=now()-interval '1 second'
+      WHERE kind='result' AND client_key IS NOT NULL`;
+    const clean=await purgeExpiredTenantRuntime(sqlA);
+    expect(clean.slotRows).toBeGreaterThan(0);
+    const other=await sqlB`SELECT count(*)::integer AS n FROM gh_tenant_storage_slots
+      WHERE kind='result'`;
+    expect(other).toEqual(reservation); // B never touched
+    await expect(reserveTenantStorage(sqlA,'result',client,ids.at(-1),60))
+      .resolves.toBeUndefined();
   });
 
   it('records only fixed, aggregate operational classes and can purge expired history',async()=>{
