@@ -140,8 +140,10 @@ describe('PUB-3 tenant capacity with REAL PostgreSQL',()=>{
     // A matching client identifier in B has a DIFFERENT namespace and pool.
     await expect(reserveTenantStorage(sqlB,'job',key,jobs[0],60))
       .resolves.toBeUndefined();
-    await releaseTenantStorage(sqlA,'job',key,jobs[0]);
-    await expect(reserveTenantStorage(sqlA,'job',key,jobs.at(-1),60))
+    const accepted=jobs.filter((id,i)=>requests[i].status==='fulfilled');
+    await releaseTenantStorage(sqlA,'job',key,accepted[0]);
+    const retry=jobs.find((id,i)=>requests[i].status==='rejected');
+    await expect(reserveTenantStorage(sqlA,'job',key,retry,60))
       .resolves.toBeUndefined();
     await expect(reserveTenantStorage(sqlB,'job',key,jobs[0],60))
       .rejects.toBeInstanceOf(TenantCapacityError);
