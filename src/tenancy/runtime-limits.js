@@ -181,7 +181,8 @@ export function withTenantStorageLimits(db, sql, clientId) {
         throw new TenantCapacityError('result',86400);
       let encoded;
       try { encoded=JSON.stringify(input?.body); } catch { throw new TypeError('Result is not valid JSON.'); }
-      const bytes=typeof encoded==='string'?Buffer.byteLength(encoded):0;
+      if (typeof encoded !== 'string') throw new TypeError('Result is not valid JSON.');
+      const bytes=Buffer.byteLength(encoded);
       if (!bound(bytes,1,TENANT_RUNTIME_LIMITS.resultMaxBytes))
         throw new TenantCapacityError('result',86400);
       await claimTenantBudget(sql,{operation:'result',clientId,amount:bytes,window:'day',
