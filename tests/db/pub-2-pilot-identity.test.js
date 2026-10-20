@@ -404,7 +404,30 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(info.client_id).toMatch(/^tcl_/);
     expect(info.client_secret).toHaveLength(43);
     expect((await dbA.getOAuthClient(info.client_id)).client_secret_hash).toBeDefined();
+    expect((await dbA.getOAuthClient(info.client_id)).authorized_account).toBe('client-register-fixture');
     expect(JSON.stringify(await dbA.getOAuthClient(info.client_id))).not.toContain(info.client_secret);
+    // Two approved installations may coexist. Standard MCP/mobile consent
+    // must silently use THIS client registration's verified account, never
+    // pick a different installation or display a tenant-wide account list.
+    await dbA.upsertAccount({login:'different-fixture-org',accountId:84002,
+      accountType:'Organization',label:'Other private App',credentialKind:'app',appId:83001});
+    await dbA.setInstallation('different-fixture-org',{installationId:85002,
+      repositorySelection:'all',permissions:{contents:'read'},status:'active'});
+    const consent=createPrivateGitHubConsent({
+      env:{...env,GITHUB_PILOT_APP_CLIENT_ID:'fixture-pilot-client-id',
+        GITHUB_PILOT_APP_CLIENT_SECRET:'fixture-pilot-client-secret'},
+      rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:args.tenantSqlFactory,
+      fetchImpl
+    });
+    const baseConsent={client_id:info.client_id,response_type:'code',
+      redirect_uri:args.redirectUris[0],state:'private-client-state',
+      code_challenge:'v'.repeat(43),code_challenge_method:'S256',
+      resource:env.PUBLIC_BASE_URL+'/api/mcp',mode:'preview',
+      profile:'full',listing:'compact'};
+    await expect(consent.start(baseConsent)).resolves.toMatchObject({
+      url:expect.stringContaining('https://github.com/login/oauth/authorize?')});
+    await expect(consent.start({...baseConsent,account:'different-fixture-org'}))
+      .rejects.toThrow(/not verified/);
     providerId=20002;
     await expect(registerPrivatePilotClient(args)).rejects.toThrow(/private tenant pilot/);
     providerId=20001;installation=85002;

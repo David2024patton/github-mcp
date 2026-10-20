@@ -52,7 +52,11 @@ export async function registerPrivatePilotClient({
     membershipRevision:again.membershipRevision,pilotRevision:again.pilotRevision
   },env);
   const clientSecret=randomBytes(32).toString('base64url');
-  await db.createOAuthClient({clientId,clientSecret,redirectUris,clientName:clientName||'GitHub private pilot'});
+  // The exact GitHub App installation was verified against this OAuth user.
+  // Bind it to the signed client so a standard mobile/desktop MCP consent
+  // request needs no untrusted account form field, even with multiple Apps.
+  await db.createOAuthClient({clientId,clientSecret,redirectUris,
+    clientName:clientName||'GitHub private pilot',authorizedAccount:account.login});
   return Object.freeze({client_id:clientId,client_secret:clientSecret,redirect_uris:[...redirectUris],
     token_endpoint_auth_method:'client_secret_post',
     grant_types:['authorization_code','refresh_token'],response_types:['code']});

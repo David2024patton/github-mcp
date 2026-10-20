@@ -579,11 +579,15 @@ export function createDb(sql = productionSql()) {
 
     // ---- Connector login store (A-3a). Codes, tokens and client secrets are stored as SHA-256 hashes only. ----
 
-    async createOAuthClient({ clientId, clientSecret, redirectUris, clientName }) {
+    async createOAuthClient({ clientId, clientSecret, redirectUris, clientName, authorizedAccount = null }) {
       if (!clientId || !clientSecret || !Array.isArray(redirectUris) || !redirectUris.length) {
         throw new TypeError('Missing OAuth client registration fields.');
       }
-      const data = JSON.stringify({ client_secret_hash: hashToken(clientSecret), redirect_uris: redirectUris, client_name: clientName || null });
+      if (authorizedAccount !== null && (typeof authorizedAccount !== 'string' ||
+          !/^[A-Za-z0-9-]{1,39}$/.test(authorizedAccount)))
+        throw new TypeError('Invalid OAuth client account binding.');
+      const data = JSON.stringify({ client_secret_hash: hashToken(clientSecret), redirect_uris: redirectUris,
+        client_name: clientName || null, authorized_account: authorizedAccount?.toLowerCase() ?? null });
       await sql`INSERT INTO oauth_clients (client_id, data) VALUES (${clientId}, ${data}::jsonb)`;
     },
 

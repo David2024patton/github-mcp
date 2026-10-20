@@ -69,9 +69,21 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
       row.app_id===Number(env.GITHUB_PILOT_APP_ID) &&
       row.installation_status==='active' &&
       Number.isSafeInteger(row.installation_id) && row.installation_id>0);
-    const selected=p.account!==undefined
-      ? candidates.find(row=>row.login.toLowerCase()===p.account.toLowerCase())
-      : candidates.length===1?candidates[0]:null;
+    // An account selected during provider-verified private registration is
+    // binding for this exact client. Standard MCP clients send no account
+    // input, and the anonymous consent form must not list tenant accounts.
+    // Older unbound test/pilot clients keep the fail-closed single-App rule.
+    const boundAccount=client.authorized_account;
+    if (boundAccount !== null && boundAccount !== undefined &&
+        (typeof boundAccount !== 'string' ||
+          !/^[a-z0-9-]{1,39}$/.test(boundAccount))) throw refused();
+    if (boundAccount && p.account!==undefined &&
+        p.account.toLowerCase()!==boundAccount.toLowerCase()) throw refused();
+    const selected=boundAccount
+      ? candidates.find(row=>row.login.toLowerCase()===boundAccount)
+      : p.account!==undefined
+        ? candidates.find(row=>row.login.toLowerCase()===p.account.toLowerCase())
+        : candidates.length===1?candidates[0]:null;
     if (!selected) throw refused();
     const account=await db.getAccount(selected.login);
     if (!account || account.credential_kind!=='app' ||
@@ -120,6 +132,8 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
     const account=await db.getAccount(flow.accountLogin);
     const client=await db.getOAuthClient(flow.clientId);
     if (!client || !client.redirect_uris.includes(flow.redirectUri) ||
+        (client.authorized_account !== null && client.authorized_account !== undefined &&
+          client.authorized_account !== flow.accountLogin.toLowerCase()) ||
         !account || account.credential_kind!=='app' ||
         account.app_id!==Number(env.GITHUB_PILOT_APP_ID) ||
         !Number.isSafeInteger(account.installation_id) || account.installation_id<=0 ||
