@@ -317,14 +317,20 @@ export function withTenantStorageLimits(db, sql, clientId) {
     async createJob(input) {
       if (!bound(input?.ttlMinutes ?? 1440,1,TENANT_RUNTIME_LIMITS.jobMaxTtlMinutes))
         throw new TenantCapacityError('job',86400);
-      const policy=await readTenantRuntimePolicy(sql);
-      await claimTenantBudget(sql,{operation:'job',clientId,window:'day',
-        clientMax:policy.jobsClientPerDay,tenantMax:policy.jobsTenantPerDay});
-      if (typeof input?.id!=='string' || !/^job_[0-9a-f]{16}$/.test(input.id))
-        throw new TypeError('Invalid tenant job identifier.');
+      // Reject malformed requests before reserving a slot or debiting daily
+      // capacity. A failed active-slot reservation must not burn daily quota.
+      if (typeof input?.id!=='string' || !/^job_[0-9a-f]{16}$/.test(input.id) ||
+          typeof input.connection!=='string' || !input.connection ||
+          typeof input.owner!=='string' || !input.owner ||
+          typeof input.kind!=='string' || !input.kind)
+        throw new TypeError('Invalid tenant job request.');
       await reserveTenantStorage(sql,'job',clientId,input.id,(input.ttlMinutes??1440)*60);
-      try { return await db.createJob(input); }
-      catch(error) {
+      try {
+        const policy=await readTenantRuntimePolicy(sql);
+        await claimTenantBudget(sql,{operation:'job',clientId,window:'day',
+          clientMax:policy.jobsClientPerDay,tenantMax:policy.jobsTenantPerDay});
+        return await db.createJob(input);
+      } catch(error) {
         await releaseTenantStorage(sql,'job',clientId,input.id).catch(()=>{});
         throw error;
       }
@@ -343,15 +349,17 @@ export function withTenantStorageLimits(db, sql, clientId) {
       const bytes=Buffer.byteLength(encoded);
       if (!bound(bytes,1,TENANT_RUNTIME_LIMITS.resultMaxBytes))
         throw new TenantCapacityError('result',86400);
-      const policy=await readTenantRuntimePolicy(sql);
-      await claimTenantBudget(sql,{operation:'result',clientId,amount:bytes,window:'day',
-        clientMax:policy.resultsClientBytesPerDay,
-        tenantMax:policy.resultsTenantBytesPerDay});
-      if(typeof input?.handle!=='string' || !/^res_[A-Za-z0-9_-]{20,64}$/.test(input.handle))
-        throw new TypeError('Invalid tenant result handle.');
+      if(typeof input?.handle!=='string' || !/^res_[A-Za-z0-9_-]{20,64}$/.test(input.handle) ||
+          typeof input.connection!=='string' || !input.connection)
+        throw new TypeError('Invalid tenant result handle or connection.');
       await reserveTenantStorage(sql,'result',clientId,input.handle,input.ttlSeconds??86400);
-      try { return await db.putResult(input); }
-      catch(error) {
+      try {
+        const policy=await readTenantRuntimePolicy(sql);
+        await claimTenantBudget(sql,{operation:'result',clientId,amount:bytes,window:'day',
+          clientMax:policy.resultsClientBytesPerDay,
+          tenantMax:policy.resultsTenantBytesPerDay});
+        return await db.putResult(input);
+      } catch(error) {
         await releaseTenantStorage(sql,'result',clientId,input.handle).catch(()=>{});
         throw error;
       }
