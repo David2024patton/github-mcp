@@ -30,6 +30,8 @@ export async function purgeRevokedTenantArtifacts({
     DELETE FROM gh_async_jobs RETURNING id
   ), results AS (
     DELETE FROM result_store RETURNING handle
+  ), slots AS (
+    DELETE FROM gh_tenant_storage_slots RETURNING resource_id
   )
   SELECT (SELECT count(*)::integer FROM codes) AS codes,
     (SELECT count(*)::integer FROM tokens) AS tokens,
