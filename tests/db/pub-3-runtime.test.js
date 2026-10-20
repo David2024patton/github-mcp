@@ -186,6 +186,55 @@ describe('PUB-3 tenant capacity with REAL PostgreSQL',()=>{
       .resolves.toBeUndefined();
   });
 
+  it('refuses malformed or slot-capped storage without spending the daily job/result budget',async()=>{
+    const client='reservation-order-'+randomBytes(7).toString('hex');
+    const facade=withTenantStorageLimits(dbA,sqlA,client);
+    const policy=await readTenantRuntimePolicy(sqlA);
+    const key=createHash('sha256').update(client).digest('hex').slice(0,24);
+    const scopeJob='job:client:'+key, scopeResult='result:client:'+key;
+    const job='job_'+randomBytes(8).toString('hex');
+    const result='res_'+randomBytes(16).toString('base64url');
+    await saveTenantRuntimePolicy(sqlA,{jobsClientPending:1,resultsClientActive:1});
+    try {
+      // Both malformed inputs previously spent the day quota before their
+      // identifier was validated. Neither may even reserve a slot.
+      await expect(facade.createJob({id:'bad',connection:'tenant-A',owner:'fixture',
+        kind:'check'})).rejects.toThrow(/Invalid tenant job/);
+      await expect(facade.putResult({handle:'bad',connection:'tenant-A',
+        body:{a:1}})).rejects.toThrow(/Invalid tenant result/);
+      let daily=await sqlA`SELECT scope FROM gh_tenant_budget_windows
+        WHERE scope=${scopeJob} OR scope=${scopeResult}`;
+      expect(daily).toEqual([]);
+
+      const heldJob='job_'+randomBytes(8).toString('hex');
+      const heldResult='res_'+randomBytes(16).toString('base64url');
+      await reserveTenantStorage(sqlA,'job',client,heldJob,60);
+      await reserveTenantStorage(sqlA,'result',client,heldResult,60);
+      await expect(facade.createJob({id:job,connection:'tenant-A',
+        owner:'fixture',kind:'check'})).rejects.toBeInstanceOf(TenantCapacityError);
+      await expect(facade.putResult({handle:result,connection:'tenant-A',
+        body:{ok:true}})).rejects.toBeInstanceOf(TenantCapacityError);
+      daily=await sqlA`SELECT scope FROM gh_tenant_budget_windows
+        WHERE scope=${scopeJob} OR scope=${scopeResult}`;
+      expect(daily).toEqual([]); // Slot refusals cannot exhaust daily quota.
+      await releaseTenantStorage(sqlA,'job',client,heldJob);
+      await releaseTenantStorage(sqlA,'result',client,heldResult);
+      await facade.createJob({id:job,connection:'tenant-A',owner:'fixture',
+        kind:'check',ttlMinutes:10});
+      await facade.putResult({handle:result,connection:'tenant-A',
+        body:{ok:true},ttlSeconds:600});
+      daily=await sqlA`SELECT scope,used::integer FROM gh_tenant_budget_windows
+        WHERE scope=${scopeJob} OR scope=${scopeResult} ORDER BY scope`;
+      expect(daily).toHaveLength(2);
+      expect(daily.find(x=>x.scope===scopeJob).used).toBe(1);
+      expect(daily.find(x=>x.scope===scopeResult).used).toBeGreaterThan(0);
+      expect((await dbA.getJob(job,'tenant-A')).state).toBe('pending');
+      expect((await dbA.getResult(result,'tenant-A')).body).toEqual({ok:true});
+    } finally {
+      await saveTenantRuntimePolicy(sqlA,policy);
+    }
+  });
+
   it('records only fixed, aggregate operational classes and can purge expired history',async()=>{
     await recordTenantMetric(sqlA,{event:'mcp',outcome:'ok',durationMs:17});
     await recordTenantMetric(sqlA,{event:'mcp',outcome:'ok',durationMs:20});
