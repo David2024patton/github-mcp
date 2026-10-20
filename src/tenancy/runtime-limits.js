@@ -249,6 +249,26 @@ export async function recordTenantMetric(sql, { event, outcome, durationMs }) {
   if (Math.random() < 1/128) await purgeExpiredTenantRuntime(sql).catch(()=>{});
 }
 
+/** Observe provider transport success/refusal/failure WITHOUT recording URLs,
+ * GitHub IDs, authorization headers, response bodies or exception text.
+ * Telemetry problems never alter a provider's returned result/error. */
+export function withTenantProviderMetrics(sql, fetchImpl) {
+  if (typeof sql !== 'function' || typeof fetchImpl !== 'function')
+    throw new TypeError('Private provider transport requires a tenant database and fetch.');
+  return async (...args) => {
+    const started=Date.now();
+    let outcome='error';
+    try {
+      const response=await fetchImpl(...args);
+      outcome=response?.ok===true ? 'ok' : 'refused';
+      return response;
+    } finally {
+      await recordTenantMetric(sql,{event:'provider',outcome,
+        durationMs:Math.max(0,Date.now()-started)}).catch(()=>{});
+    }
+  };
+}
+
 export async function purgeExpiredTenantRuntime(sql) {
   const buckets = await sql`DELETE FROM gh_tenant_budget_windows WHERE ctid IN (
     SELECT ctid FROM gh_tenant_budget_windows WHERE expires_at < now()
