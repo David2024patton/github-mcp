@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { claimTenantBudget, recordTenantMetric,
   withTenantStorageLimits, TenantCapacityError,
   TENANT_RUNTIME_LIMITS, validateTenantRuntimePolicy, readTenantRuntimePolicy,
-  saveTenantRuntimePolicy } from '../../src/tenancy/runtime-limits.js';
+  saveTenantRuntimePolicy, withTenantProviderMetrics } from '../../src/tenancy/runtime-limits.js';
 
 describe('PUB-3 scoped runtime fail-closed validation',()=>{
   it('rejects malformed/untrusted scope and nonfinite limits before SQL',async()=>{
@@ -47,6 +47,33 @@ describe('PUB-3 scoped runtime fail-closed validation',()=>{
     expect(sql).not.toHaveBeenCalled();
   });
 
+  it('classifies provider success, refusal and network exceptions without storing request secrets',async()=>{
+    const sql=vi.fn(async()=>[]);
+    const token='fixture-sensitive-github-token';
+    const secretUrl='https://api.github.com/repos/very-private-org/private-repo?token='+token;
+    let outcome=200;
+    const fetchImpl=vi.fn(async()=>{
+      if(outcome===0) throw new Error('transport echoed '+token);
+      return {ok:outcome===200,status:outcome};
+    });
+    const metered=withTenantProviderMetrics(sql,fetchImpl);
+    await expect(metered(secretUrl,{headers:{authorization:'Bearer '+token}}))
+      .resolves.toMatchObject({status:200});
+    outcome=403;
+    await expect(metered(secretUrl)).resolves.toMatchObject({status:403});
+    outcome=0;
+    await expect(metered(secretUrl)).rejects.toThrow(/transport echoed/);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(sql).toHaveBeenCalledTimes(3);
+    const paramText=sql.mock.calls.map(call=>call.slice(1).join('|')).join(' | ');
+    expect(paramText).toContain('provider');
+    for(const value of ['ok','refused','error'])expect(paramText).toContain(value);
+    expect(paramText).not.toContain(token);
+    expect(paramText).not.toContain('private-repo');
+    expect(paramText).not.toContain('very-private-org');
+    expect(paramText).not.toContain(secretUrl);
+  });
+
   it('never admits raw tokens, repository names, errors or URLs into telemetry event classes',async()=>{
     const sql=vi.fn();
     const bad=[
@@ -69,7 +96,7 @@ describe('PUB-3 scoped runtime fail-closed validation',()=>{
       {mcpClientPerMinute:1.5}, {mcpClientPerMinute:9999},
       {mcpClientPerMinute:700,mcpTenantPerMinute:400},
       {secretToken:'not safe'}, {oauthClientPerMinute:10,oauthTenantPerMinute:5}
-    ]) if(invalid!==null || true) expect(()=>validateTenantRuntimePolicy(invalid)).toThrow();
+    ]) expect(()=>validateTenantRuntimePolicy(invalid)).toThrow();
     const sql=vi.fn(async()=>[{value:{mcpClientPerMinute:150,mcpTenantPerMinute:800}}]);
     expect((await readTenantRuntimePolicy(sql)).mcpClientPerMinute).toBe(150);
     const store=vi.fn(async()=>[]);
