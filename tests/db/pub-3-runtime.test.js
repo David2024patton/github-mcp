@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import pg from 'pg';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { createDb } from '../../src/db.js';
@@ -147,11 +147,17 @@ describe('PUB-3 tenant capacity with REAL PostgreSQL',()=>{
       .resolves.toBeUndefined();
     await expect(reserveTenantStorage(sqlB,'job',key,jobs[0],60))
       .rejects.toBeInstanceOf(TenantCapacityError);
+    // An earlier test has a different client's pending A job. Check the
+    // current client independently rather than assuming the tenant was empty.
+    const scopedKey=createHash('sha256').update(key).digest('hex').slice(0,24);
+    const scoped=await sqlA`SELECT count(*)::integer AS n FROM gh_tenant_storage_slots
+      WHERE kind='job' AND client_key=${scopedKey} AND expires_at>now()`;
     const aRows=await sqlA`SELECT count(*)::integer AS n FROM gh_tenant_storage_slots
       WHERE kind='job' AND expires_at>now()`;
     const bRows=await sqlB`SELECT count(*)::integer AS n FROM gh_tenant_storage_slots
       WHERE kind='job' AND expires_at>now()`;
-    expect(aRows[0].n).toBe(TENANT_RUNTIME_LIMITS.jobsClientPending);
+    expect(scoped[0].n).toBe(TENANT_RUNTIME_LIMITS.jobsClientPending);
+    expect(aRows[0].n).toBe(TENANT_RUNTIME_LIMITS.jobsClientPending+1);
     expect(bRows[0].n).toBe(1);
   });
 
