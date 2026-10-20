@@ -23,6 +23,62 @@ export const TENANT_RUNTIME_LIMITS = Object.freeze({
   resultsTenantActive: 400
 });
 
+// Optional PRIVATE tenant-owner runtime policy. Defaults preserve current
+// source behavior; changes persist only inside that tenant's isolated schema.
+// The shared hosting/provider budgets remain independent of customer spend.
+const CONFIG_FIELDS = Object.freeze({
+  mcpClientPerMinute: 600,
+  mcpTenantPerMinute: 6000,
+  oauthClientPerMinute: 300,
+  oauthTenantPerMinute: 1500,
+  jobsClientPerDay: 320,
+  jobsTenantPerDay: 2000,
+  resultsClientBytesPerDay: 80 * 1024 * 1024,
+  resultsTenantBytesPerDay: 400 * 1024 * 1024,
+  jobsClientPending: 80,
+  jobsTenantPending: 640,
+  resultsClientActive: 1000,
+  resultsTenantActive: 4000
+});
+const CONFIG_KEY = 'private_runtime_limits';
+export function validateTenantRuntimePolicy(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      Object.getPrototypeOf(value) !== Object.prototype ||
+      Object.keys(value).some(k => !Object.hasOwn(CONFIG_FIELDS,k)))
+    throw new TypeError('Invalid private tenant capacity policy.');
+  const merged = { ...TENANT_RUNTIME_LIMITS };
+  for (const [key, val] of Object.entries(value)) {
+    if (!Number.isSafeInteger(val) || val < 1 || val > CONFIG_FIELDS[key])
+      throw new TypeError('Private tenant capacity policy has an invalid limit.');
+    merged[key] = val;
+  }
+  for (const [perClient, perTenant] of [
+    ['mcpClientPerMinute','mcpTenantPerMinute'],
+    ['oauthClientPerMinute','oauthTenantPerMinute'],
+    ['jobsClientPerDay','jobsTenantPerDay'],
+    ['resultsClientBytesPerDay','resultsTenantBytesPerDay'],
+    ['jobsClientPending','jobsTenantPending'],
+    ['resultsClientActive','resultsTenantActive']
+  ]) if (merged[perClient] > merged[perTenant])
+    throw new TypeError('Tenant capacity must not be lower than its per-client budget.');
+  return Object.freeze(merged);
+}
+export async function readTenantRuntimePolicy(sql) {
+  const rows = await sql`SELECT value FROM server_settings WHERE setting=${CONFIG_KEY}`;
+  if (rows.length > 1) throw new Error('Private tenant policy storage is inconsistent.');
+  return validateTenantRuntimePolicy(rows[0]?.value ?? {});
+}
+/** Call ONLY after the private setup has confirmed real owner authority.
+ * This store API never grants that authority merely by having a tenant ID. */
+export async function saveTenantRuntimePolicy(sql, limits) {
+  const policy = validateTenantRuntimePolicy(limits);
+  const overrides = Object.fromEntries(Object.keys(CONFIG_FIELDS).map(k=>[k,policy[k]]));
+  await sql`INSERT INTO server_settings(setting,value,updated_at)
+    VALUES(${CONFIG_KEY},${JSON.stringify(overrides)}::jsonb,now())
+    ON CONFLICT (setting) DO UPDATE SET value=EXCLUDED.value,updated_at=now()`;
+  return policy;
+}
+
 const allowedKinds = new Set(['mcp', 'oauth', 'job', 'result']);
 const allowedEvents = new Set(['mcp', 'oauth', 'job', 'result', 'provider', 'refresh']);
 const allowedOutcomes = new Set(['ok', 'refused', 'throttled', 'error']);
@@ -164,14 +220,14 @@ export async function claimTenantBudget(sql, { operation, clientId, amount = 1,
 }
 
 export async function admitTenantMcp(sql, clientId) {
+  const policy=await readTenantRuntimePolicy(sql);
   return claimTenantBudget(sql, { operation: 'mcp', clientId,
-    clientMax: TENANT_RUNTIME_LIMITS.mcpClientPerMinute,
-    tenantMax: TENANT_RUNTIME_LIMITS.mcpTenantPerMinute });
+    clientMax: policy.mcpClientPerMinute, tenantMax: policy.mcpTenantPerMinute });
 }
 export async function admitTenantOAuth(sql, clientId) {
+  const policy=await readTenantRuntimePolicy(sql);
   return claimTenantBudget(sql, { operation: 'oauth', clientId,
-    clientMax: TENANT_RUNTIME_LIMITS.oauthClientPerMinute,
-    tenantMax: TENANT_RUNTIME_LIMITS.oauthTenantPerMinute });
+    clientMax: policy.oauthClientPerMinute, tenantMax: policy.oauthTenantPerMinute });
 }
 
 /** Measurements are aggregate, per-tenant SQL namespace, and contain only
@@ -216,10 +272,9 @@ export async function reserveTenantStorage(sql, kind, clientId, resourceId, ttlS
       resourceId.length<20 || resourceId.length>80 ||
       !bound(ttlSeconds,1,86400)) throw new TypeError('Invalid tenant storage reservation.');
   const clientKey=digest(clientId);
-  const clientMax=kind==='job'?TENANT_RUNTIME_LIMITS.jobsClientPending:
-    TENANT_RUNTIME_LIMITS.resultsClientActive;
-  const tenantMax=kind==='job'?TENANT_RUNTIME_LIMITS.jobsTenantPending:
-    TENANT_RUNTIME_LIMITS.resultsTenantActive;
+  const policy=await readTenantRuntimePolicy(sql);
+  const clientMax=kind==='job'?policy.jobsClientPending:policy.resultsClientActive;
+  const tenantMax=kind==='job'?policy.jobsTenantPending:policy.resultsTenantActive;
   const rows=await sql`SELECT gh_claim_tenant_storage_slot(${kind},${clientKey},
     ${resourceId},${ttlSeconds},${tenantMax},${clientMax}) AS admitted`;
   if(rows.length!==1||rows[0].admitted!==true)
@@ -242,9 +297,9 @@ export function withTenantStorageLimits(db, sql, clientId) {
     async createJob(input) {
       if (!bound(input?.ttlMinutes ?? 1440,1,TENANT_RUNTIME_LIMITS.jobMaxTtlMinutes))
         throw new TenantCapacityError('job',86400);
+      const policy=await readTenantRuntimePolicy(sql);
       await claimTenantBudget(sql,{operation:'job',clientId,window:'day',
-        clientMax:TENANT_RUNTIME_LIMITS.jobsClientPerDay,
-        tenantMax:TENANT_RUNTIME_LIMITS.jobsTenantPerDay});
+        clientMax:policy.jobsClientPerDay,tenantMax:policy.jobsTenantPerDay});
       if (typeof input?.id!=='string' || !/^job_[0-9a-f]{16}$/.test(input.id))
         throw new TypeError('Invalid tenant job identifier.');
       await reserveTenantStorage(sql,'job',clientId,input.id,(input.ttlMinutes??1440)*60);
@@ -268,9 +323,10 @@ export function withTenantStorageLimits(db, sql, clientId) {
       const bytes=Buffer.byteLength(encoded);
       if (!bound(bytes,1,TENANT_RUNTIME_LIMITS.resultMaxBytes))
         throw new TenantCapacityError('result',86400);
+      const policy=await readTenantRuntimePolicy(sql);
       await claimTenantBudget(sql,{operation:'result',clientId,amount:bytes,window:'day',
-        clientMax:TENANT_RUNTIME_LIMITS.resultsClientBytesPerDay,
-        tenantMax:TENANT_RUNTIME_LIMITS.resultsTenantBytesPerDay});
+        clientMax:policy.resultsClientBytesPerDay,
+        tenantMax:policy.resultsTenantBytesPerDay});
       if(typeof input?.handle!=='string' || !/^res_[A-Za-z0-9_-]{20,64}$/.test(input.handle))
         throw new TypeError('Invalid tenant result handle.');
       await reserveTenantStorage(sql,'result',clientId,input.handle,input.ttlSeconds??86400);
