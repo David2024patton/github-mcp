@@ -6,6 +6,7 @@ import { createTenantDirectory, initializeProvisionedTenant,
   tenantConnectionString, tenantSchemaName } from '../../src/tenancy/directory.js';
 import { claimTenantBudget, admitTenantMcp, admitTenantOAuth,
   recordTenantMetric, purgeExpiredTenantRuntime, withTenantStorageLimits,
+  readTenantRuntimePolicy, saveTenantRuntimePolicy,
   reserveTenantStorage, releaseTenantStorage,
   TenantCapacityError, TENANT_RUNTIME_LIMITS } from '../../src/tenancy/runtime-limits.js';
 
@@ -204,4 +205,32 @@ describe('PUB-3 tenant capacity with REAL PostgreSQL',()=>{
     expect(await sqlB`SELECT count(*)::integer AS n FROM gh_tenant_runtime_metrics`)
       .toEqual([{n:0}]);
   });
+  it('persists independently configurable private owner capacity per tenant without affecting any other tenant',async()=>{
+    const originalB=await readTenantRuntimePolicy(sqlB);
+    expect(originalB.mcpClientPerMinute).toBe(TENANT_RUNTIME_LIMITS.mcpClientPerMinute);
+    const saved=await saveTenantRuntimePolicy(sqlA,{
+      mcpClientPerMinute:250,mcpTenantPerMinute:1000,
+      oauthClientPerMinute:2,oauthTenantPerMinute:3
+    });
+    expect(saved.mcpClientPerMinute).toBe(250);
+    expect((await readTenantRuntimePolicy(sqlA)).mcpTenantPerMinute).toBe(1000);
+    expect((await readTenantRuntimePolicy(sqlB)).mcpClientPerMinute).toBe(originalB.mcpClientPerMinute);
+    await expect(saveTenantRuntimePolicy(sqlA,{
+      mcpClientPerMinute:301,mcpTenantPerMinute:300
+    })).rejects.toThrow(/lower than/);
+    await expect(saveTenantRuntimePolicy(sqlA,{mcpClientPerMinute:9000}))
+      .rejects.toThrow(/invalid limit/);
+    expect((await readTenantRuntimePolicy(sqlA)).mcpClientPerMinute).toBe(250);
+    const same={operation:'oauth',clientId:'configured-ratelimit',tenantMax:3,clientMax:2};
+    await expect(claimTenantBudget(sqlA,same)).resolves.toMatchObject({allowed:true});
+    await expect(admitTenantOAuth(sqlA,same.clientId)).resolves.toMatchObject({allowed:true});
+    await expect(admitTenantOAuth(sqlA,same.clientId)).rejects.toBeInstanceOf(TenantCapacityError);
+    await expect(admitTenantOAuth(sqlA,'another-configured-client'))
+      .resolves.toMatchObject({allowed:true});
+    await expect(admitTenantOAuth(sqlA,'third-configured-client'))
+      .rejects.toBeInstanceOf(TenantCapacityError);
+    await expect(admitTenantOAuth(sqlB,'configured-ratelimit'))
+      .resolves.toMatchObject({allowed:true});
+  });
+
 });
