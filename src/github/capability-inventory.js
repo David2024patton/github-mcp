@@ -4,6 +4,8 @@ import {restOperations} from './openapi-index.js';
 import {githubGraphqlSchema} from './graphql-schema.js';
 import {curatedTool} from './hand-built-map.js';
 import {classifyUniversal, assertUniversalAuthority} from './operation-classes.js';
+import {curatedGraphqlMutation} from './mutation-classes.js';
+import {WRITE_SPECS} from './graphql-writes.js';
 
 export const SOURCE = Object.freeze({
   checked: '2026-10-21',
@@ -153,7 +155,7 @@ function restRecord(op, names) {
   if (op.deprecated) rec.evidence.conflicts.push('Provider operation is deprecated; deprecation is not retirement');
   return rec;
 }
-function gqlRecord(root, field) {
+function gqlRecord(root, field, names) {
   const key = gqlKey(root, field.name);
   const rec = baseline({key, interfaceName: 'graphql',
     family: 'graphql-' + root, effect: root === 'query' ? 'read' : 'write',
@@ -165,9 +167,34 @@ function gqlRecord(root, field) {
   rec.implementation.route = 'universal-candidate';
   rec.implementation.tool = root === 'query' ? 'github_graphql_read' : 'github_graphql_write';
   rec.implementation.source = 'src/tools/universal-graphql.js';
-  // GraphQL universal mutations require a writeSpec, ownership and before-state.
-  // Even queries have restricted root fields and bounded pagination.
-  rec.implementation.reason = 'Root field exists; scope, writeSpec, credential and shape not individually proved';
+  // GraphQL root schema existence alone is not scope proof: queries use
+  // independent account/root controls; mutations need either a specialized
+  // handler or the exact audited writeSpec. No writes are dispatched here.
+  rec.implementation.reason = 'Root field exists; scope, credential and request shape remain unverified';
+  if (root === 'mutation') {
+    const curated = curatedGraphqlMutation(field.name);
+    if (curated) {
+      rec.implementation.route = 'curated';
+      rec.implementation.tool = curated;
+      rec.implementation.source = 'src/github/mutation-classes.js';
+      if (names.has(curated)) {
+        rec.implementation.status = 'implemented-unverified';
+        rec.state = 'implemented-unverified';
+        rec.delivery.nextAction = 'Verify curated mutation target ownership, request shape and independent readback';
+      } else {
+        rec.implementation.reason = 'Orphan curated tool mapping: ' + curated;
+      }
+    } else if (WRITE_SPECS.has(field.name)) {
+      rec.implementation.universalCandidate = true;
+      rec.implementation.reason = 'A reviewed GraphQL writeSpec exists; exact credential, ownership and request shape still require verification';
+    } else {
+      rec.implementation.route = 'blocked-missing-write-spec';
+      rec.implementation.status = 'missing';
+      rec.state = 'missing';
+      rec.implementation.reason = 'No curated handler or guarded universal GraphQL writeSpec';
+      rec.delivery.nextAction = 'Review provider contract and add a scoped guarded writeSpec or specialized operation';
+    }
+  }
   rec.safety.spending = root === 'mutation' ? 'possible-or-unknown' : 'none-from-read';
   rec.safety.productionRisk = root === 'mutation';
   rec.safety.accessRisk = root === 'mutation';
@@ -237,7 +264,7 @@ export function buildCapabilityInventory({
   const records = rest.map(op => restRecord(op, names));
   for (const root of ROOT_TYPES) {
     const type = root === 'query' ? schema.getQueryType() : schema.getMutationType();
-    records.push(...Object.values(type?.getFields() || {}).map(field => gqlRecord(root, field)));
+    records.push(...Object.values(type?.getFields() || {}).map(field => gqlRecord(root, field, names)));
   }
   records.push(...workflows.map(workflowRecord));
   const map = new Map(records.map(x => [x.key, x]));
