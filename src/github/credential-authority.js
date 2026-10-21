@@ -15,8 +15,12 @@ const ALTERNATIVES=Object.freeze({
 const hostPattern=/^(?:github\.com|[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?)$/;
 const same=(x,y)=>String(x??'').toLowerCase()===String(y??'');
 const validId=id=>Number.isSafeInteger(id)&&id>0;
-const matches=(required,granted)=>!required?.length ||
+const hasEveryPermission=(required,granted)=>!required?.length ||
   (Array.isArray(granted)&&required.every(value=>granted.includes(value)));
+// The CAP-1 official OAuth scope array is a set of documented alternatives,
+// not an instruction to accumulate ALL scopes. Never infer missing scopes.
+const hasDocumentedScope=(alternatives,granted)=>!alternatives?.length ||
+  (Array.isArray(granted)&&alternatives.some(value=>granted.includes(value)));
 const refusal=(code,explanation)=>({status:'denied',code,explanation});
 const unknown=(code,explanation)=>({status:'unknown',code,explanation});
 
@@ -30,8 +34,8 @@ export function resolveDocumentedCredential({
   operation,host='github.com',account,principal,grants=[],
   requestedKind=null,resource=null,now=Date.now()
 }={}){
-  if(typeof operation!=='string'||!operation.startsWith('GET ')&&
-      !/^(POST|PUT|PATCH|DELETE|HEAD|OPTIONS) \//.test(operation))
+  if(typeof operation!=='string'||
+      !/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) \/[^\s]*$/.test(operation))
     throw new TypeError('Use a pinned REST METHOD /path.');
   if(typeof host!=='string'||!hostPattern.test(host)||host.includes('..')||
       host.includes(':')||host.includes('/')) return refusal('invalid_host','The selected provider host is invalid.');
@@ -91,7 +95,8 @@ export function resolveDocumentedCredential({
       if(grant.verification!=='identity-and-capability-readback'){
         blocked.push({kind,reason:'capability_not_verified'});continue;
       }
-      if(!matches(doc.permissions,grant.permissions)||!matches(doc.scopes,grant.scopes)){
+      if(!hasEveryPermission(doc.permissions,grant.permissions)||
+          !hasDocumentedScope(doc.scopes,grant.scopes)){
         blocked.push({kind,reason:'permission_or_scope_missing'});continue;
       }
       eligible.push({kind,alias:ALTERNATIVES[kind]??kind,host,operation,resource,

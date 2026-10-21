@@ -57,6 +57,18 @@ describe('CAP-3 strict source-pinned credential eligibility',()=>{
     expect(run({account:{...account,accountId:0}}).code).toBe('account_unverified');
     expect(run({grants:null}).code).toBe('grant_registry_unavailable');
   });
+  it('interprets documented OAuth scopes as alternatives and never accepts an absent scope',()=>{
+    const oauth=data('oauth_app');
+    const check=scopes=>run({operation:'GET /user',requestedKind:'oauth_app',
+      grants:[{...oauth,scopes}]});
+    expect(check(['read:user'])).toMatchObject({status:'verified-for-scope'});
+    expect(check(['user'])).toMatchObject({status:'verified-for-scope'});
+    expect(check([])).toMatchObject({status:'needs-consent',
+      missing:[{reason:'permission_or_scope_missing'}]});
+    expect(check(['repo'])).toMatchObject({status:'needs-consent',
+      missing:[{reason:'permission_or_scope_missing'}]});
+    expect(()=>run({operation:'GET user'})).toThrow(/pinned REST/);
+  });
   it('keeps service App JWT and unknown permissions independently gated',()=>{
     const x=data('app_jwt');
     expect(run({operation:'GET /app',requestedKind:'app_jwt',grants:[x]})).toMatchObject({
