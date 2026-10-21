@@ -36,9 +36,9 @@ settings, access or spending always shows you a preview and waits for your OK.
 | Anything else on GitHub | Universal tools search the pinned REST/GraphQL surfaces; only operations with supported credentials, scoped dispatch and all safety checks can actually run | U |
 
 
-## Capability inventory — implementation candidate, October 21, 2026
+## Capability inventory — source reviewed for PR #272, October 21, 2026
 
-The new CAP-1 engineering branch adds `node scripts/capability-inventory.mjs --summary` and `--json` for a versioned operation-by-operation gap inventory. This is **not** an end-user authorization or proof of GitHub provider access. Separate statuses identify a real curated implementation, a merely eligible universal route, unknown credential or enterprise availability, and independent deployed acceptance. No percentage of GitHub functionality is claimed from the current named-tool count. Standard Full and the optional additional-credential setup remain CAP-2/CAP-3 work; using this report does not enroll a token, start God Mode, or enable production.
+The CAP-1 source implementation adds `node scripts/capability-inventory.mjs --summary` and `--json` for a versioned operation-by-operation gap inventory. This is **not** an end-user authorization or proof of GitHub provider access. Separate statuses identify a real curated implementation, a merely eligible universal route, unknown credential or enterprise availability, and independent deployed acceptance. No percentage of GitHub functionality is claimed from the current named-tool count. Standard Full and the optional additional-credential setup remain CAP-2/CAP-3 work; using this report does not enroll a token, start God Mode, or enable production.
 
 ## Live testing status — 2026-10-12 UTC
 

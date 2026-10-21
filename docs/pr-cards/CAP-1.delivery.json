@@ -1,0 +1,36 @@
+{
+  "subsections": [
+    {
+      "id": "CAP-1",
+      "criteria": [
+        {
+          "criterion": "Reproducible schema enumeration and orphan/duplicate/missing-row checks.",
+          "evidence": "Static sourceKeys and buildCapabilityInventory enumerate 1,232 pinned REST method/paths, 309 GraphQL query/mutation root fields and eight separately referenced Git/registry/MCP workflows (1,549 distinct rows); capability-inventory.test.js tests duplicate, missing, orphan and invalid entries. Commit 3f4142f passed both full unit shards and check validator in Actions 39648170184."
+        },
+        {
+          "criterion": "Every source operation reconciled with dispositions (unknown/unresolved and UI-only must remain visible; no invented coverage).",
+          "evidence": "Every pinned key has a family, version, source URL, host distinctions, eight credential cells, prerequisites, dispatch disposition, safety, original CAP owner and separately open live evidence. Unknown is an explicit state, not manufactured support; curated mappings remain implemented-unverified, finder candidates never count as dispatch. Source test verifies full 1,549-row parity and reports no verified live operations."
+        },
+        {
+          "criterion": "A machine-generated family gap report, reconciling to the operation records.",
+          "evidence": "The source CLI emits deterministic --json, --validate and --summary. Unit regressions compare the per-family sums against all rows, reject tampered counts, report missing/verified/retired/UI-only/unresolved categories, and include separately counted candidate routes, unknown credentials and official-source conflict rows. Exact original source check succeeded in Actions 39648170184."
+        },
+        {
+          "criterion": "Credential conflicts explicitly unresolved, with no invented coverage percentage; separate genuine implementation and live evidence.",
+          "evidence": "Audited 2026-03-10 enterprise audit and Packages conflicts remain per-operation unresolved; the validator rejects missing records or false credential grants. Fifteen source-reviewed token decisions for GET/PATCH /user, GET /app and GET /repos/{owner}/{repo} are safeguarded against silent permission/scope override. Functional coverageRatio stays null; provider tests, actual connections and deployed acceptance remain independently pending."
+        }
+      ],
+      "remainingEngineering": []
+    }
+  ],
+  "productionAdded": 522,
+  "productionRemoved": 0,
+  "newEngineering": "A new 460-line source inventory engine and 62-line reviewed-credential ledger, plus its deterministic CLI and regression tests, index reconciliation and owner guide.",
+  "planComparison": "The frozen estimate was 650 production additions. Actual CAP-1 source additions are 522 and removals zero; the whole original subsection and all four acceptance criteria remain unchanged, with live/provider acceptance separately OPEN.",
+  "relatedWorkDecision": "One source-complete cohesive original CAP-1 subsection with 1,549 validated operation records, 15 reviewed exact credential cells and guarded provenance. PUB-4 remains a separate independent draft; CAP-2 and CAP-3 remain dependent next outcomes.",
+  "decision": "SUBSTANTIAL_EXCEPTION",
+  "exceptionEvidence": [
+    "CAP-1 is one irreducible original subsection whose whole 1,549-operation evidence index, strict validator, permission conflict proofs and reviewable family report form one usable prerequisite for CAP-2 and CAP-3; splitting helper functions would miscount scope.",
+    "522 meaningful production source additions plus deterministic CLI and source-shape regression tests, with all required exact-head CI families green on the preceding 3f4142f source revision; no filler or artificial section splitting."
+  ]
+}

@@ -53,6 +53,12 @@ Read only: `src/github/openapi-index.js`, `src/github/graphql-schema.js`, `src/g
 - The static validator compares each of these official-source decisions with every generated row. It refuses silently deleted or altered decisions, contradictory credential annotations or changed permission/scope contracts. Existing unresolved enterprise audit and Packages conflicts remain unresolved, not silently promoted into `supported`. The report separately counts reviewed credential cells, unknown credential cells and unresolved conflicts.
 - A documented provider token type is **not** a scoped registered handler, enrolled connection, provider success or deployed acceptance. Source-only CAP-1 criteria need exact-head CI and bundle delivery review; dependent CAP-2/3 and live PUB-4 remain open.
 
+## Source delivery and original acceptance (reviewed prior source head `3f4142f`)
+
+- All four frozen original CAP-1 criteria have their original texts and individual source/test evidence in `docs/pr-cards/CAP-1.delivery.json`; production additions/removals 522/0, one inseparable substantial CAP-1 engineering unit. CI 39648170184 passed both unit shards, check, DB, shapes, RTC and aggregate; Daily live policy 39648170189 passed release-policy at exactly `3f4142f`.
+- The final checked PR head runs the repo's actual frozen-plan/delivery comparator inside `npm run check`; source comparison, all full gates, self-review and exact-head expected-SHA merge remain mandatory. This is source completion only. Operation rows with unverified credentials are explicitly unresolved and belong to their originally documented CAP-2/CAP-3/CAP-4 follow-ups, not fake verified coverage.
+- No provider/customer account setup, spend, production write, private client device acceptance or independent live acceptance has been run. PUB-4 and its mobile/desktop real-client proof remain an unaffected, independent draft.
+
 <!-- bundle-plan:start -->
 ```json
 {
