@@ -36,6 +36,10 @@ settings, access or spending always shows you a preview and waits for your OK.
 | Anything else on GitHub | Universal tools search the pinned REST/GraphQL surfaces; only operations with supported credentials, scoped dispatch and all safety checks can actually run | U |
 
 
+## Standard Full access diagnosis — CAP-2 engineering in progress
+
+The ordinary GitHub consent form already supports Full, with Everyday as its default. The new source describes Full as enabling requests allowed by a real provider grant and existing user policy, **not** creating provider permissions or bypassing approval. You may ask `github_check_permissions` with a `tool` such as `github_pr_merge` and a selected `account` to see recorded profile, credential, mode and resource/policy blockers. Results showing no source blocker remain **unverified** until an authorized scoped provider call and independent readback. This feature is not deployed or source-accepted until CAP-2 CI and reviews complete.
+
 ## Capability inventory — source reviewed for PR #272, October 21, 2026
 
 The CAP-1 source implementation adds `node scripts/capability-inventory.mjs --summary` and `--json` for a versioned operation-by-operation gap inventory. This is **not** an end-user authorization or proof of GitHub provider access. Separate statuses identify a real curated implementation, a merely eligible universal route, unknown credential or enterprise availability, and independent deployed acceptance. No percentage of GitHub functionality is claimed from the current named-tool count. Standard Full and the optional additional-credential setup remain CAP-2/CAP-3 work; using this report does not enroll a token, start God Mode, or enable production.

@@ -6,6 +6,7 @@ import { formatDenver } from '../github/errors.js';
 import { AREAS, LEVELS } from '../data/permission-needs.js';
 import { MAP_STATUS, SETTINGS, findSettings, fill } from '../data/dashboard-map.js';
 import { enrolledGuideUser, restrictUnknownUserLink } from './guide-personal.js';
+import {effectiveToolAccess} from '../github/effective-access.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
 const when = (value) => (value ? formatDenver(value) : null);
@@ -33,6 +34,8 @@ export function compareArea(area, granted) {
 }
 
 async function checkPermissions(args, ctx) {
+  const chosen=args.tool===undefined?null:ctx.registry?.tools?.find(t=>t.name===args.tool);
+  if(args.tool!==undefined&&!chosen)throw new TypeError('That GitHub tool is not registered. Search with github_search_tools.');
   if (args.area && !AREAS.some((a) => a.id === args.area)) throw new TypeError(`Unknown area "${args.area}". Areas: ${AREAS.map((a) => a.id).join(', ')}.`);
   const rows = await accountsFor(ctx, args.account);
   const areas = AREAS.filter((a) => !args.area || a.id === args.area);
@@ -61,6 +64,10 @@ async function checkPermissions(args, ctx) {
         : results.filter((r) => r.missing.length || r.capability)
     };
   });
+  if(chosen) for(const entry of accounts){
+    const account=rows.find(row=>sameLogin(row.login,entry.login));
+    entry.effective_access=effectiveToolAccess({connection:ctx.connection,account,tool:chosen});
+  }
   return { checked_areas: areas.length, accounts };
 }
 
@@ -118,8 +125,9 @@ export const tools = [
   {
     name: 'github_check_permissions',
     area: 'server', audience: ['O', 'B'],
-    description: 'Compare what each GitHub App installation may do with what every tool area needs; names the exact permission to add.',
-    inputSchema: { type: 'object', properties: { account: { type: 'string', maxLength: 39 }, area: { type: 'string', maxLength: 40, description: 'One area, e.g. pull-requests' }, detail: DETAIL }, additionalProperties: false },
+    description: 'Check App grants and a named tool\'s profile, mode, stored credential and unverified guard layers.',
+    usesRegistry: true,
+    inputSchema: { type: 'object', properties: { account: { type: 'string', maxLength: 39 }, area: { type: 'string', maxLength: 40, description: 'One area, e.g. pull-requests' }, tool: { type: 'string', maxLength: 80, description: 'Registered tool to diagnose for each scoped account' }, detail: DETAIL }, additionalProperties: false },
     annotations: readOnly
   },
   {

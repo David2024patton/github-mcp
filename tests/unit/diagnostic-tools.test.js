@@ -6,6 +6,10 @@ import { MANIFEST_PERMISSIONS } from '../../src/github/app-manifest.js';
 import { parseCatalog } from '../../scripts/check-writes.mjs';
 import { makeWorld, parse } from '../../test/helpers/write-contract.js';
 import fs from 'node:fs';
+import {effectiveToolAccess} from '../../src/github/effective-access.js';
+import {registry} from '../../src/tools/index.js';
+import {createGithubPolicy} from '../../src/oauth/policy.js';
+import {createDispatch} from '../../src/tools/dispatch.js';
 
 const CATALOG = parseCatalog(fs.readFileSync(new URL('../../docs/TOOL-CATALOG.md', import.meta.url), 'utf8'));
 const SECRET = [/gh[pousr]_[A-Za-z0-9]{8,}/, /github_pat_[A-Za-z0-9_]{8,}/];
@@ -107,6 +111,53 @@ describe('github_check_permissions', () => {
     const w = await appWorld({ ...MANIFEST_PERMISSIONS });
     await expect(call('github_check_permissions', w, { area: 'nope' })).rejects.toThrow(/Unknown area/);
     await expect(call('github_check_permissions', w, { account: 'other-org' })).rejects.toThrow(/not one of the GitHub accounts/);
+  });
+});
+
+describe('CAP-2 Standard Full diagnosis without token or permission escalation',()=>{
+  const tool={name:'github_test_write',writes:true,profiles:['full'],declarations:{cred:'I',production:'always'}};
+  it('shows ordinary Full in owner sign-in without changing the Everyday default or production gate',()=>{
+    const policy=createGithubPolicy({env:{VERCEL_ENV:'production'}});
+    const account={login:'example-org',label:'Example',is_default:true,production_enabled:false};
+    const html=policy.page({params:{mode:'preview'},choices:[account],client:{client_name:'ChatGPT'}});
+    expect(html).toContain('Full — every operation allowed by your real GitHub grant and user policy');
+    expect(html).toContain('no God Mode or extra token is required');
+    expect(html).toContain('value="everyday" selected');
+    expect(html).not.toContain('value="full" selected');
+    const args={'acct:example-org':'on',default_account:'example-org',mode:'preview',profile:'full',listing:'compact'};
+    expect(policy.validate({params:args,choices:[account]}).settings.profile).toBe('full');
+    expect(policy.validate({params:{...args,mode:'production'},choices:[account]}).error).toContain('not turned on');
+  });
+  it('never confuses stored credentials with verified grants or silently widens a scope',()=>{
+    const account={login:'example-org',credential_kind:'app',app_id:500,installation_id:501,
+      installation_status:'active',repository_selection:'selected',has_user_token:false};
+    const c={accounts:['example-org'],profile:'read_only',mode:'preview'};
+    const denied=effectiveToolAccess({connection:c,account,tool});
+    expect(denied.refusedBy).toEqual(['profile','mode']);
+    expect(denied.credential.state).toBe('stored-unverified');
+    expect(denied.resource.state).toBe('not-enumerated');
+    const full=effectiveToolAccess({connection:{...c,profile:'full',mode:'production'},account,tool});
+    expect(full.status).toBe('unverified');
+    expect(full.permissionProof).toBe('not-performed');
+    const user=effectiveToolAccess({connection:{...c,profile:'full'},account,
+      tool:{...tool,declarations:{cred:'U',production:'never'}}});
+    expect(user.refusedBy).toEqual(['credential']);
+    expect(()=>effectiveToolAccess({connection:c,account:{...account,login:'foreign'},tool})).toThrow(/not in this connection/);
+  });
+  it('routes a source-layer refusal identically by direct, MCP dispatcher and github_call',async()=>{
+    const w=await appWorld({metadata:'read'});
+    const ctx={...w.ctx,registry};
+    const args={account:'example-org',tool:'github_pr_merge'};
+    const direct=await handlers.github_check_permissions(args,ctx);
+    expect(direct.accounts[0].effective_access.refusedBy).toContain('profile');
+    const dispatch=createDispatch({env:w.ctx.env,credentials:w.credentials,fetch:w.gh.fetch});
+    const plain=await dispatch({registry,name:'github_check_permissions',args,connection:w.connection,db:w.db});
+    expect(plain.structuredContent.accounts[0].effective_access.refusedBy).toContain('profile');
+    const meta=await dispatch({registry,name:'github_call',args:{name:'github_check_permissions',args},
+      connection:w.connection,db:w.db});
+    expect(meta.structuredContent.accounts[0].effective_access.refusedBy).toContain('profile');
+    expect(w.gh.calls).toEqual([]);
+    await expect(handlers.github_check_permissions({account:'foreign',tool:'github_pr_merge'},ctx)).rejects.toThrow(/not one/);
   });
 });
 

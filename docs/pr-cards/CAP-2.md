@@ -34,6 +34,12 @@ Read only the named existing seams while implementing: `src/oauth/policy.js`, `s
 
 Run `npm run session:bundle -- --card docs/pr-cards/CAP-2.md` at baseline before the plan commit; retain this first plan SHA. During coding run focused unit/DB/RTC and route-shape regressions. Final tree needs `npm run check`, `npm test`, `npm run test:db`, `npm run test:shapes`, `npm run test:rtc`, frozen delivery comparison, exact-head `ci` and `release-policy`, reviews and expected-head merge. Source tests never substitute for deployed device/enterprise acceptance.
 
+## Initial CAP-2 source checkpoint — acceptance incomplete
+
+- Ordinary owner GitHub login now identifies Full as part of regular setup, with Everyday still preselected. Existing explicit production permission, separate provider grants and restricted resources remain unchanged.
+- `github_check_permissions` can additionally inspect an exact registered tool. It reports the caller's scoped account, connection profile, mode, stored I/U/P/K credential presence, incomplete repository selection and policies as independent layers; `stored-unverified` is never treated as provider operation success. This is readonly and does not store/reissue/revoke a token or widen a permission.
+- New unit regressions cover ordinary Full setup, persisted Everyday, disabled PRODUCTION, foreign-account refusal and the same source diagnostic through direct, MCP dispatcher and `github_call`. Other standalone HTTP/RTC and genuine multi-tenant, permission-upgrade/callback acceptance remain open. **No full CAP-2 claim or source test pass yet.**
+
 <!-- bundle-plan:start -->
 ```json
 {

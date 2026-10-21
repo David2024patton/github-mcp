@@ -30,11 +30,14 @@ export function createGithubPolicy({ env = process.env } = {}) {
       }).join('');
       const defaults = accounts.map((a) => option(a.login, a.login === defaultLogin, `${a.label} (${a.login})`)).join('');
       const modes = CONNECTION_MODES.filter((m) => m === 'preview' || productionOffered).map((m) => option(m, params.mode === m)).join('');
-      const profiles = CONNECTION_PROFILES.map((v) => option(v, (params.profile || 'everyday') === v)).join('');
+      const names={read_only:'Read only — never change GitHub',everyday:'Everyday — routine changes (default)',
+        full:'Full — every operation allowed by your real GitHub grant and user policy'};
+      const profiles = CONNECTION_PROFILES.map(v=>option(v,(params.profile||'everyday')===v,names[v]||v)).join('');
       const listings = CONNECTION_LISTINGS.map((v) => option(v, listing === v)).join('');
       const intro = accounts.length
         ? '<p>Choose which GitHub accounts this AI connection may use, its default account, and its permissions.</p>'
         : '<p>No GitHub accounts are connected yet. Add an account securely through the setup page first.</p>';
+      const profileNote='<small>Full is included in normal GitHub connection setup; no God Mode or extra token is required. Full never changes your provider grant, installed repositories, production permissions or chosen safety limits.</small>';
       const modeNote = isProductionDeployment(env)
         ? '<small>Production works only for accounts where it has been turned on.</small>'
         : '<small>This is a preview deployment: production mode is not available here.</small>';
@@ -46,7 +49,7 @@ export function createGithubPolicy({ env = process.env } = {}) {
         `<fieldset><legend>GitHub accounts</legend>${rows}</fieldset>` +
         `<label>Default account<select name="default_account">${defaults}</select></label>` +
         `<label>Mode<select name="mode">${modes}</select></label>${modeNote}` +
-        `<label>Profile<select name="profile">${profiles}</select></label>` +
+        `<label>Profile<select name="profile">${profiles}</select></label>${profileNote}` +
         `<label>Tool listing<select name="listing">${listings}</select></label>` +
         '<label>Administrator passphrase<input type="password" name="passphrase" required autocomplete="current-password"></label>' +
         `<button type="submit"${accounts.length ? '' : ' disabled'}>Authorize this connection</button></form></body></html>`;
