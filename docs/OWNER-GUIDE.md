@@ -38,7 +38,7 @@ settings, access or spending always shows you a preview and waits for your OK.
 
 ## Standard Full access diagnosis — CAP-2 engineering in progress
 
-The ordinary GitHub consent form already supports Full, with Everyday as its default. The new source describes Full as enabling requests allowed by a real provider grant and existing user policy, **not** creating provider permissions or bypassing approval. You may ask `github_check_permissions` with a `tool` such as `github_pr_merge` and a selected `account` to see recorded profile, credential, mode and resource/policy blockers. Results showing no source blocker remain **unverified** until an authorized scoped provider call and independent readback. This feature is not deployed or source-accepted until CAP-2 CI and reviews complete.
+The ordinary GitHub consent form already supports Full, with Everyday as its default. The new source describes Full as enabling requests allowed by a real provider grant and existing user policy, **not** creating provider permissions or bypassing approval. You may ask `github_check_permissions` with a `tool` such as `github_pr_merge` and a selected `account` to see recorded profile, credential, mode and resource/policy blockers. You can also include an exact pinned REST `operation` (for example `GET /repos/{owner}/{repo}`) to show audited GitHub credential documentation separately from your actual, unverified grant; a specific account and tool or area are required. Results showing no source blocker remain **unverified** until an authorized scoped provider call and independent readback. This feature is not deployed or source-accepted until CAP-2 CI and reviews complete.
 
 ## Capability inventory — source reviewed for PR #272, October 21, 2026
 

@@ -6,7 +6,7 @@ import { MANIFEST_PERMISSIONS } from '../../src/github/app-manifest.js';
 import { parseCatalog } from '../../scripts/check-writes.mjs';
 import { makeWorld, parse } from '../../test/helpers/write-contract.js';
 import fs from 'node:fs';
-import {effectiveToolAccess} from '../../src/github/effective-access.js';
+import {effectiveToolAccess,documentedOperationAccess} from '../../src/github/effective-access.js';
 import {registry} from '../../src/tools/index.js';
 import {createGithubPolicy} from '../../src/oauth/policy.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
@@ -160,6 +160,42 @@ describe('CAP-2 Standard Full diagnosis without token or permission escalation',
     expect(meta.structuredContent.accounts[0].effective_access.refusedBy).toContain('profile');
     expect(w.gh.calls).toEqual([]);
     await expect(handlers.github_check_permissions({account:'foreign',tool:'github_pr_merge'},ctx)).rejects.toThrow(/not one/);
+  });
+});
+
+describe('CAP-2 operation evidence without permission inflation',()=>{
+  it('separates documented token support from effective provider execution',()=>{
+    const account={login:'example-org',credential_kind:'app',installation_status:'active'};
+    const repo=documentedOperationAccess({account,route:'GET /repos/{owner}/{repo}'});
+    expect(repo).toMatchObject({documentation:'operation-reviewed',
+      I:{credentialType:'app_installation',documentation:'supported',grantedToThisConnection:'not-proven'},
+      U:{documentation:'supported'},otherCredential:null,
+      matchingToolDispatch:'not-verified',effectiveProviderExecution:'not-verified'});
+    expect(repo.I.requiredPermissions).toEqual(['repository:metadata:read']);
+    expect(repo.restrictedKinds.K).toContain('never an API fallback');
+    const app=documentedOperationAccess({account,route:'GET /app'});
+    expect(app).toMatchObject({I:{documentation:'unsupported'},U:{documentation:'unsupported'},
+      otherCredential:{credentialType:'app_jwt',documentation:'supported'}});
+    const fine=documentedOperationAccess({account:{...account,credential_kind:'fine_grained'},route:'GET /user'});
+    expect(fine.I.credentialType).toBe('fine_grained_pat');
+    const unreviewed=documentedOperationAccess({account,route:'GET /unreviewed'});
+    expect(unreviewed).toMatchObject({documentation:'unknown',I:{documentation:'unknown'},
+      effectiveProviderExecution:'not-verified'});
+  });
+  it('only reports exact pinned routes for one connection-selected account, never contacting GitHub',async()=>{
+    const w=await appWorld({...MANIFEST_PERMISSIONS});
+    const args={account:'example-org',tool:'github_repo_get',operation:'GET /repos/{owner}/{repo}'};
+    const result=await handlers.github_check_permissions(args,w.ctx);
+    expect(result.checked_areas).toBe(1);
+    expect(result.accounts[0].operation_evidence.I.documentation).toBe('supported');
+    expect(result.accounts[0].operation_evidence.effectiveProviderExecution).toBe('not-verified');
+    expect(w.gh.calls).toHaveLength(0);
+    await expect(handlers.github_check_permissions({operation:args.operation},w.ctx))
+      .rejects.toThrow(/select one connection account/);
+    await expect(handlers.github_check_permissions({...args,account:'foreign'},w.ctx))
+      .rejects.toThrow(/not one of the GitHub accounts/);
+    await expect(handlers.github_check_permissions({...args,operation:'GET /nonexistent-route'},w.ctx))
+      .rejects.toThrow(/absent from pinned/);
   });
 });
 

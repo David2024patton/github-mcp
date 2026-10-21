@@ -1,6 +1,7 @@
 // CAP-2: static, scoped explanation. This never fetches a bearer, executes a
 // provider action, expands a grant or claims that a registered tool is usable.
 import {isToolVisible} from '../core/registry.js';
+import {reviewedRestEvidence} from './capability-evidence.js';
 const ADVICE={
   I:'Accept the exact GitHub App installation and its permissions for this account, then recheck; installation alone is not provider acceptance.',
   U:'Sign in to GitHub through this server-owned consent flow and reverify the exact user and installation.',
@@ -39,4 +40,28 @@ export function effectiveToolAccess({connection,account,tool}){
     permissionProof:'not-performed',
     note:refusedBy.length?'Only these source-layer denials are known; other provider and policy layers remain unverified.'
       :'No listed source blocker was found. Actual GitHub capability is NOT verified.'};
+}
+
+// Source-pinned REST documentation is not an access token or a verified
+// provider request. Never infer one credential may be substituted for another.
+export function documentedOperationAccess({account,route}){
+  if(!account?.login || typeof route!=='string')throw new TypeError('A scoped account and exact operation are required.');
+  const reviewed=reviewedRestEvidence(route);
+  const mainType=account.credential_kind==='fine_grained'?'fine_grained_pat':'app_installation';
+  const detail=type=>{
+    const value=reviewed?.decisions?.[type];
+    return {credentialType:type,documentation:value?.disposition??'unknown',
+      requiredPermissions:value?.permissions??null,documentedScopes:value?.scopes??null,
+      ...(value?.note?{note:value.note}:{}),grantedToThisConnection:'not-proven'};
+  };
+  const appJwt=detail('app_jwt');
+  return {operation:route,sourceVersion:'2026-03-10',
+    documentation:reviewed?'operation-reviewed':'unknown',
+    ...(reviewed?{officialUrl:reviewed.officialUrl,checked:reviewed.reviewed}:{}),
+    I:detail(mainType),U:detail('app_user'),
+    otherCredential:appJwt.documentation==='supported'?appJwt:null,
+    restrictedKinds:{K:'notifications-only; never an API fallback',
+      P:'package-only; never an API fallback'},
+    matchingToolDispatch:'not-verified',effectiveProviderExecution:'not-verified',
+    note:'Official token compatibility is not proof of this user\'s grant, target scope, user policy or actual provider readback.'};
 }

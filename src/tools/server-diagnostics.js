@@ -6,7 +6,8 @@ import { formatDenver } from '../github/errors.js';
 import { AREAS, LEVELS } from '../data/permission-needs.js';
 import { MAP_STATUS, SETTINGS, findSettings, fill } from '../data/dashboard-map.js';
 import { enrolledGuideUser, restrictUnknownUserLink } from './guide-personal.js';
-import {effectiveToolAccess} from '../github/effective-access.js';
+import {effectiveToolAccess,documentedOperationAccess} from '../github/effective-access.js';
+import {restOperation} from '../github/openapi-index.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
 const when = (value) => (value ? formatDenver(value) : null);
@@ -43,6 +44,13 @@ async function checkPermissions(args, ctx) {
   const chosen=args.tool===undefined?null:registeredTools.tools.find(t=>t.name===args.tool);
   if(args.tool!==undefined&&!chosen)throw new TypeError('That GitHub tool is not registered. Search with github_search_tools.');
   if (args.area && !AREAS.some((a) => a.id === args.area)) throw new TypeError(`Unknown area "${args.area}". Areas: ${AREAS.map((a) => a.id).join(', ')}.`);
+  if(args.operation && (!args.account || (!args.area && !chosen)))
+    throw new TypeError('For operation evidence select one connection account and a tool or area.');
+  let pinned=null;
+  if(args.operation){
+    try{pinned=restOperation(args.operation);}
+    catch{throw new TypeError('That exact REST operation is absent from pinned GitHub 2026-03-10.');}
+  }
   const rows = await accountsFor(ctx, args.account);
   // A named tool should not add a 24-area report to the existing size-bounded
   // MCP result. Narrow to its known capability area, or explicitly say the
@@ -80,6 +88,11 @@ async function checkPermissions(args, ctx) {
         : results.filter((r) => r.missing.length || r.capability)
     };
   });
+  if(pinned) for(const entry of accounts){
+    const account=rows.find(x=>sameLogin(x.login,entry.login));
+    entry.operation_evidence=documentedOperationAccess({account,route:pinned.route});
+    entry.operation_note='Area-level permission needs include writes and do not prove an individual read operation.';
+  }
   if(chosen) for(const entry of accounts){
     const account=rows.find(row=>sameLogin(row.login,entry.login));
     entry.effective_access=effectiveToolAccess({connection:ctx.connection,account,tool:chosen});
@@ -144,7 +157,7 @@ export const tools = [
     name: 'github_check_permissions',
     area: 'server', audience: ['O', 'B'],
     description: 'Check App grants and a named tool\'s profile, mode, stored credential and unverified guard layers.',
-    inputSchema: { type: 'object', properties: { account: { type: 'string', maxLength: 39 }, area: { type: 'string', maxLength: 40, description: 'One area, e.g. pull-requests' }, tool: { type: 'string', maxLength: 80, description: 'Registered tool to diagnose for each scoped account' }, detail: DETAIL }, additionalProperties: false },
+    inputSchema: { type: 'object', properties: { account: { type: 'string', maxLength: 39 }, area: { type: 'string', maxLength: 40, description: 'One area, e.g. pull-requests' }, tool: { type: 'string', maxLength: 80, description: 'Registered tool to diagnose for each scoped account' }, operation: { type: 'string', maxLength: 240, description: 'Pinned REST METHOD /path documentation; requires account and tool or area' }, detail: DETAIL }, additionalProperties: false },
     annotations: readOnly
   },
   {

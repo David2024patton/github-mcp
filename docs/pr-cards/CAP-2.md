@@ -40,6 +40,12 @@ Run `npm run session:bundle -- --card docs/pr-cards/CAP-2.md` at baseline before
 - `github_check_permissions` can additionally inspect an exact registered tool. It reports the caller's scoped account, connection profile, mode, stored I/U/P/K credential presence, incomplete repository selection and policies as independent layers; `stored-unverified` is never treated as provider operation success. This is readonly and does not store/reissue/revoke a token or widen a permission.
 - New unit regressions cover ordinary Full setup, persisted Everyday, disabled PRODUCTION, foreign-account refusal and the same source diagnostic through direct, MCP dispatcher and `github_call`. Other standalone HTTP/RTC and genuine multi-tenant, permission-upgrade/callback acceptance remain open. **No full CAP-2 claim or source test pass yet.**
 
+## 2026-10-21 operation-by-operation diagnostic continuation
+
+- Named tool reports now optionally accept a separately validated exact pinned GitHub REST operation, only with a selected connected account and bounded tool/area. The operation's source-reviewed I/U and App-JWT information remains marked as `documentation`, while the actual grant, tool dispatch and provider response remain `not-proven` or `not-verified`.
+- K notifications and P package credentials are explicitly never general-purpose fallbacks. Unsupported and unknown provider credentials retain their meanings; the existing family permission table may require full-family WRITE permissions even when a particular requested GET has smaller needs.
+- New negative fixtures refuse foreign accounts, missing area/selector and invented REST routes; no GitHub provider request is made. This is still partial CAP-2 engineering, **not** permission upgrade, complete live Full capability or tenant/client acceptance. New exact-head CI required.
+
 <!-- bundle-plan:start -->
 ```json
 {
