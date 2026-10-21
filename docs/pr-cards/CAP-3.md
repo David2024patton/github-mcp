@@ -35,6 +35,10 @@
 
 Run exact pre-plan baseline `npm run session:bundle -- --card docs/pr-cards/CAP-3.md` then commit this documentation before the first source edit. New DB: additive migration + real disposable PostgreSQL tests and restore/interruption/parallel refresh. Every affected GitHub call needs pinned request-shape fixtures; every write needs the existing nine-check contract. Do a focused type/lint pass after connected feature build, focused tests at changed seams, one full `npm run check`, unit, DB, request-shapes and RTC on the assembled source, final `npm run session:bundle -- --card docs/pr-cards/CAP-3.md --planned-at <PLAN_SHA> --report docs/pr-cards/CAP-3.delivery.json`, exact-head ci/release-policy/review and expected-SHA merge. No real paid or production provider actions, tenant activation, external customer invitations, manual release, merged untested code or cross-project writes.
 
+## 2026-10-21 — first source candidate, not completed
+
+Draft [PR #274](https://github.com/Robinson-AI-Systems/github-mcp/pull/274) has a pure operation- and principal-bound metadata resolver with synthetic denial tests. Official OAuth alternative-scope semantics are preserved. No grant-binding SQL, provider readback, protected user enrollment, token acquisition or lifecycle integration has been committed. Storage implementation was blocked by execution safety checks; do not bypass those checks. **All six original CAP-3 acceptance criteria remain unfinished**, and this code cannot be used to claim God Mode. The separate PUB-4 branch remains untouched. Current source needs exact-head CI, and only independent provider/live acceptance after actual safe enrollment can establish end-user capabilities.
+
 <!-- bundle-plan:start -->
 ```json
 {
