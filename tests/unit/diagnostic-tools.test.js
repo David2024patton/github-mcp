@@ -6,7 +6,7 @@ import { MANIFEST_PERMISSIONS } from '../../src/github/app-manifest.js';
 import { parseCatalog } from '../../scripts/check-writes.mjs';
 import { makeWorld, parse } from '../../test/helpers/write-contract.js';
 import fs from 'node:fs';
-import {effectiveToolAccess,documentedOperationAccess} from '../../src/github/effective-access.js';
+import {effectiveToolAccess,documentedOperationAccess,accessRecovery} from '../../src/github/effective-access.js';
 import {registry} from '../../src/tools/index.js';
 import {createGithubPolicy} from '../../src/oauth/policy.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
@@ -196,6 +196,54 @@ describe('CAP-2 operation evidence without permission inflation',()=>{
       .rejects.toThrow(/not one of the GitHub accounts/);
     await expect(handlers.github_check_permissions({...args,operation:'GET /nonexistent-route'},w.ctx))
       .rejects.toThrow(/absent from pinned/);
+  });
+});
+
+describe('CAP-2 explicit recovery without secret or privilege mutation',()=>{
+  const tool={name:'github_sensitive_write',area:'repo',writes:true,
+    profiles:['full'],declarations:{cred:'I',production:'always'}};
+  const account={login:'example-org',account_type:'Organization',credential_kind:'app',
+    app_id:10,installation_id:11,installation_status:'active',repository_selection:'selected'};
+  const connection={accounts:['example-org'],profile:'everyday',mode:'preview'};
+  it('separately identifies connection, installation permissions and production approval',()=>{
+    const missing=[{permission:'administration',needed:'write',granted:'read'}];
+    const r=accessRecovery({connection,account,tool,missingPermissions:missing});
+    expect(r.verified).toBe(false);
+    expect(r.capability).toBe('not-tested');
+    expect(r.requiresUserConsent).toBe(true);
+    expect(r.actions.map(x=>x.layer)).toEqual([
+      'connection-profile','github-installation-permissions','production-mode','repository-selection']);
+    expect(r.actions[1].missing).toEqual(missing);
+    expect(r.actions[1].documentation).toContain('approving-updated-permissions');
+    expect(r.recheck).toMatchObject({tool:'github_check_permissions',account:'example-org',
+      registeredTool:'github_sensitive_write'});
+    expect(JSON.stringify(r)).not.toMatch(/gh[pousr]_[A-Za-z0-9]{8,}/);
+  });
+  it('never offers K or P as fallback; unreviewed source remains unverified',()=>{
+    const u={...tool,declarations:{cred:'U',production:'never'}};
+    const r=accessRecovery({connection:{...connection,profile:'full'},account,tool:u});
+    expect(r.actions[0].action).toBe('explicit-github-user-authorization');
+    const p=accessRecovery({connection:{...connection,profile:'full'},account,
+      tool:{...tool,declarations:{cred:'P',production:'never'}}});
+    expect(p.actions[0].action).toBe('protected-setup-only');
+    const denied=accessRecovery({connection:{...connection,profile:'full'},account,tool,
+      operation:documentedOperationAccess({account,route:'GET /app'})});
+    expect(denied.actions.map(x=>x.action)).toContain('no-supported-standard-token-proven');
+    expect(denied.verified).toBe(false);
+  });
+  it('carries bounded recovery via real handler and nested meta call without provider side effects',async()=>{
+    const w=await appWorld({metadata:'read'});
+    const args={account:'example-org',tool:'github_pr_merge',operation:'GET /repos/{owner}/{repo}'};
+    const reg=await handlers.github_check_permissions(args,w.ctx);
+    expect(reg.accounts[0].recovery.verified).toBe(false);
+    expect(reg.accounts[0].recovery.recheck.registeredTool).toBe('github_pr_merge');
+    const dispatch=createDispatch({env:w.ctx.env,credentials:w.credentials,fetch:w.gh.fetch});
+    const out=await dispatch({registry,name:'github_check_permissions',args,connection:w.connection,db:w.db});
+    expect(out.structuredContent.accounts[0].recovery.capability).toBe('not-tested');
+    const viaMeta=await dispatch({registry,name:'github_call',
+      args:{name:'github_check_permissions',args},connection:w.connection,db:w.db});
+    expect(viaMeta.structuredContent.accounts[0].recovery.verified).toBe(false);
+    expect(w.gh.calls).toEqual([]);
   });
 });
 

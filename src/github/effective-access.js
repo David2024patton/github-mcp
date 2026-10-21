@@ -65,3 +65,62 @@ export function documentedOperationAccess({account,route}){
     matchingToolDispatch:'not-verified',effectiveProviderExecution:'not-verified',
     note:'Official token compatibility is not proof of this user\'s grant, target scope, user policy or actual provider readback.'};
 }
+
+/**
+ * A refusal recovery recipe is an ordered set of *explicit user/provider*
+ * actions, never a token resolution strategy. The server does not click consent,
+ * reissue a grant, select a larger permission or retry a provider write.
+ */
+export function accessRecovery({connection,account,tool,missingPermissions=[],operation=null}){
+  const effective=effectiveToolAccess({connection,account,tool});
+  const requested=Array.isArray(missingPermissions)?missingPermissions:[];
+  const actions=[];
+  const add=(layer,action,instruction,extra={})=>actions.push({layer,action,instruction,...extra});
+  if(effective.refusedBy.includes('profile'))
+    add('connection-profile','explicit-client-reauthorization',
+      'In the connected MCP client choose Reconnect and select Full on the normal server-owned consent form. Your existing connection retains its current profile until separate consent succeeds.');
+  if(effective.credential.state==='missing'){
+    if(effective.credential.kind==='I')
+      add('github-installation','authorize-account',
+        'Install or reconnect the exact GitHub App for this account. The account owner must approve installation repository and permission changes in GitHub.');
+    else if(effective.credential.kind==='U')
+      add('github-user','explicit-github-user-authorization',
+        'Reauthorize the same GitHub user inside the MCP client GitHub flow; the verified user and current installation must still match.');
+    else if(['K','P'].includes(effective.credential.kind))
+      add('optional-credential','protected-setup-only',
+        'Use the existing protected server setup page only for this restricted credential. Do not send tokens in chat or tool arguments.');
+  }
+  if(requested.length && account.credential_kind==='app'){
+    // Only a recorded deficiency in the selected installation qualifies
+    // for this prompt. Changing App permissions and approving that change
+    // are separate explicit GitHub-owner actions.
+    add('github-installation-permissions','owner-approves-updated-permissions',
+      'Ask the GitHub App owner to request these permissions, then have the installation owner approve the updated permissions on GitHub. Existing grants remain in force until acceptance; reconnect and read back.',
+      {missing:requested.map(x=>({permission:x.permission,needed:x.needed,granted:x.granted})),
+        documentation:'https://docs.github.com/en/apps/using-github-apps/approving-updated-permissions-for-a-github-app'});
+  }
+  if(effective.production.state==='denied')
+    add('production-mode','explicit-account-approval',
+      'Full is not production authorization. An authorized owner must independently enable production for the exact account and explicitly issue a production-mode connection.');
+  if(account.repository_selection==='selected')
+    add('repository-selection','verify-exact-repository',
+      'Confirm that the target repository belongs to the selected GitHub App installation repositories; do not assume a matching owner name grants access.');
+  if(operation?.I?.documentation==='unsupported' && operation?.U?.documentation==='supported')
+    add('documented-credential','user-authorization-may-be-required',
+      'The pinned endpoint documentation excludes the main installation credential but lists GitHub App user authorization. Verify the precise route and approved user before calling it; never silently swap tokens.');
+  if(operation?.I?.documentation==='unsupported' && operation?.U?.documentation==='unsupported')
+    add('documented-credential','no-supported-standard-token-proven',
+      'Neither ordinary credential kind is documented for this exact route. A separate documented credential does not authorize this connection or this tool.');
+  const verified=false;
+  return {verified,capability:'not-tested',requiresUserConsent:actions.some(a=>
+    ['explicit-client-reauthorization','explicit-github-user-authorization','owner-approves-updated-permissions','explicit-account-approval'].includes(a.action)),
+    actions,unverified:[
+      'Exact tenant membership, account ownership and selected resource',
+      'Effective provider permissions, GitHub plan/SSO and latest consent',
+      'Protected-resource, spend, confirmation and restricted-pass gates',
+      'Actual guarded operation dispatch and independent provider readback'
+    ],
+    recheck:{tool:'github_check_permissions',account:account.login,
+      operation:operation?.operation??null,registeredTool:tool.name},
+    note:'Recovery is guidance only: no OAuth consent, permission escalation or provider operation has run.'};
+}

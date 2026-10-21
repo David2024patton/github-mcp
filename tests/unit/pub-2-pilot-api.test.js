@@ -45,6 +45,10 @@ describe('PUB-2 private browser entry routes',()=>{
     expect(response.body).toContain('<select name="mode">');
     expect(response.body).toContain('<option value="production">');
     expect(response.body).toContain('<select name="profile">');
+    // Full is part of normal GitHub App user OAuth; this only verifies the
+    // signed-client form choice, not provider authorization or account access.
+    expect(response.body).toContain('<option value="full">');
+    expect(response.body).toContain('<option value="everyday">');
     expect(response.body).toContain('Continue to GitHub');
     expect(response.body).not.toContain('robinson-ai-scratch');
     expect(response.body).not.toContain('ADMIN_PASSPHRASE');

@@ -12,7 +12,7 @@ import * as server from '../../src/tools/server.js';
 import { makeWorld } from './write-contract.js';
 
 export function fixtureRegistry({ extra = [] } = {}) {
-  const state = { value: 'initial', guarded: 'initial', repoReads: [] };
+  const state = { value: 'initial', guarded: 'initial', full: 'initial', repoReads: [] };
   const reply = (value) => value;
   const read = {
     name: 'github_fixture_read', description: 'Read the fixture value.', area: 'fixture', audience: ['B'], compact: true,
@@ -40,13 +40,15 @@ export function fixtureRegistry({ extra = [] } = {}) {
   });
   const write = writeTool('github_fixture_write', 'value', { profiles: ['everyday', 'full'] });
   const guarded = writeTool('github_fixture_guarded', 'guarded', { confirm: 'always', profiles: ['everyday', 'full'] });
+  const fullOnly = writeTool('github_fixture_full_only', 'full', {profiles:['full']});
   const access = writeTool('github_fixture_access', 'guarded', { accessWidening: true, profiles: ['everyday', 'full'] });
   const fixture = {
-    tools: [read, write.tool, guarded.tool, access.tool, repoRead],
+    tools: [read, write.tool, guarded.tool, fullOnly.tool, access.tool, repoRead],
     handlers: {
       github_fixture_read: async (args) => reply({ value: state.value, payload: args.detail === 'full' ? 'X'.repeat(9000) : 'short' }),
       github_fixture_repo_read: async (args) => { state.repoReads.push(`${args.owner}/${args.repo}`); return { repo: args.repo, value: 'ok' }; },
-      [write.tool.name]: write.handler, [guarded.tool.name]: guarded.handler, [access.tool.name]: access.handler
+      [write.tool.name]: write.handler, [guarded.tool.name]: guarded.handler,
+      [fullOnly.tool.name]: fullOnly.handler, [access.tool.name]: access.handler
     }
   };
   const registry = mergeNamespaces([fixture, ...extra, { tools: server.tools, handlers: server.handlers }]);
