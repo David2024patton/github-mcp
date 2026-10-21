@@ -46,6 +46,11 @@ Run `npm run session:bundle -- --card docs/pr-cards/CAP-2.md` at baseline before
 - K notifications and P package credentials are explicitly never general-purpose fallbacks. Unsupported and unknown provider credentials retain their meanings; the existing family permission table may require full-family WRITE permissions even when a particular requested GET has smaller needs.
 - New negative fixtures refuse foreign accounts, missing area/selector and invented REST routes; no GitHub provider request is made. This is still partial CAP-2 engineering, **not** permission upgrade, complete live Full capability or tenant/client acceptance. New exact-head CI required.
 
+## 2026-10-21 real-database explicit Full upgrade regression
+
+- Added a disposable PostgreSQL OAuth lifecycle scenario using one client and a scoped enrolled account: Everyday consent, separate explicit Full consent, both real access-token reads, independent refresh-family rotations, old bearer rejection and preserved account PRODUCTION-off setting. This tests that Full cannot be silently inherited by an older connection or copied on refresh.
+- The existing authenticating native MCP gate validates source-issued session authority; no GitHub provider token, outside tenant or production activation is used. Extended operation evidence remains explicitly source-only. New CI/checks required before claiming this regression passed.
+
 <!-- bundle-plan:start -->
 ```json
 {

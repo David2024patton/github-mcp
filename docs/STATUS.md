@@ -1,3 +1,7 @@
+## 2026-10-21 — CAP-2 explicit Full reauthorization regression on disposable PostgreSQL (PR #273)
+
+The owner OAuth database lifecycle now has a same-client Everyday-versus-explicit-Full reconsent regression with independent refresh rotation and preserved production-off state; no account grant is automatically widened. This is new test evidence **pending exact-head CI** and does not close CAP-2's full standalone client/tenant/provider acceptance. New CAP-1-backed operation documentation diagnostics remain separate from effective GitHub grants. PUB-4 #268 is untouched, no actual user/provider credentials used.
+
 ## 2026-10-21 — CAP-2 operation credential evidence (source candidate, unmerged)
 
 Draft PR #273 now integrates CAP-1's exact four officially sourced REST credential rows into the scoped access diagnostic, returning documented versus unknown/unsupported I/U/App-JWT requirements without claiming installed grants, actual tool dispatch, real account permission or live readback. The operation must exist in the pinned schema and be requested for one already selected account plus area/tool. User K/P secrets remain confined to their own purposes. This extends existing ordinary Full explanation, preserves the pre-code original five CAP-2 criteria as OPEN, and touches no provider connection, tenant auth, grants, production, spend, migration or release. Required tests and exact-head CI on this extension are not yet observed. Concurrent PUB-4 #268 remains separate.

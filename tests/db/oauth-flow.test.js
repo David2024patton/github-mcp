@@ -63,6 +63,60 @@ describe('connector login end to end on throwaway Postgres', () => {
     expect(await gate(third.access_token)).toEqual(expected);
   });
 
+  it('requires explicit renewed owner consent for Full while older Everyday and refresh credentials stay narrow',async()=>{
+    const client=json(await call(h.register,request('POST',{
+      redirect_uris:[callback],client_name:'Full reauthorization fixture'
+    })));
+    const common={
+      client_id:client.client_id,redirect_uri:callback,response_type:'code',
+      code_challenge:challenge,code_challenge_method:'S256',resource,
+      'acct:example-org':'on',default_account:'example-org',mode:'preview',
+      listing:'compact',passphrase:env.ADMIN_PASSPHRASE
+    };
+    const issue=async profile=>{
+      const consent=await call(h.authorize,request('POST',{...common,profile}));
+      expect(consent.statusCode).toBe(302);
+      const code=new URL(consent.headers.Location).searchParams.get('code');
+      return json(await call(h.token,request('POST',{
+        grant_type:'authorization_code',client_id:client.client_id,
+        client_secret:client.client_secret,redirect_uri:callback,
+        code,code_verifier:verifier,resource
+      })));
+    };
+    const gate=async token=>requireMcpToken(
+      request('POST',{}, {authorization:`Bearer ${token}`}),
+      response(),db,env,{toConnection:createGithubPolicy({env}).toConnection}
+    );
+    const everyday=await issue('everyday');
+    expect(await gate(everyday.access_token)).toMatchObject({
+      profile:'everyday',mode:'preview',accounts:['example-org']
+    });
+    const full=await issue('full');
+    expect(await gate(full.access_token)).toMatchObject({
+      profile:'full',mode:'preview',accounts:['example-org']
+    });
+    // A second explicit grant never upgrades or revokes the existing client's
+    // unrelated grant; both refresh families retain their original profiles.
+    expect(await gate(everyday.access_token)).toMatchObject({
+      profile:'everyday',mode:'preview',default_account:'example-org'
+    });
+    const renew=async token=>json(await call(h.token,request('POST',{
+      grant_type:'refresh_token',client_id:client.client_id,
+      client_secret:client.client_secret,refresh_token:token,resource
+    })));
+    const oldRotated=await renew(everyday.refresh_token);
+    const fullRotated=await renew(full.refresh_token);
+    expect(await gate(oldRotated.access_token)).toMatchObject({
+      profile:'everyday',mode:'preview',accounts:['example-org']
+    });
+    expect(await gate(fullRotated.access_token)).toMatchObject({
+      profile:'full',mode:'preview',accounts:['example-org']
+    });
+    expect(await gate(everyday.access_token)).toBeNull();
+    expect(await gate(full.access_token)).toBeNull();
+    expect((await rawQuery(`SELECT production_enabled FROM gh_accounts WHERE login = 'example-org'`))[0].production_enabled).toBe(false);
+  });
+
   it('grants production to the one account that has it turned on, and the MCP gate then accepts it on the production deployment', async () => {
     const client = json(await call(h.register, request('POST', { redirect_uris: [callback] })));
     const form = {
