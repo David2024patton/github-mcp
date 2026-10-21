@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-19",
+  "updated": "2026-10-21",
   "order": [
     "A",
     "B",
@@ -18,9 +18,10 @@
     "R",
     "X",
     "Y",
-    "PUB"
+    "PUB",
+    "CAP"
   ],
-  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split — A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00). Owner-approved execution: adjacent small roadmap slices are grouped into cohesive outcome-sized PRs; session PR count comes only from the current owner prompt. See docs/SESSION-START.md. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain. 2026-10-18: owner-approved PRIVATE-first mobile+desktop and multi-user isolation completion expansion adds PUB-1..PUB-4 as APPROVED unfinished work and PUB-5 as BLOCKED publication gate; source/real-acceptance evidence remains separate, public Directory eligibility of an unofficial third-party connector cannot be presumed.",
+  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split \u2014 A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00). Owner-approved execution: adjacent small roadmap slices are grouped into cohesive outcome-sized PRs; session PR count comes only from the current owner prompt. See docs/SESSION-START.md. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain. 2026-10-18: owner-approved PRIVATE-first mobile+desktop and multi-user isolation completion expansion adds PUB-1..PUB-4 as APPROVED unfinished work and PUB-5 as BLOCKED publication gate; source/real-acceptance evidence remains separate, public Directory eligibility of an unofficial third-party connector cannot be presumed.",
   "cards": [
     {
       "id": "A-1",
@@ -1807,6 +1808,104 @@
         "IN-18"
       ],
       "pr": []
+    },
+    {
+      "id": "CAP-1",
+      "title": "Operation-level capability and credential inventory",
+      "batch": "CAP",
+      "design": "docs/designs/MAXIMUM-AUTHORITY.md",
+      "dependencies": [],
+      "card": "docs/pr-cards/CAP-1.md",
+      "status": "APPROVED",
+      "migration": "JIT contract before implementation",
+      "budget": 650,
+      "units": [
+        "CAP-1"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [],
+      "pr": []
+    },
+    {
+      "id": "CAP-2",
+      "title": "Standard Full authorization and effective-access recovery",
+      "batch": "CAP",
+      "design": "docs/designs/MAXIMUM-AUTHORITY.md",
+      "dependencies": [
+        "CAP-1"
+      ],
+      "card": "docs/pr-cards/CAP-2.md",
+      "status": "APPROVED",
+      "migration": "JIT contract before implementation",
+      "budget": 650,
+      "units": [
+        "CAP-2"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [],
+      "pr": []
+    },
+    {
+      "id": "CAP-3",
+      "title": "Guided additional credential enrollment and lifecycle",
+      "batch": "CAP",
+      "design": "docs/designs/MAXIMUM-AUTHORITY.md",
+      "dependencies": [
+        "CAP-1"
+      ],
+      "card": "docs/pr-cards/CAP-3.md",
+      "status": "APPROVED",
+      "migration": "JIT contract before implementation",
+      "budget": 650,
+      "units": [
+        "CAP-3"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [],
+      "pr": []
+    },
+    {
+      "id": "CAP-4",
+      "title": "Advanced enterprise, registry and integration gap closure",
+      "batch": "CAP",
+      "design": "docs/designs/MAXIMUM-AUTHORITY.md",
+      "dependencies": [
+        "CAP-1",
+        "CAP-2",
+        "CAP-3"
+      ],
+      "card": "docs/pr-cards/CAP-4.md",
+      "status": "APPROVED",
+      "migration": "JIT contract before implementation",
+      "budget": 650,
+      "units": [
+        "CAP-4"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [],
+      "pr": []
+    },
+    {
+      "id": "CAP-5",
+      "title": "Maximum-authority end-to-end acceptance and coverage reporting",
+      "batch": "CAP",
+      "design": "docs/designs/MAXIMUM-AUTHORITY.md",
+      "dependencies": [
+        "CAP-2",
+        "CAP-3",
+        "CAP-4",
+        "PUB-4"
+      ],
+      "card": "docs/pr-cards/CAP-5.md",
+      "status": "APPROVED",
+      "migration": "JIT contract before implementation",
+      "budget": 650,
+      "units": [
+        "CAP-5"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "ownerInputs": [],
+      "pr": []
     }
   ],
   "gatewayBoundary": {
@@ -1850,7 +1949,7 @@
       "docs/pr-cards/RESULT-OWN-KEYS.md",
       "docs/pr-cards/RESULT-OFFSET-METADATA.md"
     ],
-    "sourceAndAutomated": "All five #151–#155 source implementations accepted by the complete seven exact-head CI/release gates; #155 merger/final-main CI must still be observed independently.",
+    "sourceAndAutomated": "All five #151\u2013#155 source implementations accepted by the complete seven exact-head CI/release gates; #155 merger/final-main CI must still be observed independently.",
     "deployedExactRevision": "UNVERIFIED for this batch; last independently observed production source #146",
     "authenticatedCustomMcp": "UNVERIFIED",
     "directOAuth": "UNVERIFIED",

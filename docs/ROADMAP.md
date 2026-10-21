@@ -16,11 +16,8 @@ for hand-building something is repeated `github_api_*` / `github_graphql_*` call
   returns to Copilot (cancelled 2026-10-09). Seat billing tools exist already (O-4).
 - **Organization issue types, issue fields, autolinks, interaction limits, SBOM and attestations, migrations, Classroom**
   as hand-built tools.
-- **GitHub Models** (model catalogue, chat completions, embeddings at `models.github.ai`), planned in
-  `robinsonai-mcp-servers`' `GITHUB-COMPLETION-PLAN.md`: an AI inference service, not repository or account work; it
-  belongs with the hub's model servers if Chris wants it (`docs/audits/2026-10-10-prior-tools.md`, reason D1).
-- **Enterprise features** (audit log API, SAML SSO, IP allow lists, custom repository roles) if an account moves to
-  Enterprise Cloud; today they are reported as "not available on your plan".
+- **GitHub Models:** retired July 30, 2026 according to [GitHub](https://docs.github.com/en/github-models); no new catalog/inference tools planned. This supersedes the historical D1 “belongs with Hub model servers” exclusion.
+- **Enterprise features and maximum authority:** moved into approved [CAP-1..CAP-5](designs/MAXIMUM-AUTHORITY.md). A developer account lacking Enterprise does not exclude Enterprise users from the product. Provider plan/role/credential constraints are operation-specific.
 - **Move a secret from another service into GitHub** (e.g. a Neon connection string or a Vercel token into an Actions
   secret) without it passing through chat: a hub workflow across servers, not built here.
 - **Browser-assisted dashboard steps:** for settings GitHub has no API for, an agent with a browser follows
