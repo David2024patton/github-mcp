@@ -7,6 +7,7 @@ import { AREAS, LEVELS } from '../data/permission-needs.js';
 import { MAP_STATUS, SETTINGS, findSettings, fill } from '../data/dashboard-map.js';
 import { enrolledGuideUser, restrictUnknownUserLink } from './guide-personal.js';
 import {effectiveToolAccess,documentedOperationAccess,accessRecovery} from '../github/effective-access.js';
+import {optionalCredentialIdentityStatus} from '../github/optional-identity-status.js';
 import {restOperation} from '../github/openapi-index.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
@@ -99,6 +100,10 @@ async function checkPermissions(args, ctx) {
   if(chosen) for(const entry of accounts){
     const account=rows.find(row=>sameLogin(row.login,entry.login));
     entry.effective_access=effectiveToolAccess({connection:ctx.connection,account,tool:chosen});
+    if(typeof ctx.db.additionalCredentialProofs==='function') {
+      const proofs=await ctx.db.additionalCredentialProofs(account.login);
+      entry.optional_credentials=optionalCredentialIdentityStatus({account,proofs});
+    }
     entry.recovery=accessRecovery({
       connection:ctx.connection,account,tool:chosen,
       missingPermissions:(entry.areas??[]).flatMap(a=>a.missing??[]),

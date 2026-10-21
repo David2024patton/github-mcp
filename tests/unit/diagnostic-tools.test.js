@@ -7,6 +7,7 @@ import { parseCatalog } from '../../scripts/check-writes.mjs';
 import { makeWorld, parse } from '../../test/helpers/write-contract.js';
 import fs from 'node:fs';
 import {effectiveToolAccess,documentedOperationAccess,accessRecovery} from '../../src/github/effective-access.js';
+import {optionalCredentialIdentityStatus} from '../../src/github/optional-identity-status.js';
 import {registry} from '../../src/tools/index.js';
 import {createGithubPolicy} from '../../src/oauth/policy.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
@@ -244,6 +245,28 @@ describe('CAP-2 explicit recovery without secret or privilege mutation',()=>{
       args:{name:'github_check_permissions',args},connection:w.connection,db:w.db});
     expect(viaMeta.structuredContent.accounts[0].recovery.verified).toBe(false);
     expect(w.gh.calls).toEqual([]);
+  });
+});
+
+describe('CAP-3 owner optional-kind status cannot claim endpoint authorization',()=>{
+  it('separates a matching encrypted fingerprint and identity from actual permission',async()=>{
+    const {createHash}=await import('node:crypto');
+    const account={account_id:901,package_enc:'sealed-package-value'};
+    const proof={version:1,kind:'P',host:'github.com',scope:'legacy-owner',
+      actorId:4001,accountId:901,verification:'identity-only',
+      fingerprint:createHash('sha256').update(account.package_enc).digest('hex')};
+    const good=optionalCredentialIdentityStatus({account,proofs:{P:proof}});
+    expect(good.P).toMatchObject({stored:true,identity:'verified-at-enrollment',
+      operationPermission:'not-proven'});
+    expect(good.K).toMatchObject({stored:false,identity:'unverified'});
+    const stale=optionalCredentialIdentityStatus({account:{
+      ...account,package_enc:'different-encrypted-value'},proofs:{P:proof}});
+    expect(stale.P.identity).toBe('unverified');
+    expect(optionalCredentialIdentityStatus({account,proofs:{
+      P:{...proof,scope:'tenant-b'}}}).P.identity).toBe('unverified');
+    expect(optionalCredentialIdentityStatus({account,proofs:{
+      P:{...proof,expiresAt:new Date(0).toISOString()}}}).P.identity).toBe('unverified');
+    expect(JSON.stringify(good)).not.toContain('sealed-package-value');
   });
 });
 
