@@ -656,7 +656,19 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       if (existing && existing.credential_kind !== 'fine_grained') return page(409, { result: `${owner.login} already uses a GitHub App. Remove it before switching to a fine-grained token. Nothing was saved.` });
       await db.upsertAccount({ login: owner.login, accountId: owner.id, accountType: owner.type, label: p.label ? String(p.label).slice(0, 100) : owner.login, credentialKind: 'fine_grained' });
       const expires = Date.parse(probe.headers['github-authentication-token-expiration'] || '');
-      await credentials.storeFineGrained(owner.login, token, { expiresAt: Number.isFinite(expires) ? new Date(expires) : null });
+      // Only the same numeric personal-account actor earns identity metadata.
+      // Existing organization-associated fine-grained tokens keep their old
+      // behavior but do not inherit private-tenant or proof authority.
+      let numericActor=null;
+      try{
+        const who=(await bareOctokit({token,fetch}).request('GET /user')).data;
+        if(owner.type==='User' && who?.id===owner.id && who?.type==='User')
+          numericActor=who.id;
+      }catch{/* No identity proof: legacy credential stays unverified. */}
+      await credentials.storeFineGrained(owner.login, token, {
+        expiresAt: Number.isFinite(expires)?new Date(expires):null,
+        actorId:numericActor,accountId:numericActor?owner.id:null
+      });
       return page(200, { result: `Saved the encrypted fine-grained token for ${owner.login} (ends in ${token.slice(-4)}).` });
     }
     const list = String(scopes ?? '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -665,7 +677,17 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     }
     const row = await db.getAccount(account);
     if (!row) return page(404, { result: 'Set that account up first (create its GitHub App or add a fine-grained token).' });
-    await credentials.storeClassic(row.login, token, list);
+    let numericActor=null;
+    try{
+      const who=(await bareOctokit({token,fetch}).request('GET /user')).data;
+      if(who?.type==='User' && Number.isSafeInteger(who.id) && who.id>0 &&
+          (row.account_type==='User'?who.id===row.account_id:
+            row.user_login?.toLowerCase()===who.login?.toLowerCase()))
+        numericActor=who.id;
+    }catch{/* Scope-compatible tokens may not prove ownership; keep unverified. */}
+    await credentials.storeClassic(row.login,token,list,{
+      actorId:numericActor,accountId:numericActor?row.account_id:null
+    });
     return page(200, { result: `Saved the encrypted notifications token for ${row.login} (ends in ${token.slice(-4)}).` });
   }
 
