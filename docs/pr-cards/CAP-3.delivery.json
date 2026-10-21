@@ -5,11 +5,11 @@
       "criteria": [
         {
           "criterion": "Only missing applicable optional credential kinds are recommended by exact operation, host and verified requirements, never by broad tool family or invented God-Mode-only privileges.",
-          "evidence": "PARTIAL: exact reviewed operation resolver and negative synthetic cases exist. Optional-kind enrollment/recommendation is not fully integrated."
+          "evidence": "PARTIAL: two newly reviewed exact GitHub REST operation contracts now distinguish App-compatible organization package listings from classic-only notifications. The resolver requires explicit principal/resource/scope and rejects unknown/unsupported alternatives. Complete operation-to-recommended enrollment for all extra kinds/hosts remains unfinished."
         },
         {
           "criterion": "Every stored extra grant binds provider host, numeric verified human identity, tenant/workspace, account, resource/enterprise scope, token kind, permissions, expiry and verification without exposing the secret.",
-          "evidence": "PARTIAL: U private tenant authority binding retains owner/account/installation, numeric subject, membership/pilot epochs, exact identity read and ciphertext CAS. Protected owner K/P/F credentials now can carry separately provider-verified numeric actor, GitHub.com/legacy-owner scope, current encrypted fingerprint and optional expiry. This is identity-only; private-tenant extra kinds/resource-permission verification remain unfinished."
+          "evidence": "PARTIAL: private U binding and protected owner F/P/K metadata are now recorded under their actual isolated store; protected owner P/K readback records only exact identity-bound GET /orgs/{org}/packages or GET /notifications when the same submitted token succeeds. Current ciphertext CAS, verified numeric principal and owner-account ID prevent stale/foreign metadata. No general purpose token or private tenant extra-kind grant is inferred."
         },
         {
           "criterion": "One agent-initiated secure setup handoff uses native GitHub App/OAuth consent or the protected service token page only as applicable, returns to its originating scoped client and rechecks capability; no chat-token input.",
@@ -25,7 +25,7 @@
         },
         {
           "criterion": "Tests prove secret redaction, restricted service passes, clean replacement/deletion and verified before/after capability gain; incomplete real provider/device acceptance remains independently OPEN.",
-          "evidence": "PARTIAL: existing private U before/after identity-read check remains; new real PostgreSQL owner optional P/K/F metadata CAS, legacy migration, invalidation and deletion fixtures plus unit identity/no-secret tests are added, pending exact-head full CI. Operation-specific permission readback, private per-kind enrollment and actual provider acceptance remain open."
+          "evidence": "PARTIAL: new synthetic provider success/refusal and protected form CSRF/passphrase tests, real PostgreSQL current cipher/CAS/forged operation/migration and deletion tests are present but final exact-head CI is pending. Exact K/P readback can be observed at enrollment, not verified as effective access today; complete two-tenant extra-kind provider/callback and independent real device acceptance remain open."
         }
       ],
       "remainingEngineering": [
@@ -37,10 +37,10 @@
       ]
     }
   ],
-  "productionAdded": 425,
+  "productionAdded": 505,
   "productionRemoved": 25,
-  "newEngineering": "Private tenant App-user U binding plus owner protected additional F/P/K identity-only proof metadata; additive owner schema, current ciphertext CAS, optional numeric actor verification, separate proof disclosure and protected replacement/removal that invalidates old identity metadata. No extra-kind effective provider execution, tool fallback or client enrollment authority asserted.",
-  "planComparison": "CONTINUE: Full original CAP-3 requires secure agent-initiated optional enrollment, exact supported operation readback, private tenant extra-kind grants and complete lifecycle. P/K/F owner metadata does not close the six whole criteria. Existing encrypted token vault and per-tenant U layer remain separate.",
+  "newEngineering": "CAP-3 original source includes scoped private U identity/read binding, protected owner F/K/P typed current-ciphertext evidence, bounded provider readback limited to exact documented metadata GET for K/P, automatic invalidation on replacement and protected removal, explicit owner-vs-tenant/pass diagnostics and new official source support for standard App package listing versus classic notifications.",
+  "planComparison": "CONTINUE: 505 added and 25 removed production lines deliver real partial authority evidence and lifecycle on reused encrypted stores, but one whole original CAP-3 engineering outcome remains incomplete. No extra-kind private tenant storage, agent-initiated secure automatic return, complete per-resource provider permission proof or real client/provider acceptance has been established.",
   "relatedWorkDecision": "Keep original CAP-3 plan and draft #274. Isolate main security defect into #275 as AGENTS requires; PUB-4 #268 is unchanged and CAP-4 remains dependent.",
   "decision": "CONTINUE"
 }
