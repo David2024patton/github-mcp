@@ -28,6 +28,15 @@ Read only: `src/github/openapi-index.js`, `src/github/graphql-schema.js`, `src/g
 3. A machine-generated family gap report, reconciling to the operation records.
 4. Credential conflicts explicitly unresolved, with no invented coverage percentage; separate genuine implementation and live evidence.
 
+
+## Implementation checkpoint — 2026-10-21, awaiting independent exact-head CI
+
+- `src/github/capability-inventory.js` constructs deterministic operation rows from the pinned 1,232 REST operations, all actual query and mutation root fields of the pinned GraphQL SDL, and independent Git HTTPS/SSH, registry and MCP workflows. Stable method/path/schema keys prevent a catalog/tool-count percentage from masquerading as functional coverage.
+- Each row records official/pinned source revision/date, evidence, GitHub.com versus GHE.com and explicitly-versioned GHES 3.20/3.22 applicability (unknown for unproven versions), all eight credential kinds (unknown when not reviewed), prerequisites, lifecycle/safety constraints, implementation candidate versus curated mapping, responsible CAP unit and separately open external acceptance. Git and package protocols carry unversioned reference evidence, not REST schema authority.
+- `scripts/capability-inventory.mjs --json|--summary|--validate` exposes the complete machine-readable census, family gap report and validation. `npm run check` invokes its validator; `tests/unit/capability-inventory.test.js` covers missing/orphan/duplicate source keys, host/credential separation, fake verified statuses and summary/percentage truthfulness.
+- **Not yet evidence of passing tests, provider acceptance, implemented enterprise actions, effective credential rights or CAP-1 completion.** The unreviewed per-operation permission/credential cells deliberately remain `unknown`; completing permission evidence and proving the full original contract requires explicit review/test outcomes. Original original CAP-1 criteria remain frozen and incomplete until checked.
+- No token, SQL, production/fixture or other service changes. Concurrent PUB-4 draft #268 is untouched. Do not treat a new checked CI run as genuine mobile device acceptance.
+
 ## Tests and publication
 
 `node scripts/capability-inventory.mjs --validate`; `node scripts/capability-inventory.mjs --summary`; `npx vitest run tests/unit/capability-inventory.test.js`; `npm run check`; `npm test`; `npm run test:db`; `npm run test:shapes`; `npm run test:rtc`. Exact-head `ci`, `release-policy`, self-review and merge gates remain required. Local shell cannot access the public GitHub origin in this session; use actual required GitHub CI, never invent a local pass. Reconcile existing acceptance separately at review/merge.
