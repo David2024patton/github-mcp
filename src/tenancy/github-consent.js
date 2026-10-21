@@ -78,11 +78,14 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
           !/^[a-z0-9-]{1,39}$/.test(boundAccount))) throw refused();
     if (boundAccount && p.account!==undefined &&
         p.account.toLowerCase()!==boundAccount.toLowerCase()) throw refused();
+    // A legacy, unbound client was never authorized for any particular
+    // installation. Only permit the sole unambiguous active App account;
+    // a request-supplied account field is NOT provider-verified registration
+    // and cannot turn an ambiguous client into access to another App.
+    if (!boundAccount && candidates.length!==1) throw refused();
     const selected=boundAccount
       ? candidates.find(row=>row.login.toLowerCase()===boundAccount)
-      : p.account!==undefined
-        ? candidates.find(row=>row.login.toLowerCase()===p.account.toLowerCase())
-        : candidates.length===1?candidates[0]:null;
+      : candidates[0];
     if (!selected) throw refused();
     const account=await db.getAccount(selected.login);
     if (!account || account.credential_kind!=='app' ||
