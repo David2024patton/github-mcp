@@ -392,25 +392,40 @@ export function createFakeDb({ clock = Date.now } = {}) {
     async setFineGrainedToken(login, { enc, last4, expiresAt = null }) {
       const r = accountRows.get(String(login).toLowerCase());
       if (!r) return false;
-      Object.assign(r, { fine_grained_enc: enc, fine_grained_last4: last4, fine_grained_expires_at: expiresAt });
+      Object.assign(r, { fine_grained_enc: enc, fine_grained_last4: last4, fine_grained_expires_at: expiresAt, additional_credential_proofs: {...r.additional_credential_proofs,F:undefined} });
       return true;
     },
     async setClassicToken(login, { enc, scopes, last4 }) {
       const r = accountRows.get(String(login).toLowerCase());
       if (!r) return false;
-      Object.assign(r, { classic_enc: enc, classic_scopes: [...scopes], classic_last4: last4 });
+      Object.assign(r, { classic_enc: enc, classic_scopes: [...scopes], classic_last4: last4, additional_credential_proofs: {...r.additional_credential_proofs,K:undefined} });
       return true;
     },
     async setPackageToken(login, { enc, scopes, actor, expiresAt = null }) {
       const r = accountRows.get(String(login).toLowerCase());
       if (!r) return false;
-      Object.assign(r, { package_enc: enc, package_scopes: [...scopes], package_actor: actor, package_expires_at: expiresAt });
+      Object.assign(r, { package_enc: enc, package_scopes: [...scopes], package_actor: actor, package_expires_at: expiresAt, additional_credential_proofs: {...r.additional_credential_proofs,P:undefined} });
+      return true;
+    },
+    async clearClassicToken(login) {
+      const r=accountRows.get(String(login).toLowerCase());
+      if(!r?.classic_enc)return false;
+      Object.assign(r,{classic_enc:null,classic_scopes:null,classic_last4:null,
+        additional_credential_proofs:{...r.additional_credential_proofs,K:undefined}});
+      return true;
+    },
+    async clearFineGrainedToken(login) {
+      const r=accountRows.get(String(login).toLowerCase());
+      if(!r?.fine_grained_enc)return false;
+      Object.assign(r,{fine_grained_enc:null,fine_grained_last4:null,
+        fine_grained_expires_at:null,
+        additional_credential_proofs:{...r.additional_credential_proofs,F:undefined}});
       return true;
     },
     async clearPackageToken(login) {
       const r = accountRows.get(String(login).toLowerCase());
       if (!r) return false;
-      Object.assign(r, { package_enc: null, package_scopes: null, package_actor: null, package_expires_at: null });
+      Object.assign(r, { package_enc: null, package_scopes: null, package_actor: null, package_expires_at: null, additional_credential_proofs: {...r.additional_credential_proofs,P:undefined} });
       return true;
     },
     async setAccountPlan(login, planName) {

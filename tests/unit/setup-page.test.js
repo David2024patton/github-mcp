@@ -157,7 +157,7 @@ describe('the setup page', () => {
   it('refuses every credential step off the production deployment, but still shows status', async () => {
     const t = await build({ env: { ...PROD, VERCEL_ENV: 'preview' } });
     await t.open();
-    for (const action of ['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'add-package', 'remove-package', 'reveal']) {
+    for (const action of ['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'add-package', 'remove-package', 'remove-classic', 'remove-fine-grained', 'reveal']) {
       const res = await t.post({ action, login: 'example-org', token: 'ghp_FAKE'.padEnd(40, 'x') });
       expect(res.statusCode, action).toBe(403);
       expect(res.body).toContain('production deployment');
@@ -166,6 +166,28 @@ describe('the setup page', () => {
     expect(await t.db.listAccounts()).toEqual([]);
   });
 
+  it('uses existing protected form controls for K/F removal without clearing sibling kinds',async()=>{
+    const t=await build();
+    const res=await t.open();
+    expect(res.body).toContain('Remove stored notifications token');
+    expect(res.body).toContain('Remove stored fine-grained token');
+    await t.db.upsertAccount({login:'fixture-user',accountId:7001,
+      accountType:'User',label:'Fixture',credentialKind:'fine_grained'});
+    await t.db.setClassicToken('fixture-user',{enc:'sealed-classic-value',scopes:['notifications'],last4:'last'});
+    await t.db.setFineGrainedToken('fixture-user',{enc:'sealed-fg-value',last4:'last'});
+    const k={action:'remove-classic',login:'fixture-user'};
+    expect((await t.post(k,{origin:'https://evil.invalid'})).statusCode).toBe(403);
+    expect((await t.post(k,{csrf:'invalid'})).statusCode).toBe(403);
+    expect((await t.post({...k,passphrase:'wrong'})).statusCode).toBe(401);
+    expect((await t.post(k)).statusCode).toBe(200);
+    expect((await t.db.getAccount('fixture-user')).classic_enc).toBeNull();
+    expect((await t.db.getAccount('fixture-user')).fine_grained_enc).toBe('sealed-fg-value');
+    expect((await t.post(k)).statusCode).toBe(404);
+    const f={action:'remove-fine-grained',login:'fixture-user'};
+    expect((await t.post(f)).statusCode).toBe(200);
+    expect((await t.db.getAccount('fixture-user')).fine_grained_enc).toBeNull();
+    noSecrets(await t.post(f));
+  });
   it('says plainly when the encryption key is missing and stores nothing', async () => {
     const t = await build({ env: { ...PROD, TOKEN_ENCRYPTION_KEY: '' } });
     await t.open();
