@@ -191,6 +191,24 @@ describe('the setup page', () => {
     expect((await t.db.additionalCredentialProofs('fixture-org')).P.verification)
       .toBe('identity-only');
   });
+  it('proves only the one classic notification read when GitHub accepts the exact token',async()=>{
+    const t=await build();await withApp(t);
+    await t.credentials.storeUserAuthorization('example-org',{
+      userLogin:'fixture-human',accessToken:'fixture-user-access-token-012345'
+    });
+    t.gh.when('GET /rate_limit').reply(200,{}, {'x-oauth-scopes':'notifications'});
+    t.gh.when('GET /user').reply(200,{id:5001,login:'fixture-human',type:'User'});
+    t.gh.when('GET /notifications').reply(200,[]);
+    const value='fixture-classic-notifications-token-012345';
+    expect((await t.post({action:'add-classic',login:'example-org',token:value})).statusCode).toBe(200);
+    const proof=(await t.db.additionalCredentialProofs('example-org')).K;
+    expect(proof).toMatchObject({actorId:5001,accountId:1001,
+      verification:'identity-and-capability-readback',
+      operation:'GET /notifications',resource:'user/5001',scopes:['notifications']});
+    expect(JSON.stringify(proof)).not.toContain(value);
+    expect((await t.post({action:'remove-classic',login:'example-org'})).statusCode).toBe(200);
+    expect(await t.db.additionalCredentialProofs('example-org')).toEqual({K:undefined});
+  });
   it('uses existing protected form controls for K/F removal without clearing sibling kinds',async()=>{
     const t=await build();
     const res=await t.open();
