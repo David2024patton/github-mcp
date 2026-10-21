@@ -7,6 +7,7 @@ import { AREAS, LEVELS } from '../data/permission-needs.js';
 import { MAP_STATUS, SETTINGS, findSettings, fill } from '../data/dashboard-map.js';
 import { enrolledGuideUser, restrictUnknownUserLink } from './guide-personal.js';
 import {effectiveToolAccess} from '../github/effective-access.js';
+import {registry as registeredTools} from './index.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
 const when = (value) => (value ? formatDenver(value) : null);
@@ -34,7 +35,9 @@ export function compareArea(area, granted) {
 }
 
 async function checkPermissions(args, ctx) {
-  const chosen=args.tool===undefined?null:ctx.registry?.tools?.find(t=>t.name===args.tool);
+  // The canonical static registry is read at call time to avoid granting meta
+  // tools the dynamic registry-injection privilege reserved for dispatcher runners.
+  const chosen=args.tool===undefined?null:registeredTools.tools.find(t=>t.name===args.tool);
   if(args.tool!==undefined&&!chosen)throw new TypeError('That GitHub tool is not registered. Search with github_search_tools.');
   if (args.area && !AREAS.some((a) => a.id === args.area)) throw new TypeError(`Unknown area "${args.area}". Areas: ${AREAS.map((a) => a.id).join(', ')}.`);
   const rows = await accountsFor(ctx, args.account);
@@ -138,7 +141,6 @@ export const tools = [
     name: 'github_check_permissions',
     area: 'server', audience: ['O', 'B'],
     description: 'Check App grants and a named tool\'s profile, mode, stored credential and unverified guard layers.',
-    usesRegistry: true,
     inputSchema: { type: 'object', properties: { account: { type: 'string', maxLength: 39 }, area: { type: 'string', maxLength: 40, description: 'One area, e.g. pull-requests' }, tool: { type: 'string', maxLength: 80, description: 'Registered tool to diagnose for each scoped account' }, detail: DETAIL }, additionalProperties: false },
     annotations: readOnly
   },
