@@ -1816,7 +1816,7 @@
       "design": "docs/designs/MAXIMUM-AUTHORITY.md",
       "dependencies": [],
       "card": "docs/pr-cards/CAP-1.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "JIT contract before implementation",
       "budget": 650,
       "units": [
