@@ -283,7 +283,7 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
       }
       return saved;
     },
-    async storePackage(login, token, { scopes, actor, actorId = null, accountId = null, expiresAt = null }) {
+    async storePackage(login, token, { scopes, actor, actorId = null, accountId = null, expiresAt = null, listReadback = false }) {
       if (typeof token !== 'string' || token.length < 20) throw new TypeError('That does not look like a GitHub token.');
       if (!Array.isArray(scopes) || !scopes.includes('read:packages') || scopes.some(s => !['read:packages', 'write:packages', 'delete:packages', 'repo'].includes(s)) || typeof actor !== 'string' || !actor)
         throw new TypeError('Package credentials require a verified actor and package scopes.');
@@ -298,11 +298,15 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
           proof:{version:1,kind:'P',host:'github.com',actorId,accountId,
             scope:'legacy-owner',
             fingerprint:crypto.createHash('sha256').update(enc).digest('hex'),
-            verification:'identity-only',expiresAt:expiresAt?.toISOString()??null}});
+            verification:listReadback?'identity-and-capability-readback':'identity-only',
+            operation:listReadback?'GET /orgs/{org}/packages':null,
+            resource:listReadback?'org/'+accountId:null,
+            scopes:listReadback?['read:packages']:[],
+            expiresAt:expiresAt?.toISOString()??null}});
       }
       return saved;
     },
-    async storeClassic(login, token, scopes, { actorId = null, accountId = null } = {}) {
+    async storeClassic(login, token, scopes, { actorId = null, accountId = null, listReadback = false } = {}) {
       if (typeof token !== 'string' || token.length < 20) throw new TypeError('That does not look like a GitHub token.');
       const enc=seal(token,contexts.classic(login));
       const saved=await db.setClassicToken(login,{enc,scopes:[...scopes],last4:token.slice(-4)});
@@ -313,7 +317,11 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
           proof:{version:1,kind:'K',host:'github.com',actorId,accountId,
             scope:'legacy-owner',
             fingerprint:crypto.createHash('sha256').update(enc).digest('hex'),
-            verification:'identity-only',expiresAt:null}});
+            verification:listReadback?'identity-and-capability-readback':'identity-only',
+            operation:listReadback?'GET /notifications':null,
+            resource:listReadback?'user/'+actorId:null,
+            scopes:listReadback?['notifications']:[],
+            expiresAt:null}});
       }
       return saved;
     },

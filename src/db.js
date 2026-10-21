@@ -1033,12 +1033,22 @@ export function createDb(sql = productionSql()) {
           proof.scope!=='legacy-owner' ||
           typeof proof.fingerprint!=='string' || !/^[a-f0-9]{64}$/.test(proof.fingerprint) ||
           createHash('sha256').update(expectedCipher).digest('hex')!==proof.fingerprint ||
-          proof.verification!=='identity-only')
+          !['identity-only','identity-and-capability-readback'].includes(proof.verification) ||
+          (proof.verification==='identity-and-capability-readback' &&
+            !((kind==='K'&&proof.operation==='GET /notifications'&&
+              proof.resource==='user/'+proof.actorId&&
+              Array.isArray(proof.scopes)&&proof.scopes.includes('notifications')) ||
+              (kind==='P'&&proof.operation==='GET /orgs/{org}/packages'&&
+              proof.resource==='org/'+proof.accountId&&
+              Array.isArray(proof.scopes)&&proof.scopes.includes('read:packages')))))
         throw new TypeError('Verified additional credential evidence is invalid.');
       const payload=JSON.stringify({
         version:1,kind,host:'github.com',actorId:proof.actorId,
         accountId:proof.accountId,scope:'legacy-owner',
-        fingerprint:proof.fingerprint,verification:'identity-only',
+        fingerprint:proof.fingerprint,verification:proof.verification,
+        operation:proof.verification==='identity-and-capability-readback'?proof.operation:null,
+        resource:proof.verification==='identity-and-capability-readback'?proof.resource:null,
+        scopes:proof.verification==='identity-and-capability-readback'?proof.scopes:[],
         expiresAt:proof.expiresAt??null
       });
       const rows=await sql`UPDATE gh_accounts

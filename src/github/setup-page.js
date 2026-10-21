@@ -647,7 +647,16 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       const expiry = Date.parse(probe.headers['github-authentication-token-expiration'] || '');
       if (Number.isFinite(expiry) && expiry <= Date.now())
         return page(400, { result: 'The package token has expired. Nothing was saved.' });
+      let listReadback=false;
+      if(row.account_type==='Organization') {
+        try {
+          const items=(await bareOctokit({token,fetch}).request(
+            'GET /orgs/{org}/packages',{org:row.login,package_type:'container',per_page:1})).data;
+          listReadback=Array.isArray(items);
+        }catch{/* Provider could deny this endpoint; keep identity-only. */}
+      }
       const saved = await credentials.storePackage(row.login, token, { scopes: list, actor: actor.login,
+        listReadback,
         actorId: actor.id, accountId: row.account_id,
         expiresAt: Number.isFinite(expiry) ? new Date(expiry) : null });
       return page(saved ? 200 : 409, { result: saved
@@ -693,8 +702,17 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
             row.user_login?.toLowerCase()===who.login?.toLowerCase()))
         numericActor=who.id;
     }catch{/* Scope-compatible tokens may not prove ownership; keep unverified. */}
+    let listReadback=false;
+    if(numericActor){
+      try{
+        const items=(await bareOctokit({token,fetch}).request(
+          'GET /notifications',{per_page:1})).data;
+        listReadback=Array.isArray(items);
+      }catch{/* Token identity does not prove notification access. */}
+    }
     await credentials.storeClassic(row.login,token,list,{
-      actorId:numericActor,accountId:numericActor?row.account_id:null
+      actorId:numericActor,accountId:numericActor?row.account_id:null,
+      listReadback
     });
     return page(200, { result: `Saved the encrypted notifications token for ${row.login} (ends in ${token.slice(-4)}).` });
   }
