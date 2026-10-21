@@ -15,13 +15,21 @@ export function optionalCredentialIdentityStatus({account,proofs={},now=Date.now
       proof.host==='github.com'&&proof.scope==='legacy-owner'&&
       proof.accountId===account.account_id&&
       Number.isSafeInteger(proof.actorId)&&proof.actorId>0&&
-      proof.verification==='identity-only'&&
+      (proof.verification==='identity-only' ||
+        (proof.verification==='identity-and-capability-readback' &&
+          ((kind==='P'&&proof.operation==='GET /orgs/{org}/packages'&&
+            proof.resource==='org/'+proof.accountId&&proof.scopes?.includes('read:packages')) ||
+           (kind==='K'&&proof.operation==='GET /notifications'&&
+            proof.resource==='user/'+proof.actorId&&proof.scopes?.includes('notifications')))))&&
       proof.fingerprint===createHash('sha256').update(ciphertext).digest('hex')&&
       (!proof.expiresAt||new Date(proof.expiresAt).getTime()>now);
     result[kind]={
       stored:!!ciphertext,identity:matching?'verified-at-enrollment':'unverified',
-      operationPermission:'not-proven',
-      note:'This kind is confined to its own supported routes; no automatic fallback or proof of effective provider scope.'
+      operationPermission:matching&&proof.verification==='identity-and-capability-readback'
+        ?'observed-for-read-at-enrollment':'not-proven',
+      documentedRead:matching&&proof.verification==='identity-and-capability-readback'
+        ?proof.operation:null,
+      note:'Past readback never proves present GitHub permission, other operations, unrestricted pass access or authority to retry a refused write.'
     };
   }
   return result;

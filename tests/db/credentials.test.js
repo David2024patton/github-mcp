@@ -90,6 +90,22 @@ describe('CAP-3 owner optional grant metadata CAS and rollback safety', () => {
     expect(await db.clearFineGrainedToken('fixture-org')).toBe(true);
     expect((await db.additionalCredentialProofs('fixture-org')).F).toBeUndefined();
     expect((await db.getAccount('fixture-org')).fine_grained_enc).toBeNull();
+    await db.setClassicToken('fixture-org',{enc:'sealed-notification-proof',
+      scopes:['notifications'],last4:'last'});
+    const noticeHash=hash('sealed-notification-proof');
+    expect(await db.bindAdditionalCredentialProof({
+      login:'fixture-org',kind:'K',expectedCipher:'sealed-notification-proof',
+      proof:{...proof(noticeHash),kind:'K',verification:'identity-and-capability-readback',
+        operation:'GET /notifications',resource:'user/4001',scopes:['notifications']}
+    })).toBe(true);
+    expect((await db.additionalCredentialProofs('fixture-org')).K).toMatchObject({
+      verification:'identity-and-capability-readback',operation:'GET /notifications'
+    });
+    await expect(db.bindAdditionalCredentialProof({
+      login:'fixture-org',kind:'K',expectedCipher:'sealed-notification-proof',
+      proof:{...proof(noticeHash),kind:'K',verification:'identity-and-capability-readback',
+        operation:'DELETE /notifications',resource:'user/4001',scopes:['notifications']}
+    })).rejects.toThrow(/invalid/);
     expect(await db.clearClassicToken('fixture-org')).toBe(true);
     expect((await db.getAccount('fixture-org')).classic_enc).toBeNull();
     await expect(db.bindAdditionalCredentialProof({login:'fixture-org',kind:'F',

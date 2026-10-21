@@ -285,6 +285,14 @@ describe('CAP-3 owner optional-kind status cannot claim endpoint authorization',
     expect(optionalCredentialIdentityStatus({account,proofs:{
       P:{...proof,expiresAt:new Date(0).toISOString()}}}).P.identity).toBe('unverified');
     expect(JSON.stringify(good)).not.toContain('sealed-package-value');
+    const readback={...proof,verification:'identity-and-capability-readback',
+      operation:'GET /orgs/{org}/packages',resource:'org/901',scopes:['read:packages']};
+    const observed=optionalCredentialIdentityStatus({account,proofs:{P:readback}});
+    expect(observed.P).toMatchObject({identity:'verified-at-enrollment',
+      operationPermission:'observed-for-read-at-enrollment',
+      documentedRead:'GET /orgs/{org}/packages'});
+    expect(optionalCredentialIdentityStatus({account,proofs:{P:{
+      ...readback,operation:'DELETE /orgs/{org}/packages'}}}).P.identity).toBe('unverified');
   });
 });
 
