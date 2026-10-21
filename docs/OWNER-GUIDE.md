@@ -32,7 +32,13 @@ settings, access or spending always shows you a preview and waits for your OK.
 | "What changed in GitHub through Claude this week?" | The change log | B |
 | "Undo that." | Reverses the last change when it has a clean opposite; says plainly when it doesn't (for example a merge needs a revert PR) | X |
 | "Make a 24-hour read-only pass for Codex." | A pass shown once on your setup page; the agent uses it through Robinson's Toolkit or the HTTPS API | R |
-| Anything else on GitHub | The universal tools find the right GitHub operation and run it with the same safety | U |
+| "Can this connection perform this particular GitHub API action?" | Universal discovery can locate a pinned API operation, but the action may still need a different GitHub credential, scope, plan or guarded specialized tool; unknown and blocked are not successful execution | U/CAP-1 audit in progress |
+| Anything else on GitHub | Universal tools search the pinned REST/GraphQL surfaces; only operations with supported credentials, scoped dispatch and all safety checks can actually run | U |
+
+
+## Capability inventory — implementation candidate, October 21, 2026
+
+The new CAP-1 engineering branch adds `node scripts/capability-inventory.mjs --summary` and `--json` for a versioned operation-by-operation gap inventory. This is **not** an end-user authorization or proof of GitHub provider access. Separate statuses identify a real curated implementation, a merely eligible universal route, unknown credential or enterprise availability, and independent deployed acceptance. No percentage of GitHub functionality is claimed from the current named-tool count. Standard Full and the optional additional-credential setup remain CAP-2/CAP-3 work; using this report does not enroll a token, start God Mode, or enable production.
 
 ## Live testing status — 2026-10-12 UTC
 
