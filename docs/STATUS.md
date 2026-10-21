@@ -759,7 +759,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
     "task": "Re-run exact classic branch protection read against an eligible private scratch repository, without modifying visibility or paying for an upgrade",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "BLOCKED — PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
+    "gates": "BLOCKED \u2014 PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Actual private protection read returned provider HTTP403 upgrade-or-public plan explanation. Next: An independently eligible private test repository on existing authorized plan. Keep private repository private; do not upgrade or widen permission; owner must supply eligible fixture if desired.",
@@ -771,7 +771,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
     "task": "Re-run scoped private-repository ruleset inventory when GitHub plan legitimately permits it",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "BLOCKED — PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
+    "gates": "BLOCKED \u2014 PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Actual private ruleset inventory returned provider HTTP403 upgrade-or-public plan explanation. Next: An independently eligible private test repository on existing authorized plan. Keep visibility and spending unchanged; owner supplies eligible fixture if desired.",
@@ -844,7 +844,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "674fea131e0eb0002f474bb8f529d0f619011286",
     "task": "Independently exercise new H-1 classic complete-object set and remove using isolated public scratch, including preserve-other-controls, readback and exact cleanup",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "Source #188 merged; requires reviewed source in READY live, explicit production-enabled test credential and independent per-operation confirmation. Current live PREVIEW/production OFF: no mutation authorized. Private H-1 403 remains BLOCKED — PROVIDER PLAN.",
+    "gates": "Source #188 merged; requires reviewed source in READY live, explicit production-enabled test credential and independent per-operation confirmation. Current live PREVIEW/production OFF: no mutation authorized. Private H-1 403 remains BLOCKED \u2014 PROVIDER PLAN.",
     "dependsOn": [
       "GITHUB-H1-PUBLIC-READ"
     ],
@@ -1195,7 +1195,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PASSED",
     "lastEvidence": "2026-10-16 genuine connected custom GitHub Cloud MCP acceptance: production Vercel alias github-mcp-chris-projects-de6cd1bf.vercel.app independently resolved READY dpl_FfGNUDzo7vwjExCgD5YYWZZt47Rv, serving live revision a79f08643241d727b38da87b7713728baad39746; required U-1 cf09aab182c7bc6d5e80196adb03f605731201a5 verified as live ancestor (ahead 2/behind 0). Real enrolled OAuth principal PREVIEW/full, I-only robinson-ai-scratch, production OFF, spend $0. github_api_search discovered pinned GitHub REST v2026-03-10 orgs/get, github_api_describe showed GET /orgs/{org} required path only; github_api_read GET 200 returned scoped org login robinson-ai-scratch, numeric org identity 341263172, free plan, 2FA false, default repo read. Independently fetched through specialized github_org_get and confirmed same org identity, plan, 2FA, default permission. Explicit foreign org path under enrolled account refused BEFORE provider call; unknown path/query parameter refused before provider call. No mutation, production activation, spend, secret or cleanup.",
-    "nextAction": "ACCEPTED — genuine source-bearing READY custom-service pinned REST search/describe/read/negative-scope validation independently established. Any U-1 uncurated write still requires separate owner authority per GITHUB-U1-REST-WRITE."
+    "nextAction": "ACCEPTED \u2014 genuine source-bearing READY custom-service pinned REST search/describe/read/negative-scope validation independently established. Any U-1 uncurated write still requires separate owner authority per GITHUB-U1-REST-WRITE."
   },
   {
     "id": "GITHUB-U1-REST-WRITE",
@@ -1420,7 +1420,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "lastEvidence": "2026-10-18 reviewed source correction includes dedicated encrypted P, verified actor/account IDs, exact org and authenticated private personal package routes, curated mutation routing for all twelve variants, and protected removal without decryption. Full local units 8179/211 plus final focused 135 (including one added malformed-list test), shapes 21, check pass; real DB passed prior heads with unchanged additive schema. Fresh final CI/review required. No genuine package token enrolled, no real package mutation accepted; serving source remains 20389ae0.",
     "nextAction": "Release reviewed supported P source 4fed65b9, protected owner token enrollment and actual package access; exact disposable package production lifecycle needs independent write/disposal authority. No extra App permission solves it."
   },
-{
+  {
     "id": "GITHUB-B5-PERMISSION-GUIDANCE",
     "priority": 1,
     "requiredRevision": "e054d200471e04e6000692bf103506a55881a87a",
@@ -1430,7 +1430,18 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PASSED",
     "lastEvidence": "2026-10-18 post-plan genuine custom PREVIEW/full on independent READY Vercel live f1397503 (dpl_C3uAZsQN2NbZAVWzREFbH2V4chxH), enrolled robinson-ai-scratch I/U, production OFF. Actual scratch private Dependabot GET refused HTTP403 because alerts disabled, with accepted named vulnerability alerts(read); code scanning GET 403 because Advanced Security not enabled, with named security events(read). Both B-5 explanations say endpoint entries are NOT proof of missing grants; advise conditional comparison, not blanket consent. Independent github_check_permissions(security) returned missing=[]/permissions_ok=true, confirming refusal is provider feature/plan not unapproved App grant. Explicit GET /user/packages using P failed local client:no_credentials (separate missing P setup, no imaginary boolean/schema-only grant). Foreign repository owner refused client:outside_scope before GitHub. No raw headers fabricated, existing synthetic boolean parser tests are distinct. Zero writes, grants, spend, OAuth resets or fixture changes.",
-    "nextAction": "ACCEPTED — genuine source-bearing provider permission-header formatter and credential/scope failure guidance validated after B-5 release, independently compared with real existing grants. Package delete/restore acceptance remains separately queued as GITHUB-G6-PACKAGE-AUTH; no further App grant is inferred."
+    "nextAction": "ACCEPTED \u2014 genuine source-bearing provider permission-header formatter and credential/scope failure guidance validated after B-5 release, independently compared with real existing grants. Package delete/restore acceptance remains separately queued as GITHUB-G6-PACKAGE-AUTH; no further App grant is inferred."
+  },
+  {
+    "id": "GITHUB-PRIVATE-USER-PASS-SCOPE",
+    "priority": 1,
+    "requiredRevision": "3df082605de3a91f3e32affd385e88ba90df95d2",
+    "status": "PENDING",
+    "task": "On source-bearing deployed custom MCP verify repository/permission-limited private-member I and owner/member U requests refuse before user-bearer acquisition; ordinary own-user reads and authorized owner I installation downscoping still work.",
+    "procedure": "docs/pr-cards/PUB-2.md \u2014 2026-10-21 restricted private-user passes correction; tests/unit/private-user-pass-downscope.test.js for source cases.",
+    "gates": "Verified READY implementation ancestry; genuine already-authorized private developer fixture and service-owned grant, exact existing restricted pass and ordinary connection. No public tenant activation, new real credential, access expansion, production write or spend is inferred.",
+    "dependsOn": [],
+    "lastEvidence": "PR #275 source correction at 3df0826: required CI 39673862507 and release policy 39673862589 passed, including 151 disposable PostgreSQL tests; focused credential/RTC regressions 37 passed. Current live 315a3259 lacks source. No real pass-scope denial/readback acceptance performed."
   }
 ]
 ```
