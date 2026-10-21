@@ -6,7 +6,7 @@ import { MANIFEST_PERMISSIONS } from '../../src/github/app-manifest.js';
 import { parseCatalog } from '../../scripts/check-writes.mjs';
 import { makeWorld, parse } from '../../test/helpers/write-contract.js';
 import fs from 'node:fs';
-import {effectiveToolAccess,documentedOperationAccess,accessRecovery} from '../../src/github/effective-access.js';
+import {effectiveToolAccess,documentedOperationAccess,accessRecovery,additionalCredentialHandoff} from '../../src/github/effective-access.js';
 import {optionalCredentialIdentityStatus} from '../../src/github/optional-identity-status.js';
 import {registry} from '../../src/tools/index.js';
 import {createGithubPolicy} from '../../src/oauth/policy.js';
@@ -293,6 +293,41 @@ describe('CAP-3 owner optional-kind status cannot claim endpoint authorization',
       documentedRead:'GET /orgs/{org}/packages'});
     expect(optionalCredentialIdentityStatus({account,proofs:{P:{
       ...readback,operation:'DELETE /orgs/{org}/packages'}}}).P.identity).toBe('unverified');
+  });
+});
+
+describe('CAP-3 exact-operation protected setup handoff without credential exchange',()=>{
+  const account={login:'example-org'};
+  const ownerContext=true,origin='https://mcp.example.test';
+  it('offers classic K only for reviewed classic-only notifications',()=>{
+    const x=additionalCredentialHandoff({account,operation:'GET /notifications',
+      origin,ownerContext});
+    expect(x).toMatchObject({status:'protected-setup',kind:'K',
+      setupUrl:'https://mcp.example.test/api/github/setup',
+      automaticProviderIssuance:false,grantVerified:false,account:'example-org'});
+    expect(x.instructions).toContain('never paste the token into chat');
+    expect(JSON.stringify(x)).not.toMatch(/gh[pousr]_[A-Za-z0-9]{8,}/);
+  });
+  it('does not gate Standard App package support behind optional token setup',()=>{
+    const x=additionalCredentialHandoff({account,
+      operation:'GET /orgs/{org}/packages',origin,ownerContext});
+    expect(x).toMatchObject({status:'standard-supported',
+      effectivePermission:'not-verified'});
+    expect(x.setupUrl).toBeUndefined();
+    expect(additionalCredentialHandoff({account,operation:'GET /not-reviewed',
+      origin,ownerContext}).status).toBe('unverified');
+  });
+  it('refuses foreign origin, service pass and private tenant access to owner forms',()=>{
+    for(const x of ['http://mcp.example.test','https://user:pass@mcp.example.test',
+      'https://mcp.example.test/other','https://mcp.example.test?code=secret',
+      'https://mcp.example.test:4444']){
+      const out=additionalCredentialHandoff({account,operation:'GET /notifications',
+        origin:x,ownerContext});
+      expect(out.status).toBe('configuration-needed');
+      expect(out.setupUrl).toBeUndefined();
+    }
+    expect(additionalCredentialHandoff({account,operation:'GET /notifications',
+      origin,ownerContext:false})).toMatchObject({status:'not-offered'});
   });
 });
 

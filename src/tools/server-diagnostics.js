@@ -6,7 +6,8 @@ import { formatDenver } from '../github/errors.js';
 import { AREAS, LEVELS } from '../data/permission-needs.js';
 import { MAP_STATUS, SETTINGS, findSettings, fill } from '../data/dashboard-map.js';
 import { enrolledGuideUser, restrictUnknownUserLink } from './guide-personal.js';
-import {effectiveToolAccess,documentedOperationAccess,accessRecovery} from '../github/effective-access.js';
+import {effectiveToolAccess,documentedOperationAccess,accessRecovery,additionalCredentialHandoff} from '../github/effective-access.js';
+import { publicOrigin } from '../core/http.js';
 import {optionalCredentialIdentityStatus} from '../github/optional-identity-status.js';
 import {restOperation} from '../github/openapi-index.js';
 
@@ -92,6 +93,13 @@ async function checkPermissions(args, ctx) {
   if(pinned) for(const entry of accounts){
     const account=rows.find(x=>sameLogin(x.login,entry.login));
     entry.operation_evidence=documentedOperationAccess({account,route:pinned.route});
+    const ownerContext=ctx.connection?.pass!==true &&
+      typeof ctx.credentials?.operationAuthority!=='function';
+    let origin=null;
+    if(ownerContext)try{origin=publicOrigin(ctx.env);}catch{/* No safe link without configured server origin. */}
+    entry.additional_setup=additionalCredentialHandoff({
+      operation:pinned.route,account,origin,ownerContext
+    });
     entry.operation_note='Area-level permission needs include writes and do not prove an individual read operation.';
     if(typeof ctx.credentials?.operationAuthority==='function')
       entry.operation_authority=await ctx.credentials.operationAuthority({
