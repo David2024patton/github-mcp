@@ -166,6 +166,31 @@ describe('the setup page', () => {
     expect(await t.db.listAccounts()).toEqual([]);
   });
 
+  it('binds only an observed exact protected package metadata read, never package writes',async()=>{
+    const t=await build();await t.open();
+    await t.db.upsertAccount({login:'fixture-org',accountId:901,
+      accountType:'Organization',label:'Fixture'});
+    await t.credentials.storeUserAuthorization('fixture-org',{userLogin:'fixture-user',
+      accessToken:'fixture-user-access-token-for-test'});
+    t.gh.when('GET /rate_limit').reply(200,{}, {'x-oauth-scopes':'read:packages'});
+    t.gh.when('GET /user').reply(200,{id:4001,login:'fixture-user',type:'User'});
+    t.gh.when('GET /orgs/{org}/packages').reply(200,[]);
+    const token='fixture-package-token-for-readback-012345';
+    const res=await t.post({action:'add-package',login:'fixture-org',token});
+    expect(res.statusCode).toBe(200);
+    const proof=(await t.db.additionalCredentialProofs('fixture-org')).P;
+    expect(proof).toMatchObject({actorId:4001,accountId:901,
+      verification:'identity-and-capability-readback',
+      operation:'GET /orgs/{org}/packages',resource:'org/901',
+      scopes:['read:packages']});
+    expect(JSON.stringify(proof)).not.toContain(token);
+    t.gh.when('GET /orgs/{org}/packages').reply(403,{message:'Organization policy denied'});
+    const another=await t.post({action:'add-package',login:'fixture-org',
+      token:token+'replacement'});
+    expect(another.statusCode).toBe(200);
+    expect((await t.db.additionalCredentialProofs('fixture-org')).P.verification)
+      .toBe('identity-only');
+  });
   it('uses existing protected form controls for K/F removal without clearing sibling kinds',async()=>{
     const t=await build();
     const res=await t.open();

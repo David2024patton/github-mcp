@@ -4,6 +4,7 @@
 // (test/contract/oauth-contract.js) as real PostgreSQL.
 import { JOB_ID, RESULT_HANDLE, SCHEMA_TABLES, SETUP_PURPOSES, ETAG_BODY_LIMIT_BYTES, PROTECTED_SEEDED_KEY, checkConnection, checkProtected, connectionSettings, normalizeChange } from '../../src/db.js';
 import { hashToken } from '../../src/core/oauth.js';
+import { createHash } from 'node:crypto';
 import { createFakeDevLedger } from './dev-ledger-fake.js';
 import { DEFAULT_PROJECTS, validateProjectProfile, storedProject, containsRepo } from '../../src/data/profile-schema.js';
 
@@ -427,6 +428,35 @@ export function createFakeDb({ clock = Date.now } = {}) {
       if (!r) return false;
       Object.assign(r, { package_enc: null, package_scopes: null, package_actor: null, package_expires_at: null, additional_credential_proofs: {...r.additional_credential_proofs,P:undefined} });
       return true;
+    },
+    async bindAdditionalCredentialProof({login,kind,expectedCipher,proof}) {
+      const row=accountRows.get(String(login).toLowerCase());
+      if(!['F','P','K'].includes(kind)||!proof||
+        proof.kind!==kind||proof.version!==1||proof.host!=='github.com'||
+        proof.scope!=='legacy-owner'||!Number.isSafeInteger(proof.actorId)||
+        proof.actorId<=0||!Number.isSafeInteger(proof.accountId)||proof.accountId<=0||
+        typeof expectedCipher!=='string'||expectedCipher.length<12||
+        proof.fingerprint!==createHash('sha256').update(expectedCipher).digest('hex')||
+        !['identity-only','identity-and-capability-readback'].includes(proof.verification)||
+        (proof.verification==='identity-and-capability-readback'&&
+          !((kind==='P'&&proof.operation==='GET /orgs/{org}/packages'&&
+            proof.resource==='org/'+proof.accountId&&proof.scopes?.includes('read:packages'))||
+            (kind==='K'&&proof.operation==='GET /notifications'&&
+            proof.resource==='user/'+proof.actorId&&proof.scopes?.includes('notifications')))))
+        throw new TypeError('Verified additional credential evidence is invalid.');
+      if(!row||row.account_id!==proof.accountId||
+        row[{F:'fine_grained_enc',P:'package_enc',K:'classic_enc'}[kind]]!==expectedCipher)return false;
+      row.additional_credential_proofs={...row.additional_credential_proofs,
+        [kind]:{version:1,kind,host:'github.com',actorId:proof.actorId,
+          accountId:proof.accountId,scope:'legacy-owner',fingerprint:proof.fingerprint,
+          verification:proof.verification,operation:proof.verification==='identity-only'?null:proof.operation,
+          resource:proof.verification==='identity-only'?null:proof.resource,
+          scopes:proof.verification==='identity-only'?[]:proof.scopes,
+          expiresAt:proof.expiresAt??null}};
+      return true;
+    },
+    async additionalCredentialProofs(login) {
+      return structuredClone(accountRows.get(String(login).toLowerCase())?.additional_credential_proofs??{});
     },
     async setAccountPlan(login, planName) {
       const r = accountRows.get(String(login).toLowerCase());
