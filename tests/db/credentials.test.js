@@ -87,6 +87,11 @@ describe('CAP-3 owner optional grant metadata CAS and rollback safety', () => {
     await db.setClassicToken('fixture-org',{enc:'sealed-classic-replaced',scopes:['notifications'],last4:'last'});
     expect(await db.additionalCredentialProofs('fixture-org')).toMatchObject({F:{kind:'F'}});
     expect((await db.additionalCredentialProofs('fixture-org')).K).toBeUndefined();
+    expect(await db.clearFineGrainedToken('fixture-org')).toBe(true);
+    expect((await db.additionalCredentialProofs('fixture-org')).F).toBeUndefined();
+    expect((await db.getAccount('fixture-org')).fine_grained_enc).toBeNull();
+    expect(await db.clearClassicToken('fixture-org')).toBe(true);
+    expect((await db.getAccount('fixture-org')).classic_enc).toBeNull();
     await expect(db.bindAdditionalCredentialProof({login:'fixture-org',kind:'F',
       expectedCipher:'sealed-fine-grained',
       proof:{...fg,verification:'operation-authorized'}})).rejects.toThrow(/invalid/);

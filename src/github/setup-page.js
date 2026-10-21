@@ -211,7 +211,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     }
     if (action === 'set-own-people') return await setOwnPeople(p, page);
     if (action === 'save-protected' || action === 'remove-protected') return await editProtected(action, p, page);
-    if (!['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'add-package', 'remove-package'].includes(action)) return page(400, { result: 'Unknown action.' });
+    if (!['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'add-package', 'remove-package', 'remove-classic', 'remove-fine-grained'].includes(action)) return page(400, { result: 'Unknown action.' });
     if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
     if (!isValidLogin(p.login)) return page(400, { result: 'Enter a valid GitHub account name.' });
     const account = p.login;
@@ -222,6 +222,14 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
         : 'That account is not set up on the server.' });
     }
 
+    if (action==='remove-classic' || action==='remove-fine-grained') {
+      const removed=action==='remove-classic'
+        ?await db.clearClassicToken(account)
+        :await db.clearFineGrainedToken(account);
+      return page(removed?200:404,{result:removed
+        ? 'The stored credential and its recorded identity proof were cleared. Revoke the credential on GitHub separately if needed.'
+        : 'No corresponding stored credential for that account.'});
+    }
     if (!credentials.keyConfigured()) return page(503, { keyHelp: 'The server has no encryption key, so it will not store anything. Set TOKEN_ENCRYPTION_KEY (see docs/DEPLOY.md) and reload.' });
 
     if (action === 'start-app') {

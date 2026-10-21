@@ -998,6 +998,20 @@ export function createDb(sql = productionSql()) {
         WHERE lower(login) = lower(${login}) RETURNING login`;
       return rows.length === 1;
     },
+    async clearClassicToken(login) {
+      const rows=await sql`UPDATE gh_accounts SET classic_enc=NULL,
+        classic_scopes=NULL,classic_last4=NULL,
+        additional_credential_proofs=additional_credential_proofs-'K'
+        WHERE lower(login)=lower(${login}) AND classic_enc IS NOT NULL RETURNING login`;
+      return rows.length===1;
+    },
+    async clearFineGrainedToken(login) {
+      const rows=await sql`UPDATE gh_accounts SET fine_grained_enc=NULL,
+        fine_grained_last4=NULL,fine_grained_expires_at=NULL,
+        additional_credential_proofs=additional_credential_proofs-'F'
+        WHERE lower(login)=lower(${login}) AND fine_grained_enc IS NOT NULL RETURNING login`;
+      return rows.length===1;
+    },
     async clearPackageToken(login) {
       const rows = await sql`UPDATE gh_accounts SET package_enc = NULL, package_scopes = NULL,
         package_actor = NULL, package_expires_at = NULL, additional_credential_proofs = additional_credential_proofs - 'P' WHERE lower(login) = lower(${login}) RETURNING login`;
