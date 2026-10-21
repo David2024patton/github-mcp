@@ -161,8 +161,8 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
       // App-only endpoints the user is not authorized to call.
       if (cred==='I' && tenant.role==='owner') return base.token(args);
       if (cred!=='U' && cred!=='I') throw denied();
-      // GitHub App user bearers cannot be minted down to a restricted pass.
-      // Refuse before decryption/refresh rather than borrow a broader bearer.
+      // User bearers cannot be minted down to repository/permission-scoped
+      // passes. Refuse before lookup/decryption/refresh, with no broader fallback.
       if (args.scope?.repositories?.length || args.scope?.repository_ids?.length ||
           args.scope?.permissions) throw denied();
       if (typeof args.account!=='string') throw denied();

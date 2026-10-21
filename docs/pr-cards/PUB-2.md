@@ -1,5 +1,9 @@
 # PUB-2 — Private delegated GitHub identity and scoped client OAuth
 
+## 2026-10-21 security correction — restricted private-user passes (#275)
+
+The private-user credential adapter previously ignored repository/permission narrowing supplied by the caller. GitHub App user tokens cannot be minted down to those pass constraints. Reject nonempty repository names/IDs and any permission map before directory lookup, decryption or refresh for U and private-member I. Preserve ordinary own-user authorization and the existing owner I installation-token downscoping path. `tests/unit/private-user-pass-downscope.test.js` exercises all restrictions, owner U denial, member U/I normal access, and exact owner I delegation; focused regression plus existing RTC pass suite: 37 passed. No provider/SQL/credential-storage change. Required exact-head CI and release-policy plus self-review remain merge gates. Four production lines, zero newly completed PUB/CAP subsections or bundles; isolated small security PR required by AGENTS. Deployed private-client acceptance remains separately open. Initial CI check failure was missing this card drift note; no source or test weakening is needed.
+
 **Stage: source implementation verified in disposable Postgres and simulated GitHub contract; PR #264 exact-head final CI/review/merge outstanding; deployed/provider/mobile/desktop acceptance separately open.** Prior PUB-1 merged commit `692c38550217c84b6afa5fc4840ea753be8e049f` with exact-PR and merged-main green, providing dormant tenant directory/store. Requires no new owner decision for the private test code, but **public GitHub App distribution and Directory remain blocked by IN-18**.
 
 ## Drift check A

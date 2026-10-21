@@ -1,6 +1,6 @@
 # CAP-3 — optional additional credentials and typed authority lifecycle
 
-**Status: APPROVED — pre-code frozen plan.** Baseline `4a09af622f46c1d99a6544769fe23321945a31b7`, CAP-2 source merged #273, CAP-1 source merged #272. Preserve concurrent PUB-4 #268; source/live acceptance remain separate. No actual tokens, provider enrollment or user policy changed by this plan.
+**Status: IN PROGRESS — draft #274; original pre-code frozen plan retained.** Baseline `4a09af622f46c1d99a6544769fe23321945a31b7`, CAP-2 source merged #273, CAP-1 source merged #272. Preserve concurrent PUB-4 #268; source/live acceptance remain separate. No actual tokens, provider enrollment or user policy changed by this plan.
 
 ## Drift check A
 

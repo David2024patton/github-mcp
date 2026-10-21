@@ -1,8 +1,12 @@
+## 2026-10-21 — private-user restricted-pass credential correction
+
+Security correction found while recovering draft CAP-3 #274: private-member I calls use that member's App user bearer, which GitHub cannot mint down to a repository/permission-scoped pass. The credential adapter previously ignored that scope. It now refuses repository names, repository IDs and permission restrictions before directory lookup, decryption or refresh; owner U has the same refusal, while owner I retains the existing installation downscoping path. Ordinary own-user grants remain usable. Focused regression and RTC-pass tests: 37 passed. Full exact-head CI/release policy and self-review remain merge gates. This is a small independent security fix under AGENTS' security-hole rule, not a completed CAP subsection or bundle. CAP-3 #274 and PUB-4 #268 remain separate drafts. Independently verified production alias is READY at `315a3259faafa474a9b36cc8410c5718d5b9326f`; source-only fix needs scheduled deployment and genuine service acceptance. No real provider credential, mutation, release or spend.
+
 ## 2026-10-21 — CAP-3 private-user binding recovery (still incomplete)
 
 Recovery reuses existing encrypted private-user grants instead of introducing another bearer store. An additive nullable `authority_binding` column binds the current ciphertext fingerprint to verified GitHub.com numeric subject, tenant/identity, membership and pilot revisions, account/App/installation, expiry, and the exact harmless `GET /user` identity read. Native consent supplies this proof only after existing identity/installation verification and returns through the original scoped client's PKCE flow. Refresh replaces ciphertext and proof together using the existing lease/CAS; ordinary replacement clears old proof unless independently verified. Legacy credentials remain intact and unverified. `github_check_permissions` can now report the binding for that identity read separately from documented compatibility and actual guarded execution; no repository/write capability is inferred. A discovered unsupported private-user pass-downscope defect is isolated into a separate security PR under AGENTS' main-security-hole rule; ordinary user grants and owner installation downscoping stay intact.
 
-Focused binding/resolver/private-entry tests: 48 passed before the final extra restricted-pass assertion. Existing shape suite: 21 passed. New real PostgreSQL cases cover additive migration, same human in two workspaces, capability gain limited to identity read, wrong scope/host, replacement versus delayed refresh, revocation/reallowlist epochs and stale consent. Exact-head DB/full CI evidence is still required; local PostgreSQL is absent and the package manager could not locate its package. No local DB pass is claimed. Production independently verified READY via Vercel `dpl_EfnLBCBpcQRBWiabD1wHvfLsToi9`, canonical alias and exact live source `315a3259faafa474a9b36cc8410c5718d5b9326f`; CAP-3 is absent from deployment. Shared native acceptance checkpoint remains subject to documented single-runner ownership. No new live provider/tenant permission, spend or release.
+Recovery revision `151afcc07ef68ce30052205ba70928531d4f271e` passed required CI `39673987346` (check, both unit shards, real PostgreSQL, shapes, RTC, aggregate) and release policy `39673985993`/`39673987466`. Real DB: 155 tests/23 files, including the four new binding cases and fourteen existing native consent/refresh cases. Local proof: 48 focused tests, 8,336 full units on the pre-final-migration tree, 21 shapes and 52 RTC tests. New real PostgreSQL cases cover additive/legacy migration, same human in two workspaces, identity-read-only proof gain, wrong scope/host, replacement versus delayed refresh, revocation/reallowlist epochs and stale consent. Any later integration head requires its own exact-head gates. Local PostgreSQL is absent; no local DB pass is claimed. Production independently verified READY via Vercel `dpl_EfnLBCBpcQRBWiabD1wHvfLsToi9`, canonical alias and exact live source `315a3259faafa474a9b36cc8410c5718d5b9326f`; CAP-3 is absent from deployment. Shared native acceptance checkpoint remains subject to documented single-runner ownership. No new live provider/tenant permission, spend or release.
 
 **CAP-3 remains draft and all six original criteria remain open as whole criteria.** This source handles the existing private App-user grant foundation only. Additional typed optional credentials (fine-grained/classic/OAuth-App and verified service-App authority where actually documented), their protected/native enrollment and operation/resource readback, scoped agent-initiated upgrade/automatic return, full lifecycle integration and complete two-tenant synthetic-provider proofs remain engineering, not an external blocker. The historical safety rejection is not repeated for this narrower metadata change, and is not proof that the unfinished general credential work is impossible. Preserve the frozen plan `4975bf79b7fdf7c7c8ee30415e64098bcdb18055`, compare delivery against its original criteria, and do not mark CAP-3 complete or start dependent CAP-4 as if it were. See the existing CAP-3 card for precise next seams.
 
@@ -767,7 +771,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
     "task": "Re-run exact classic branch protection read against an eligible private scratch repository, without modifying visibility or paying for an upgrade",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "BLOCKED — PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
+    "gates": "BLOCKED \u2014 PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Actual private protection read returned provider HTTP403 upgrade-or-public plan explanation. Next: An independently eligible private test repository on existing authorized plan. Keep private repository private; do not upgrade or widen permission; owner must supply eligible fixture if desired.",
@@ -779,7 +783,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
     "task": "Re-run scoped private-repository ruleset inventory when GitHub plan legitimately permits it",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "BLOCKED — PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
+    "gates": "BLOCKED \u2014 PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
     "dependsOn": [],
     "status": "BLOCKED",
     "lastEvidence": "2026-10-15 restored adapter: Actual private ruleset inventory returned provider HTTP403 upgrade-or-public plan explanation. Next: An independently eligible private test repository on existing authorized plan. Keep visibility and spending unchanged; owner supplies eligible fixture if desired.",
@@ -852,7 +856,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "674fea131e0eb0002f474bb8f529d0f619011286",
     "task": "Independently exercise new H-1 classic complete-object set and remove using isolated public scratch, including preserve-other-controls, readback and exact cleanup",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "Source #188 merged; requires reviewed source in READY live, explicit production-enabled test credential and independent per-operation confirmation. Current live PREVIEW/production OFF: no mutation authorized. Private H-1 403 remains BLOCKED — PROVIDER PLAN.",
+    "gates": "Source #188 merged; requires reviewed source in READY live, explicit production-enabled test credential and independent per-operation confirmation. Current live PREVIEW/production OFF: no mutation authorized. Private H-1 403 remains BLOCKED \u2014 PROVIDER PLAN.",
     "dependsOn": [
       "GITHUB-H1-PUBLIC-READ"
     ],
@@ -1203,7 +1207,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PASSED",
     "lastEvidence": "2026-10-16 genuine connected custom GitHub Cloud MCP acceptance: production Vercel alias github-mcp-chris-projects-de6cd1bf.vercel.app independently resolved READY dpl_FfGNUDzo7vwjExCgD5YYWZZt47Rv, serving live revision a79f08643241d727b38da87b7713728baad39746; required U-1 cf09aab182c7bc6d5e80196adb03f605731201a5 verified as live ancestor (ahead 2/behind 0). Real enrolled OAuth principal PREVIEW/full, I-only robinson-ai-scratch, production OFF, spend $0. github_api_search discovered pinned GitHub REST v2026-03-10 orgs/get, github_api_describe showed GET /orgs/{org} required path only; github_api_read GET 200 returned scoped org login robinson-ai-scratch, numeric org identity 341263172, free plan, 2FA false, default repo read. Independently fetched through specialized github_org_get and confirmed same org identity, plan, 2FA, default permission. Explicit foreign org path under enrolled account refused BEFORE provider call; unknown path/query parameter refused before provider call. No mutation, production activation, spend, secret or cleanup.",
-    "nextAction": "ACCEPTED — genuine source-bearing READY custom-service pinned REST search/describe/read/negative-scope validation independently established. Any U-1 uncurated write still requires separate owner authority per GITHUB-U1-REST-WRITE."
+    "nextAction": "ACCEPTED \u2014 genuine source-bearing READY custom-service pinned REST search/describe/read/negative-scope validation independently established. Any U-1 uncurated write still requires separate owner authority per GITHUB-U1-REST-WRITE."
   },
   {
     "id": "GITHUB-U1-REST-WRITE",
@@ -1428,7 +1432,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "lastEvidence": "2026-10-18 reviewed source correction includes dedicated encrypted P, verified actor/account IDs, exact org and authenticated private personal package routes, curated mutation routing for all twelve variants, and protected removal without decryption. Full local units 8179/211 plus final focused 135 (including one added malformed-list test), shapes 21, check pass; real DB passed prior heads with unchanged additive schema. Fresh final CI/review required. No genuine package token enrolled, no real package mutation accepted; serving source remains 20389ae0.",
     "nextAction": "Release reviewed supported P source 4fed65b9, protected owner token enrollment and actual package access; exact disposable package production lifecycle needs independent write/disposal authority. No extra App permission solves it."
   },
-{
+  {
     "id": "GITHUB-B5-PERMISSION-GUIDANCE",
     "priority": 1,
     "requiredRevision": "e054d200471e04e6000692bf103506a55881a87a",
@@ -1438,7 +1442,18 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PASSED",
     "lastEvidence": "2026-10-18 post-plan genuine custom PREVIEW/full on independent READY Vercel live f1397503 (dpl_C3uAZsQN2NbZAVWzREFbH2V4chxH), enrolled robinson-ai-scratch I/U, production OFF. Actual scratch private Dependabot GET refused HTTP403 because alerts disabled, with accepted named vulnerability alerts(read); code scanning GET 403 because Advanced Security not enabled, with named security events(read). Both B-5 explanations say endpoint entries are NOT proof of missing grants; advise conditional comparison, not blanket consent. Independent github_check_permissions(security) returned missing=[]/permissions_ok=true, confirming refusal is provider feature/plan not unapproved App grant. Explicit GET /user/packages using P failed local client:no_credentials (separate missing P setup, no imaginary boolean/schema-only grant). Foreign repository owner refused client:outside_scope before GitHub. No raw headers fabricated, existing synthetic boolean parser tests are distinct. Zero writes, grants, spend, OAuth resets or fixture changes.",
-    "nextAction": "ACCEPTED — genuine source-bearing provider permission-header formatter and credential/scope failure guidance validated after B-5 release, independently compared with real existing grants. Package delete/restore acceptance remains separately queued as GITHUB-G6-PACKAGE-AUTH; no further App grant is inferred."
+    "nextAction": "ACCEPTED \u2014 genuine source-bearing provider permission-header formatter and credential/scope failure guidance validated after B-5 release, independently compared with real existing grants. Package delete/restore acceptance remains separately queued as GITHUB-G6-PACKAGE-AUTH; no further App grant is inferred."
+  },
+  {
+    "id": "GITHUB-PRIVATE-USER-PASS-SCOPE",
+    "priority": 1,
+    "requiredRevision": "3df082605de3a91f3e32affd385e88ba90df95d2",
+    "status": "PENDING",
+    "task": "On source-bearing deployed custom MCP verify repository/permission-limited private-member I and owner/member U requests refuse before user-bearer acquisition; ordinary own-user reads and authorized owner I installation downscoping still work.",
+    "procedure": "docs/pr-cards/PUB-2.md \u2014 2026-10-21 restricted private-user passes correction; tests/unit/private-user-pass-downscope.test.js for source cases.",
+    "gates": "Verified READY implementation ancestry; genuine already-authorized private developer fixture and service-owned grant, exact existing restricted pass and ordinary connection. No public tenant activation, new real credential, access expansion, production write or spend is inferred.",
+    "dependsOn": [],
+    "lastEvidence": "PR #275 source correction at 3df0826: required CI 39673862507 and release policy 39673862589 passed, including 151 disposable PostgreSQL tests; focused credential/RTC regressions 37 passed. Current live 315a3259 lacks source. No real pass-scope denial/readback acceptance performed."
   }
 ]
 ```
