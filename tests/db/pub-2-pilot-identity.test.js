@@ -509,7 +509,7 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     };
     const owner=createTenantScopedCredentials({
       base:{token:async()=>{throw Error('global token not allowed');}},
-      db,directory,tenant:{tenantId:a.id,identityId:ownerA,role:'owner'},
+      db,directory,tenant:await directory.authorizedPilotIdentity(a.id,ownerA),
       env,fetchImpl
     });
     const other=createTenantScopedCredentials({
@@ -644,6 +644,10 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(individual.user_login).toBe('private-pilot-owner');
     expect(individual.access_enc).toMatch(/^v1\./);
     expect(individual.refresh_enc).toMatch(/^v1\./);
+    expect(individual.authority_binding).toMatchObject({kind:'app_user',host:'github.com',
+      githubUserId:20001,tenantId:a.id,identityId:ownerA,
+      accountId:81001,installationId:82001,appId:80001,
+      operations:['GET /user'],resources:['user/20001'],permissions:[]});
     expect(JSON.stringify(individual)).not.toContain('fixture-ephemeral-github-user-token');
     expect((await dbB.getAccount(account))).toBeNull();
     await expect(consent.finish({state:first.csrfState,code:'fake-github-code',

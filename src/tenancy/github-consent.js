@@ -169,6 +169,7 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
       directory:dir,tenantId:claim.tenantId,identityId:claim.identityId,
       account:account.login,userLogin:principal.login,
       accessToken:data.access_token,expiresIn,
+      verifiedContext:{subject:principal.subject,tenant:latest,account},
       refreshToken:data.refresh_token??null,refreshExpiresIn,env
     });
     if (!saved) throw refused();

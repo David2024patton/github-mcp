@@ -1,0 +1,46 @@
+{
+  "subsections": [
+    {
+      "id": "CAP-3",
+      "criteria": [
+        {
+          "criterion": "Only missing applicable optional credential kinds are recommended by exact operation, host and verified requirements, never by broad tool family or invented God-Mode-only privileges.",
+          "evidence": "PARTIAL: exact reviewed operation resolver and negative synthetic cases exist. Optional-kind enrollment/recommendation is not fully integrated."
+        },
+        {
+          "criterion": "Every stored extra grant binds provider host, numeric verified human identity, tenant/workspace, account, resource/enterprise scope, token kind, permissions, expiry and verification without exposing the secret.",
+          "evidence": "PARTIAL: existing private App-user U grant now binds current ciphertext, subject, tenant and epochs, account/App/installation, GitHub.com, expiry and exact identity read. Additional credential kinds and non-GitHub.com enrollment remain unfinished."
+        },
+        {
+          "criterion": "One agent-initiated secure setup handoff uses native GitHub App/OAuth consent or the protected service token page only as applicable, returns to its originating scoped client and rechecks capability; no chat-token input.",
+          "evidence": "PARTIAL: existing private native App-user consent attaches identity-read proof and returns through its original registered client PKCE flow. Agent-initiated additional-kind protected/native upgrade enrollment remains unfinished."
+        },
+        {
+          "criterion": "No silent broader fallback, trial-and-error provider authentication, unsupported pass downscoping or unintended privilege carryover during denied provider requests, upgrades or refresh.",
+          "evidence": "PARTIAL: resolver forbids silent fallback and revoked/expired/foreign/stale metadata; unsupported private-user pass downscope is separately isolated in security PR #275. Full additional-kind dispatch/lifecycle still unfinished."
+        },
+        {
+          "criterion": "Disposable PostgreSQL and synthetic-provider integration prove two distinct tenants, the same human in separate workspaces, wrong identity/host/resource, stale/revoked grants, concurrency and interrupted setup.",
+          "evidence": "PARTIAL: 48 focused unit tests pass and new disposable PostgreSQL scenarios cover the existing U foundation, with native consent/refresh cases extended. DB execution and full synthetic-provider additional-kind handoff tests still required."
+        },
+        {
+          "criterion": "Tests prove secret redaction, restricted service passes, clean replacement/deletion and verified before/after capability gain; incomplete real provider/device acceptance remains independently OPEN.",
+          "evidence": "PARTIAL: ciphertext/metadata redaction, restricted-pass refusal, U replacement proof invalidation and identity-read before/after assertions exist. Additional-kind readback and cleanup proofs plus independent real acceptance remain open."
+        }
+      ],
+      "remainingEngineering": [
+        "Typed applicable optional credential registry and protected enrollment for kinds beyond existing private App-user U, bound to explicit host/human/tenant/account/resource and current authorization context.",
+        "Agent-initiated registered-client upgrade handoff with correct native/protected provider flow, one-use state, automatic return and interruption recovery.",
+        "Exact operation/resource harmless capability readback beyond GET /user, with honest unknowns and no fallback or provider write retry.",
+        "Full additional-kind expiry/refresh/replace/revoke/delete and restricted-pass lifecycle integration.",
+        "Complete original synthetic-provider/two-tenant PostgreSQL integration, exact-head CI, review and frozen delivery comparison before merge; independent real provider/device acceptance remains separate."
+      ]
+    }
+  ],
+  "productionAdded": 255,
+  "productionRemoved": 12,
+  "newEngineering": "Existing sealed private U grant metadata binding, native consent/refresh attachment, epoch/CAS invalidation and scoped diagnostic integration. Separate four-line restricted-pass security fix is PR #275 and is not credited as a completed CAP subsection.",
+  "planComparison": "CONTINUE: original six whole criteria remain incomplete. Recovered the existing-U binding foundation through a narrower metadata change without another bearer store; original optional-kind registry/enrollment outcome is not complete.",
+  "relatedWorkDecision": "Keep original CAP-3 plan and draft #274. Isolate main security defect into #275 as AGENTS requires; PUB-4 #268 is unchanged and CAP-4 remains dependent.",
+  "decision": "CONTINUE"
+}

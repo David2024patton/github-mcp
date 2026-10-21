@@ -58,6 +58,15 @@ export async function assertTenantSearchPath(sql, tenantId) {
  */
 export function createTenantDirectory(sql) {
   if (typeof sql !== 'function') throw new TypeError('Tenant directory requires a parameterized SQL adapter.');
+  let bindingSchemaReady=null;
+  function ensureUserBindingSchema() {
+    if (!bindingSchemaReady) {
+      bindingSchemaReady=sql`ALTER TABLE gh_tenant_user_authorizations
+        ADD COLUMN IF NOT EXISTS authority_binding JSONB`;
+      bindingSchemaReady.catch(()=>{bindingSchemaReady=null;});
+    }
+    return bindingSchemaReady;
+  }
   return {
     async initSchema() {
       await sql`CREATE TABLE IF NOT EXISTS gh_tenant_identities (
@@ -146,6 +155,9 @@ export function createTenantDirectory(sql) {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         PRIMARY KEY (tenant_id,identity_id,account_login)
       )`;
+      // CAP-3 adds no bearer store. Legacy grants retain their ciphertext and
+      // remain unverified until consent supplies fresh scoped readback.
+      await ensureUserBindingSchema();
       // GitHub redirect state lives in the private registry only long enough
       // to finish one GitHub authorization. Store a hash of the browser secret.
       await sql`CREATE TABLE IF NOT EXISTS gh_tenant_oauth_flows (
@@ -333,7 +345,7 @@ export function createTenantDirectory(sql) {
      * approvals from writing a shared credential or another tenant's row. */
     async storePilotUserAuthorization({ tenantId, identityId, accountLogin,
       userLogin, accessEnc, accessExpiresAt, refreshEnc = null,
-      refreshExpiresAt = null }) {
+      refreshExpiresAt = null, authorityBinding = null }) {
       const t=validUuid(tenantId), i=validUuid(identityId);
       if (typeof accountLogin!=='string' ||
           !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin) ||
@@ -345,21 +357,30 @@ export function createTenantDirectory(sql) {
             !Number.isFinite(refreshExpiresAt.valueOf())))) {
         throw new TypeError('A verified, encrypted tenant user authorization is required.');
       }
+      await ensureUserBindingSchema();
       const rows=await sql`INSERT INTO gh_tenant_user_authorizations (
         tenant_id,identity_id,account_login,user_login,access_enc,access_expires_at,
-        refresh_enc,refresh_expires_at)
+        refresh_enc,refresh_expires_at,authority_binding)
         SELECT ${t}::uuid,${i}::uuid,${accountLogin},${userLogin},
-          ${accessEnc},${accessExpiresAt},${refreshEnc},${refreshExpiresAt}
+          ${accessEnc},${accessExpiresAt},${refreshEnc},${refreshExpiresAt},
+          ${authorityBinding===null?null:JSON.stringify(authorityBinding)}::jsonb
         WHERE EXISTS (SELECT 1 FROM gh_tenants t
           JOIN gh_tenant_memberships m ON m.tenant_id=t.id
           JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=t.id AND p.identity_id=m.identity_id
           WHERE t.id=${t}::uuid AND t.status='active'
-            AND m.identity_id=${i}::uuid AND m.active=TRUE AND p.active=TRUE)
+            AND m.identity_id=${i}::uuid AND m.active=TRUE AND p.active=TRUE
+            AND (${authorityBinding===null} OR (
+              m.revision=${authorityBinding?.membershipRevision??0}
+              AND p.revision=${authorityBinding?.pilotRevision??0}
+              AND EXISTS (SELECT 1 FROM gh_tenant_identities ident
+                WHERE ident.id=${i}::uuid AND ident.provider='github'
+                  AND ident.provider_subject=${String(authorityBinding?.githubUserId??'')}))))
         ON CONFLICT (tenant_id,identity_id,account_login) DO UPDATE SET
           user_login=EXCLUDED.user_login,access_enc=EXCLUDED.access_enc,
           access_expires_at=EXCLUDED.access_expires_at,
           refresh_enc=EXCLUDED.refresh_enc,
           refresh_expires_at=EXCLUDED.refresh_expires_at,
+          authority_binding=EXCLUDED.authority_binding,
           refresh_claim_id=NULL,refresh_claim_expires_at=NULL,
           revision=gh_tenant_user_authorizations.revision+1,updated_at=now()
         RETURNING revision`;
@@ -374,7 +395,7 @@ export function createTenantDirectory(sql) {
           !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)) return null;
       const rows=await sql`SELECT u.user_login,u.access_enc,u.access_expires_at,
           u.refresh_enc,u.refresh_expires_at,u.refresh_claim_id,
-          u.refresh_claim_expires_at,u.revision
+          u.refresh_claim_expires_at,u.revision,to_jsonb(u)->'authority_binding' AS authority_binding
         FROM gh_tenant_user_authorizations u
         JOIN gh_tenants t ON t.id=u.tenant_id
         JOIN gh_tenant_memberships m ON m.tenant_id=t.id AND m.identity_id=u.identity_id
@@ -414,11 +435,13 @@ export function createTenantDirectory(sql) {
 
     async finishPilotUserRefresh({tenantId,identityId,accountLogin,
       expectedAccessEnc,claimId,accessEnc,accessExpiresAt,
-      refreshEnc,refreshExpiresAt}) {
+      refreshEnc,refreshExpiresAt,authorityBinding=null}) {
       const t=validUuid(tenantId),i=validUuid(identityId);
+      await ensureUserBindingSchema();
       const rows=await sql`UPDATE gh_tenant_user_authorizations u
         SET access_enc=${accessEnc},access_expires_at=${accessExpiresAt},
           refresh_enc=${refreshEnc},refresh_expires_at=${refreshExpiresAt},
+          authority_binding=${authorityBinding===null?null:JSON.stringify(authorityBinding)}::jsonb,
           refresh_claim_id=NULL,refresh_claim_expires_at=NULL,
           revision=u.revision+1,updated_at=now()
         WHERE u.tenant_id=${t}::uuid AND u.identity_id=${i}::uuid
@@ -428,7 +451,10 @@ export function createTenantDirectory(sql) {
             JOIN gh_tenants ten ON ten.id=m.tenant_id
             JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=m.tenant_id AND p.identity_id=m.identity_id
             WHERE m.tenant_id=${t}::uuid AND m.identity_id=${i}::uuid
-              AND m.active=TRUE AND ten.status='active' AND p.active=TRUE)
+              AND m.active=TRUE AND ten.status='active' AND p.active=TRUE
+              AND (${authorityBinding===null} OR (
+                m.revision=${authorityBinding?.membershipRevision??0}
+                AND p.revision=${authorityBinding?.pilotRevision??0})))
         RETURNING u.revision`;
       return rows.length===1;
     },

@@ -5,6 +5,8 @@ import { encryptSecret, decryptSecret, readEncryptionKey } from '../core/crypto.
 import { GithubClientError } from '../github/errors.js';
 import { randomUUID } from 'node:crypto';
 import { verifyGithubBearerIdentity, verifyGithubUserInstallation } from './github-identity.js';
+import { userGrantBinding, currentUserGrantBinding } from './credential-binding.js';
+import { resolveDocumentedCredential } from '../github/credential-authority.js';
 
 const aad=(tenantId,identityId,account,kind)=>
   `github-mcp/private-tenant/${tenantId}/identity/${identityId}/account/${account.toLowerCase()}/${kind}`;
@@ -13,7 +15,7 @@ const denied=()=>new GithubClientError('no_credentials',
 
 export async function storePilotUserGrant({ directory, tenantId, identityId,
   account, userLogin, accessToken, refreshToken = null, expiresIn,
-  refreshExpiresIn = null, env = process.env, now = Date.now }) {
+  refreshExpiresIn = null, verifiedContext = null, env = process.env, now = Date.now }) {
   if (typeof accessToken!=='string' || accessToken.length<8 || accessToken.length>4096 ||
       !Number.isSafeInteger(expiresIn) || expiresIn<60 || expiresIn>31536000 ||
       (refreshToken!==null && (typeof refreshToken!=='string' ||
@@ -27,9 +29,15 @@ export async function storePilotUserGrant({ directory, tenantId, identityId,
     aad:aad(tenantId,identityId,account,'access'),key});
   const refreshEnc=refreshToken===null?null:encryptSecret(refreshToken,{
     aad:aad(tenantId,identityId,account,'refresh'),key});
+  const accessExpiresAt=new Date(at+expiresIn*1000);
+  if (verifiedContext && (verifiedContext.tenant?.tenantId!==tenantId ||
+      verifiedContext.tenant?.identityId!==identityId ||
+      verifiedContext.account?.login?.toLowerCase()!==account.toLowerCase())) throw denied();
+  const authorityBinding=verifiedContext?userGrantBinding({...verifiedContext,
+    accessEnc,expiresAt:accessExpiresAt}):null;
   const stored=await directory.storePilotUserAuthorization({
     tenantId,identityId,accountLogin:account.toLowerCase(),userLogin,
-    accessEnc,accessExpiresAt:new Date(at+expiresIn*1000),
+    accessEnc,accessExpiresAt,authorityBinding,
     refreshEnc,refreshExpiresAt:refreshToken===null?null:
       new Date(at+(refreshExpiresIn??15811200)*1000)
   });
@@ -90,11 +98,14 @@ async function renewPilotUser({ directory, tenant, db, account, row, env, now, f
           installationId:app.installation_id,appId:app.app_id,
           accountId:app.account_id,fetchImpl
         })) throw denied();
+    const accessEnc=encryptSecret(access,{
+      aad:aad(scope.tenantId,scope.identityId,account,'access'),key});
+    const accessExpiresAt=new Date(now()+expiresIn*1000);
+    const authorityBinding=userGrantBinding({subject:actual.subject,tenant,
+      account:app,accessEnc,expiresAt:accessExpiresAt});
     const newer=await directory.finishPilotUserRefresh({
       ...scope,expectedAccessEnc:row.access_enc,claimId,
-      accessEnc:encryptSecret(access,{
-        aad:aad(scope.tenantId,scope.identityId,account,'access'),key}),
-      accessExpiresAt:new Date(now()+expiresIn*1000),
+      accessEnc,accessExpiresAt,authorityBinding,
       refreshEnc:encryptSecret(refresh,{
         aad:aad(scope.tenantId,scope.identityId,account,'refresh'),key}),
       refreshExpiresAt:new Date(now()+refreshIn*1000)
@@ -124,6 +135,23 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
   const key=()=>readEncryptionKey(env);
   return {
     ...base,
+    // Diagnostic only: never decrypt a bearer or initiate provider operations.
+    // Only this explicitly reviewed identity read is proven by native consent.
+    async operationAuthority({account,operation,resource,host='github.com'}) {
+      const actualAccount=await db.getAccount(account);
+      const subject=await directory.getPilotVerifiedSubject(tenant.tenantId,tenant.identityId);
+      const active=await directory.authorizedPilotIdentity(tenant.tenantId,tenant.identityId);
+      const row=await directory.getPilotUserAuthorization(tenant.tenantId,
+        tenant.identityId,account.toLowerCase());
+      const binding=active && active.membershipRevision===tenant.membershipRevision &&
+        active.pilotRevision===tenant.pilotRevision
+        ?currentUserGrantBinding({row,tenant:active,subject,account:actualAccount,now:now()}):null;
+      return resolveDocumentedCredential({operation,host,
+        resource:resource??(operation==='GET /user'?'user/'+subject:null),
+        account:{accountId:actualAccount?.account_id,login:actualAccount?.login},
+        principal:{...tenant,host:'github.com',githubUserId:Number(subject)},
+        requestedKind:'app_user',grants:binding?.operations.includes(operation)?[binding]:[],now:now()});
+    },
     async token(args={}) {
       const cred=args.cred??'I';
       // GitHub explicitly limits an App USER token to the intersection of
@@ -133,10 +161,24 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
       // App-only endpoints the user is not authorized to call.
       if (cred==='I' && tenant.role==='owner') return base.token(args);
       if (cred!=='U' && cred!=='I') throw denied();
+      // GitHub App user bearers cannot be minted down to a restricted pass.
+      // Refuse before decryption/refresh rather than borrow a broader bearer.
+      if (args.scope?.repositories?.length || args.scope?.repository_ids?.length ||
+          args.scope?.permissions) throw denied();
       if (typeof args.account!=='string') throw denied();
       const row=await directory.getPilotUserAuthorization(
         tenant.tenantId,tenant.identityId,args.account.toLowerCase());
       if (!row || !row.access_enc) throw denied();
+      // A bound grant cannot retain authority through a context/install change.
+      // Legacy rows remain supported, but never become capability evidence.
+      if (row.authority_binding) {
+        const subject=await directory.getPilotVerifiedSubject(tenant.tenantId,tenant.identityId);
+        const active=await directory.authorizedPilotIdentity(tenant.tenantId,tenant.identityId);
+        const account=await db.getAccount(args.account);
+        if (!active || active.membershipRevision!==tenant.membershipRevision ||
+            active.pilotRevision!==tenant.pilotRevision || !currentUserGrantBinding({
+              row,tenant:active,subject,account,now:now(),allowExpired:true})) throw denied();
+      }
       if (new Date(row.access_expires_at).getTime()<=now()+60_000)
         return renewPilotUser({directory,tenant,db,account:args.account,
           row,env,now,fetchImpl});

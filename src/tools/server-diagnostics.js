@@ -92,6 +92,9 @@ async function checkPermissions(args, ctx) {
     const account=rows.find(x=>sameLogin(x.login,entry.login));
     entry.operation_evidence=documentedOperationAccess({account,route:pinned.route});
     entry.operation_note='Area-level permission needs include writes and do not prove an individual read operation.';
+    if(typeof ctx.credentials?.operationAuthority==='function')
+      entry.operation_authority=await ctx.credentials.operationAuthority({
+        account:account.login,operation:pinned.route});
   }
   if(chosen) for(const entry of accounts){
     const account=rows.find(row=>sameLogin(row.login,entry.login));
