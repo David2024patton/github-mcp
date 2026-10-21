@@ -2,6 +2,41 @@
 // describes provider documentation, NOT an enrolled grant or working route.
 // Unknowns are intentionally absent. Never infer family-level privileges.
 export const REST_CREDENTIAL_EVIDENCE = Object.freeze({
+  // Explicitly reviewed GitHub.com REST operations. Do NOT infer Package
+  // registry upload/pull support or treat an App-token-compatible REST list
+  // route as requiring God Mode's separate classic P token.
+  'GET /orgs/{org}/packages': Object.freeze({
+    officialUrl:'https://docs.github.com/en/rest/packages/packages?apiVersion=2026-03-10#list-packages-for-an-organization',
+    reviewed:'2026-10-21',
+    decisions:Object.freeze({
+      app_installation:{disposition:'supported',permissions:[],scopes:null,
+        note:'Metadata REST read can use an installation token; resource/installation access still applies'},
+      app_user:{disposition:'supported',permissions:[],scopes:null,
+        note:'Metadata REST read can use a GitHub App user token within user and App access'},
+      fine_grained_pat:{disposition:'unsupported',permissions:null,scopes:null,
+        note:'Not among fine-grained token types documented for this endpoint'},
+      oauth_app:{disposition:'supported',permissions:null,scopes:['read:packages'],
+        note:'OAuth App user grant must have read:packages; access and SSO still apply'},
+      classic_pat:{disposition:'supported',permissions:null,scopes:['read:packages'],
+        note:'Classic PAT must have read:packages; package and SSO rights still apply'}
+    })
+  }),
+  'GET /notifications': Object.freeze({
+    officialUrl:'https://docs.github.com/en/rest/activity/notifications?apiVersion=2026-03-10#list-notifications-for-the-authenticated-user',
+    reviewed:'2026-10-21',
+    decisions:Object.freeze({
+      classic_pat:{disposition:'supported',permissions:null,scopes:['notifications','repo'],
+        note:'Notifications endpoints support only classic personal access tokens; one of these scopes is required'},
+      app_installation:{disposition:'unsupported',permissions:null,scopes:null,
+        note:'Notifications API does not support GitHub App installation tokens'},
+      app_user:{disposition:'unsupported',permissions:null,scopes:null,
+        note:'Notifications API does not support GitHub App user tokens'},
+      fine_grained_pat:{disposition:'unsupported',permissions:null,scopes:null,
+        note:'Notifications API does not support fine-grained personal tokens'},
+      oauth_app:{disposition:'unsupported',permissions:null,scopes:null,
+        note:'Notifications API requires classic personal access token'}
+    })
+  }),
   'GET /user': Object.freeze({
     officialUrl: 'https://docs.github.com/en/rest/users/users?apiVersion=2026-03-10#get-the-authenticated-user',
     reviewed: '2026-10-21',

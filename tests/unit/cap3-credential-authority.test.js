@@ -69,6 +69,26 @@ describe('CAP-3 strict source-pinned credential eligibility',()=>{
       missing:[{reason:'permission_or_scope_missing'}]});
     expect(()=>run({operation:'GET user'})).toThrow(/pinned REST/);
   });
+  it('preserves Standard App package reads while requiring classic-only notifications',()=>{
+    const packageOp='GET /orgs/{org}/packages',noticeOp='GET /notifications';
+    const normal=run({operation:packageOp,requestedKind:'app_installation',grants:[data()]});
+    expect(normal).toMatchObject({status:'verified-for-scope',
+      selected:{kind:'app_installation'},providerExecution:'not-tested'});
+    const pkg=run({operation:packageOp,requestedKind:'classic_pat',
+      grants:[{...data('classic_pat'),scopes:['read:packages']}]});
+    expect(pkg.status).toBe('verified-for-scope');
+    const forbidden=run({operation:noticeOp,requestedKind:'app_user',
+      grants:[data('app_user')]});
+    expect(forbidden).toMatchObject({status:'unknown',
+      code:'documented_credential_unsupported'});
+    const classic=run({operation:noticeOp,requestedKind:'classic_pat',
+      grants:[{...data('classic_pat'),scopes:['notifications']}]});
+    expect(classic).toMatchObject({status:'verified-for-scope',
+      selected:{kind:'classic_pat'}});
+    expect(run({operation:noticeOp,requestedKind:'classic_pat',
+      grants:[{...data('classic_pat'),scopes:['read:packages']}]})).toMatchObject({
+        status:'needs-consent',missing:[{reason:'permission_or_scope_missing'}]});
+  });
   it('keeps service App JWT and unknown permissions independently gated',()=>{
     const x=data('app_jwt');
     expect(run({operation:'GET /app',requestedKind:'app_jwt',grants:[x]})).toMatchObject({
