@@ -176,3 +176,7 @@ CAP-1 precedes CAP-2/CAP-3/CAP-4; CAP-4 also needs both authorization units;
 CAP-5 needs completed CAP-2..CAP-4 and PUB-4 client evidence. Write bounded JIT cards
 with the drift protocol and frozen original criteria before code. This planning
 change completes **zero** implementation subsections and adds no live passes.
+
+## Sol 5.6 implementation entry — owner 2026-10-21
+
+The [concrete implementation handoff](../UNIVERSAL-IDENTITY-HANDOFF.md) maps these existing units to current files, migration boundaries, negative/positive fixtures and exact verification families. Use it with the original cards; no units, approval states or acceptance results change. Independent user/tenant/role/grant implementation is eligible engineering, not a live-provider prerequisite. Reconcile original unfinished work before dependent expansion.
