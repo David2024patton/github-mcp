@@ -29,13 +29,11 @@ export const STATES = Object.freeze([
 ]);
 const SUPPORT = new Set(['supported', 'unsupported', 'unknown']);
 const ROOT_TYPES = Object.freeze(['query', 'mutation']);
-const HAS = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const REQUIRED_HOSTS = Object.freeze(['github.com', 'ghe.com', 'ghes']);
 const OFFICIAL_AUTH =
   'https://docs.github.com/en/rest/authentication/permissions-required-for-github-apps';
 const GITHUB_APP_AUTH =
   'https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/about-authentication-with-a-github-app';
-const GHES_DOCS = 'https://docs.github.com/en/enterprise-server@latest/rest/about-the-rest-api/api-versions';
 const GHE_DOCS =
   'https://docs.github.com/en/enterprise-cloud@latest/apps/using-github-apps/installing-a-github-app-on-your-enterprise';
 
@@ -49,9 +47,14 @@ function hostApplicability(key) {
     {key: key + '|ghe.com|unverified', host: 'ghe.com',
       product: 'GitHub Enterprise Cloud with data residency', version: 'unverified',
       disposition: 'unknown', evidence: GHE_DOCS},
-    {key: key + '|ghes|unverified', host: 'ghes',
-      product: 'GitHub Enterprise Server', version: 'unverified',
-      disposition: 'unknown', evidence: GHES_DOCS}
+    {key: key + '|ghes|3.20', host: 'ghes',
+      product: 'GitHub Enterprise Server', version: '3.20',
+      disposition: 'unknown',
+      evidence: 'https://docs.github.com/en/enterprise-server@3.20/rest'},
+    {key: key + '|ghes|3.22', host: 'ghes',
+      product: 'GitHub Enterprise Server', version: '3.22',
+      disposition: 'unknown',
+      evidence: 'https://docs.github.com/en/enterprise-server@3.22/rest'}
   ];
 }
 function graphqlHosts(key) {
@@ -236,8 +239,9 @@ export function buildCapabilityInventory({
   for (const annotation of annotations) {
     if (!annotation || !map.has(annotation.key))
       throw new TypeError('Orphan capability annotation: ' + String(annotation?.key));
-    if (applied.has(annotation.key)) throw new TypeError('Duplicate capability annotation: ' + annotation.key);
-    applied.add(annotation.key);
+    const annotationId = annotation.key + '/' + annotation.credential;
+    if (applied.has(annotationId)) throw new TypeError('Duplicate capability annotation: ' + annotationId);
+    applied.add(annotationId);
     const row = map.get(annotation.key);
     if (!CREDENTIAL_KINDS.includes(annotation.credential))
       throw new TypeError('Unknown credential kind for ' + annotation.key);
@@ -293,8 +297,9 @@ export function validateCapabilityInventory(inventory, options = {}) {
     if (Object.keys(row.credentialSupport || {}).length !== CREDENTIAL_KINDS.length ||
         CREDENTIAL_KINDS.some(x => !SUPPORT.has(row.credentialSupport[x]?.disposition)))
       throw new TypeError('Incomplete credential inventory: ' + row.key);
-    if (row.hostApplicability?.length !== REQUIRED_HOSTS.length ||
-        REQUIRED_HOSTS.some(x => !row.hostApplicability.some(v => v.host === x && v.key && v.disposition)))
+    if (row.hostApplicability?.length !== 4 ||
+        REQUIRED_HOSTS.some(x => !row.hostApplicability.some(v => v.host === x && v.key && v.disposition)) ||
+        new Set(row.hostApplicability.map(x => x.key)).size !== row.hostApplicability.length)
       throw new TypeError('Incomplete host applicability: ' + row.key);
     if (row.state === 'verified' &&
         (!row.implementation?.requestShapeTest || row.implementation?.status !== 'verified'))
