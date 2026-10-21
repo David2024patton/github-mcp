@@ -34,6 +34,14 @@ settings, access or spending always shows you a preview and waits for your OK.
 | "Make a 24-hour read-only pass for Codex." | A pass shown once on your setup page; the agent uses it through Robinson's Toolkit or the HTTPS API | R |
 | Anything else on GitHub | The universal tools find the right GitHub operation and run it with the same safety | U |
 
+## Private ChatGPT pilot connections — PUB-4 (2026-10-21)
+
+**Source readiness is different from ChatGPT client acceptance.** The independently branded direct private **GitHub by Robinson AI Systems** plugin points to the native standalone `/api/mcp` and its service-issued OAuth. Installing the plugin or receiving a green MCP indicator does not mean ChatGPT has an authorized GitHub session. The standard DCR registration route is the existing **owner-admin** connector, not a private tenant enrollment endpoint; a verified private pilot client must be prebound to its exact GitHub App account by a trusted registration flow. Never ask a private tenant user for the developer's global ADMIN_PASSPHRASE. The pilot remains OFF absent protected enrollment.
+
+The hosted/private **Robinson GitHub Cloud** Sites adapter is separate and its App-backed name, presentation and binding are not changed by editing the repository or the plugin archive. OpenAI currently describes custom MCP ChatGPT apps as web-only, so do not assume direct custom MCP works on Android/iOS; a real supported mobile-hosted connection still needs independent user/device tests. Keep the official GitHub connector until both real custom connections pass.
+
+For each supported **desktop/web** and **Android/iOS** ChatGPT session, record its own `github_whoami` provider identity/account, PREVIEW or explicitly owner-enabled PRODUCTION connection mode, profile, bounded read, preview denial, approved run-owned scratch write/readback, refresh/reconnect, switch and revoke. An OAuth metadata page, application install, protected test or CI check cannot substitute for genuine separate provider/device observations. No owner production changes, public user installs, unscheduled release or paid activity are approved by these source fixes.
+
 ## Live testing status — 2026-10-12 UTC
 
 The separate `robinson-ai-scratch` organization is owner-designated; its own custom App is installed, active on All repositories, with 41 recorded permissions, production OFF and spend $0. The custom server responded correctly to OAuth discovery and refused unauthenticated MCP calls, but no custom-MCP OAuth connection or scratch repo write has yet been completed. When testing resumes, connect **this server's** `/api/mcp` endpoint, not the platform's standard GitHub connector. First choose only the scratch account with mode `preview` and profile `read_only`; for guarded scratch writes use `everyday` only after cleanup/recovery is verified. Owner stopped testing for the day; no further owner action is requested now.

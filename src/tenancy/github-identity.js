@@ -66,9 +66,9 @@ export async function resolvePrivatePilotIdentity({
   return Object.freeze({ principal, tenant: allowed });
 }
 
-/** GitHub App user-token installation access must be independently confirmed,
- * not inferred from a typed account login or locally stored stale installation.
- * Avoid granting when pagination is incomplete or provider refused the read. */
+/** GitHub App user-token installation proof, including users with over 100
+ * installed Apps. An incomplete or conflicting provider inventory is a
+ * refusal even when the target appears on an earlier page. */
 export async function verifyGithubUserInstallation(bearer, {
   installationId, appId, accountId, fetchImpl = fetch
 } = {}) {
@@ -76,19 +76,40 @@ export async function verifyGithubUserInstallation(bearer, {
     return false;
   if (typeof bearer !== 'string' || bearer.length < 8 || bearer.length > 4096)
     return false;
+  const pageSize=100, maxPages=20;
+  let total=null, inspected=0, matching=false;
+  const seen=new Set();
   try {
-    const response = await fetchImpl('https://api.github.com/user/installations?per_page=100', {
-      headers: { accept: 'application/vnd.github+json',
-        authorization: 'Bearer ' + bearer, 'x-github-api-version':'2022-11-28' },
-      signal: AbortSignal.timeout(10000)
-    });
-    if (!response?.ok || response.status !== 200) return false;
-    const page = await response.json();
-    if (!Array.isArray(page?.installations) ||
-        !Number.isSafeInteger(page.total_count) ||
-        page.total_count < 0 || page.total_count > 100) return false;
-    return page.installations.some(i =>
-      i.id === installationId && i.app_id === appId &&
-      i.account?.id === accountId && !i.suspended_at);
+    for(let pageNumber=1;pageNumber<=maxPages;pageNumber++){
+      // Never follow a provider-supplied Link URL. Restrict every page to
+      // the same exact trusted authenticated GitHub endpoint and U bearer.
+      const url='https://api.github.com/user/installations?per_page=100'+
+        (pageNumber===1?'':'&page='+pageNumber);
+      const response=await fetchImpl(url,{
+        method:'GET',
+        headers:{accept:'application/vnd.github+json',
+          authorization:'Bearer '+bearer,'x-github-api-version':'2022-11-28'},
+        signal:AbortSignal.timeout(10000)
+      });
+      if(!response?.ok || response.status!==200) return false;
+      const result=await response.json();
+      const count=result?.total_count;
+      if(!Number.isSafeInteger(count) || count<0 || count>pageSize*maxPages ||
+          !Array.isArray(result?.installations) ||
+          (total!==null && count!==total)) return false;
+      if(total===null) total=count;
+      const required=Math.min(pageSize,total-inspected);
+      if(result.installations.length!==required) return false;
+      for(const entry of result.installations){
+        if(!Number.isSafeInteger(entry?.id) || entry.id<=0 || seen.has(entry.id))
+          return false;
+        seen.add(entry.id);
+        if(entry.id===installationId && entry.app_id===appId &&
+            entry.account?.id===accountId && !entry.suspended_at) matching=true;
+      }
+      inspected+=required;
+      if(inspected===total) return matching;
+    }
+    return false;
   } catch { return false; }
 }

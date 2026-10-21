@@ -702,6 +702,7 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     const redirected=new URL(target);
     expect(redirected.origin).toBe('https://private-pilot.example.test');
     expect(redirected.searchParams.get('state')).toBe('caller-nonce');
+    expect(redirected.searchParams.get('iss')).toBe(env.PUBLIC_BASE_URL);
     const mcpCode=redirected.searchParams.get('code');
     expect(mcpCode.length).toBeGreaterThan(30);
     expect(exchangeCalls).toBe(1);

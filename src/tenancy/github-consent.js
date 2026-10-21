@@ -214,6 +214,8 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
     const url=new URL(flow.redirectUri);
     url.searchParams.set('code',mcpCode);
     if (flow.clientState !== null) url.searchParams.set('state',flow.clientState);
+    // The private consent path uses the same canonical issuer as legacy OAuth.
+    url.searchParams.set('iss',active());
     outcome='ok';
     return url.toString();
     } finally {

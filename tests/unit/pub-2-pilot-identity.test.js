@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { verifyGithubBearerIdentity, resolvePrivatePilotIdentity } from '../../src/tenancy/github-identity.js';
+import { verifyGithubBearerIdentity, verifyGithubUserInstallation, resolvePrivatePilotIdentity } from '../../src/tenancy/github-identity.js';
 
 const bearer = 'fixture-oauth-bearer-never-real';
 const tenantId = '5ca85cbb-2222-4222-8222-333333333333';
@@ -87,5 +87,54 @@ describe('PUB-2 closed pilot identity proof', () => {
       fetchImpl: async () => jsonResponse({}, 401)
     })).rejects.toThrow(/verification/);
     expect(directory.resolveAllowlistedPilotSubject).not.toHaveBeenCalled();
+  });
+});
+
+describe('PUB-4 multi-page provider installation proof for independent clients',()=>{
+  const bearer='fixture-verifiable-oauth-token';
+  const target={installationId:550201,appId:550202,accountId:550203};
+  const entry=i=>({id:550000+i,app_id:550202,
+    account:{id:550203},suspended_at:null});
+  const response=(total_count,installations,status=200)=>({
+    ok:status===200,status,json:async()=>({total_count,installations})
+  });
+  it('accepts an exact App installation only after all three pages complete',async()=>{
+    const pages=[
+      Array.from({length:100},(_,i)=>entry(i+1)),
+      Array.from({length:100},(_,i)=>entry(i+101)),
+      [entry(201),entry(202)]
+    ];
+    const calls=[];
+    const fetchImpl=async(url,options)=>{
+      calls.push(url);
+      expect(options.headers.authorization).toBe('Bearer '+bearer);
+      return response(202,pages[calls.length-1]);
+    };
+    expect(await verifyGithubUserInstallation(bearer,{...target,fetchImpl})).toBe(true);
+    expect(calls).toEqual([
+      'https://api.github.com/user/installations?per_page=100',
+      'https://api.github.com/user/installations?per_page=100&page=2',
+      'https://api.github.com/user/installations?per_page=100&page=3'
+    ]);
+    expect(await verifyGithubUserInstallation(bearer,{
+      ...target,accountId:999999,fetchImpl:async()=>response(1,[entry(201)])
+    })).toBe(false);
+  });
+  it('fails closed on partial, changed, duplicate, denied and oversized inventories',async()=>{
+    const first=[entry(201),...Array.from({length:99},(_,i)=>entry(i+1))];
+    const check=async(other)=>{
+      let page=0;
+      return verifyGithubUserInstallation(bearer,{...target,
+        fetchImpl:async()=>page++===0?response(101,first):other});
+    };
+    expect(await check(response(101,[]))).toBe(false);
+    expect(await check(response(100,[entry(102)]))).toBe(false);
+    expect(await check(response(101,[first[0]]))).toBe(false);
+    expect(await verifyGithubUserInstallation(bearer,{...target,
+      fetchImpl:async()=>response(101,first,403)})).toBe(false);
+    expect(await verifyGithubUserInstallation(bearer,{...target,
+      fetchImpl:async()=>response(2001,first)})).toBe(false);
+    expect(await verifyGithubUserInstallation(bearer,{...target,
+      fetchImpl:async()=>{throw Error('Sensitive provider error '+bearer);}})).toBe(false);
   });
 });

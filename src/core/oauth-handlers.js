@@ -71,6 +71,8 @@ export function createOAuthHandlers({ db, env = process.env, policy, issueTokens
     const destination = new URL(p.redirect_uri);
     destination.searchParams.set('code', code);
     if (typeof p.state === 'string') destination.searchParams.set('state', p.state);
+    // Bind the OAuth response to the canonical advertised authorization issuer.
+    destination.searchParams.set('iss', urls().origin);
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Location', destination.toString());
     return res.status(302).end();
@@ -120,6 +122,7 @@ export function createOAuthHandlers({ db, env = process.env, policy, issueTokens
       issuer: origin, authorization_endpoint: origin + '/api/oauth/authorize', token_endpoint: origin + '/api/oauth/token',
       registration_endpoint: origin + '/api/oauth/register', response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'], code_challenge_methods_supported: ['S256'],
+      authorization_response_iss_parameter_supported: true,
       token_endpoint_auth_methods_supported: ['client_secret_post']
     });
   }
