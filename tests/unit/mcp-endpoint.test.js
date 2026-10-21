@@ -102,6 +102,20 @@ describe('requireMcpToken', () => {
   });
 });
 
+  it('accepts scheme case and horizontal whitespace without altering credential bytes',async()=>{
+    const record={client_id:'client-A'};
+    const seen=[];
+    const db={async getAccessToken(token){seen.push(token);return token===ACCESS?record:null;}};
+    const policy={toConnection:row=>({connection:Object.freeze({...row})})};
+    for(const prefix of ['bearer ','BEARER\t','bEaReR  ']){
+      expect(await requireMcpToken(request('POST',{}, {authorization:prefix+ACCESS}),
+        response(),db,env,policy)).toEqual(record);
+    }
+    expect(seen).toEqual([ACCESS,ACCESS,ACCESS]);
+    for(const header of ['Bearer '+ACCESS+' extra','Bearer\n'+ACCESS,'Basic '+ACCESS])
+      expect(await requireMcpToken(request('POST',{}, {authorization:header}),response(),db,env,policy)).toBeNull();
+  });
+
 describe('MCP endpoint over HTTP', () => {
   let server;
   afterEach(async () => { if (server) await new Promise((resolve) => server.close(resolve)); server = null; });

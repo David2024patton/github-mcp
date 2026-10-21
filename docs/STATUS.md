@@ -1,3 +1,14 @@
+## 2026-10-21 — native authorization header and tenant-routing correction
+
+Source audit found strict Bearer scheme spelling in both the legacy MCP authenticator and
+signed private tenant routing. Accept legal case/whitespace without modifying credential bytes,
+HMAC tenant purpose/revisions, membership, database namespace or provider account. Invalid
+signed tenant credentials remain refused before owner fallback. See [A-3/PUB-2 card](pr-cards/A-3-PUB-2-BEARER-IDENTITY.md).
+Prior focused identity audit: 62 tests passed in seven files; new native/signed routing tests and
+real PostgreSQL tenant-scope variants cover this correction. Exact-head full gates/merge required.
+No source-complete CAP claim, pilot activation, release, new provider/live/device acceptance or
+change to concurrent PUB-4 #268. Three explicit organizational roles are recorded in END-USER-AUTHORITY.
+
 ## 2026-10-21 — maximum-authority planning expansion (source planning only)
 
 Reconciled actual `main=live=315a3259faafa474a9b36cc8410c5718d5b9326f` (Git refs; deployed READY/runtime not reverified). PUB-3 #267 is merged; concurrent PUB-4 #268 remains a draft and is untouched. Older entries below describing #267 awaiting merge are historical. Existing original acceptance ledger is unchanged; no new live evidence or credential use is claimed.

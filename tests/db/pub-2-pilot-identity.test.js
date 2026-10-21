@@ -224,6 +224,11 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     const overrides={env,rootSqlFactory:()=>root,tenantSqlFactory:(url)=>
       url.includes(tenantSchemaName(a.id))?tenantA:tenantB};
     const one=await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenA});
+    for(const scheme of ['bearer ','BEARER\t','bEaReR  ']){
+      const alternate=await resolvePrivateTenantMcpBearer({...overrides,authorization:scheme+tokenA});
+      expect(alternate?.tenant).toEqual(one.tenant);
+      expect(alternate?.clientId).toBe(one.clientId);
+    }
     const two=await resolvePrivateTenantMcpBearer({...overrides,authorization:'Bearer '+tokenB});
     expect(one.tenant).toMatchObject({tenantId:a.id,identityId:ownerA});
     expect(two.tenant).toMatchObject({tenantId:b.id,identityId:ownerB});

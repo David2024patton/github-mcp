@@ -48,3 +48,19 @@ The H-4 dependency-review read and Y-9 organization network-configuration read/w
 ## Maximum authorization expansion — owner 2026-10-21
 
 [MAXIMUM-AUTHORITY](designs/MAXIMUM-AUTHORITY.md) governs CAP-1..CAP-5. Standard includes optional Full App/user authorization; God Mode is guided enrollment of genuinely additional credentials, not exclusive tools or a guard bypass. The 411-tool credential classification does not establish GitHub functional coverage. Robinson AI Systems developer/operator and product-customer contexts must be explicit and separately authorized. This approved plan does not itself implement or accept the new capabilities.
+
+## Organizational identity and explicit authority contexts — owner 2026-10-21
+
+Robinson AI Systems can act as developer/operator, explicitly scoped product administrator,
+or ordinary production customer. Every operation must bind environment, authenticated principal,
+tenant/workspace membership, active role, owned provider connection and operation. Company
+email/domain or organization membership alone creates neither global administration nor a
+permanent developer-only product profile. Secure context switching must reauthorize each role;
+operator credentials never substitute for another user's missing provider grant. Preserve valid
+existing accounts and credentials through a reviewed migration and scoped refresh/revocation.
+
+Existing maximum-authority/identity units retain this requirement. Source tests and incremental
+protocol fixes do not certify complete multi-user business onboarding, role switching, tenant
+isolation or supported live-client/provider acceptance. Builder safety, CI and release policies,
+provider grants, explicit user policies and genuine transaction protections remain independently
+enforced. Robinson's own production tenant has normal delegated authority and no cross-tenant access.
