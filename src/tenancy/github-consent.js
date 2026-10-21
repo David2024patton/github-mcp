@@ -82,7 +82,9 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
     // installation. Only permit the sole unambiguous active App account;
     // a request-supplied account field is NOT provider-verified registration
     // and cannot turn an ambiguous client into access to another App.
-    if (!boundAccount && candidates.length!==1) throw refused();
+    if (!boundAccount && (candidates.length!==1 ||
+        (p.account!==undefined &&
+          p.account.toLowerCase()!==candidates[0].login.toLowerCase()))) throw refused();
     const selected=boundAccount
       ? candidates.find(row=>row.login.toLowerCase()===boundAccount)
       : candidates[0];
