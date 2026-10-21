@@ -150,8 +150,10 @@ describe('CAP-2 Standard Full diagnosis without token or permission escalation',
     const args={account:'example-org',tool:'github_pr_merge'};
     const direct=await handlers.github_check_permissions(args,ctx);
     expect(direct.accounts[0].effective_access.refusedBy).toContain('profile');
+    expect(direct.checked_areas).toBe(1);
     const dispatch=createDispatch({env:w.ctx.env,credentials:w.credentials,fetch:w.gh.fetch});
     const plain=await dispatch({registry,name:'github_check_permissions',args,connection:w.connection,db:w.db});
+    expect(plain.structuredContent.checked_areas).toBe(1);
     expect(plain.structuredContent.accounts[0].effective_access.refusedBy).toContain('profile');
     const meta=await dispatch({registry,name:'github_call',args:{name:'github_check_permissions',args},
       connection:w.connection,db:w.db});

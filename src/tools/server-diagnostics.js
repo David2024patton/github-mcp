@@ -38,7 +38,17 @@ async function checkPermissions(args, ctx) {
   if(args.tool!==undefined&&!chosen)throw new TypeError('That GitHub tool is not registered. Search with github_search_tools.');
   if (args.area && !AREAS.some((a) => a.id === args.area)) throw new TypeError(`Unknown area "${args.area}". Areas: ${AREAS.map((a) => a.id).join(', ')}.`);
   const rows = await accountsFor(ctx, args.account);
-  const areas = AREAS.filter((a) => !args.area || a.id === args.area);
+  // A named tool should not add a 24-area report to the existing size-bounded
+  // MCP result. Narrow to its known capability area, or explicitly say the
+  // exact tool-to-area mapping is unknown. A caller can still select any area
+  // separately, and an omitted tool retains the original whole audit.
+  const areaForTool = {
+    pr:'pull-requests',repo:'repositories',content:'content',branch:'branches',
+    issue:'issues',actions:'actions',release:'releases',security:'security',
+    webhook:'webhooks',org:'organization',billing:'billing',package:'packages'
+  };
+  const inferredArea = chosen ? (areaForTool[chosen.area] ?? null) : null;
+  const areas = AREAS.filter(a => args.area ? a.id === args.area : !chosen || a.id === inferredArea);
   const accounts = rows.map((row) => {
     const base = { login: row.login };
     if (row.credential_kind === 'fine_grained') {
@@ -67,6 +77,8 @@ async function checkPermissions(args, ctx) {
   if(chosen) for(const entry of accounts){
     const account=rows.find(row=>sameLogin(row.login,entry.login));
     entry.effective_access=effectiveToolAccess({connection:ctx.connection,account,tool:chosen});
+    if(!areas.length && entry.status==='all good') entry.status='area unverified';
+    if(!areas.length) entry.area_note='No audited permission family is mapped to this registered tool. Select an area explicitly; do not assume GitHub grants.';
   }
   return { checked_areas: areas.length, accounts };
 }
