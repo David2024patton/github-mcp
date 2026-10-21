@@ -25,7 +25,7 @@
         },
         {
           "criterion": "Tests prove secret redaction, restricted service passes, clean replacement/deletion and verified before/after capability gain; incomplete real provider/device acceptance remains independently OPEN.",
-          "evidence": "PARTIAL: new synthetic provider success/refusal and protected form CSRF/passphrase tests, real PostgreSQL current cipher/CAS/forged operation/migration and deletion tests are present but final exact-head CI is pending. Exact K/P readback can be observed at enrollment, not verified as effective access today; complete two-tenant extra-kind provider/callback and independent real device acceptance remain open."
+          "evidence": "PARTIAL: exact owner K GET /notifications before/after protected setup difference is now observable in direct and nested source MCP without raw tokens; synthetic provider GET success/refusal and real PostgreSQL optional proof CAS, migration, stale/replaced ciphertext and cleanup tests exist. Present provider permission is deliberately unproven, full private tenant extra-kind before/after and independent device acceptance remain pending."
         }
       ],
       "remainingEngineering": [
@@ -37,10 +37,10 @@
       ]
     }
   ],
-  "productionAdded": 549,
+  "productionAdded": 564,
   "productionRemoved": 26,
-  "newEngineering": "CAP-3 original source includes scoped private U identity/read binding, protected owner F/K/P typed current-ciphertext evidence, bounded provider readback limited to exact documented metadata GET for K/P, automatic invalidation on replacement and protected removal, explicit owner-vs-tenant/pass diagnostics and new official source support for standard App package listing versus classic notifications. The normal owner MCP permission diagnostic additionally offers a safe canonical HTTPS protected credential setup link only for source-confirmed K notifications and explicitly avoids requiring extra P token for ordinary App-supported package metadata; direct/meta and negative owner/pass/private-tenant tests exercise the handoff.",
-  "planComparison": "CONTINUE: 549 source additions and 26 removals provide typed protected owner credential proofs, exact K/P past readback and a canonical guided optional setup link. CAP-3 still requires complete agent-initiated callback/return, private-tenant optional credential storage, concurrent lifecycle, provider rights and independent real device evidence. No full original criterion or God Mode acceptance credited.",
+  "newEngineering": "CAP-3 original source includes scoped private U identity/read binding, protected owner F/K/P typed current-ciphertext evidence, bounded provider readback limited to exact documented metadata GET for K/P, automatic invalidation on replacement and protected removal, explicit owner-vs-tenant/pass diagnostics and new official source support for standard App package listing versus classic notifications. The normal owner MCP permission diagnostic additionally offers a safe canonical HTTPS protected credential setup link only for source-confirmed K notifications and explicitly avoids requiring extra P token for ordinary App-supported package metadata; direct/meta and negative owner/pass/private-tenant tests exercise the handoff. A protected owner before/after recheck now distinguishes a current ciphertext-bound classic K exact GET observed at enrollment from missing enrollment, using the same diagnostic through direct MCP and nested meta tools. It does not imply current provider permission.",
+  "planComparison": "CONTINUE: 564 meaningful production additions and 26 removals complete only part of the frozen CAP-3 original deliverable. Per-account protected K/P readback, stateful before/after owner client diagnosis, additional optional credential metadata and tenant U identity safety are source features. Full agent-initiated automatic callback, private-tenant optional grant lifecycle, enterprise/host verification and final real provider/client acceptance remain unfinished.",
   "relatedWorkDecision": "Keep original CAP-3 plan and draft #274. Isolate main security defect into #275 as AGENTS requires; PUB-4 #268 is unchanged and CAP-4 remains dependent.",
   "decision": "CONTINUE"
 }
