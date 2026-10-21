@@ -1,5 +1,9 @@
 # AGENTS.md — the rules. Read this first, every session.
 
+## Remaining universal permissions and identity implementation
+
+Owner-requested Sol 5.6 preparation (2026-10-21): read [the concrete implementation handoff](docs/UNIVERSAL-IDENTITY-HANDOFF.md) with the existing session workflow and selected cards. It maps remaining code, storage/migration contracts, regression fixtures, dependencies and source-versus-live acceptance to existing units. Reuse merged work; this documentation update implements no runtime feature and changes no release/security approval.
+
 ## Universal Hub compatibility (owner-approved shared contract)
 
 Before changing RTC discovery, MCP transport, OAuth/provider consent, scoped meta-tools, tool pagination, or provider errors, follow [docs/HUB-COMPATIBILITY.md](docs/HUB-COMPATIBILITY.md), which links the canonical Hub contract. Hub discovers and connects to this **standalone** server; the server never calls Hub or installs bespoke Hub adapters. The agent and user plan, and Hub retains a small fixed gateway tool menu. This is a documentation-adoption instruction, **not** permission to change deployed auth or production data.
