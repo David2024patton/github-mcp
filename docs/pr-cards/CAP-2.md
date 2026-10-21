@@ -51,6 +51,18 @@ Run `npm run session:bundle -- --card docs/pr-cards/CAP-2.md` at baseline before
 - Added a disposable PostgreSQL OAuth lifecycle scenario using one client and a scoped enrolled account: Everyday consent, separate explicit Full consent, both real access-token reads, independent refresh-family rotations, old bearer rejection and preserved account PRODUCTION-off setting. This tests that Full cannot be silently inherited by an older connection or copied on refresh.
 - The existing authenticating native MCP gate validates source-issued session authority; no GitHub provider token, outside tenant or production activation is used. Extended operation evidence remains explicitly source-only. New CI/checks required before claiming this regression passed.
 
+## Source delivery reconciliation — final exact-head CI and merge pending
+
+**All five frozen CAP-2 engineering criteria are implemented in source using existing verified OAuth, DB and transport architecture.** Independent deployed client/provider acceptance is still OPEN. Evidence is pinned in `docs/pr-cards/CAP-2.delivery.json`, including a documented one-subsection/177-added-5-removed below-guide exception. There are no new credential stores, auth protocol replacements, server permissions, production activation, money-out, automatic provider reconsent or live effects.
+
+- Legacy normal consent and signed private tenant pilot choice expose Full without additional token; Everyday is still default. Existing producer and per-tenant permission restrictions remain fixed. No automatic grant/profile change.
+- Real disposable PostgreSQL same-client Everyday/Full grants and independent token rotation, plus a real Full-only native MCP + `github_call` execution of a harmless server-owned default-account preference, check that Everyday cannot reach Full-only writes. Test includes actual persisted readback and rejects accidental profile escalation.
+- Real restricted RTC HTTPS fixture now adds a Full-only guarded operation, demonstrates Full execution/readback/replay, denies Everyday/read-only and area-restricted passes; older repo/production/money/isolation policies and Hub conformance remain intact.
+- A connection-scoped, bounded per-tool and exact pinned REST credential evidence view now returns a deterministic ordered recovery recipe: explicit client reauthorization, user-to-server consent, GitHub App installation-owner approval, production enablement and repository-selection check as distinct actions. Unsupported/unknown tokens, K/P restricted routes, enterprise plans/SSO and real GitHub effects remain never-proven until legitimately verified.
+- Published guidance is opt-in and secret-free. The same current-account/read-only probe offers a recheck after separately approved GitHub or client permission updates; it never issues a PAT, changes GitHub settings or promotes a connection. The PUB-4 real-device and CAP-5 deployed/provider acceptance queues remain separate.
+
+**Exact main-source diff**: 177 additions / 5 removals; tests/fixtures/docs excluded. Integration complexity spans a full original security-bearing CAP-2 subsection, with existing profile/token write-guard and private tenant storage extensively reused. No helper-size PR split is presented as a finished bundle. This source delivery is eligible for review only if the final frozen-plan comparison and all exact-head CI/release-policy checks pass, with no blocking review finding.
+
 <!-- bundle-plan:start -->
 ```json
 {

@@ -154,12 +154,12 @@ describe('connector login end to end on throwaway Postgres', () => {
     const allowed=await dispatch({registry,name:'github_set_default_account',
       args,connection:full,db});
     expect(allowed.structuredContent).toMatchObject({
-      done:true,status:'applied',confirmed:true,default_account:'example-user'});
+      done:true,status:'applied',confirmed:true,result:{default_account:'example-user'}});
     const viaMeta=await dispatch({registry,name:'github_call',
       args:{name:'github_set_default_account',args:{account:'example-org',confirm:true}},
       connection:full,db});
     expect(viaMeta.structuredContent).toMatchObject({
-      done:true,status:'applied',confirmed:true,default_account:'example-org'});
+      done:true,status:'applied',confirmed:true,result:{default_account:'example-org'}});
     const stillRestricted=await dispatch({registry,name:'github_call',
       args:{name:'github_set_default_account',args},
       connection:everyday,db});
