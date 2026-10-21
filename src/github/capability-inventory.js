@@ -200,6 +200,13 @@ function workflowRecord(item) {
     effect: item.effect,
     source: {version: 'unversioned', revision: 'official-reference-' + SOURCE.checked, url: item.url},
     officialReference: item.url});
+  // A protocol reference is not the pinned REST/GraphQL schema; keep its
+  // version and evidence independent rather than claiming 2026-03-10 support.
+  rec.hostApplicability[0] = {
+    key: key + '|github.com|unversioned', host: 'github.com',
+    product: 'GitHub.com', version: 'unversioned',
+    disposition: 'official-reference-only', evidence: item.url
+  };
   rec.operation = {workflow: item.id};
   rec.implementation.reason = 'No verified end-to-end protocol transport/readback evidence';
   rec.implementation.route = 'not-assessed';
