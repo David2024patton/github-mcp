@@ -207,7 +207,7 @@ describe('the setup page', () => {
       operation:'GET /notifications',resource:'user/5001',scopes:['notifications']});
     expect(JSON.stringify(proof)).not.toContain(value);
     expect((await t.post({action:'remove-classic',login:'example-org'})).statusCode).toBe(200);
-    expect(await t.db.additionalCredentialProofs('example-org')).toEqual({K:undefined});
+    expect(await t.db.additionalCredentialProofs('example-org')).toEqual({});
   });
   it('uses existing protected form controls for K/F removal without clearing sibling kinds',async()=>{
     const t=await build();

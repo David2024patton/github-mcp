@@ -14,6 +14,11 @@ function changeViewOf(r) {
     notifies: r.notifies ?? [], spendCents: r.spendCents ?? null, inverse: r.inverse ?? null, before: r.before ?? null });
 }
 
+const withoutOptionalProof=(r,kind)=>{
+  const copied={...r.additional_credential_proofs};
+  delete copied[kind];
+  return copied;
+};
 export function createFakeDb({ clock = Date.now } = {}) {
   const rows = new Map();
   const tables = new Set();
@@ -393,26 +398,26 @@ export function createFakeDb({ clock = Date.now } = {}) {
     async setFineGrainedToken(login, { enc, last4, expiresAt = null }) {
       const r = accountRows.get(String(login).toLowerCase());
       if (!r) return false;
-      Object.assign(r, { fine_grained_enc: enc, fine_grained_last4: last4, fine_grained_expires_at: expiresAt, additional_credential_proofs: {...r.additional_credential_proofs,F:undefined} });
+      Object.assign(r, { fine_grained_enc: enc, fine_grained_last4: last4, fine_grained_expires_at: expiresAt, additional_credential_proofs: withoutOptionalProof(r,'F') });
       return true;
     },
     async setClassicToken(login, { enc, scopes, last4 }) {
       const r = accountRows.get(String(login).toLowerCase());
       if (!r) return false;
-      Object.assign(r, { classic_enc: enc, classic_scopes: [...scopes], classic_last4: last4, additional_credential_proofs: {...r.additional_credential_proofs,K:undefined} });
+      Object.assign(r, { classic_enc: enc, classic_scopes: [...scopes], classic_last4: last4, additional_credential_proofs: withoutOptionalProof(r,'K') });
       return true;
     },
     async setPackageToken(login, { enc, scopes, actor, expiresAt = null }) {
       const r = accountRows.get(String(login).toLowerCase());
       if (!r) return false;
-      Object.assign(r, { package_enc: enc, package_scopes: [...scopes], package_actor: actor, package_expires_at: expiresAt, additional_credential_proofs: {...r.additional_credential_proofs,P:undefined} });
+      Object.assign(r, { package_enc: enc, package_scopes: [...scopes], package_actor: actor, package_expires_at: expiresAt, additional_credential_proofs: withoutOptionalProof(r,'P') });
       return true;
     },
     async clearClassicToken(login) {
       const r=accountRows.get(String(login).toLowerCase());
       if(!r?.classic_enc)return false;
       Object.assign(r,{classic_enc:null,classic_scopes:null,classic_last4:null,
-        additional_credential_proofs:{...r.additional_credential_proofs,K:undefined}});
+        additional_credential_proofs:withoutOptionalProof(r,'K')});
       return true;
     },
     async clearFineGrainedToken(login) {
@@ -420,13 +425,13 @@ export function createFakeDb({ clock = Date.now } = {}) {
       if(!r?.fine_grained_enc)return false;
       Object.assign(r,{fine_grained_enc:null,fine_grained_last4:null,
         fine_grained_expires_at:null,
-        additional_credential_proofs:{...r.additional_credential_proofs,F:undefined}});
+        additional_credential_proofs:withoutOptionalProof(r,'F')});
       return true;
     },
     async clearPackageToken(login) {
       const r = accountRows.get(String(login).toLowerCase());
       if (!r) return false;
-      Object.assign(r, { package_enc: null, package_scopes: null, package_actor: null, package_expires_at: null, additional_credential_proofs: {...r.additional_credential_proofs,P:undefined} });
+      Object.assign(r, { package_enc: null, package_scopes: null, package_actor: null, package_expires_at: null, additional_credential_proofs: withoutOptionalProof(r,'P') });
       return true;
     },
     async bindAdditionalCredentialProof({login,kind,expectedCipher,proof}) {
