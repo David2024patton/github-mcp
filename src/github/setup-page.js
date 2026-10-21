@@ -640,6 +640,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       if (Number.isFinite(expiry) && expiry <= Date.now())
         return page(400, { result: 'The package token has expired. Nothing was saved.' });
       const saved = await credentials.storePackage(row.login, token, { scopes: list, actor: actor.login,
+        actorId: actor.id, accountId: row.account_id,
         expiresAt: Number.isFinite(expiry) ? new Date(expiry) : null });
       return page(saved ? 200 : 409, { result: saved
         ? `Saved the encrypted package token for ${row.login}. Package-level access and organization SSO/token policy still apply.`

@@ -272,11 +272,24 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
       if (typeof token !== 'string' || token.length < 20) throw new TypeError('That does not look like a GitHub token.');
       return await db.setFineGrainedToken(login, { enc: seal(token, contexts.fineGrained(login)), last4: token.slice(-4), expiresAt });
     },
-    async storePackage(login, token, { scopes, actor, expiresAt = null }) {
+    async storePackage(login, token, { scopes, actor, actorId = null, accountId = null, expiresAt = null }) {
       if (typeof token !== 'string' || token.length < 20) throw new TypeError('That does not look like a GitHub token.');
       if (!Array.isArray(scopes) || !scopes.includes('read:packages') || scopes.some(s => !['read:packages', 'write:packages', 'delete:packages', 'repo'].includes(s)) || typeof actor !== 'string' || !actor)
         throw new TypeError('Package credentials require a verified actor and package scopes.');
-      return await db.setPackageToken(login, { enc: seal(token, contexts.packages(login)), scopes: [...scopes], actor, expiresAt });
+      const enc=seal(token,contexts.packages(login));
+      const saved=await db.setPackageToken(login,{enc,scopes:[...scopes],actor,expiresAt});
+      // Legacy calls without verified numeric identity remain valid but
+      // unverified. A simultaneous replacement cannot inherit evidence.
+      if(saved && Number.isSafeInteger(actorId)&&actorId>0 &&
+          Number.isSafeInteger(accountId)&&accountId>0 &&
+          typeof db.bindAdditionalCredentialProof==='function') {
+        await db.bindAdditionalCredentialProof({login,kind:'P',expectedCipher:enc,
+          proof:{version:1,kind:'P',host:'github.com',actorId,accountId,
+            scope:'legacy-owner',
+            fingerprint:crypto.createHash('sha256').update(enc).digest('hex'),
+            verification:'identity-only',expiresAt:expiresAt?.toISOString()??null}});
+      }
+      return saved;
     },
     async storeClassic(login, token, scopes) {
       if (typeof token !== 'string' || token.length < 20) throw new TypeError('That does not look like a GitHub token.');
