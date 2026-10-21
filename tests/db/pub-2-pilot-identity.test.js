@@ -428,6 +428,19 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
       url:expect.stringContaining('https://github.com/login/oauth/authorize?')});
     await expect(consent.start({...baseConsent,account:'different-fixture-org'}))
       .rejects.toThrow(/not verified/);
+    // A pre-binding legacy client must refuse ambiguous installations even
+    // when the caller supplies a legitimate second account. The account
+    // selector is not provider-verified registration evidence.
+    const unbound=await signed('tcl',{tenantId:a.id,identityId:ownerA},env);
+    await dbA.createOAuthClient({clientId:unbound,
+      clientSecret:'fixture-unbound-secret',
+      redirectUris:args.redirectUris,clientName:'old-unbound-client'});
+    await expect(consent.start({...baseConsent,client_id:unbound}))
+      .rejects.toThrow(/not verified/);
+    await expect(consent.start({...baseConsent,client_id:unbound,
+      account:'different-fixture-org'})).rejects.toThrow(/not verified/);
+    await expect(consent.start({...baseConsent,client_id:unbound,
+      account:'client-register-fixture'})).rejects.toThrow(/not verified/);
     providerId=20002;
     await expect(registerPrivatePilotClient(args)).rejects.toThrow(/private tenant pilot/);
     providerId=20001;installation=85002;
