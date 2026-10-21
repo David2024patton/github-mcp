@@ -22,7 +22,7 @@ describe('CAP-3 strict source-pinned credential eligibility',()=>{
     expect(run({host:'github.enterprise.example',principal:{...principal,host:'github.enterprise.example'}}))
       .toMatchObject({status:'unknown',code:'provider_documentation_unreviewed'});
     expect(run({requestedKind:'classic_pat',grants:[data('classic_pat')]}))
-      .toMatchObject({status:'needs-consent'});
+      .toMatchObject({status:'unknown',code:'no_reviewed_credential_match'});
   });
   it('uses only one already verified exact principal/host/resource grant, still not a provider call',()=>{
     expect(run({requestedKind:'app_installation'})).toMatchObject({
