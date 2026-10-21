@@ -11,12 +11,15 @@ export function printSummary(catalog, {maxFamilies = 80} = {}) {
     'Implementation: ' + Object.entries(s.byState).map(([k,v]) => k + '=' + v).join(', '),
     'Unresolved credential decisions: ' + s.unknownCredentialDecisions,
     'Host/version applicability requiring verification: ' + s.unverifiedHostApplicability,
+    'Operations with unresolved official-source conflicts: ' + s.unresolvedConflictRows,
     'Functional coverage percentage: NOT COMPUTED (no proven denominator/numerator).',
-    'Family | operations | implemented-unverified | verified | unresolved | universal-candidates | unknown-credentials'
+    'Family | operations | missing | implemented-unverified | verified | unresolved | retired | UI-only | universal-candidates | unknown-credentials | conflict-rows'
   ];
   for (const [family, f] of Object.entries(s.families).slice(0, maxFamilies))
-    lines.push([family, f.total, f.byState['implemented-unverified'],
-      f.byState.verified, f.byState.unresolved, f.universalCandidates, f.credentialUnknowns].join(' | '));
+    lines.push([family, f.total, f.byState.missing, f.byState['implemented-unverified'],
+      f.byState.verified, f.byState.unresolved, f.byState['provider-retired'],
+      f.byState['provider-UI-only'], f.universalCandidates, f.credentialUnknowns,
+      f.unresolvedConflicts].join(' | '));
   return lines.join('\n') + '\n';
 }
 

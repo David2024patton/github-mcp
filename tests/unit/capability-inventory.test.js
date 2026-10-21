@@ -97,6 +97,41 @@ describe('CAP-1 source inventory: no fabricated functional coverage', () => {
     expect(mutate(c => c.summary.totalOperations += 1)).toThrow(/summary/);
   });
 
+  it('retains the precise enterprise-audit and Packages documentation conflicts rather than granting unsupported access', () => {
+    const rest = [
+      {route: 'GET /enterprises/{enterprise}/audit-log', method: 'GET',
+        path: '/enterprises/{enterprise}/audit-log', category: 'enterprise-admin',
+        operationId: 'enterprise-admin-get-audit-log'},
+      {route: 'GET /orgs/{org}/packages', method: 'GET',
+        path: '/orgs/{org}/packages', category: 'packages',
+        operationId: 'packages-list-packages-for-organization'}
+    ];
+    const options = {...fixture().options, rest};
+    const inventory = buildCapabilityInventory(options);
+    const audit = get(inventory.operations, 'rest:github.com@2026-03-10:GET /enterprises/');
+    const packages = get(inventory.operations, 'rest:github.com@2026-03-10:GET /orgs/');
+    expect(audit.evidence.conflicts[0].id).toBe('enterprise-audit-token-contradiction');
+    expect(packages.evidence.conflicts[0].id).toBe('packages-rest-token-contradiction');
+    expect(inventory.summary.unresolvedConflictRows).toBe(2);
+    expect(audit.credentialSupport.app_user.disposition).toBe('unknown');
+    expect(packages.credentialSupport.app_installation.disposition).toBe('unknown');
+    expect(validateCapabilityInventory(inventory, options).unresolvedConflictRows).toBe(2);
+    const amended = structuredClone(inventory);
+    get(amended.operations, 'rest:github.com@2026-03-10:GET /orgs/').evidence.conflicts = [];
+    expect(() => validateCapabilityInventory(amended, options)).toThrow(/Missing official credential conflict/);
+    const promoted = structuredClone(inventory);
+    get(promoted.operations, 'rest:github.com@2026-03-10:GET /enterprises/').credentialSupport.app_user = {
+      disposition: 'supported', evidence: 'https://docs.github.com/en/rest/enterprise-admin/audit-log',
+      permissions: ['enterprise_administration:read'], scopes: null
+    };
+    expect(() => validateCapabilityInventory(promoted, options)).toThrow(/conflict cannot prove support/);
+    expect(() => buildCapabilityInventory({...options, annotations: [{
+      key: audit.key, credential: 'app_user', disposition: 'supported',
+      evidence: 'https://docs.github.com/en/rest/enterprise-admin/audit-log'
+    }]})).toThrow(/Unresolved credential conflict/);
+    expect(printSummary(inventory)).toContain('Operations with unresolved official-source conflicts: 2');
+  });
+
   it('reports exact family sums and credential unknowns without a misleading percentage', () => {
     const {result} = fixture();
     const summary = summarizeCapabilityInventory(result.operations);

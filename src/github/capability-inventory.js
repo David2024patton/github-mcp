@@ -39,6 +39,43 @@ const GITHUB_APP_AUTH =
 const GHE_DOCS =
   'https://docs.github.com/en/enterprise-cloud@latest/apps/using-github-apps/installing-a-github-app-on-your-enterprise';
 
+// These are documented differences WITHIN current official reference pages,
+// not grants. A schema operation or a family-wide auth sentence is insufficient
+// to resolve contradictory per-operation credentials. Keep exact rows visible
+// until a later reviewed change can prove the applicable provider contract.
+const AUDIT_REFERENCE =
+  'https://docs.github.com/en/enterprise-cloud@latest/rest/enterprise-admin/audit-log?apiVersion=2026-03-10';
+const PACKAGE_REFERENCE =
+  'https://docs.github.com/en/rest/packages/packages?apiVersion=2026-03-10';
+function documentedConflicts(op) {
+  const route = op.route ?? op.method + ' ' + op.path;
+  const result = [];
+  if (route === 'GET /enterprises/{enterprise}/audit-log') {
+    result.push({
+      id: 'enterprise-audit-token-contradiction', status: 'unresolved',
+      credentialKinds: ['app_installation', 'app_user', 'oauth_app'],
+      officialUrl: AUDIT_REFERENCE,
+      explanation: 'The classic-PAT-only overview conflicts with the per-operation OAuth and App token claims; enterprise administration permission availability is also contradictory.'
+    });
+  }
+  if (op.category === 'packages') {
+    result.push({
+      id: 'packages-rest-token-contradiction', status: 'unresolved',
+      credentialKinds: ['app_installation', 'app_user', 'oauth_app', 'fine_grained_pat'],
+      officialUrl: PACKAGE_REFERENCE,
+      explanation: 'The classic-PAT-only overview conflicts with per-operation App/OAuth/fine-grained support statements. This REST evidence does not cover registry authentication.'
+    });
+  }
+  if (op.deprecated) {
+    result.push({
+      id: 'deprecated-is-not-retired', status: 'unresolved', credentialKinds: [],
+      officialUrl: SOURCE.rest.url,
+      explanation: 'Deprecated in pinned source; provider retirement or replacement has not been verified.'
+    });
+  }
+  return result;
+}
+
 // This is a cross-version applicability ledger, NOT a claim that the pinned
 // GitHub.com operation is implemented on another host or GHES release.
 function hostApplicability(key) {
@@ -127,6 +164,7 @@ function restRecord(op, names) {
     source: SOURCE.rest, officialReference: OFFICIAL_AUTH});
   rec.operation = {method: op.method, path: op.path, operationId: op.operationId || null,
     deprecated: Boolean(op.deprecated), summary: op.summary || ''};
+  rec.evidence.conflicts = documentedConflicts(op);
   const mapped = curatedTool(op);
   const route = routeEligibility(op);
   rec.implementation.universalCandidate = route.candidate;
@@ -152,7 +190,6 @@ function restRecord(op, names) {
   rec.safety.notification = Boolean(classified.notifies);
   rec.safety.productionRisk = Boolean(classified.production);
   rec.safety.accessRisk = Boolean(classified.accessWidening);
-  if (op.deprecated) rec.evidence.conflicts.push('Provider operation is deprecated; deprecation is not retirement');
   return rec;
 }
 function gqlRecord(root, field, names) {
@@ -282,6 +319,10 @@ export function buildCapabilityInventory({
     if (!SUPPORT.has(annotation.disposition) || !annotation.evidence ||
         typeof annotation.evidence !== 'string' || !/^https:\/\//.test(annotation.evidence))
       throw new TypeError('Reviewed credential disposition requires official HTTPS evidence');
+    if (annotation.disposition === 'supported' && row.evidence.conflicts.some(
+      conflict => conflict.status === 'unresolved' &&
+        conflict.credentialKinds.includes(annotation.credential)))
+      throw new TypeError('Unresolved credential conflict: ' + annotationId);
     row.credentialSupport[annotation.credential] = {
       disposition: annotation.disposition, evidence: annotation.evidence,
       permissions: annotation.permissions ?? null, scopes: annotation.scopes ?? null
@@ -295,14 +336,18 @@ export function buildCapabilityInventory({
 export function summarizeCapabilityInventory(records) {
   const families = {};
   const statuses = Object.fromEntries(STATES.map(x => [x, 0]));
-  let unknownCredentials = 0, unknownHostApplicability = 0;
+  let unknownCredentials = 0, unknownHostApplicability = 0, unresolvedConflictRows = 0;
   for (const row of records) {
     const family = families[row.family] ||= {total: 0, byState: Object.fromEntries(STATES.map(x => [x,0])),
-      universalCandidates: 0, credentialUnknowns: 0};
+      universalCandidates: 0, credentialUnknowns: 0, unresolvedConflicts: 0};
     family.total++;
     family.byState[row.state]++;
     statuses[row.state]++;
     if (row.implementation.universalCandidate) family.universalCandidates++;
+    if (row.evidence.conflicts.some(x => x.status === 'unresolved')) {
+      family.unresolvedConflicts++;
+      unresolvedConflictRows++;
+    }
     const c = Object.values(row.credentialSupport).filter(x => x.disposition === 'unknown').length;
     family.credentialUnknowns += c;
     unknownCredentials += c;
@@ -311,6 +356,7 @@ export function summarizeCapabilityInventory(records) {
   return {totalOperations: records.length, byState: statuses,
     unknownCredentialDecisions: unknownCredentials,
     unverifiedHostApplicability: unknownHostApplicability,
+    unresolvedConflictRows,
     // Unknown and unverified rows are deliberately NOT a functional coverage numerator.
     verifiedOperations: statuses.verified,
     coverageRatio: null,
@@ -328,6 +374,24 @@ export function validateCapabilityInventory(inventory, options = {}) {
         !row.evidence?.pinnedRevision || !row.evidence?.checked ||
         !row.delivery?.owner || !row.delivery?.nextAction)
       throw new TypeError('Missing required disposition/evidence: ' + row.key);
+    const requiredConflicts = row.interface === 'rest' ? documentedConflicts({
+      route: row.operation?.method + ' ' + row.operation?.path,
+      category: row.family, deprecated: row.operation?.deprecated
+    }) : [];
+    if (!Array.isArray(row.evidence.conflicts) ||
+        requiredConflicts.some(required => !row.evidence.conflicts.some(actual =>
+          actual.id === required.id && actual.status === 'unresolved' &&
+          actual.officialUrl === required.officialUrl &&
+          JSON.stringify(actual.credentialKinds) === JSON.stringify(required.credentialKinds))))
+      throw new TypeError('Missing official credential conflict record: ' + row.key);
+    if (row.evidence.conflicts.some(conflict =>
+      !conflict || conflict.status !== 'unresolved' ||
+      !Array.isArray(conflict.credentialKinds) || typeof conflict.officialUrl !== 'string' ||
+      !conflict.officialUrl.startsWith('https://')))
+      throw new TypeError('Invalid unresolved credential conflict record: ' + row.key);
+    if (row.evidence.conflicts.some(conflict => conflict.credentialKinds.some(kind =>
+      row.credentialSupport?.[kind]?.disposition === 'supported')))
+      throw new TypeError('Unresolved credential conflict cannot prove support: ' + row.key);
     if (Object.keys(row.credentialSupport || {}).length !== CREDENTIAL_KINDS.length ||
         CREDENTIAL_KINDS.some(x => !SUPPORT.has(row.credentialSupport[x]?.disposition)))
       throw new TypeError('Incomplete credential inventory: ' + row.key);

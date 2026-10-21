@@ -41,6 +41,12 @@ Read only: `src/github/openapi-index.js`, `src/github/graphql-schema.js`, `src/g
 
 `node scripts/capability-inventory.mjs --validate`; `node scripts/capability-inventory.mjs --summary`; `npx vitest run tests/unit/capability-inventory.test.js`; `npm run check`; `npm test`; `npm run test:db`; `npm run test:shapes`; `npm run test:rtc`. Exact-head `ci`, `release-policy`, self-review and merge gates remain required. Local shell cannot access the public GitHub origin in this session; use actual required GitHub CI, never invent a local pass. Reconcile existing acceptance separately at review/merge.
 
+## 2026-10-21 independent review and conflict hardening
+
+- Exact old implementation head `02d5e23b1c21f0e0cd174f14a8153ce98834e3d5` had successful actual Actions `ci` run 39639067324 (check, two unit shards, DB, shapes, RTC and aggregate) and `release-policy` job in workflow 39639067333. These results do **not** validate subsequent edits.
+- Reviewed 2026-03-10 official GitHub enterprise audit and Packages reference text. Both have conflicting family-level classic-PAT wording versus endpoint-level App/OAuth/fine-grained support statements; Enterprise administration permission availability is especially contradictory. The inventory now records source URL and exact affected REST rows as unresolved conflicts. No credential privilege is conferred. Validator and unit tests reject missing conflict rows or invented support under unresolved conflict.
+- Family gap output now includes missing, retired, UI-only and unresolved conflict counts, not merely implemented/unresolved. This remains static contract engineering; independent per-operation permission verification, deployed end-to-end access, device sign-in and owner permission grants are **not** proven. Full acceptance/CI on the changed head remains mandatory.
+
 <!-- bundle-plan:start -->
 ```json
 {
