@@ -13,7 +13,7 @@
         },
         {
           "criterion": "One agent-initiated secure setup handoff uses native GitHub App/OAuth consent or the protected service token page only as applicable, returns to its originating scoped client and rechecks capability; no chat-token input.",
-          "evidence": "PARTIAL: existing private native App-user consent attaches identity-read proof and returns through its original registered client PKCE flow. Agent-initiated additional-kind protected/native upgrade enrollment remains unfinished."
+          "evidence": "PARTIAL: existing private native U GitHub App OAuth returns automatically through the exact registered client's PKCE flow and now binds its identity-read proof. Owner direct MCP or nested github_call can send a scoped client to the canonical HTTPS protected service setup for reviewed classic-only notifications, but PAT must be issued on GitHub and manually entered with CSRF/passphrase; there is not yet a one-use automatic-return callback to the originating MCP client or tenant extra-kind enrollment."
         },
         {
           "criterion": "No silent broader fallback, trial-and-error provider authentication, unsupported pass downscoping or unintended privilege carryover during denied provider requests, upgrades or refresh.",
@@ -37,10 +37,10 @@
       ]
     }
   ],
-  "productionAdded": 505,
-  "productionRemoved": 25,
-  "newEngineering": "CAP-3 original source includes scoped private U identity/read binding, protected owner F/K/P typed current-ciphertext evidence, bounded provider readback limited to exact documented metadata GET for K/P, automatic invalidation on replacement and protected removal, explicit owner-vs-tenant/pass diagnostics and new official source support for standard App package listing versus classic notifications.",
-  "planComparison": "CONTINUE: 505 added and 25 removed production lines deliver real partial authority evidence and lifecycle on reused encrypted stores, but one whole original CAP-3 engineering outcome remains incomplete. No extra-kind private tenant storage, agent-initiated secure automatic return, complete per-resource provider permission proof or real client/provider acceptance has been established.",
+  "productionAdded": 549,
+  "productionRemoved": 26,
+  "newEngineering": "CAP-3 original source includes scoped private U identity/read binding, protected owner F/K/P typed current-ciphertext evidence, bounded provider readback limited to exact documented metadata GET for K/P, automatic invalidation on replacement and protected removal, explicit owner-vs-tenant/pass diagnostics and new official source support for standard App package listing versus classic notifications. The normal owner MCP permission diagnostic additionally offers a safe canonical HTTPS protected credential setup link only for source-confirmed K notifications and explicitly avoids requiring extra P token for ordinary App-supported package metadata; direct/meta and negative owner/pass/private-tenant tests exercise the handoff.",
+  "planComparison": "CONTINUE: 549 source additions and 26 removals provide typed protected owner credential proofs, exact K/P past readback and a canonical guided optional setup link. CAP-3 still requires complete agent-initiated callback/return, private-tenant optional credential storage, concurrent lifecycle, provider rights and independent real device evidence. No full original criterion or God Mode acceptance credited.",
   "relatedWorkDecision": "Keep original CAP-3 plan and draft #274. Isolate main security defect into #275 as AGENTS requires; PUB-4 #268 is unchanged and CAP-4 remains dependent.",
   "decision": "CONTINUE"
 }
