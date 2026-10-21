@@ -97,9 +97,23 @@ async function checkPermissions(args, ctx) {
       typeof ctx.credentials?.operationAuthority!=='function';
     let origin=null;
     if(ownerContext)try{origin=publicOrigin(ctx.env);}catch{/* No safe link without configured server origin. */}
-    entry.additional_setup=additionalCredentialHandoff({
+    const proposed=additionalCredentialHandoff({
       operation:pinned.route,account,origin,ownerContext
     });
+    if(ownerContext && proposed.status==='protected-setup' &&
+       typeof ctx.db.additionalCredentialProofs==='function'){
+      const existing=optionalCredentialIdentityStatus({
+        account,proofs:await ctx.db.additionalCredentialProofs(account.login)
+      });
+      entry.optional_credentials=existing;
+      const previous=existing[proposed.kind];
+      entry.additional_setup=previous?.documentedRead===pinned.route &&
+        previous.operationPermission==='observed-for-read-at-enrollment'
+        ?{status:'read-observed-at-enrollment',kind:proposed.kind,
+          account:account.login,operation:pinned.route,
+          note:'This exact read succeeded during prior protected enrollment. Current GitHub permission has NOT been rechecked; do not replay a refused write.'}
+        :proposed;
+    }else entry.additional_setup=proposed;
     entry.operation_note='Area-level permission needs include writes and do not prove an individual read operation.';
     if(typeof ctx.credentials?.operationAuthority==='function')
       entry.operation_authority=await ctx.credentials.operationAuthority({
@@ -108,7 +122,8 @@ async function checkPermissions(args, ctx) {
   if(chosen) for(const entry of accounts){
     const account=rows.find(row=>sameLogin(row.login,entry.login));
     entry.effective_access=effectiveToolAccess({connection:ctx.connection,account,tool:chosen});
-    if(ctx.connection?.pass!==true && !ctx.credentials?.operationAuthority &&
+    if(!entry.optional_credentials && ctx.connection?.pass!==true &&
+        !ctx.credentials?.operationAuthority &&
         typeof ctx.db.additionalCredentialProofs==='function') {
       const proofs=await ctx.db.additionalCredentialProofs(account.login);
       entry.optional_credentials=optionalCredentialIdentityStatus({account,proofs});

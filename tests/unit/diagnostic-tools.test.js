@@ -335,6 +335,23 @@ describe('CAP-3 exact-operation protected setup handoff without credential excha
         status:'protected-setup',kind:'K'});
     }
     expect(w.gh.calls).toEqual([]);
+    const record=await w.db.getAccount('example-org');
+    const {createHash}=await import('node:crypto');
+    const enc='sealed-fixture-notification-value';
+    await w.db.setClassicToken(record.login,{enc,scopes:['notifications'],last4:'last'});
+    expect(await w.db.bindAdditionalCredentialProof({
+      login:record.login,kind:'K',expectedCipher:enc,
+      proof:{version:1,kind:'K',host:'github.com',scope:'legacy-owner',
+        actorId:4201,accountId:record.account_id,
+        fingerprint:createHash('sha256').update(enc).digest('hex'),
+        verification:'identity-and-capability-readback',
+        operation:'GET /notifications',resource:'user/4201',scopes:['notifications']}
+    })).toBe(true);
+    const after=await handlers.github_check_permissions(args,{...w.ctx,env});
+    expect(after.accounts[0].additional_setup).toMatchObject({
+      status:'read-observed-at-enrollment',kind:'K'});
+    expect(after.accounts[0].additional_setup.note).toContain('NOT been rechecked');
+    expect(w.gh.calls).toEqual([]);
     const tenant=await handlers.github_check_permissions(args,{
       ...w.ctx,env,credentials:{...w.credentials,operationAuthority:async()=>({})}
     });
