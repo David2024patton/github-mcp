@@ -1837,15 +1837,17 @@
         "CAP-1"
       ],
       "card": "docs/pr-cards/CAP-2.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "JIT contract before implementation",
       "budget": 650,
       "units": [
         "CAP-2"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [],
-      "pr": []
+      "pr": [
+        273
+      ]
     },
     {
       "id": "CAP-3",

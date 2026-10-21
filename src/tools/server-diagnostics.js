@@ -6,6 +6,8 @@ import { formatDenver } from '../github/errors.js';
 import { AREAS, LEVELS } from '../data/permission-needs.js';
 import { MAP_STATUS, SETTINGS, findSettings, fill } from '../data/dashboard-map.js';
 import { enrolledGuideUser, restrictUnknownUserLink } from './guide-personal.js';
+import {effectiveToolAccess,documentedOperationAccess,accessRecovery} from '../github/effective-access.js';
+import {restOperation} from '../github/openapi-index.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
 const when = (value) => (value ? formatDenver(value) : null);
@@ -33,9 +35,34 @@ export function compareArea(area, granted) {
 }
 
 async function checkPermissions(args, ctx) {
+  // The canonical static registry is read at call time to avoid granting meta
+  // tools the dynamic registry-injection privilege reserved for dispatcher runners.
+  // Import only inside the requested read handler: the registration graph
+  // imports this module while constructing the registry, so a top-level
+  // import here would create a cyclic, partially initialized registry.
+  const registeredTools = args.tool===undefined ? null : (await import('./index.js')).registry;
+  const chosen=args.tool===undefined?null:registeredTools.tools.find(t=>t.name===args.tool);
+  if(args.tool!==undefined&&!chosen)throw new TypeError('That GitHub tool is not registered. Search with github_search_tools.');
   if (args.area && !AREAS.some((a) => a.id === args.area)) throw new TypeError(`Unknown area "${args.area}". Areas: ${AREAS.map((a) => a.id).join(', ')}.`);
+  if(args.operation && (!args.account || (!args.area && !chosen)))
+    throw new TypeError('For operation evidence select one connection account and a tool or area.');
+  let pinned=null;
+  if(args.operation){
+    try{pinned=restOperation(args.operation);}
+    catch{throw new TypeError('That exact REST operation is absent from pinned GitHub 2026-03-10.');}
+  }
   const rows = await accountsFor(ctx, args.account);
-  const areas = AREAS.filter((a) => !args.area || a.id === args.area);
+  // A named tool should not add a 24-area report to the existing size-bounded
+  // MCP result. Narrow to its known capability area, or explicitly say the
+  // exact tool-to-area mapping is unknown. A caller can still select any area
+  // separately, and an omitted tool retains the original whole audit.
+  const areaForTool = {
+    pr:'pull-requests',repo:'repositories',content:'content',branch:'branches',
+    issue:'issues',actions:'actions',release:'releases',security:'security',
+    webhook:'webhooks',org:'organization',billing:'billing',package:'packages'
+  };
+  const inferredArea = chosen ? (areaForTool[chosen.area] ?? null) : null;
+  const areas = AREAS.filter(a => args.area ? a.id === args.area : !chosen || a.id === inferredArea);
   const accounts = rows.map((row) => {
     const base = { login: row.login };
     if (row.credential_kind === 'fine_grained') {
@@ -61,6 +88,22 @@ async function checkPermissions(args, ctx) {
         : results.filter((r) => r.missing.length || r.capability)
     };
   });
+  if(pinned) for(const entry of accounts){
+    const account=rows.find(x=>sameLogin(x.login,entry.login));
+    entry.operation_evidence=documentedOperationAccess({account,route:pinned.route});
+    entry.operation_note='Area-level permission needs include writes and do not prove an individual read operation.';
+  }
+  if(chosen) for(const entry of accounts){
+    const account=rows.find(row=>sameLogin(row.login,entry.login));
+    entry.effective_access=effectiveToolAccess({connection:ctx.connection,account,tool:chosen});
+    entry.recovery=accessRecovery({
+      connection:ctx.connection,account,tool:chosen,
+      missingPermissions:(entry.areas??[]).flatMap(a=>a.missing??[]),
+      operation:entry.operation_evidence??null
+    });
+    if(!areas.length && entry.status==='all good') entry.status='area unverified';
+    if(!areas.length) entry.area_note='No audited permission family is mapped to this registered tool. Select an area explicitly; do not assume GitHub grants.';
+  }
   return { checked_areas: areas.length, accounts };
 }
 
@@ -118,8 +161,8 @@ export const tools = [
   {
     name: 'github_check_permissions',
     area: 'server', audience: ['O', 'B'],
-    description: 'Compare what each GitHub App installation may do with what every tool area needs; names the exact permission to add.',
-    inputSchema: { type: 'object', properties: { account: { type: 'string', maxLength: 39 }, area: { type: 'string', maxLength: 40, description: 'One area, e.g. pull-requests' }, detail: DETAIL }, additionalProperties: false },
+    description: 'Check App grants and a named tool\'s profile, mode, stored credential and unverified guard layers.',
+    inputSchema: { type: 'object', properties: { account: { type: 'string', maxLength: 39 }, area: { type: 'string', maxLength: 40, description: 'One area, e.g. pull-requests' }, tool: { type: 'string', maxLength: 80, description: 'Registered tool to diagnose for each scoped account' }, operation: { type: 'string', maxLength: 240, description: 'Pinned REST METHOD /path documentation; requires account and tool or area' }, detail: DETAIL }, additionalProperties: false },
     annotations: readOnly
   },
   {
