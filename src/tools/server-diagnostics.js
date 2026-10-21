@@ -102,8 +102,12 @@ async function checkPermissions(args, ctx) {
     });
     if(ownerContext && proposed.status==='protected-setup' &&
        typeof ctx.db.additionalCredentialProofs==='function'){
+      // listAccounts intentionally redacts encrypted values; inspect an exact
+      // allowed account row only inside this owner-only diagnostic. Never
+      // include ciphertext or a token-derived hash in returned output.
+      const privateAccount=await ctx.db.getAccount(account.login);
       const existing=optionalCredentialIdentityStatus({
-        account,proofs:await ctx.db.additionalCredentialProofs(account.login)
+        account:privateAccount,proofs:await ctx.db.additionalCredentialProofs(account.login)
       });
       entry.optional_credentials=existing;
       const previous=existing[proposed.kind];
@@ -125,8 +129,11 @@ async function checkPermissions(args, ctx) {
     if(!entry.optional_credentials && ctx.connection?.pass!==true &&
         !ctx.credentials?.operationAuthority &&
         typeof ctx.db.additionalCredentialProofs==='function') {
+      const privateAccount=await ctx.db.getAccount(account.login);
       const proofs=await ctx.db.additionalCredentialProofs(account.login);
-      entry.optional_credentials=optionalCredentialIdentityStatus({account,proofs});
+      entry.optional_credentials=optionalCredentialIdentityStatus({
+        account:privateAccount,proofs
+      });
     }
     entry.recovery=accessRecovery({
       connection:ctx.connection,account,tool:chosen,
