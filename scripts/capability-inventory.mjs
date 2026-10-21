@@ -10,6 +10,7 @@ export function printSummary(catalog, {maxFamilies = 80} = {}) {
     'Operation keys: ' + s.totalOperations,
     'Implementation: ' + Object.entries(s.byState).map(([k,v]) => k + '=' + v).join(', '),
     'Unresolved credential decisions: ' + s.unknownCredentialDecisions,
+    'Officially reviewed operation/credential decisions: ' + s.reviewedCredentialDecisions,
     'Host/version applicability requiring verification: ' + s.unverifiedHostApplicability,
     'Operations with unresolved official-source conflicts: ' + s.unresolvedConflictRows,
     'Functional coverage percentage: NOT COMPUTED (no proven denominator/numerator).',

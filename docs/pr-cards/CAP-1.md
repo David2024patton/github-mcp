@@ -47,6 +47,12 @@ Read only: `src/github/openapi-index.js`, `src/github/graphql-schema.js`, `src/g
 - Reviewed 2026-03-10 official GitHub enterprise audit and Packages reference text. Both have conflicting family-level classic-PAT wording versus endpoint-level App/OAuth/fine-grained support statements; Enterprise administration permission availability is especially contradictory. The inventory now records source URL and exact affected REST rows as unresolved conflicts. No credential privilege is conferred. Validator and unit tests reject missing conflict rows or invented support under unresolved conflict.
 - Family gap output now includes missing, retired, UI-only and unresolved conflict counts, not merely implemented/unresolved. This remains static contract engineering; independent per-operation permission verification, deployed end-to-end access, device sign-in and owner permission grants are **not** proven. Full acceptance/CI on the changed head remains mandatory.
 
+## 2026-10-21 exact-operation credential evidence hardening
+
+- Added a separately reviewed, operation-keyed reference ledger for GitHub's 2026-03-10 `GET /user`, `PATCH /user`, `GET /app`, and `GET /repos/{owner}/{repo}`. Only the documented GitHub App U/I, fine-grained PAT, OAuth/classic and App-JWT decisions are recorded; unreviewed cells remain unknown. Response-field scopes, repository Metadata read and user Profile write are recorded explicitly.
+- The static validator compares each of these official-source decisions with every generated row. It refuses silently deleted or altered decisions, contradictory credential annotations or changed permission/scope contracts. Existing unresolved enterprise audit and Packages conflicts remain unresolved, not silently promoted into `supported`. The report separately counts reviewed credential cells, unknown credential cells and unresolved conflicts.
+- A documented provider token type is **not** a scoped registered handler, enrolled connection, provider success or deployed acceptance. Source-only CAP-1 criteria need exact-head CI and bundle delivery review; dependent CAP-2/3 and live PUB-4 remain open.
+
 <!-- bundle-plan:start -->
 ```json
 {

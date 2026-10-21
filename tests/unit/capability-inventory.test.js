@@ -2,6 +2,7 @@ import {describe, expect, it} from 'vitest';
 import {registry} from '../../src/tools/index.js';
 import {buildCapabilityInventory, sourceKeys, summarizeCapabilityInventory,
   validateCapabilityInventory, CREDENTIAL_KINDS, NON_SCHEMA_WORKFLOWS} from '../../src/github/capability-inventory.js';
+import {reviewedRestEvidence} from '../../src/github/capability-evidence.js';
 import {restOperations} from '../../src/github/openapi-index.js';
 import {githubGraphqlSchema} from '../../src/github/graphql-schema.js';
 import {printSummary} from '../../scripts/capability-inventory.mjs';
@@ -51,9 +52,10 @@ describe('CAP-1 source inventory: no fabricated functional coverage', () => {
     expect(whoami.state).toBe('unresolved');
     expect(app.implementation.universalCandidate).toBe(false);
     expect(app.state).toBe('unresolved');
-    expect(whoami.credentialSupport.app_user.disposition).toBe('unknown');
+    expect(whoami.credentialSupport.app_user.disposition).toBe('supported');
     expect(CREDENTIAL_KINDS).toHaveLength(8);
-    expect(Object.values(whoami.credentialSupport).every(v => v.disposition === 'unknown')).toBe(true);
+    expect(whoami.credentialSupport.app_installation.disposition).toBe('unsupported');
+    expect(whoami.credentialSupport.workflow_token.disposition).toBe('unknown');
     expect(result.operations.filter(x => x.interface === 'graphql')).toHaveLength(2);
     expect(gql.credentialSupport.app_jwt.disposition).toBe('unsupported');
     expect(gql.credentialSupport.app_jwt.evidence).toContain('github.com');
@@ -132,6 +134,39 @@ describe('CAP-1 source inventory: no fabricated functional coverage', () => {
     expect(printSummary(inventory)).toContain('Operations with unresolved official-source conflicts: 2');
   });
 
+  it('records operation-specific official credential rights without suggesting a live connection has them', () => {
+    const rest = [
+      {route:'GET /user', method:'GET', path:'/user', category:'users'},
+      {route:'PATCH /user', method:'PATCH', path:'/user', category:'users'},
+      {route:'GET /app', method:'GET', path:'/app', category:'apps'},
+      {route:'GET /repos/{owner}/{repo}', method:'GET',
+        path:'/repos/{owner}/{repo}', category:'repos'}
+    ];
+    const options = {...fixture().options, rest};
+    const inv = buildCapabilityInventory(options);
+    expect(validateCapabilityInventory(inv, options).reviewedCredentialDecisions).toBe(15);
+    expect(get(inv.operations,'rest:github.com@2026-03-10:GET /app')
+      .credentialSupport.app_jwt.disposition).toBe('supported');
+    expect(get(inv.operations,'rest:github.com@2026-03-10:GET /repos/')
+      .credentialSupport.app_installation.permissions).toEqual(['repository:metadata:read']);
+    expect(get(inv.operations,'rest:github.com@2026-03-10:PATCH /user')
+      .credentialSupport.app_installation.disposition).toBe('unsupported');
+    expect(get(inv.operations,'rest:github.com@2026-03-10:GET /user')
+      .credentialSupport.oauth_app.scopes).toEqual(['read:user','user']);
+    expect(reviewedRestEvidence('GET /other')).toBeNull();
+    const altered = structuredClone(inv);
+    get(altered.operations,'rest:github.com@2026-03-10:GET /app')
+      .credentialSupport.app_jwt.disposition = 'unknown';
+    expect(() => validateCapabilityInventory(altered, options))
+      .toThrow(/altered reviewed credential/);
+    expect(() => buildCapabilityInventory({...options, annotations:[{
+      key:'rest:github.com@2026-03-10:GET /app', credential:'app_jwt',
+      disposition:'unsupported', evidence:'https://docs.github.com/en/rest/apps/apps'
+    }]})).toThrow(/cannot be overridden/);
+    expect(inv.summary.verifiedOperations).toBe(0);
+    expect(printSummary(inv)).toContain('Officially reviewed operation/credential decisions: 15');
+  });
+
   it('reports exact family sums and credential unknowns without a misleading percentage', () => {
     const {result} = fixture();
     const summary = summarizeCapabilityInventory(result.operations);
@@ -148,7 +183,7 @@ describe('CAP-1 source inventory: no fabricated functional coverage', () => {
     const inventory = buildCapabilityInventory({...options, annotations: [{
       key, credential:'app_user', disposition:'supported',
       evidence:'https://docs.github.com/en/rest/users/users#get-the-authenticated-user',
-      permissions: ['metadata:read']
+      permissions: [], scopes: null
     }]});
     expect(get(inventory.operations, key).credentialSupport.app_user.disposition).toBe('supported');
     expect(get(inventory.operations, key).state).toBe('unresolved');

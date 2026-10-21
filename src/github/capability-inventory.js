@@ -6,6 +6,7 @@ import {curatedTool} from './hand-built-map.js';
 import {classifyUniversal, assertUniversalAuthority} from './operation-classes.js';
 import {curatedGraphqlMutation} from './mutation-classes.js';
 import {WRITE_SPECS} from './graphql-writes.js';
+import {reviewedRestEvidence} from './capability-evidence.js';
 
 export const SOURCE = Object.freeze({
   checked: '2026-10-21',
@@ -165,6 +166,20 @@ function restRecord(op, names) {
   rec.operation = {method: op.method, path: op.path, operationId: op.operationId || null,
     deprecated: Boolean(op.deprecated), summary: op.summary || ''};
   rec.evidence.conflicts = documentedConflicts(op);
+  const reviewed = reviewedRestEvidence(op.route);
+  if (reviewed) {
+    rec.evidence.reviewedCredentials = {officialUrl: reviewed.officialUrl, checked: reviewed.reviewed};
+    for (const [kind, decision] of Object.entries(reviewed.decisions)) {
+      if (rec.evidence.conflicts.some(conflict => conflict.credentialKinds.includes(kind))) continue;
+      rec.credentialSupport[kind] = {
+        ...decision, evidence: reviewed.officialUrl, reviewed: reviewed.reviewed
+      };
+    }
+    const supported = Object.values(rec.credentialSupport).some(value =>
+      value.disposition === 'supported');
+    if (supported) rec.delivery.nextAction =
+      'Verify registered dispatch, effective account/permissions and exact request-shape test; source support alone is not user authorization';
+  }
   const mapped = curatedTool(op);
   const route = routeEligibility(op);
   rec.implementation.universalCandidate = route.candidate;
@@ -319,14 +334,26 @@ export function buildCapabilityInventory({
     if (!SUPPORT.has(annotation.disposition) || !annotation.evidence ||
         typeof annotation.evidence !== 'string' || !/^https:\/\//.test(annotation.evidence))
       throw new TypeError('Reviewed credential disposition requires official HTTPS evidence');
+    const pinned = row.interface === 'rest' ? reviewedRestEvidence(
+      row.operation.method + ' ' + row.operation.path)?.decisions?.[annotation.credential] : null;
+    if (pinned && pinned.disposition !== annotation.disposition)
+      throw new TypeError('Reviewed credential decision cannot be overridden: ' + annotationId);
     if (annotation.disposition === 'supported' && row.evidence.conflicts.some(
       conflict => conflict.status === 'unresolved' &&
         conflict.credentialKinds.includes(annotation.credential)))
       throw new TypeError('Unresolved credential conflict: ' + annotationId);
-    row.credentialSupport[annotation.credential] = {
-      disposition: annotation.disposition, evidence: annotation.evidence,
-      permissions: annotation.permissions ?? null, scopes: annotation.scopes ?? null
-    };
+    // A second annotation must never rewrite exact pinned evidence. A later
+    // supported-but-different contract needs an explicit reviewed source change.
+    if (pinned) {
+      if (JSON.stringify(annotation.permissions ?? null) !== JSON.stringify(pinned.permissions) ||
+          JSON.stringify(annotation.scopes ?? null) !== JSON.stringify(pinned.scopes))
+        throw new TypeError('Reviewed permission/scope contract cannot be overridden: ' + annotationId);
+    } else {
+      row.credentialSupport[annotation.credential] = {
+        disposition: annotation.disposition, evidence: annotation.evidence,
+        permissions: annotation.permissions ?? null, scopes: annotation.scopes ?? null
+      };
+    }
   }
   records.sort((a,b) => a.key.localeCompare(b.key, 'en'));
   return {format: 'capability-inventory/v1', source: SOURCE,
@@ -336,7 +363,7 @@ export function buildCapabilityInventory({
 export function summarizeCapabilityInventory(records) {
   const families = {};
   const statuses = Object.fromEntries(STATES.map(x => [x, 0]));
-  let unknownCredentials = 0, unknownHostApplicability = 0, unresolvedConflictRows = 0;
+  let unknownCredentials = 0, unknownHostApplicability = 0, unresolvedConflictRows = 0, reviewedCredentialDecisions = 0;
   for (const row of records) {
     const family = families[row.family] ||= {total: 0, byState: Object.fromEntries(STATES.map(x => [x,0])),
       universalCandidates: 0, credentialUnknowns: 0, unresolvedConflicts: 0};
@@ -351,12 +378,14 @@ export function summarizeCapabilityInventory(records) {
     const c = Object.values(row.credentialSupport).filter(x => x.disposition === 'unknown').length;
     family.credentialUnknowns += c;
     unknownCredentials += c;
+    reviewedCredentialDecisions += Object.values(row.credentialSupport).filter(x => x.reviewed).length;
     unknownHostApplicability += row.hostApplicability.filter(x => x.disposition === 'unknown').length;
   }
   return {totalOperations: records.length, byState: statuses,
     unknownCredentialDecisions: unknownCredentials,
     unverifiedHostApplicability: unknownHostApplicability,
     unresolvedConflictRows,
+    reviewedCredentialDecisions,
     // Unknown and unverified rows are deliberately NOT a functional coverage numerator.
     verifiedOperations: statuses.verified,
     coverageRatio: null,
@@ -392,6 +421,21 @@ export function validateCapabilityInventory(inventory, options = {}) {
     if (row.evidence.conflicts.some(conflict => conflict.credentialKinds.some(kind =>
       row.credentialSupport?.[kind]?.disposition === 'supported')))
       throw new TypeError('Unresolved credential conflict cannot prove support: ' + row.key);
+    const reviewed = row.interface === 'rest' ? reviewedRestEvidence(
+      row.operation?.method + ' ' + row.operation?.path) : null;
+    if (reviewed) {
+      for (const [kind, contract] of Object.entries(reviewed.decisions)) {
+        const conflict = row.evidence.conflicts.some(c => c.credentialKinds.includes(kind));
+        const expected = conflict ? {disposition: 'unknown'} : contract;
+        const actual = row.credentialSupport?.[kind];
+        if (!actual || actual.disposition !== expected.disposition ||
+            (!conflict && (actual.evidence !== reviewed.officialUrl ||
+              actual.reviewed !== reviewed.reviewed ||
+              JSON.stringify(actual.permissions) !== JSON.stringify(contract.permissions) ||
+              JSON.stringify(actual.scopes) !== JSON.stringify(contract.scopes))))
+          throw new TypeError('Missing or altered reviewed credential contract: ' + row.key + '/' + kind);
+      }
+    }
     if (Object.keys(row.credentialSupport || {}).length !== CREDENTIAL_KINDS.length ||
         CREDENTIAL_KINDS.some(x => !SUPPORT.has(row.credentialSupport[x]?.disposition)))
       throw new TypeError('Incomplete credential inventory: ' + row.key);
