@@ -90,5 +90,8 @@ describe('CAP-3 owner optional grant metadata CAS and rollback safety', () => {
     await expect(db.bindAdditionalCredentialProof({login:'fixture-org',kind:'F',
       expectedCipher:'sealed-fine-grained',
       proof:{...fg,verification:'operation-authorized'}})).rejects.toThrow(/invalid/);
+    await expect(db.bindAdditionalCredentialProof({login:'fixture-org',kind:'F',
+      expectedCipher:'sealed-fine-grained',
+      proof:{...fg,fingerprint:'0'.repeat(64)}})).rejects.toThrow(/invalid/);
   });
 });

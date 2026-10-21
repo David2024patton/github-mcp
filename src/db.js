@@ -3,6 +3,7 @@
 // changes nothing, and nothing here ever drops, alters or deletes. Credentials are ciphertext (*_enc) or hashes
 // (*_hash) only; no column holds a plain token, key or secret.
 import { neon } from '@neondatabase/serverless';
+import { createHash } from 'node:crypto';
 import { hashToken } from './core/oauth.js';
 import { createDevLedger } from './dev/ledger.js';
 import { DEFAULT_PROJECTS, validateProjectProfile, storedProject } from './data/profile-schema.js';
@@ -1017,6 +1018,7 @@ export function createDb(sql = productionSql()) {
           !Number.isSafeInteger(proof.accountId) || proof.accountId<=0 ||
           proof.scope!=='legacy-owner' ||
           typeof proof.fingerprint!=='string' || !/^[a-f0-9]{64}$/.test(proof.fingerprint) ||
+          createHash('sha256').update(expectedCipher).digest('hex')!==proof.fingerprint ||
           proof.verification!=='identity-only')
         throw new TypeError('Verified additional credential evidence is invalid.');
       const payload=JSON.stringify({
