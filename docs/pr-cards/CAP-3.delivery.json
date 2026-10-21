@@ -9,7 +9,7 @@
         },
         {
           "criterion": "Every stored extra grant binds provider host, numeric verified human identity, tenant/workspace, account, resource/enterprise scope, token kind, permissions, expiry and verification without exposing the secret.",
-          "evidence": "PARTIAL: existing private App-user U grant now binds current ciphertext, subject, tenant and epochs, account/App/installation, GitHub.com, expiry and exact identity read. Additional credential kinds and non-GitHub.com enrollment remain unfinished."
+          "evidence": "PARTIAL: U private tenant authority binding retains owner/account/installation, numeric subject, membership/pilot epochs, exact identity read and ciphertext CAS. Protected owner K/P/F credentials now can carry separately provider-verified numeric actor, GitHub.com/legacy-owner scope, current encrypted fingerprint and optional expiry. This is identity-only; private-tenant extra kinds/resource-permission verification remain unfinished."
         },
         {
           "criterion": "One agent-initiated secure setup handoff uses native GitHub App/OAuth consent or the protected service token page only as applicable, returns to its originating scoped client and rechecks capability; no chat-token input.",
@@ -17,7 +17,7 @@
         },
         {
           "criterion": "No silent broader fallback, trial-and-error provider authentication, unsupported pass downscoping or unintended privilege carryover during denied provider requests, upgrades or refresh.",
-          "evidence": "PARTIAL: resolver forbids silent fallback and revoked/expired/foreign/stale metadata; unsupported private-user pass downscope is separately isolated in security PR #275. Full additional-kind dispatch/lifecycle still unfinished."
+          "evidence": "PARTIAL: optional kind identity records are erased on protected token replacement/deletion, and CAS plus exact SHA256 prevents stale metadata resurrection. U per-tenant refresh CAS and pass restriction remain. No silent credential fallbacks were added. Expanded multi-tenant extra-kind lifecycle remains unfinished."
         },
         {
           "criterion": "Disposable PostgreSQL and synthetic-provider integration prove two distinct tenants, the same human in separate workspaces, wrong identity/host/resource, stale/revoked grants, concurrency and interrupted setup.",
@@ -25,7 +25,7 @@
         },
         {
           "criterion": "Tests prove secret redaction, restricted service passes, clean replacement/deletion and verified before/after capability gain; incomplete real provider/device acceptance remains independently OPEN.",
-          "evidence": "PARTIAL: ciphertext/metadata redaction, restricted-pass refusal, U replacement proof invalidation and identity-read before/after assertions exist. Additional-kind readback and cleanup proofs plus independent real acceptance remain open."
+          "evidence": "PARTIAL: existing private U before/after identity-read check remains; new real PostgreSQL owner optional P/K/F metadata CAS, legacy migration, invalidation and deletion fixtures plus unit identity/no-secret tests are added, pending exact-head full CI. Operation-specific permission readback, private per-kind enrollment and actual provider acceptance remain open."
         }
       ],
       "remainingEngineering": [
@@ -37,10 +37,10 @@
       ]
     }
   ],
-  "productionAdded": 255,
-  "productionRemoved": 12,
-  "newEngineering": "Existing sealed private U grant metadata binding, native consent/refresh attachment, epoch/CAS invalidation and scoped diagnostic integration. Separate four-line restricted-pass security fix is PR #275 and is not credited as a completed CAP subsection.",
-  "planComparison": "CONTINUE: original six whole criteria remain incomplete. Recovered the existing-U binding foundation through a narrower metadata change without another bearer store; original optional-kind registry/enrollment outcome is not complete.",
+  "productionAdded": 425,
+  "productionRemoved": 25,
+  "newEngineering": "Private tenant App-user U binding plus owner protected additional F/P/K identity-only proof metadata; additive owner schema, current ciphertext CAS, optional numeric actor verification, separate proof disclosure and protected replacement/removal that invalidates old identity metadata. No extra-kind effective provider execution, tool fallback or client enrollment authority asserted.",
+  "planComparison": "CONTINUE: Full original CAP-3 requires secure agent-initiated optional enrollment, exact supported operation readback, private tenant extra-kind grants and complete lifecycle. P/K/F owner metadata does not close the six whole criteria. Existing encrypted token vault and per-tenant U layer remain separate.",
   "relatedWorkDecision": "Keep original CAP-3 plan and draft #274. Isolate main security defect into #275 as AGENTS requires; PUB-4 #268 is unchanged and CAP-4 remains dependent.",
   "decision": "CONTINUE"
 }

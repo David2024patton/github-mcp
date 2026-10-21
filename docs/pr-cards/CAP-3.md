@@ -47,6 +47,12 @@ Restricted-pass discovery: private App-user bearers cannot honor repository/perm
 
 Tests: `tests/unit/cap3-user-binding.test.js`, `tests/db/cap3-user-binding.test.js`, and the existing native consent/refresh real-DB cases in `tests/db/pub-2-pilot-identity.test.js`. The DB suite is required on disposable PostgreSQL; no real token or production database may substitute. Before publication, inspect all final exact-head CI families and record actual results.
 
+## Secure owner optional-kind metadata continuation (2026-10-21)
+
+- Existing protected package enrollment now carries the provider-read `GET /user` numeric actor ID into new **identity-only** metadata for encrypted P. Fine-grained F and notifications K record identity metadata only when the same submitted credential verifies the applicable user; missing/mismatched verification remains unverified. Classic P/K are never generalized to App I/U API authority.
+- The additive `gh_accounts.additional_credential_proofs` stores no bearer and stays inside each isolated database schema. Every protected token replacement clears its prior proof; protected removal can clear F/K/P and its proof. Binding requires a matching still-current encrypted token, account ID, numeric actor, and SHA-256 fingerprint. Identity-only evidence deliberately cannot authorize a supported API endpoint by itself. A connection-scoped permission query distinguishes recorded identity from the actual GitHub operation grant.
+- New disposable PostgreSQL migration/CAS/replacement/deletion cases and synthetic credential contract cases are source candidates. Full exact-head CI on the finished tree is required; do not count these as a completed original CAP-3 criterion. An earlier generic execution blocker no longer applies to these narrower additive edits, but the remaining full typed lifecycle has not been implemented.
+
 ### Exact remaining implementation for the next continuation
 
 1. Keep this original plan/criterion boundary. Extend the typed lifecycle to actually applicable additional grant kinds using the existing sealed setup paths, with separate identities and restrictive K/P semantics. Never present this one-kind metadata proof as that registry. Bind explicit provider host, verified numeric human, tenant/role epochs, account and exact resource to every newly enrolled grant; preserve legacy credentials without inheriting their authority into another tenant.
