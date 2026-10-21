@@ -62,10 +62,10 @@ describe('CAP-1 source inventory: no fabricated functional coverage', () => {
   it('does not infer GHE.com or GHES host parity from a GitHub.com schema', () => {
     const {result} = fixture();
     for (const row of result.operations) {
-      expect(row.hostApplicability.map(x => x.host)).toEqual(['github.com','ghe.com','ghes']);
+      expect(row.hostApplicability.map(x => x.host)).toEqual(['github.com','ghe.com','ghes','ghes']);
       expect(row.hostApplicability[0].disposition).toBe('source-pinned');
-      expect(row.hostApplicability.slice(1).map(x => x.disposition)).toEqual(['unknown','unknown']);
-      expect(new Set(row.hostApplicability.map(x => x.key)).size).toBe(3);
+      expect(row.hostApplicability.slice(1).map(x => x.disposition)).toEqual(['unknown','unknown','unknown']);
+      expect(new Set(row.hostApplicability.map(x => x.key)).size).toBe(4);
     }
   });
 
