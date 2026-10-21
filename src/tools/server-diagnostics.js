@@ -100,7 +100,8 @@ async function checkPermissions(args, ctx) {
   if(chosen) for(const entry of accounts){
     const account=rows.find(row=>sameLogin(row.login,entry.login));
     entry.effective_access=effectiveToolAccess({connection:ctx.connection,account,tool:chosen});
-    if(typeof ctx.db.additionalCredentialProofs==='function') {
+    if(ctx.connection?.pass!==true && !ctx.credentials?.operationAuthority &&
+        typeof ctx.db.additionalCredentialProofs==='function') {
       const proofs=await ctx.db.additionalCredentialProofs(account.login);
       entry.optional_credentials=optionalCredentialIdentityStatus({account,proofs});
     }

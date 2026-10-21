@@ -249,6 +249,24 @@ describe('CAP-2 explicit recovery without secret or privilege mutation',()=>{
 });
 
 describe('CAP-3 owner optional-kind status cannot claim endpoint authorization',()=>{
+  it('never exposes optional owner evidence on private-tenant or pass diagnostic paths',async()=>{
+    const w=await appWorld({metadata:'read'});
+    const original=w.db.additionalCredentialProofs;
+    let calls=0;
+    w.db.additionalCredentialProofs=async()=>{calls++;return {P:{version:1}};};
+    try{
+      const args={account:'example-org',tool:'github_pr_merge'};
+      const viaPass=await handlers.github_check_permissions(args,{
+        ...w.ctx,connection:{...w.connection,pass:true}
+      });
+      expect(viaPass.accounts[0].optional_credentials).toBeUndefined();
+      const tenant=await handlers.github_check_permissions(args,{
+        ...w.ctx,credentials:{...w.credentials,operationAuthority:async()=>({})}
+      });
+      expect(tenant.accounts[0].optional_credentials).toBeUndefined();
+      expect(calls).toBe(0);
+    }finally{w.db.additionalCredentialProofs=original;}
+  });
   it('separates a matching encrypted fingerprint and identity from actual permission',async()=>{
     const {createHash}=await import('node:crypto');
     const account={account_id:901,package_enc:'sealed-package-value'};
