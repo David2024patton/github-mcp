@@ -1,4 +1,4 @@
-import {randomBytes,randomUUID} from 'node:crypto';
+import {randomBytes,randomUUID,createHash} from 'node:crypto';
 import pg from 'pg';
 import {beforeAll,afterAll,describe,it,expect} from 'vitest';
 import {createTenantDirectory,initializeProvisionedTenant,tenantConnectionString,
@@ -136,5 +136,89 @@ describe('CAP-3 existing sealed-grant metadata in real PostgreSQL',()=>{
     expect(await row(first)).toBeNull();
     expect(await authority(first)).toMatchObject({status:'needs-consent'});
     expect(await authority(second)).toMatchObject({status:'verified-for-scope'});
+  });
+});
+
+describe('CAP-3 sealed private-member optional K/P lifecycle in disposable PostgreSQL',()=>{
+  const hash=value=>createHash('sha256').update(value).digest('hex');
+  const context=async()=>({
+    tenantId:first.id,identityId:identity,accountLogin:login,
+    actorId:30001,accountId:901,
+    ...(await directory.authorizedPilotIdentity(first.id,identity))
+  });
+  const proof=(ctx,kind,encrypted,expectedFingerprint=null)=>({
+    ...ctx,kind,accessEnc:encrypted,expectedFingerprint,
+    operation:kind==='K'?'GET /notifications':'GET /orgs/{org}/packages',
+    resource:kind==='K'?'user/'+ctx.actorId:'org/'+ctx.accountId,
+    scopes:kind==='K'?['notifications']:['read:packages']
+  });
+  it('does not enroll without exact bootstrap; never borrows an identically named other workspace',async()=>{
+    await directory.initSchema();await directory.initSchema();
+    const ctx=await context();
+    const enc='v1.'+randomBytes(56).toString('hex');
+    expect(await directory.putPilotOptionalCredential(proof(ctx,'K',enc))).toBe(false);
+    await admin.query('INSERT INTO gh_tenant_pilot_bootstraps(identity_id,account_login,tenant_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',
+      [identity,login,first.id]);
+    expect(await directory.putPilotOptionalCredential(proof(ctx,'K',enc))).toBe(true);
+    const row=await directory.getPilotOptionalCredential({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'K'});
+    expect(row).toMatchObject({kind:'K',verified_operation:'GET /notifications',
+      verified_resource:'user/30001',provider_host:'github.com'});
+    expect(row.access_enc).toBe(enc);
+    expect((await directory.getPilotOptionalCredential({
+      tenantId:second.id,identityId:identity,accountLogin:login,kind:'K'}))).toBeNull();
+    expect(await directory.putPilotOptionalCredential(proof(
+      {...ctx,tenantId:second.id},'K','v1.'+randomBytes(40).toString('hex')))).toBe(false);
+    expect(await directory.putPilotOptionalCredential(proof(
+      {...ctx,actorId:30002},'K','v1.'+randomBytes(40).toString('hex')))).toBe(false);
+    expect(await directory.putPilotOptionalCredential(proof(
+      {...ctx,accountLogin:'foreign-owner'},'K','v1.'+randomBytes(40).toString('hex')))).toBe(false);
+  });
+  it('uses compare-and-swap for replacement, rejects malformed authority and independently revokes',async()=>{
+    const ctx=await context();
+    const old=(await directory.getPilotOptionalCredential({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'K'}));
+    expect(old).not.toBeNull();
+    const renewed='v1.'+randomBytes(48).toString('hex');
+    expect(await directory.putPilotOptionalCredential(proof(ctx,'K',renewed))).toBe(false);
+    expect(await directory.putPilotOptionalCredential(proof(ctx,'K',renewed,'0'.repeat(64)))).toBe(false);
+    expect(await directory.putPilotOptionalCredential(proof(ctx,'K',renewed,old.cipher_fingerprint))).toBe(true);
+    const newer=await directory.getPilotOptionalCredential({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'K'});
+    expect(newer.access_enc).toBe(renewed);
+    expect(newer.cipher_fingerprint).toBe(hash(renewed));
+    expect(await directory.putPilotOptionalCredential(proof(ctx,'K',
+      'v1.'+randomBytes(50).toString('hex'),old.cipher_fingerprint))).toBe(false);
+    expect(await directory.putPilotOptionalCredential(proof(
+      {...ctx,membershipRevision:ctx.membershipRevision+1},'P',
+      'v1.'+randomBytes(50).toString('hex')))).toBe(false);
+    await expect(directory.putPilotOptionalCredential({
+      ...proof(ctx,'K',renewed,hash(renewed)),scopes:['repo']})).rejects.toThrow(/invalid/i);
+    await expect(directory.putPilotOptionalCredential({
+      ...proof(ctx,'P',renewed,null),operation:'DELETE /orgs/{org}/packages'}))
+      .rejects.toThrow(/invalid/i);
+    const pkg='v1.'+randomBytes(48).toString('hex');
+    expect(await directory.putPilotOptionalCredential(proof(ctx,'P',pkg))).toBe(true);
+    expect((await directory.getPilotOptionalCredential({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'P'})).access_enc).toBe(pkg);
+    expect(await directory.revokePilotOptionalCredential({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'K'})).toBe(true);
+    expect(await directory.getPilotOptionalCredential({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'K'})).toBeNull();
+    expect((await directory.getPilotOptionalCredential({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'P'})).access_enc).toBe(pkg);
+    expect(await directory.revokePilotOptionalCredential({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'K'})).toBe(false);
+  });
+  it('membership suspension invalidates the remaining private extra grant immediately',async()=>{
+    expect(await directory.revokePilotIdentity(first.id,identity,identity)).toBe(true);
+    expect(await directory.getPilotOptionalCredential({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'P'})).toBeNull();
+    expect(await directory.allowlistPilotIdentity(first.id,identity,identity)).toBe(true);
+    // A newly active allowance has a DIFFERENT revision: no stale P revival.
+    expect(await directory.getPilotOptionalCredential({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'P'})).toBeNull();
+    expect(await directory.getPilotOptionalCredential({
+      tenantId:second.id,identityId:identity,accountLogin:login,kind:'K'})).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 // PUB-1: PRIVATE, unexposed tenant isolation foundation. No request route may call this
 // until PUB-2 binds a verified GitHub numeric subject to the session. Existing owner
 // data in the legacy (public) schema is never migrated, copied or modified here.
-import { randomUUID } from 'node:crypto';
+import { randomUUID,createHash } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { createDb, SCHEMA_TABLES } from '../db.js';
 import { initTenantRuntimeSchema } from './runtime-limits.js';
@@ -158,6 +158,28 @@ export function createTenantDirectory(sql) {
       // CAP-3 adds no bearer store. Legacy grants retain their ciphertext and
       // remain unverified until consent supplies fresh scoped readback.
       await ensureUserBindingSchema();
+      // CAP-3 private-member optional authority: encrypted only, bounded type,
+      // versioned actor/tenant epoch and no legacy owner-token fallback.
+      await sql`CREATE TABLE IF NOT EXISTS gh_tenant_optional_credentials (
+        tenant_id UUID NOT NULL REFERENCES gh_tenants(id),
+        identity_id UUID NOT NULL REFERENCES gh_tenant_identities(id),
+        account_login TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('K','P')),
+        provider_host TEXT NOT NULL DEFAULT 'github.com',
+        actor_id BIGINT NOT NULL,
+        account_id BIGINT NOT NULL,
+        membership_revision BIGINT NOT NULL,
+        pilot_revision BIGINT NOT NULL,
+        access_enc TEXT NOT NULL,
+        cipher_fingerprint TEXT NOT NULL,
+        verified_operation TEXT NOT NULL,
+        verified_resource TEXT NOT NULL,
+        scopes TEXT[] NOT NULL,
+        expires_at TIMESTAMPTZ,
+        revoked_at TIMESTAMPTZ,
+        revision BIGINT NOT NULL DEFAULT 1,
+        PRIMARY KEY (tenant_id,identity_id,account_login,kind)
+      )`;
       // GitHub redirect state lives in the private registry only long enough
       // to finish one GitHub authorization. Store a hash of the browser secret.
       await sql`CREATE TABLE IF NOT EXISTS gh_tenant_oauth_flows (
@@ -343,6 +365,97 @@ export function createTenantDirectory(sql) {
     /** Save only encrypted provider tokens after verified GitHub /user +
      * installation proof. Atomic eligibility check prevents stale pilot
      * approvals from writing a shared credential or another tenant's row. */
+
+    /** The protected enrollment handler must verify GitHub /user identity and
+     * one harmless exact K/P endpoint before passing encrypted bytes here.
+     * SQL checks active signed membership, current pilot epoch and numeric
+     * GitHub principal again; insert and CAS replacement are single statement.
+     */
+    async putPilotOptionalCredential({tenantId,identityId,accountLogin,kind,
+      actorId,accountId,membershipRevision,pilotRevision,accessEnc,
+      operation,resource,scopes,expiresAt=null,expectedFingerprint=null}) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      const permitted=(kind==='K'&&operation==='GET /notifications'&&
+        resource==='user/'+actorId&&Array.isArray(scopes)&&
+        scopes.length===1&&scopes[0]==='notifications')||
+        (kind==='P'&&operation==='GET /orgs/{org}/packages'&&
+          resource==='org/'+accountId&&Array.isArray(scopes)&&
+          scopes.includes('read:packages')&&scopes.length<=4&&
+          scopes.every(x=>['read:packages','write:packages','delete:packages','repo'].includes(x)));
+      if(!permitted||typeof accountLogin!=='string'||!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||
+        !Number.isSafeInteger(actorId)||actorId<1||!Number.isSafeInteger(accountId)||accountId<1||
+        !Number.isSafeInteger(membershipRevision)||membershipRevision<1||
+        !Number.isSafeInteger(pilotRevision)||pilotRevision<1||
+        typeof accessEnc!=='string'||!accessEnc.startsWith('v1.')||
+        (expectedFingerprint!==null && (typeof expectedFingerprint!=='string'||
+          !/^[a-f0-9]{64}$/.test(expectedFingerprint)))||
+        (expiresAt!==null && (!(expiresAt instanceof Date)||
+          !Number.isFinite(expiresAt.valueOf())||expiresAt<=new Date())))
+        throw new TypeError('Invalid private optional credential proof.');
+      const fingerprint=createHash('sha256').update(accessEnc).digest('hex');
+      const rows=await sql`INSERT INTO gh_tenant_optional_credentials(
+        tenant_id,identity_id,account_login,kind,provider_host,
+        actor_id,account_id,membership_revision,pilot_revision,access_enc,
+        cipher_fingerprint,verified_operation,verified_resource,scopes,expires_at)
+        SELECT ${t}::uuid,${i}::uuid,${accountLogin},${kind},'github.com',
+          ${actorId},${accountId},${membershipRevision},${pilotRevision},
+          ${accessEnc},${fingerprint},${operation},${resource},${scopes}::text[],${expiresAt}
+        WHERE EXISTS (SELECT 1 FROM gh_tenants ten
+          JOIN gh_tenant_memberships m ON m.tenant_id=ten.id
+          JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=ten.id AND p.identity_id=m.identity_id
+          JOIN gh_tenant_identities ident ON ident.id=m.identity_id
+          JOIN gh_tenant_pilot_bootstraps b ON b.tenant_id=ten.id
+          WHERE ten.id=${t}::uuid AND ten.status='active' AND m.identity_id=${i}::uuid
+            AND m.active=TRUE AND p.active=TRUE AND
+            m.revision=${membershipRevision} AND p.revision=${pilotRevision} AND
+            ident.provider='github' AND ident.provider_subject=${String(actorId)} AND
+            b.account_login=${accountLogin})
+        ON CONFLICT (tenant_id,identity_id,account_login,kind)
+        DO UPDATE SET actor_id=EXCLUDED.actor_id,account_id=EXCLUDED.account_id,
+          membership_revision=EXCLUDED.membership_revision,pilot_revision=EXCLUDED.pilot_revision,
+          access_enc=EXCLUDED.access_enc,cipher_fingerprint=EXCLUDED.cipher_fingerprint,
+          verified_operation=EXCLUDED.verified_operation,verified_resource=EXCLUDED.verified_resource,
+          scopes=EXCLUDED.scopes,expires_at=EXCLUDED.expires_at,revoked_at=NULL,
+          revision=gh_tenant_optional_credentials.revision+1
+        WHERE ${expectedFingerprint}::text IS NOT NULL AND
+          gh_tenant_optional_credentials.cipher_fingerprint=${expectedFingerprint} AND
+          gh_tenant_optional_credentials.revoked_at IS NULL
+        RETURNING revision`;
+      return rows.length===1;
+    },
+    /** Encrypted grant retrieval for trusted runtime only; never MCP output. */
+    async getPilotOptionalCredential({tenantId,identityId,accountLogin,kind}) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      if(!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||!['K','P'].includes(kind))return null;
+      const rows=await sql`SELECT g.access_enc,g.cipher_fingerprint,g.kind,g.actor_id,
+        g.account_id,g.verified_operation,g.verified_resource,g.scopes,
+        g.expires_at,g.revision,g.provider_host
+        FROM gh_tenant_optional_credentials g
+        JOIN gh_tenants ten ON ten.id=g.tenant_id
+        JOIN gh_tenant_memberships m ON m.tenant_id=g.tenant_id AND m.identity_id=g.identity_id
+        JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=g.tenant_id AND p.identity_id=g.identity_id
+        JOIN gh_tenant_identities ident ON ident.id=g.identity_id
+        JOIN gh_tenant_pilot_bootstraps b ON b.tenant_id=g.tenant_id
+        WHERE g.tenant_id=${t}::uuid AND g.identity_id=${i}::uuid
+          AND g.account_login=${accountLogin} AND g.kind=${kind}
+          AND g.revoked_at IS NULL AND ten.status='active' AND m.active=TRUE AND p.active=TRUE
+          AND g.membership_revision=m.revision AND g.pilot_revision=p.revision
+          AND ident.provider='github' AND ident.provider_subject=g.actor_id::text
+          AND b.account_login=g.account_login AND
+          (g.expires_at IS NULL OR g.expires_at>now())`;
+      return rows.length===1?rows[0]:null;
+    },
+    async revokePilotOptionalCredential({tenantId,identityId,accountLogin,kind}) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      if(!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||!['K','P'].includes(kind))return false;
+      const rows=await sql`UPDATE gh_tenant_optional_credentials
+        SET revoked_at=now(),revision=revision+1
+        WHERE tenant_id=${t}::uuid AND identity_id=${i}::uuid
+          AND account_login=${accountLogin} AND kind=${kind} AND revoked_at IS NULL
+        RETURNING kind`;
+      return rows.length===1;
+    },
+
     async storePilotUserAuthorization({ tenantId, identityId, accountLogin,
       userLogin, accessEnc, accessExpiresAt, refreshEnc = null,
       refreshExpiresAt = null, authorityBinding = null }) {
@@ -568,7 +681,12 @@ export function createTenantDirectory(sql) {
       if(typeof accountLogin!=='string' ||
           !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin))
         throw new TypeError('Invalid private pilot account.');
-      const rows=await sql`WITH auth AS (
+      const rows=await sql`WITH extras AS (
+        DELETE FROM gh_tenant_optional_credentials g
+        WHERE EXISTS (SELECT 1 FROM gh_tenant_pilot_bootstraps b
+          WHERE b.tenant_id=g.tenant_id AND b.account_login=${accountLogin})
+        RETURNING kind
+      ), auth AS (
         DELETE FROM gh_tenant_user_authorizations a
         WHERE EXISTS (SELECT 1 FROM gh_tenant_pilot_bootstraps p
           WHERE p.tenant_id=a.tenant_id AND p.account_login=${accountLogin})
@@ -579,9 +697,11 @@ export function createTenantDirectory(sql) {
           WHERE p.tenant_id=f.tenant_id AND p.account_login=${accountLogin})
         RETURNING state_hash
       ) SELECT (SELECT count(*)::integer FROM auth) AS user_grants,
-        (SELECT count(*)::integer FROM states) AS pending_states`;
+        (SELECT count(*)::integer FROM states) AS pending_states,
+        (SELECT count(*)::integer FROM extras) AS optional_grants`;
       return rows.length===1?{userGrants:Number(rows[0].user_grants),
-        pendingStates:Number(rows[0].pending_states)}:null;
+        pendingStates:Number(rows[0].pending_states),
+        optionalGrants:Number(rows[0].optional_grants)}:null;
     },
 
     /** Owner emergency stop. The calling setup route must have already
