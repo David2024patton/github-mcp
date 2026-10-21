@@ -4,6 +4,17 @@ Written 2026-10-10 for an empty repository. Order is in [MASTER-ROADMAP](MASTER-
 [STATUS](STATUS.md). AGENTS owns workflow rules. This file owns acceptance; designs own semantic decisions; cards own the
 next bounded implementation. Every line below maps to evidence named in its design's "6. Acceptance mapping".
 
+## CAP — maximum legitimate authority (owner-approved 2026-10-21)
+
+The contracts and full acceptance are in [MAXIMUM-AUTHORITY](designs/MAXIMUM-AUTHORITY.md).
+These are new open requirements; this plan does not change historical acceptance evidence.
+
+- [ ] **CAP-1:** Reproducible operation/credential inventory, reconciled interfaces and honest coverage denominators.
+- [ ] **CAP-2:** Accessible Standard Full setup, explicit upgrade/recovery and effective-access diagnostics without forced God Mode.
+- [ ] **CAP-3:** Secure guided additional credential lifecycle with verified authority gain and tenant/resource-bound routing.
+- [ ] **CAP-4:** Full advanced enterprise, package/registry, credential administration, App/integration and active-service gap closure.
+- [ ] **CAP-5:** Genuine deployed Standard/additional-authority acceptance, denial/revocation/recovery and reproducible reporting.
+
 ## PUB — PRIVATE first mobile/desktop and multi-user scale engineering (2026-10-18)
 
 Owner-approved **engineering scope** and approved original acceptance remain distinct. PUB-1 and PUB-2 are merged and green; PUB-3 implemented in source on PR #267 awaiting final exact-head CI/review/merge, while PUB-4 remains **APPROVED / NOT IMPLEMENTED**; PUB-5 is **BLOCKED** (IN-18: public Directory disallows unofficial third-party connector submissions unless appropriate eligibility and authorization have been resolved, and owner has not authorized publication). Read `docs/designs/PUBLIC-SCALE.md` and the five indexed units in `docs/pr-cards/work-index.json`. Individual JIT cards are mandatory before implementation. No checkbox below is counted complete merely because PR #261 created this design.
