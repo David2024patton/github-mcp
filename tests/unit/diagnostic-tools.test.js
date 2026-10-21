@@ -317,6 +317,33 @@ describe('CAP-3 exact-operation protected setup handoff without credential excha
     expect(additionalCredentialHandoff({account,operation:'GET /not-reviewed',
       origin,ownerContext}).status).toBe('unverified');
   });
+  it('appears in direct and nested meta diagnostics without leaking a bearer',async()=>{
+    const w=await appWorld({metadata:'read'});
+    const env={...w.ctx.env,PUBLIC_BASE_URL:'https://mcp.example.test'};
+    const args={account:'example-org',tool:'github_repo_get',
+      operation:'GET /notifications'};
+    const direct=await handlers.github_check_permissions(args,{...w.ctx,env});
+    expect(direct.accounts[0].additional_setup).toMatchObject({
+      status:'protected-setup',kind:'K',setupUrl:'https://mcp.example.test/api/github/setup'});
+    const dispatch=createDispatch({env,credentials:w.credentials,fetch:w.gh.fetch});
+    const normal=await dispatch({registry,name:'github_check_permissions',
+      args,connection:w.connection,db:w.db});
+    const nested=await dispatch({registry,name:'github_call',
+      args:{name:'github_check_permissions',args},connection:w.connection,db:w.db});
+    for(const reply of [normal,nested]){
+      expect(reply.structuredContent.accounts[0].additional_setup).toMatchObject({
+        status:'protected-setup',kind:'K'});
+    }
+    expect(w.gh.calls).toEqual([]);
+    const tenant=await handlers.github_check_permissions(args,{
+      ...w.ctx,env,credentials:{...w.credentials,operationAuthority:async()=>({})}
+    });
+    expect(tenant.accounts[0].additional_setup.status).toBe('not-offered');
+    const pass=await handlers.github_check_permissions(args,{
+      ...w.ctx,env,connection:{...w.connection,pass:true}
+    });
+    expect(pass.accounts[0].additional_setup.status).toBe('not-offered');
+  });
   it('refuses foreign origin, service pass and private tenant access to owner forms',()=>{
     for(const x of ['http://mcp.example.test','https://user:pass@mcp.example.test',
       'https://mcp.example.test/other','https://mcp.example.test?code=secret',
