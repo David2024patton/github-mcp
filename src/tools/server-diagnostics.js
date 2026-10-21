@@ -7,7 +7,6 @@ import { AREAS, LEVELS } from '../data/permission-needs.js';
 import { MAP_STATUS, SETTINGS, findSettings, fill } from '../data/dashboard-map.js';
 import { enrolledGuideUser, restrictUnknownUserLink } from './guide-personal.js';
 import {effectiveToolAccess} from '../github/effective-access.js';
-import {registry as registeredTools} from './index.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
 const when = (value) => (value ? formatDenver(value) : null);
@@ -37,6 +36,10 @@ export function compareArea(area, granted) {
 async function checkPermissions(args, ctx) {
   // The canonical static registry is read at call time to avoid granting meta
   // tools the dynamic registry-injection privilege reserved for dispatcher runners.
+  // Import only inside the requested read handler: the registration graph
+  // imports this module while constructing the registry, so a top-level
+  // import here would create a cyclic, partially initialized registry.
+  const registeredTools = args.tool===undefined ? null : (await import('./index.js')).registry;
   const chosen=args.tool===undefined?null:registeredTools.tools.find(t=>t.name===args.tool);
   if(args.tool!==undefined&&!chosen)throw new TypeError('That GitHub tool is not registered. Search with github_search_tools.');
   if (args.area && !AREAS.some((a) => a.id === args.area)) throw new TypeError(`Unknown area "${args.area}". Areas: ${AREAS.map((a) => a.id).join(', ')}.`);
