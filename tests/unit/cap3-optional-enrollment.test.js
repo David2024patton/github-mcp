@@ -1,4 +1,6 @@
 import {describe,it,expect,vi} from 'vitest';
+import {createHash} from 'node:crypto';
+import {createTenantScopedCredentials} from '../../src/tenancy/user-authorization.js';
 import {enrollVerifiedPilotOptionalCredential,pilotOptionalAad}
   from '../../src/tenancy/optional-credentials.js';
 import {decryptSecret} from '../../src/core/crypto.js';
@@ -109,5 +111,55 @@ describe('CAP-3 private optional K/P issuer proof and isolated AAD',()=>{
     await expect(execute('K',{expectedFingerprint:'f'.repeat(64)},fixture)).rejects.toThrow(/not verified/);
     expect(fixture.directory.putPilotOptionalCredential).toHaveBeenCalledWith(
       expect.objectContaining({expectedFingerprint:'f'.repeat(64)}));
+  });
+});
+
+describe('CAP-3 optional private diagnostic: no token exposure or automatic fallback',()=>{
+  const options={base:{token:()=>{throw Error('never consult global owner bearer');}},
+    tenant,now:()=>10_000};
+  it.each([['K','GET /notifications','user/42'],['P','GET /orgs/{org}/packages','org/111']])
+    ('shows a scoped, non-executing %s historical read only after verified storage',async(kind,operation,resource)=>{
+      const fixture=make({kind});
+      fixture.directory.getPilotUserAuthorization=async()=>null;
+      fixture.directory.getPilotOptionalCredential=vi.fn(async()=>null);
+      const creds=createTenantScopedCredentials({...options,directory:fixture.directory,db:fixture.db});
+      expect(await creds.operationAuthority({account:'fixture-org',operation}))
+        .toMatchObject({status:'needs-consent',providerExecution:'not-tested'});
+      await execute(kind,{},fixture);
+      const row=fixture.directory.putPilotOptionalCredential.mock.calls[0][0];
+      fixture.directory.getPilotOptionalCredential.mockResolvedValue({
+        access_enc:row.accessEnc,cipher_fingerprint:createHash('sha256')
+          .update(row.accessEnc).digest('hex'),
+        kind,actor_id:42,account_id:111,verified_operation:operation,
+        verified_resource:resource,provider_host:'github.com',scopes:row.scopes,
+        expires_at:row.expiresAt
+      });
+      const later=await creds.operationAuthority({account:'fixture-org',operation});
+      expect(later).toMatchObject({status:'verified-for-scope',
+        selected:{kind:'classic_pat',operation,resource},
+        providerExecution:'not-tested',requiresExplicitCall:true});
+      expect(JSON.stringify(later)).not.toContain(bearer);
+      expect(await creds.operationAuthority({account:'fixture-org',operation,
+        resource:'user/43'})).toMatchObject({status:'needs-consent'});
+      expect(fixture.directory.getPilotOptionalCredential).toHaveBeenCalledWith({
+        tenantId:tenant.tenantId,identityId:tenant.identityId,
+        accountLogin:account.login,kind
+      });
+    });
+  it('refuses altered ciphertext/proof and membership epoch changes',async()=>{
+    const fixture=make({kind:'K'});
+    fixture.directory.getPilotUserAuthorization=async()=>null;
+    fixture.directory.getPilotOptionalCredential=async()=>({
+      access_enc:'v1.forget-this-ciphertext',cipher_fingerprint:'f'.repeat(64),
+      kind:'K',actor_id:42,account_id:111,provider_host:'github.com',
+      verified_operation:'GET /notifications',verified_resource:'user/42',
+      scopes:['notifications'],expires_at:new Date(20_000)
+    });
+    const creds=createTenantScopedCredentials({...options,directory:fixture.directory,db:fixture.db});
+    expect(await creds.operationAuthority({account:'fixture-org',
+      operation:'GET /notifications'})).toMatchObject({status:'needs-consent'});
+    fixture.directory.authorizedPilotIdentity=async()=>({...tenant,pilotRevision:5});
+    expect(await creds.operationAuthority({account:'fixture-org',
+      operation:'GET /notifications'})).toMatchObject({status:'needs-consent'});
   });
 });
