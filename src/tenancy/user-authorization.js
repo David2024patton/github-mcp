@@ -154,6 +154,11 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
       // only: the MCP diagnostic cannot decrypt the bearer or dispatch it.
       const optionalKind=operation==='GET /notifications'?'K':
         operation==='GET /orgs/{org}/packages'?'P':null;
+      const selectedResource=resource??(
+        operation==='GET /user'||operation==='GET /notifications'
+          ?'user/'+subject
+          :operation==='GET /orgs/{org}/packages'&&Number.isSafeInteger(actualAccount?.account_id)
+            ?'org/'+actualAccount.account_id:null);
       let optional=null;
       if(isCurrent&&optionalKind&&host==='github.com'&&
           typeof directory.getPilotOptionalCredential==='function'){
@@ -162,10 +167,10 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
           accountLogin:account.toLowerCase(),kind:optionalKind
         });
         optional=currentPilotOptionalReadback({row:entry,tenant,account:actualAccount,
-          subject,kind:optionalKind,operation,resource,now:now()});
+          subject,kind:optionalKind,operation,resource:selectedResource,now:now()});
       }
       return resolveDocumentedCredential({operation,host,
-        resource:resource??(operation==='GET /user'?'user/'+subject:null),
+        resource:selectedResource,
         account:{accountId:actualAccount?.account_id,login:actualAccount?.login},
         principal:{...tenant,host:'github.com',githubUserId:Number(subject)},
         requestedKind:optionalKind?'classic_pat':'app_user',
