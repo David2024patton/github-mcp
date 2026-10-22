@@ -16,7 +16,7 @@ const R={
   get:'GET /scim/v2/organizations/{org}/Users/{scim_user_id}'
 };
 const USER='provider-test@work.example';
-const args={userName:USER,givenName:'Provider',familyName:'Test',
+const args={userName:USER,primaryEmail:USER,givenName:'Provider',familyName:'Test',
   displayName:'Provider Test'};
 const env={TOKEN_ENCRYPTION_KEY:crypto.randomBytes(32).toString('base64url')};
 const conn={client_id:'db-scim-connection',accounts:['example-org'],

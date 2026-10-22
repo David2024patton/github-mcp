@@ -23,7 +23,7 @@ const first={id:SCIM_ID,userName:USER,displayName:'Old Name',
   emails:[{value:USER,primary:true},{value:'private@work.example'}],
   meta:{location:'https://private.example'}};
 const def=name=>({tool:writers.tools.find(t=>t.name===name),handler:writers.handlers[name]});
-const createArgs={userName:USER,givenName:'New',familyName:'Person',displayName:'New Person'};
+const createArgs={userName:USER,primaryEmail:USER,givenName:'New',familyName:'Person',displayName:'New Person'};
 const updateArgs={scimUserId:SCIM_ID,expectedUserName:USER,displayName:'New Name'};
 const removeArgs={scimUserId:SCIM_ID,expectedUserName:USER};
 const listOf=(person)=>({totalResults:person?1:0,startIndex:1,
@@ -32,9 +32,10 @@ const readWrites=w=>w.gh.calls.filter(c=>['POST','PATCH','DELETE','PUT'].include
 function arrangeCreate(gh,result){
   let person=null;
   gh.when(R.list).reply(200,()=>listOf(person));
-  gh.when(R.create).reply(201,()=>{
+  gh.when(R.create).reply(201,(req)=>{
     person={...first,displayName:result==='ok'?'New Person':'incorrect',
-      userName:USER};
+      userName:req.body.userName,emails:[{value:req.body.emails[0].value,primary:true},
+        {value:'private@work.example'}]};
     return person;
   });
   gh.when(R.get).reply(200,()=>person);
@@ -101,6 +102,20 @@ describe('CAP-4 SCIM official request shape and negative authority',()=>{
     expect(JSON.stringify(body)).not.toContain('private@work.example');
     expect(JSON.stringify(body)).not.toContain('https://private.example');
     expect(w.gh.invalid).toEqual([]);
+  });
+  it('supports provider SCIM username distinct from primary email without conflating identity',async()=>{
+    const w=await makeWorld({profile:'full',mode:'production',externalRoutes});
+    arrangeCreate(w.gh,'ok');
+    const selected={...createArgs,userName:'scim.person-id',
+      primaryEmail:'person+invite@work.example'};
+    const {body}=await run(w,'github_org_scim_provision',
+      {...selected,confirm:true});
+    expect(body.status).toBe('applied');
+    const sent=readWrites(w)[0].body;
+    expect(sent.userName).toBe('scim.person-id');
+    expect(sent.emails).toEqual([{value:'person+invite@work.example',primary:true}]);
+    expect(w.gh.calls.filter(x=>x.route===R.list)[0].query.filter)
+      .toBe('userName eq "scim.person-id"');
   });
   it('scoped PATCH only changes displayName; full PUT, active=false and arbitrary SCIM paths are unavailable',async()=>{
     const w=await makeWorld({profile:'full',mode:'production',externalRoutes});
