@@ -53,7 +53,15 @@ async function run(w,args={}){
   const r=await createDispatch({env:w.ctx.env,credentials:w.credentials,
     fetch:w.gh.fetch,now:w.ctx.now,sleep:w.ctx.sleep,gates:[]})({
     registry,name:'github_app_webhook_redeliver',args,connection:w.connection,db:w.db});
-  return {r,body:parse(r)};
+  // A denied RTC pass is intentionally a plain-text MCP error rather than
+  // the JSON shape used by the guarded write layer. Assert the denial as
+  // such; never change or weaken the production pass boundary to fit a test.
+  let body;
+  try{body=parse(r)}catch{
+    body={status:r.isError?'refused':'malformed',
+      error:r.content?.[0]?.text??'Unexpected non-JSON result'};
+  }
+  return {r,body};
 }
 const writes=gh=>gh.calls.filter(x=>x.method==='POST');
 runWriteContract({label:'CAP-4 JWT exact webhook redelivery',
