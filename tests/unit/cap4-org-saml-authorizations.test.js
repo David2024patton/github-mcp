@@ -2,6 +2,7 @@ import {describe,it,expect} from 'vitest';
 import {makeWorld,parse,runWriteContract} from '../../test/helpers/write-contract.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
 import {registry} from '../../src/tools/index.js';
+import {curatedTool} from '../../src/github/hand-built-map.js';
 import {samlRevoke} from '../../src/tools/org-saml-authorizations.js';
 
 const R={
@@ -44,6 +45,12 @@ runWriteContract({label:'CAP-4 SAML exact credential revocation',
   externalRoutes:routes});
 
 describe('CAP-4 SAML authorization inventory and revocation shapes',()=>{
+  it('maps exact SAML operations to the guarded native handlers',()=>{
+    expect(curatedTool({route:R.list})).toBe('github_org_saml_authorizations');
+    expect(curatedTool({route:R.remove})).toBe('github_org_saml_revoke_authorization');
+    expect(curatedTool({route:'POST /orgs/{org}/credential-authorizations/revoke-all'}))
+      .toBeNull();
+  });
   it('returns one bounded projected page, never provider token suffix, fingerprint or scopes',async()=>{
     const w=await createWorld({profile:'read_only'});
     w.gh.when(R.list).reply(200,[alice]);

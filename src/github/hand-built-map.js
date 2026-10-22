@@ -6,6 +6,11 @@
 // unrelated weaker specialized tool. Keep these aligned with provider calls in
 // the named writers; do not route generic operations that have no equivalent.
 const exact = new Map([
+  // CAP-4: these organization SAML endpoints require owner/Administration
+  // approval and a bounded preflight; generic REST must not bypass the
+  // dedicated exact-login/credential journal and independent readback.
+  ['GET /orgs/{org}/credential-authorizations', 'github_org_saml_authorizations'],
+  ['DELETE /orgs/{org}/credential-authorizations/{credential_id}', 'github_org_saml_revoke_authorization'],
   // O-4: budgets and Codespaces are separate guarded writes.
   ['POST /organizations/{org}/settings/billing/budgets', 'github_billing_save_budget'],
   ['PATCH /organizations/{org}/settings/billing/budgets/{budget_id}', 'github_billing_save_budget'],
