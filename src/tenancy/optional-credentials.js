@@ -1,6 +1,7 @@
 // CAP-3 internal-only private K/P enrollment seam. No network route or MCP
 // tool exposes this function. A trusted protected, single-use browser flow is
 // still required before it may be called with a user's optional bearer.
+import {createHash} from 'node:crypto';
 import { encryptSecret, readEncryptionKey } from '../core/crypto.js';
 import { verifyGithubBearerIdentity } from './github-identity.js';
 
@@ -104,4 +105,39 @@ export async function enrollVerifiedPilotOptionalCredential({
     // appear in a user-facing error or log.
     throw denied();
   }
+}
+
+
+/** Nonsecret historical observation for the same private member. The directory
+ * performs fresh SQL epoch/revocation checks; this function rechecks record,
+ * ciphertext fingerprint, account and exact resource before any diagnostic.
+ * It NEVER authorizes dispatch or decrypts/replays a bearer. */
+export function currentPilotOptionalReadback({
+  row,tenant,account,subject,kind,operation,resource,now=Date.now()
+}={}){
+  const selected=spec[kind];
+  if(!row||!selected||operation!==selected.operation||!safeAccount(account)||
+      typeof subject!=='string'||!SUBJECT.test(subject)||
+      !tenant?.tenantId||!tenant?.identityId||
+      row.provider_host!=='github.com'||row.kind!==kind||
+      Number(row.actor_id)!==Number(subject)||
+      Number(row.account_id)!==account.account_id||
+      row.verified_operation!==operation||
+      row.verified_resource!==resource||
+      resource!==selected.resource(account,subject)||
+      !Array.isArray(row.scopes)||!row.scopes.includes(selected.scope)||
+      typeof row.access_enc!=='string'||!row.access_enc.startsWith('v1.')||
+      typeof row.cipher_fingerprint!=='string'||
+      !Number.isFinite(new Date(row.expires_at).getTime())||
+      new Date(row.expires_at).getTime()<=now) return null;
+  const fingerprint=createHash('sha256').update(row.access_enc).digest('hex');
+  if(fingerprint!==row.cipher_fingerprint) return null;
+  return {kind:'classic_pat',host:'github.com',login:account.login,
+    accountId:account.account_id,tenantId:tenant.tenantId,
+    identityId:tenant.identityId,githubUserId:Number(subject),
+    fingerprint,currentCipherFingerprint:fingerprint,
+    expiresAt:new Date(row.expires_at).toISOString(),revokedAt:null,
+    resources:[resource],permissions:[],scopes:[selected.scope],
+    verification:'identity-and-capability-readback',
+    observation:'read-observed-at-enrollment'};
 }
