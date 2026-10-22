@@ -9,6 +9,7 @@ import {createPrivateOptionalEnrollment} from '../../src/tenancy/optional-setup.
 import {issueTenantCredential} from '../../src/tenancy/routed-credential.js';
 import {verifyPkce} from '../../src/core/oauth.js';
 import {createPrivateGitHubConsent} from '../../src/tenancy/github-consent.js';
+import {encryptSecret} from '../../src/core/crypto.js';
 
 let admin,directory,identity,first,second,namespace;
 const clients=[];
@@ -321,15 +322,25 @@ describe('CAP-3 browser one-use state and optional renewal on disposable Postgre
     const tenant=await scope(first);
     const flowEnv={...env,VERCEL_ENV:'production',GITHUB_PRIVATE_TENANT_PILOT:'enabled',
       PUBLIC_BASE_URL:'https://service.example',DATABASE_URL:process.env.TEST_DATABASE_URL,
-      GITHUB_PILOT_APP_ID:'902',GITHUB_TENANT_ROUTING_KEY:randomBytes(32).toString('base64url'),
-      GITHUB_PILOT_APP_CLIENT_ID:'FAKEclient',GITHUB_PILOT_APP_CLIENT_SECRET:'FAKEsecret'};
+      GITHUB_PILOT_APP_ID:'902',GITHUB_TENANT_ROUTING_KEY:randomBytes(32).toString('base64url')};
+    const rootDb=createDb(sqlFor(admin));await rootDb.initSchema();
+    await rootDb.saveApp({id:902,slug:'fake-cap3-service-app',ownerLogin:login,
+      ownerType:'Organization',clientId:'FAKEstoredAppclient',
+      clientSecretEnc:encryptSecret('FAKEstoredAppsecret',{
+        key:Buffer.from(env.TOKEN_ENCRYPTION_KEY,'base64url'),aad:'github-mcp/app/902/client_secret'}),
+      privateKeyEnc:'FAKEunused',webhookSecretEnc:'FAKEunused',permissions:{metadata:'read'}});
     const clientId=issueTenantCredential('tcl',tenant,flowEnv);
     const redirectUri='https://chatgpt.com/connector/oauth/FAKEcallback';
     await first.db.createOAuthClient({clientId,clientSecret:'FAKEclientsecret',
       redirectUris:[redirectUri],clientName:'Fake OAuth host'});
-    const fetchImpl=async url=>{
-      if(url==='https://github.com/login/oauth/access_token')return {
+    const fetchImpl=async (url,options)=>{
+      if(url==='https://github.com/login/oauth/access_token'){
+        expect(options.body.get('client_id')).toBe('FAKEstoredAppclient');
+        expect(options.body.get('client_secret')).toBe('FAKEstoredAppsecret');
+        expect(options.body.get('redirect_uri')).toBe(flowEnv.PUBLIC_BASE_URL+'/api/github/user-callback');
+        return {
         ok:true,json:async()=>({access_token:'ghu_FAKEnative_consent',expires_in:3600})};
+      }
       if(url==='https://api.github.com/user')return {
         ok:true,status:200,json:async()=>({id:30001,type:'User',login:'fixture-human'})};
       if(url==='https://api.github.com/user/installations?per_page=100')return {
@@ -350,6 +361,8 @@ describe('CAP-3 browser one-use state and optional renewal on disposable Postgre
       scope:'github.notifications.read',redirect_uri:redirectUri,state:'original-state',
       code_challenge:codeChallenge,code_challenge_method:'S256',response_type:'code',
       resource:flowEnv.PUBLIC_BASE_URL+'/api/mcp',mode:'preview',profile:'read_only',listing:'compact'});
+    expect(pending.csrfState).toMatch(/^pt\.[A-Za-z0-9_-]{43}$/);
+    expect(new URL(pending.url).searchParams.get('redirect_uri')).toBe(flowEnv.PUBLIC_BASE_URL+'/api/github/user-callback');
     const {optional:form}=await consent.finish({state:pending.csrfState,
       browserCsrf:pending.csrfState,code:'FAKEgithubcode'});
     const outcome=await enrollment.finish({state:form.state,action:'save',value:'ghp_FAKEdb_enrollment'});

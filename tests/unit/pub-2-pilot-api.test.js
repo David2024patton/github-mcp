@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { call, request } from '../../test/helpers/http-harness.js';
 import consentPage from '../../api/tenant/oauth/authorize.js';
 import { handleOAuth } from '../../src/oauth/routes.js';
+import {handleGithub} from '../../src/github/routes.js';
 import consentCallback, { stateCookie } from '../../api/tenant/oauth/callback.js';
 import { issueTenantCredential } from '../../src/tenancy/routed-credential.js';
 
@@ -17,6 +18,15 @@ const makeEnv=()=>{
   return process.env;
 };
 afterEach(()=>vi.unstubAllEnvs());
+
+it('routes purpose-tagged private callbacks at the registered App URL without consulting owner storage',async()=>{
+  vi.stubEnv('GITHUB_PRIVATE_TENANT_PILOT','disabled');
+  const runtime={db:new Proxy({},{get(){throw Error('Owner storage must not be consulted');}})};
+  const res=await call((req,res)=>handleGithub('user-callback',req,res,{runtime}),
+    request('GET',{state:'pt.'+'a'.repeat(43),code:'FAKEcode'}));
+  expect(res.statusCode).toBe(403);
+  expect(res.headers['Set-Cookie']).toContain('Path=/api/github/user-callback');
+});
 
 describe('PUB-2 private browser entry routes',()=>{
   it('reads the GitHub callback state from a normal spaced multi-cookie header',()=>{
