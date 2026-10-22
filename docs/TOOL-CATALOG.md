@@ -759,7 +759,7 @@ Card(s): Y-9 (WU-Y9a). Organization-level, so every write is production-class an
 | `github_org_migration_start` | Start exporting organization repositories (locking is opt-in) | C·Prod | N | I | O | F | Y-9 |
 | `github_org_migration_status` | State of an organization migration and where to download the archive | — | N | I | O,Op | R | Y-9 |
 
-## CAP-4 organization audit and SCIM (`github_org_audit_read, github_org_scim_*`) — 6
+## CAP-4 organization audit, SCIM and SAML authorization (`github_org_audit_read, github_org_scim_*, github_org_saml_*`) — 8
 
 Card(s): CAP-4. Read-only, account-bound organization audit and SAML-SSO SCIM identity visibility. Cursor output is verified against exact GitHub.com organization and SCIM equality filters are constrained to provider-documented fields. GitHub plan/role/SSO/permission is verified by provider; 403/404 are not guessed plan limitations. Enterprise-managed-user SCIM and enterprise audit are distinct unresolved authority paths. Each page is bounded; SCIM emails and raw audit fields are not echoed.
 
@@ -771,10 +771,12 @@ Card(s): CAP-4. Read-only, account-bound organization audit and SAML-SSO SCIM id
 | `github_org_scim_provision` | Provision and invite a precise SAML organization identity, preserving provider-specific prior privileges notices | C·Prod·A·M | N | I | O | F | CAP-4 |
 | `github_org_scim_set_display_name` | Change one exact SCIM display name with retained-identity readback | C·Prod | N | I | O | F | CAP-4 |
 | `github_org_scim_deprovision` | Deprovision exact identity and organization membership after independent absence readback | C·D·Prod | N | I | O | F | CAP-4 |
+| `github_org_saml_authorizations` | List one bounded SAML SSO authorizations page with sensitive token metadata suppressed | — | N | I | O | R | CAP-4 |
+| `github_org_saml_revoke_authorization` | Revoke one exact SAML SSO credential ID with confirmed provider absence | C·D·Prod | N | I | O | F | CAP-4 |
 
 ## Totals
 
-**Totals:** 417 tools: 411 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 419 tools: 413 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 134, everyday adds 81
 (everyday lists 215), full adds 96 (full lists 354). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
@@ -815,14 +817,14 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Background jobs, archives and autofix | 8 |
 | Wiki | 3 |
 | Organization administration extras | 5 |
-| CAP-4 organization audit and SCIM | 6 |
+| CAP-4 organization audit, SCIM and SAML | 8 |
 | Projects v2 lifecycle | 15 |
 | Public profiles, following and star lists | 12 |
 | Project profiles | 3 |
 | Workflows | 17 |
 | Everything else on GitHub: the universal tools | 6 |
 | Batch Y-9d financial and Copilot operations | 17 |
-| **Total** | **417** |
+| **Total** | **419** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 
