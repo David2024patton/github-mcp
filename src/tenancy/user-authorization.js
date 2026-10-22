@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { verifyGithubBearerIdentity, verifyGithubUserInstallation } from './github-identity.js';
 import { userGrantBinding, currentUserGrantBinding } from './credential-binding.js';
 import { resolveDocumentedCredential } from '../github/credential-authority.js';
+import {currentPilotOptionalReadback} from './optional-credentials.js';
 
 const aad=(tenantId,identityId,account,kind)=>
   `github-mcp/private-tenant/${tenantId}/identity/${identityId}/account/${account.toLowerCase()}/${kind}`;
@@ -143,14 +144,33 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
       const active=await directory.authorizedPilotIdentity(tenant.tenantId,tenant.identityId);
       const row=await directory.getPilotUserAuthorization(tenant.tenantId,
         tenant.identityId,account.toLowerCase());
-      const binding=active && active.membershipRevision===tenant.membershipRevision &&
-        active.pilotRevision===tenant.pilotRevision
+      const isCurrent=active &&
+        active.membershipRevision===tenant.membershipRevision &&
+        active.pilotRevision===tenant.pilotRevision;
+      const binding=isCurrent
         ?currentUserGrantBinding({row,tenant:active,subject,account:actualAccount,now:now()}):null;
+      // Classic K/P are private-member optional grants, never the shared owner
+      // K/P vault or a fallback for an unrelated tool. Read historical proof
+      // only: the MCP diagnostic cannot decrypt the bearer or dispatch it.
+      const optionalKind=operation==='GET /notifications'?'K':
+        operation==='GET /orgs/{org}/packages'?'P':null;
+      let optional=null;
+      if(isCurrent&&optionalKind&&host==='github.com'&&
+          typeof directory.getPilotOptionalCredential==='function'){
+        const entry=await directory.getPilotOptionalCredential({
+          tenantId:tenant.tenantId,identityId:tenant.identityId,
+          accountLogin:account.toLowerCase(),kind:optionalKind
+        });
+        optional=currentPilotOptionalReadback({row:entry,tenant,account:actualAccount,
+          subject,kind:optionalKind,operation,resource,now:now()});
+      }
       return resolveDocumentedCredential({operation,host,
         resource:resource??(operation==='GET /user'?'user/'+subject:null),
         account:{accountId:actualAccount?.account_id,login:actualAccount?.login},
         principal:{...tenant,host:'github.com',githubUserId:Number(subject)},
-        requestedKind:'app_user',grants:binding?.operations.includes(operation)?[binding]:[],now:now()});
+        requestedKind:optionalKind?'classic_pat':'app_user',
+        grants:optional?[optional]:binding?.operations.includes(operation)?[binding]:[],
+        now:now()});
     },
     async token(args={}) {
       const cred=args.cred??'I';
