@@ -71,6 +71,9 @@ describe('CAP-4 exact App webhook change safety',()=>{
     expect(JSON.stringify(persisted)).not.toMatch(/private\/path|provider-secret|https:\/\//);
     expect(JSON.stringify(out.body)).not.toMatch(/private\/path|provider-secret|https:\/\//);
     expect(w.gh.invalid).toEqual([]);
+    expect(w.gh.unmatched).toEqual([]);
+    expect(w.gh.calls.filter(x=>x.method==='PATCH').map(x=>x.path))
+      .toEqual(['/app/hook/config']);
   });
   it('refuses unsafe URL or missing fields before provider calls',async()=>{
     const w=await makeWorld({mode:'production',profile:'full',...opts});

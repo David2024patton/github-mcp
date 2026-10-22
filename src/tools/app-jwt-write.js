@@ -56,7 +56,7 @@ export const appWebhookSet=defineGithubWrite({
   properties:{owner:OWNER,url:URL_VALUE,contentType:CONTENT},
   required:[],
   declarations:{production:'always',confirm:'always',accessWidening:true,
-    notifies:true,profiles:['full']},target,
+    notifies:true,cred:'JWT',profiles:['full']},target,
   read:async(a,ctx,t)=>{
     if(a.url===undefined&&a.contentType===undefined)
       throw refusal('Provide a webhook URL or content type to update.');
@@ -79,10 +79,13 @@ export const appWebhookSet=defineGithubWrite({
       (a.contentType===undefined||a.contentType===b.content_type))
       throw refusal('Webhook configuration is already set; no write sent.');
     const {gh}=await appFor({owner:t.owner},ctx);
-    return gh.request(R.update,{
+    // Octokit reserves a top-level "url" option as the HTTP destination.
+    // Use "data" to serialize the webhook destination into the JSON BODY,
+    // keeping the bearer App JWT exclusively on api.github.com.
+    return gh.request(R.update,{data:{
       ...(requested?{url:requested.normalized}:{}),
       ...(a.contentType?{content_type:a.contentType}:{})
-    });
+    }});
   },
   readAfter:async({args:a,ctx,target:t})=>(await config(a,ctx,t)).view,
   verify:({args:a,before:b,after:d})=>
