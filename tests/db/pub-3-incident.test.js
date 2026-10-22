@@ -95,7 +95,7 @@ describe('PUB-3 owner incident cleanup in real isolated PostgreSQL',()=>{
     expect(await dbB.getOAuthClient(clientId)).not.toBeNull();
     expect(await dbB.getAccessToken('fixture-access-B')).not.toBeNull();
     const secrets=await dir.purgePrivatePilotRootSecrets('incident-a');
-    expect(secrets).toEqual({userGrants:1,pendingStates:0});
+    expect(secrets).toEqual({userGrants:1,pendingStates:0,optionalGrants:0});
     const remaining=await rootSql`SELECT account_login FROM gh_tenant_user_authorizations`;
     expect(remaining.map(x=>x.account_login)).toEqual(['incident-b']);
     // A second owner click after partial cleanup is safe and cannot resurrect anything.
