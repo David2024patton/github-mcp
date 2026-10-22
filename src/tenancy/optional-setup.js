@@ -56,7 +56,7 @@ export function createPrivateOptionalEnrollment({
     if(!client || !Array.isArray(client.redirect_uris))throw denied();
     return {claim,directory,tenant:active,db:scope.db,client,sql:scope.sql};
   }
-  async function start({client_id,account,kind,redirect_uri}={}){
+  async function begin({client_id,account,kind,redirect_uri}={},oauthContext=null){
     if(typeof account!=='string'||!LOGIN.test(account)||
       !Object.hasOwn(OPERATIONS,kind) ||
       typeof redirect_uri!=='string'||!validRedirectUri(redirect_uri))
@@ -80,9 +80,23 @@ export function createPrivateOptionalEnrollment({
       membershipRevision:scope.tenant.membershipRevision,
       pilotRevision:scope.tenant.pilotRevision,
       accountLogin:account,kind,redirectUri:redirect_uri,
-      expectedFingerprint:prior?.cipher_fingerprint??null});
+      expectedFingerprint:prior?.cipher_fingerprint??null,oauthContext});
     if(!stored)throw denied();
     return Object.freeze({state,kind,account,operation:OPERATIONS[kind]});
+  }
+  // Only the verified provider callback invokes this server-side continuation.
+  // Public setup queries cannot supply OAuth state, PKCE or connection settings.
+  const start=args=>begin(args);
+  async function startOAuth(flow){
+    const context={clientState:flow.clientState,codeChallenge:flow.codeChallenge,
+      mode:flow.mode,profile:flow.profile,listing:flow.listing};
+    if(!/^[A-Za-z0-9_-]{43}$/.test(context.codeChallenge)||
+      (context.clientState!==null && (typeof context.clientState!=='string'||context.clientState.length>256))||
+      !['preview','production'].includes(context.mode)||
+      !['read_only','everyday','full'].includes(context.profile)||
+      !['compact','catalog'].includes(context.listing)||flow.optionalKind!=='K')throw denied();
+    return {...await begin({client_id:flow.clientId,account:flow.accountLogin,
+      kind:flow.optionalKind,redirect_uri:flow.redirectUri},context),oauth:true};
   }
   async function finish({state,action,value}={}){
     origin();
@@ -103,6 +117,13 @@ export function createPrivateOptionalEnrollment({
     const row=await scope.db.getAccount(flow.accountLogin);
     if(!isAccount(row,flow.accountLogin,env) ||
       !Object.hasOwn(OPERATIONS,flow.kind))throw denied();
+    const o=flow.oauthContext;
+    if(o && (action!=='save'||!/^[A-Za-z0-9_-]{43}$/.test(o.codeChallenge)||
+      (o.clientState!==null && (typeof o.clientState!=='string'||o.clientState.length>256))||
+      !['preview','production'].includes(o.mode)||
+      !['read_only','everyday','full'].includes(o.profile)||
+      !['compact','catalog'].includes(o.listing)||
+      (o.mode==='production' && row.production_enabled!==true)))throw denied();
     const subject=await scope.directory.getPilotVerifiedSubject(
       flow.tenantId,flow.identityId);
     if(!/^[1-9][0-9]{0,18}$/.test(String(subject)) ||
@@ -133,11 +154,25 @@ export function createPrivateOptionalEnrollment({
       if(!changed)throw denied();
       status='revoked-on-this-service';
     }
-    const destination=new URL(flow.redirectUri);
+    // An OAuth callback is not a general-purpose return URL. Only a pending
+    // client-initiated PKCE transaction may receive an authorization response.
+    const destination=new URL('/api/tenant/optional',origin());
     destination.searchParams.set('github_mcp_optional',status);
     destination.searchParams.set('github_mcp_operation',OPERATIONS[flow.kind]);
+    if(flow.oauthContext){
+      const code=randomState();
+      await scope.db.createAuthCode({code,clientId:flow.clientId,
+        redirectUri:flow.redirectUri,codeChallenge:o.codeChallenge,
+        codeChallengeMethod:'S256',defaultAccount:flow.accountLogin,
+        accounts:[flow.accountLogin],mode:o.mode,profile:o.profile,listing:o.listing});
+      const callback=new URL(flow.redirectUri);
+      callback.searchParams.set('code',code);
+      if(o.clientState!==null)callback.searchParams.set('state',o.clientState);
+      return Object.freeze({status,kind:flow.kind,
+        operation:OPERATIONS[flow.kind],destination:callback.toString()});
+    }
     return Object.freeze({status,kind:flow.kind,
       operation:OPERATIONS[flow.kind],destination:destination.toString()});
   }
-  return {start,finish};
+  return {start,startOAuth,finish};
 }

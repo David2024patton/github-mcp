@@ -153,7 +153,7 @@ async function checkPermissions(args, ctx) {
               url:url.toString(),
               note:observed
                 ?'An exact notification read was observed at enrollment; current rights are not rechecked. Use this protected page to renew or revoke.'
-                :'GitHub requires a classic personal token with notifications scope. Open this protected page; never paste the token into chat. This will return to your registered client and then you can recheck permissions.'
+                :'GitHub requires a classic personal token with notifications scope. Calling github_notify_list starts client OAuth reauthorization and returns through its pending PKCE transaction. This standalone management page requires returning to chat yourself; never paste the token into chat.'
             };
           }
         }

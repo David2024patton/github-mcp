@@ -25,7 +25,7 @@ function fixture(){
   const tenant={...claim,namespace:'gh_test',role:'member'};
   const client=issueTenantCredential('tcl',claim,env);
   const states=new Map(),grants=new Map(),requests=[];
-  const db={getOAuthClient:vi.fn(async id=>id===client
+  const db={createAuthCode:vi.fn(async()=>{}),getOAuthClient:vi.fn(async id=>id===client
     ?{redirect_uris:[returnUri]}:null),
   getAccount:vi.fn(async login=>login==='fixture-org'?{
     login:'fixture-org',account_id:901,app_id:902,installation_id:903,
@@ -109,15 +109,16 @@ describe('CAP-3 protected private member handoff',()=>{
       ...f.tenant,pilotRevision:4});
     await expect(f.enrollment.start(f.args)).rejects.toThrow();
   });
-  it('verifies exact identity/permission, seals before saving and returns only nonsecret status to registered client',async()=>{
+  it('verifies exact identity/permission and keeps standalone management away from OAuth callbacks',async()=>{
     const f=fixture();
     const flow=await f.enrollment.start(f.args);
     const result=await f.enrollment.finish({state:flow.state,action:'save',value:token});
     expect(result).toMatchObject({kind:'K',operation:'GET /notifications',
       status:'read-observed-at-enrollment'});
     const returned=new URL(result.destination);
-    expect(returned.origin).toBe('https://client.example');
-    expect(returned.pathname).toBe('/return');
+    expect(returned.origin).toBe(env.PUBLIC_BASE_URL);
+    expect(returned.pathname).toBe('/api/tenant/optional');
+    expect(f.db.createAuthCode).not.toHaveBeenCalled();
     expect(returned.searchParams.get('github_mcp_optional')).toBe('read-observed-at-enrollment');
     expect(result.destination).not.toContain(token);
     expect(f.requests.map(x=>x.url)).toEqual([
@@ -132,6 +133,38 @@ describe('CAP-3 protected private member handoff',()=>{
     await expect(f.enrollment.finish({state:flow.state,
       action:'save',value:token})).rejects.toThrow();
     expect(f.grants.size).toBe(1);
+  });
+  it('returns a real one-use OAuth code with original state, PKCE and selected connection settings after verified enrollment',async()=>{
+    const f=fixture();
+    const flow=await f.enrollment.startOAuth({
+      clientId:f.client,accountLogin:'fixture-org',optionalKind:'K',
+      redirectUri:returnUri,clientState:'original-client-nonce',
+      codeChallenge:'v'.repeat(43),mode:'preview',profile:'read_only',listing:'compact'});
+    const result=await f.enrollment.finish({state:flow.state,action:'save',value:token});
+    const callback=new URL(result.destination);
+    expect(callback.origin).toBe('https://client.example');
+    expect([...callback.searchParams.keys()]).toEqual(['code','state']);
+    expect(callback.searchParams.get('state')).toBe('original-client-nonce');
+    expect(f.db.createAuthCode).toHaveBeenCalledWith({
+      code:callback.searchParams.get('code'),clientId:f.client,redirectUri:returnUri,
+      codeChallenge:'v'.repeat(43),codeChallengeMethod:'S256',
+      defaultAccount:'fixture-org',accounts:['fixture-org'],mode:'preview',
+      profile:'read_only',listing:'compact'});
+    expect(callback.toString()).not.toContain(token);
+    await expect(f.enrollment.finish({state:flow.state,action:'save',value:token})).rejects.toThrow();
+    expect(f.db.createAuthCode).toHaveBeenCalledTimes(1);
+  });
+  it('issues no OAuth code when provider verification fails or the pending flow attempts revocation',async()=>{
+    const f=fixture();
+    const args={clientId:f.client,accountLogin:'fixture-org',optionalKind:'K',
+      redirectUri:returnUri,clientState:'nonce',codeChallenge:'v'.repeat(43),
+      mode:'preview',profile:'read_only',listing:'compact'};
+    f.failRead();
+    let flow=await f.enrollment.startOAuth(args);
+    await expect(f.enrollment.finish({state:flow.state,action:'save',value:token})).rejects.toThrow();
+    flow=await f.enrollment.startOAuth(args);
+    await expect(f.enrollment.finish({state:flow.state,action:'revoke',value:token})).rejects.toThrow();
+    expect(f.db.createAuthCode).not.toHaveBeenCalled();
   });
   it('recovers from interruption and denied provider scopes without losing a previous grant',async()=>{
     const f=fixture();
@@ -221,6 +254,7 @@ describe('CAP-3 browser POST rejects CSRF, forged Origin and raw-token output',(
     expect(res.headers['cache-control']).toBe('no-store');
     expect(res.headers['content-security-policy']).toContain("form-action 'self'");
     expect(res.headers['set-cookie']).toContain('HttpOnly');
+    expect(res.headers['referrer-policy']).toBe('same-origin');
   });
   it('does not call issuer on wrong Origin, missing cookie or mismatched CSRF',async()=>{
     const {page,enrollment}=make();

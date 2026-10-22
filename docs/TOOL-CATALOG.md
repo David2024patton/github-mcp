@@ -488,7 +488,7 @@ Card(s): O-7. Source built in PR #205. Notifications require optional classic to
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_notify_list` | Unread (or all) notifications, by repository and reason | — | C | K | Op | R | O-7 built #205 |
+| `github_notify_list` | Unread (or all) notifications, by repository and reason | — | C | K | Op | R | O-7 built #205; CAP-3 private notifications OAuth reauthorization candidate #274 (live acceptance open) |
 | `github_notify_mark` | Mark one thread, a repository or everything as read or done | C·Prod | C | K | Op | E | O-7 built #205 |
 | `github_notify_set_subscription` | Watch, ignore or unsubscribe from a thread or repository | C·Prod | C | K | Op | E | O-7 built #205 |
 | `github_gist_list` | Chris's gists | — | C | U | B | R | O-7 built #205 |

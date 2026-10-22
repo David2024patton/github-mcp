@@ -19,12 +19,17 @@ function listingFor(req, connection) {
   return LISTINGS.includes(connection.listing) ? connection.listing : 'catalog';
 }
 
-export function createMcpHandler({ db, registry, env = process.env, toConnection, dispatch = denyAll, serverInfo = { name: 'robinson-mcp', version: '0.1.0' } }) {
+export function createMcpHandler({ db, registry, env = process.env, toConnection, toolSecuritySchemes, dispatch = denyAll, serverInfo = { name: 'robinson-mcp', version: '0.1.0' } }) {
   return async function mcp(req, res) {
     const connection = await requireMcpToken(req, res, db, env, { toConnection });
     if (!connection) return;
     const server = new Server(serverInfo, { capabilities: { tools: {} } });
-    server.setRequestHandler(ListToolsRequestSchema, async (request) => pageToolsForListing(registry, connection.profile, listingFor(req, connection), request.params?.cursor));
+    server.setRequestHandler(ListToolsRequestSchema, async (request) => {
+      const page=pageToolsForListing(registry, connection.profile, listingFor(req, connection), request.params?.cursor);
+      if(toolSecuritySchemes)
+        page.tools=page.tools.map(tool=>({...tool,securitySchemes:toolSecuritySchemes(tool,connection)}));
+      return page;
+    });
     server.setRequestHandler(CallToolRequestSchema, async (request) =>
       dispatch({ registry, name: request.params?.name, args: request.params?.arguments, connection, db }));
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });

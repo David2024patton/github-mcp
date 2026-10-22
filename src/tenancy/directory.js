@@ -83,6 +83,8 @@ export function createTenantDirectory(sql) {
       )`;
       await sql`CREATE INDEX IF NOT EXISTS gh_tenant_optional_setup_expires
         ON gh_tenant_optional_setup_states (expires_at)`;
+      await sql`ALTER TABLE gh_tenant_optional_setup_states
+        ADD COLUMN IF NOT EXISTS oauth_context JSONB`;
   }
   return {
     async initSchema() {
@@ -216,6 +218,8 @@ export function createTenantDirectory(sql) {
         expires_at TIMESTAMPTZ NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
+      await sql`ALTER TABLE gh_tenant_oauth_flows
+        ADD COLUMN IF NOT EXISTS optional_kind TEXT`;
       // This function only accepts server-generated opaque namespaces. Unlike
       // concatenating raw SQL in JS, %I quotes the identifier within PostgreSQL.
       // It is SECURITY INVOKER (no privilege elevation) and has no public HTTP route.
@@ -654,7 +658,7 @@ export function createTenantDirectory(sql) {
      * provider call. A stale browser/tab cannot renew or revoke a later grant. */
     async createPilotOptionalSetupState({stateHash,tenantId,identityId,clientId,
       accountLogin,kind,redirectUri,membershipRevision,pilotRevision,
-      expectedFingerprint=null}) {
+      expectedFingerprint=null,oauthContext=null}) {
       const t=validUuid(tenantId),i=validUuid(identityId);
       if(!/^[a-f0-9]{64}$/.test(stateHash)||typeof clientId!=='string'||
         !clientId.startsWith('tcl_')||
@@ -669,9 +673,10 @@ export function createTenantDirectory(sql) {
       await sql`DELETE FROM gh_tenant_optional_setup_states WHERE expires_at<now()`;
       const rows=await sql`INSERT INTO gh_tenant_optional_setup_states (
         state_hash,tenant_id,identity_id,client_id,account_login,kind,
-        redirect_uri,membership_revision,pilot_revision,expected_fingerprint)
+        redirect_uri,membership_revision,pilot_revision,expected_fingerprint,oauth_context)
         SELECT ${stateHash},${t}::uuid,${i}::uuid,${clientId},${accountLogin},
-          ${kind},${redirectUri},${membershipRevision},${pilotRevision},${expectedFingerprint}
+          ${kind},${redirectUri},${membershipRevision},${pilotRevision},${expectedFingerprint},
+          ${oauthContext===null?null:JSON.stringify(oauthContext)}::jsonb
         WHERE EXISTS (SELECT 1 FROM gh_tenants ten
           JOIN gh_tenant_memberships m ON m.tenant_id=ten.id
           JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=ten.id AND p.identity_id=m.identity_id
@@ -688,14 +693,14 @@ export function createTenantDirectory(sql) {
       const rows=await sql`DELETE FROM gh_tenant_optional_setup_states
         WHERE state_hash=${stateHash} AND expires_at>now()
         RETURNING tenant_id,identity_id,client_id,account_login,kind,
-          redirect_uri,membership_revision,pilot_revision,expected_fingerprint`;
+          redirect_uri,membership_revision,pilot_revision,expected_fingerprint,oauth_context`;
       const row=rows[0];
       return row?{tenantId:String(row.tenant_id),identityId:String(row.identity_id),
         clientId:row.client_id,accountLogin:row.account_login,
         kind:row.kind,redirectUri:row.redirect_uri,
         membershipRevision:Number(row.membership_revision),
         pilotRevision:Number(row.pilot_revision),
-        expectedFingerprint:row.expected_fingerprint}:null;
+        expectedFingerprint:row.expected_fingerprint,oauthContext:row.oauth_context}:null;
     },
     /** Read the CAS of the previously sealed token even if its local proof
      * has expired. Revoked rows cannot be renewed without fresh consent. */
@@ -719,7 +724,7 @@ export function createTenantDirectory(sql) {
 
     async createPilotOAuthFlow({ stateHash, tenantId, identityId, clientId,
       redirectUri, clientState, codeChallenge, accountLogin, mode, profile,
-      listing, providerVerifier }) {
+      listing, providerVerifier,optionalKind=null }) {
       const t=validUuid(tenantId), i=validUuid(identityId);
       if (!/^[a-f0-9]{64}$/.test(stateHash) || typeof clientId!=='string' ||
           clientId.length<32 || typeof redirectUri!=='string' ||
@@ -729,14 +734,15 @@ export function createTenantDirectory(sql) {
           !['preview','production'].includes(mode) ||
           !['read_only','everyday','full'].includes(profile) ||
           !['compact','catalog'].includes(listing) ||
+          (optionalKind!==null && optionalKind!=='K') ||
           (clientState!==null && (typeof clientState!=='string' || clientState.length>256)))
         throw new TypeError('Invalid private pilot GitHub authorization state.');
       const rows=await sql`INSERT INTO gh_tenant_oauth_flows (
         state_hash,tenant_id,identity_id,client_id,redirect_uri,client_state,
-        code_challenge,account_login,mode,profile,listing,provider_verifier,expires_at)
+        code_challenge,account_login,mode,profile,listing,provider_verifier,optional_kind,expires_at)
         SELECT ${stateHash},${t}::uuid,${i}::uuid,${clientId},${redirectUri},
           ${clientState},${codeChallenge},${accountLogin},${mode},${profile},
-          ${listing},${providerVerifier},now()+interval '10 minutes'
+          ${listing},${providerVerifier},${optionalKind},now()+interval '10 minutes'
         WHERE EXISTS (SELECT 1 FROM gh_tenant_memberships m
           JOIN gh_tenants t ON t.id=m.tenant_id
           JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=m.tenant_id AND p.identity_id=m.identity_id
@@ -751,13 +757,13 @@ export function createTenantDirectory(sql) {
       const rows=await sql`DELETE FROM gh_tenant_oauth_flows f
         WHERE f.state_hash=${stateHash} AND f.expires_at>now()
         RETURNING tenant_id,identity_id,client_id,redirect_uri,client_state,
-          code_challenge,account_login,mode,profile,listing,provider_verifier`;
+          code_challenge,account_login,mode,profile,listing,provider_verifier,optional_kind`;
       const row=rows[0];
       return row ? { tenantId:String(row.tenant_id),identityId:String(row.identity_id),
         clientId:row.client_id,redirectUri:row.redirect_uri,clientState:row.client_state,
         codeChallenge:row.code_challenge,accountLogin:row.account_login,
         mode:row.mode,profile:row.profile,listing:row.listing,
-        providerVerifier:row.provider_verifier } : null;
+        providerVerifier:row.provider_verifier,optionalKind:row.optional_kind } : null;
     },
 
     /** Privileged owner setup only: list the trusted server-bootstrap tenants

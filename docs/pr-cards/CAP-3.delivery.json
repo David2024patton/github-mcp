@@ -13,7 +13,7 @@
         },
         {
           "criterion": "One agent-initiated secure setup handoff uses native GitHub App/OAuth consent or the protected service token page only as applicable, returns to its originating scoped client and rechecks capability; no chat-token input.",
-          "evidence": "PARTIAL source: signed tenant client permission diagnostic opens origin- and CSRF-checked 10-minute one-use HTTPS form; it returns only status and original operation to registered sole client URI, and a fresh MCP diagnostic observes historical proof. Native U OAuth/PKCE remains intact. Automatic cross-client recheck and actual device callback acceptance not independently proven."
+          "evidence": "Source repair: client-initiated private notifications OAuth retains original state, PKCE challenge and consent settings through verified native GitHub identity and exact optional credential enrollment, then creates a one-use authorization code. Standalone management never sends a status-only OAuth callback. Nested call/batch challenges and real MCP metadata are tested. Actual native ChatGPT/mobile/desktop callback and retry remain unaccepted."
         },
         {
           "criterion": "No silent broader fallback, trial-and-error provider authentication, unsupported pass downscoping or unintended privilege carryover during denied provider requests, upgrades or refresh.",
@@ -21,7 +21,7 @@
         },
         {
           "criterion": "Disposable PostgreSQL and synthetic-provider integration prove two distinct tenants, the same human in separate workspaces, wrong identity/host/resource, stale/revoked grants, concurrency and interrupted setup.",
-          "evidence": "Source evidence: disposable PostgreSQL tests cover one-use hashed state atomic consume, expiration, two distinct tenants with proper unique per-identity/account bootstrap, same human different workspace, stale epochs, wrong person, CAS concurrency and scrubbing; synthetic provider/browser unit tests cover CSRF, wrong host, scope, identity, expiry, interrupted recovery. Initial enrollment head d83fb823 green; final runtime-head tests are pending."
+          "evidence": "Prior exact head 6e55c7ca passed real disposable PostgreSQL ci 39783679031 and all source families. New native-consent -> optional enrollment -> code/PKCE/cross-tenant/replay integration is added and requires new exact-head disposable PostgreSQL CI; no new-head result claimed yet."
         },
         {
           "criterion": "Tests prove secret redaction, restricted service passes, clean replacement/deletion and verified before/after capability gain; incomplete real provider/device acceptance remains independently OPEN.",
@@ -29,18 +29,14 @@
         }
       ],
       "remainingEngineering": [
-        "Expose the new internal K/P verified-read/seal helper only from a protected per-member one-use enrolled-client flow; extend to other truly applicable typed kinds and verified hosts without inherited owner credential authority.",
-        "Agent-initiated registered-client upgrade handoff with correct native/protected provider flow, one-use state, automatic return and interruption recovery.",
-        "Exact operation/resource harmless capability readback beyond GET /user, with honest unknowns and no fallback or provider write retry.",
-        "Full additional-kind expiry/refresh/replace/revoke/delete and restricted-pass lifecycle integration.",
-        "Complete original synthetic-provider/two-tenant PostgreSQL integration, exact-head CI, review and frozen delivery comparison before merge; independent real provider/device acceptance remains separate."
+        "Resolve any final assembled-source CI or security-review findings before merge; source integration is not independent provider/device acceptance."
       ]
     }
   ],
-  "productionAdded": 863,
-  "productionRemoved": 30,
-  "newEngineering": "Provisioned private K/P optional browser and runtime source candidate: root one-use SHA-256 setup state (10m), current signed tcl client and registered redirect binding, CSRF/origin browser token entry, GitHub same-person /user, provider scope and exact harmless notifications/packages GET, encrypted tenant-identity-account-kind AAD, nonsecret status-only callback, explicit diagnostic recheck, CAS renewal after expiry/reallowlisting, revocation ciphertext scrub/tombstone replay denial, active tenant budget admission, root incident-state cleanup. Runtime token() rechecks sealed proof, membership/pilot and account; Octokit enforces exact allowed K/P reads on each network request and bars private service passes and all writes. Existing native U OAuth and owner F/K/P remain separate. Synthetic browser/provider/Octokit tests and PostgreSQL state/renewal tests added; real provider/device acceptance, final exact-head CI and frozen bundle report regeneration pending.",
-  "planComparison": "CONTINUE / provisional human update, NOT a regenerated session:bundle report: prior productionAdded/productionRemoved counts are from the earlier source-only checkpoint and require actual script recomputation. Source now has signed-client protected K/P handoff, one-use PostgreSQL state, provider-scoped exact readback, CAS renewal/expiry/revoke scrubbing and narrow guarded Octokit runtime reads. Six original acceptance lines still require final exact-head CI + independent owner/device/provider acceptance and evidence review before status can change; no live token or production action occurred. PR #274 must remain DRAFT until the required frozen plan and release review.",
+  "productionAdded": 1428,
+  "productionRemoved": 46,
+  "newEngineering": "CAP-3 candidate plus native OAuth continuation repair: additive nullable one-use state context, original client state and PKCE preserved through provider verification and protected K enrollment, real authorization code instead of a status-only callback, MCP tool linking metadata and nested challenge preservation, exact Origin-compatible forms. No real optional grant, private pilot activation, device callback or release claimed.",
+  "planComparison": "CONTINUE: original full six criteria and frozen plan retained. Production counts are current PR source diff versus reviewed main, excluding the separately merged #275 security correction. Prior 6e55c7ca CI was green; new source requires final CI/review. Existing draft pre-merge real provider/device gates remain open and are not waived by manual-release authority.",
   "relatedWorkDecision": "Keep original CAP-3 plan and draft #274. Isolate main security defect into #275 as AGENTS requires; PUB-4 #268 is unchanged and CAP-4 remains dependent.",
   "decision": "CONTINUE"
 }

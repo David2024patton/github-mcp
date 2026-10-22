@@ -5,6 +5,10 @@ import {createTenantDirectory,initializeProvisionedTenant,tenantConnectionString
   tenantSchemaName} from '../../src/tenancy/directory.js';
 import {createDb} from '../../src/db.js';
 import {storePilotUserGrant,createTenantScopedCredentials} from '../../src/tenancy/user-authorization.js';
+import {createPrivateOptionalEnrollment} from '../../src/tenancy/optional-setup.js';
+import {issueTenantCredential} from '../../src/tenancy/routed-credential.js';
+import {verifyPkce} from '../../src/core/oauth.js';
+import {createPrivateGitHubConsent} from '../../src/tenancy/github-consent.js';
 
 let admin,directory,identity,first,second,namespace;
 const clients=[];
@@ -28,7 +32,7 @@ async function makeTenant(){
     label:'Fake provider fixture',credentialKind:'app',appId:902});
   await db.setInstallation(login,{installationId:903,repositorySelection:'all',
     permissions:{metadata:'read'},status:'active'});
-  return {id:t.id,db};
+  return {id:t.id,db,sql};
 }
 async function scope(t){return directory.authorizedPilotIdentity(t.id,identity);}
 async function save(t,token='ghu_FAKEcap3_user_bearer',verified=true){
@@ -312,5 +316,52 @@ describe('CAP-3 browser one-use state and optional renewal on disposable Postgre
       '0'.repeat(64))).toBe(true);
     expect(await directory.getPilotOptionalCredential({
       tenantId:second.id,identityId:identity,accountLogin:login,kind:'K'})).toBeNull();
+  });
+  it('retains the pending client transaction through sealed enrollment and issues a single PKCE-bound code in the correct tenant',async()=>{
+    const tenant=await scope(first);
+    const flowEnv={...env,VERCEL_ENV:'production',GITHUB_PRIVATE_TENANT_PILOT:'enabled',
+      PUBLIC_BASE_URL:'https://service.example',DATABASE_URL:process.env.TEST_DATABASE_URL,
+      GITHUB_PILOT_APP_ID:'902',GITHUB_TENANT_ROUTING_KEY:randomBytes(32).toString('base64url'),
+      GITHUB_PILOT_APP_CLIENT_ID:'FAKEclient',GITHUB_PILOT_APP_CLIENT_SECRET:'FAKEsecret'};
+    const clientId=issueTenantCredential('tcl',tenant,flowEnv);
+    const redirectUri='https://chatgpt.com/connector/oauth/FAKEcallback';
+    await first.db.createOAuthClient({clientId,clientSecret:'FAKEclientsecret',
+      redirectUris:[redirectUri],clientName:'Fake OAuth host'});
+    const fetchImpl=async url=>{
+      if(url==='https://github.com/login/oauth/access_token')return {
+        ok:true,json:async()=>({access_token:'ghu_FAKEnative_consent',expires_in:3600})};
+      if(url==='https://api.github.com/user')return {
+        ok:true,status:200,json:async()=>({id:30001,type:'User',login:'fixture-human'})};
+      if(url==='https://api.github.com/user/installations?per_page=100')return {
+        ok:true,status:200,json:async()=>({total_count:1,installations:[{
+          id:903,app_id:902,account:{id:901},suspended_at:null}]})};
+      if(url==='https://api.github.com/notifications?per_page=1')return {
+        ok:true,status:200,headers:{get:()=> 'notifications'}};
+      throw Error('Unexpected synthetic provider URL');
+    };
+    const enrollment=createPrivateOptionalEnrollment({env:flowEnv,fetchImpl,
+      directoryFactory:()=>directory,tenantAccess:async()=>({tenant,db:first.db,sql:sqlFor(admin)}),
+      admitOAuth:async()=>{}});
+    const verifier='v'.repeat(43);
+    const codeChallenge=createHash('sha256').update(verifier).digest('base64url');
+    const consent=createPrivateGitHubConsent({env:flowEnv,fetchImpl,
+      rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:()=>first.sql});
+    const pending=await consent.start({client_id:clientId,account:login,
+      scope:'github.notifications.read',redirect_uri:redirectUri,state:'original-state',
+      code_challenge:codeChallenge,code_challenge_method:'S256',response_type:'code',
+      resource:flowEnv.PUBLIC_BASE_URL+'/api/mcp',mode:'preview',profile:'read_only',listing:'compact'});
+    const {optional:form}=await consent.finish({state:pending.csrfState,
+      browserCsrf:pending.csrfState,code:'FAKEgithubcode'});
+    const outcome=await enrollment.finish({state:form.state,action:'save',value:'ghp_FAKEdb_enrollment'});
+    const target=new URL(outcome.destination),code=target.searchParams.get('code');
+    expect(target.searchParams.get('state')).toBe('original-state');
+    expect(await second.db.consumeAuthCode(code)).toBeNull();
+    const granted=await first.db.consumeAuthCode(code);
+    expect(granted).toMatchObject({client_id:clientId,redirect_uri:redirectUri,
+      mode:'preview',profile:'read_only',listing:'compact',accounts:[login]});
+    expect(verifyPkce(verifier,granted.code_challenge)).toBe(true);
+    expect(verifyPkce('w'.repeat(43),granted.code_challenge)).toBe(false);
+    expect(await first.db.consumeAuthCode(code)).toBeNull();
+    await expect(enrollment.finish({state:form.state,action:'save',value:'ghp_FAKEdb_enrollment'})).rejects.toThrow();
   });
 });

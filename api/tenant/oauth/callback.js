@@ -1,5 +1,6 @@
 import { createPrivateGitHubConsent } from '../../../src/tenancy/github-consent.js';
 import { send } from '../../../src/core/http.js';
+import {renderOptionalForm} from '../optional.js';
 
 export const stateCookie=req=>
   /(?:^|;\s*)gh_tenant_pilot_state=([A-Za-z0-9_-]{32,256})(?:;|$)/
@@ -19,6 +20,8 @@ export default async function handler(req,res){
     const target=await consent.finish({
       state:req.query?.state,code:req.query?.code,browserCsrf:stateCookie(req)
     });
+    if(target?.optional)return renderOptionalForm(res,target.optional,[
+      'gh_tenant_pilot_state=; Max-Age=0; Path=/api/tenant/oauth; HttpOnly; Secure; SameSite=Lax']);
     res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Location',target);
     return res.status(302).end();

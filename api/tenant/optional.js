@@ -25,11 +25,21 @@ const markup=details=>'<!doctype html><html lang="en"><head><meta charset="utf-8
   '<input type="password" name="value" required minlength="8" maxlength="4096" autocomplete="off"></label>'+
   '<label>Action<select name="action">'+
   '<option value="save">Verify and save (or renew) my credential</option>'+
-  '<option value="revoke">Revoke my stored credential (same-person verification)</option>'+
+  (details.oauth?'':'<option value="revoke">Revoke my stored credential (same-person verification)</option>')+
   '</select></label><button type="submit">Continue and return to my connection</button></form>'+
   '<p>Interrupted? Restart from the connection permission check. A failed or expired '+ 
   'form leaves your previous credential unchanged. Removing a token from this service '+
   'does not revoke it at GitHub; do that separately in GitHub settings.</p></body></html>';
+
+export function renderOptionalForm(res,details,clearCookies=[]){
+  // Same-origin POST must retain Origin. Completion responses remain no-referrer.
+  res.setHeader('Referrer-Policy','same-origin');
+  res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+  const fresh=NAME+'='+details.state+
+    '; Max-Age=600; Path=/api/tenant/optional; HttpOnly; Secure; SameSite=Strict';
+  res.setHeader('Set-Cookie',clearCookies.length?[...clearCookies,fresh]:fresh);
+  return send(res,200,markup(details),'text/html; charset=utf-8');
+}
 
 export function makePrivateOptionalPage({
   env=process.env,enrollment=createPrivateOptionalEnrollment({env})
@@ -45,10 +55,10 @@ export function makePrivateOptionalPage({
     }
     try{
       if(req.method==='GET'){
+        if(['read-observed-at-enrollment','revoked-on-this-service'].includes(req.query?.github_mcp_optional))
+          return send(res,200,'<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GitHub setup</title><p>Return to your connected client and run github_check_permissions to verify the current credential status. This page alone is not proof of completion.</p></html>','text/html; charset=utf-8');
         const result=await enrollment.start(paramsOf(req));
-        res.setHeader('Set-Cookie',NAME+'='+result.state+
-          '; Max-Age=600; Path=/api/tenant/optional; HttpOnly; Secure; SameSite=Strict');
-        return send(res,200,markup(result),'text/html; charset=utf-8');
+        return renderOptionalForm(res,result);
       }
       const p=paramsOf(req),observed=cookie(req);
       if(String(req.headers?.origin||'')!==publicOrigin(env) ||

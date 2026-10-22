@@ -155,6 +155,13 @@ describe('MCP endpoint over HTTP', () => {
     expect(status).toBe(200);
     expect(body.result.tools).toEqual([]);
   });
+  it('preserves injected per-tool OAuth metadata over the actual MCP transport',async()=>{
+    const url=await start(builtRegistry,{toolSecuritySchemes:()=>[
+      {type:'oauth2',scopes:['fixture.read']} ]});
+    const {body}=await rpc(url,'tools/list',{});
+    expect(body.result.tools.length).toBeGreaterThan(0);
+    expect(body.result.tools.every(t=>t.securitySchemes?.[0]?.scopes?.[0]==='fixture.read')).toBe(true);
+  });
 
   it('follows standard nextCursor to retrieve every actual catalog tool over HTTP', async () => {
     const url = await start(builtRegistry);
