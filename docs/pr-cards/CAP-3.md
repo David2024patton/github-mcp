@@ -118,3 +118,8 @@ The new private K/P SQL table extends existing owner-incident cleanup response w
 }
 ```
 <!-- bundle-plan:end -->
+
+
+### 2026-10-22 — private K/P browser entry and scoped return candidate
+
+The pre-code original six acceptance lines and plan SHA remain unchanged. Candidate integration adds `api/tenant/optional.js`, `src/tenancy/optional-setup.js`, one-use hashed SQL browser state and client-registered status-only return, operation-specific private `github_check_permissions` handoff (notifications), same-person exact harmless readback and protected token entry, CAS renewal/revocation after local expiry, and account-specific incident state cleanup. `tests/unit/cap3-protected-flow.test.js` and expanded `tests/db/cap3-user-binding.test.js` cover signed-client/registered-return denial, wrong person/permission, replay, interrupted attempt, concurrent claims, isolated renew/revoke and synthetic before/after. The K/P bearer never enters a tool argument or response; no broader dispatch authority is automatically granted. Browser callback relies on the registered URI accepting a status-only return and requires an explicit fresh client diagnostic; true real-device automatic recheck and provider permission remain independently unverified. This candidate is **IN PROGRESS** until exact-head source/DB/CI verification, review, frozen-plan comparison and accepted client proof. Do not mark CAP-3 complete from adding the form alone.

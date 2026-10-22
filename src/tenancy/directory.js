@@ -67,6 +67,23 @@ export function createTenantDirectory(sql) {
     }
     return bindingSchemaReady;
   }
+  async function ensureOptionalSetupSchema(){
+      await sql`CREATE TABLE IF NOT EXISTS gh_tenant_optional_setup_states (
+        state_hash TEXT PRIMARY KEY,
+        tenant_id UUID NOT NULL REFERENCES gh_tenants(id),
+        identity_id UUID NOT NULL REFERENCES gh_tenant_identities(id),
+        client_id TEXT NOT NULL,
+        account_login TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('K','P')),
+        redirect_uri TEXT NOT NULL,
+        membership_revision BIGINT NOT NULL,
+        pilot_revision BIGINT NOT NULL,
+        expected_fingerprint TEXT,
+        expires_at TIMESTAMPTZ NOT NULL DEFAULT (now()+interval '10 minutes')
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS gh_tenant_optional_setup_expires
+        ON gh_tenant_optional_setup_states (expires_at)`;
+  }
   return {
     async initSchema() {
       await sql`CREATE TABLE IF NOT EXISTS gh_tenant_identities (
@@ -180,6 +197,7 @@ export function createTenantDirectory(sql) {
         revision BIGINT NOT NULL DEFAULT 1,
         PRIMARY KEY (tenant_id,identity_id,account_login,kind)
       )`;
+      await ensureOptionalSetupSchema();
       // GitHub redirect state lives in the private registry only long enough
       // to finish one GitHub authorization. Store a hash of the browser secret.
       await sql`CREATE TABLE IF NOT EXISTS gh_tenant_oauth_flows (
@@ -417,9 +435,11 @@ export function createTenantDirectory(sql) {
           verified_operation=EXCLUDED.verified_operation,verified_resource=EXCLUDED.verified_resource,
           scopes=EXCLUDED.scopes,expires_at=EXCLUDED.expires_at,revoked_at=NULL,
           revision=gh_tenant_optional_credentials.revision+1
-        WHERE ${expectedFingerprint}::text IS NOT NULL AND
+        WHERE ( ${expectedFingerprint}::text IS NOT NULL AND
           gh_tenant_optional_credentials.cipher_fingerprint=${expectedFingerprint} AND
-          gh_tenant_optional_credentials.revoked_at IS NULL
+          gh_tenant_optional_credentials.revoked_at IS NULL )
+          OR ( ${expectedFingerprint}::text IS NULL AND
+          gh_tenant_optional_credentials.revoked_at IS NOT NULL )
         RETURNING revision`;
       return rows.length===1;
     },
@@ -445,14 +465,23 @@ export function createTenantDirectory(sql) {
           (g.expires_at IS NULL OR g.expires_at>now())`;
       return rows.length===1?rows[0]:null;
     },
-    async revokePilotOptionalCredential({tenantId,identityId,accountLogin,kind}) {
+    async revokePilotOptionalCredential({tenantId,identityId,accountLogin,kind,expectedFingerprint=null}) {
       const t=validUuid(tenantId),i=validUuid(identityId);
-      if(!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||!['K','P'].includes(kind))return false;
-      const rows=await sql`UPDATE gh_tenant_optional_credentials
-        SET revoked_at=now(),revision=revision+1
-        WHERE tenant_id=${t}::uuid AND identity_id=${i}::uuid
-          AND account_login=${accountLogin} AND kind=${kind} AND revoked_at IS NULL
-        RETURNING kind`;
+      if(!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||!['K','P'].includes(kind)||
+        (expectedFingerprint!==null&&!/^[a-f0-9]{64}$/.test(expectedFingerprint)))return false;
+      const rows=await sql`UPDATE gh_tenant_optional_credentials g
+        SET revoked_at=now(),revision=g.revision+1
+        FROM gh_tenants ten,gh_tenant_memberships m,gh_tenant_pilot_allowlist p
+        WHERE g.tenant_id=${t}::uuid AND g.identity_id=${i}::uuid
+          AND g.account_login=${accountLogin} AND g.kind=${kind}
+          AND g.revoked_at IS NULL
+          AND (${expectedFingerprint}::text IS NULL OR
+               g.cipher_fingerprint=${expectedFingerprint})
+          AND ten.id=g.tenant_id AND ten.status='active'
+          AND m.tenant_id=ten.id AND m.identity_id=g.identity_id AND m.active
+          AND p.tenant_id=ten.id AND p.identity_id=g.identity_id AND p.active
+          AND g.membership_revision=m.revision AND g.pilot_revision=p.revision
+        RETURNING g.kind`;
       return rows.length===1;
     },
 
@@ -619,6 +648,72 @@ export function createTenantDirectory(sql) {
 
     /** One-use GitHub callback state; all OAuth settings are saved by the
      * server during a gated request rather than trusted from callback query. */
+
+    /** Fresh, server-issued state proves context and is consumed before any
+     * provider call. A stale browser/tab cannot renew or revoke a later grant. */
+    async createPilotOptionalSetupState({stateHash,tenantId,identityId,clientId,
+      accountLogin,kind,redirectUri,membershipRevision,pilotRevision,
+      expectedFingerprint=null}) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      if(!/^[a-f0-9]{64}$/.test(stateHash)||typeof clientId!=='string'||
+        !clientId.startsWith('tcl_')||
+        !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||
+        !['K','P'].includes(kind)||typeof redirectUri!=='string'||
+        redirectUri.length>2048||
+        !Number.isSafeInteger(membershipRevision)||membershipRevision<1||
+        !Number.isSafeInteger(pilotRevision)||pilotRevision<1||
+        (expectedFingerprint!==null&&!/^[a-f0-9]{64}$/.test(expectedFingerprint)))
+        throw new TypeError('Invalid optional credential setup.');
+      await ensureOptionalSetupSchema();
+      await sql`DELETE FROM gh_tenant_optional_setup_states WHERE expires_at<now()`;
+      const rows=await sql`INSERT INTO gh_tenant_optional_setup_states (
+        state_hash,tenant_id,identity_id,client_id,account_login,kind,
+        redirect_uri,membership_revision,pilot_revision,expected_fingerprint)
+        SELECT ${stateHash},${t}::uuid,${i}::uuid,${clientId},${accountLogin},
+          ${kind},${redirectUri},${membershipRevision},${pilotRevision},${expectedFingerprint}
+        WHERE EXISTS (SELECT 1 FROM gh_tenants ten
+          JOIN gh_tenant_memberships m ON m.tenant_id=ten.id
+          JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=ten.id AND p.identity_id=m.identity_id
+          JOIN gh_tenant_pilot_bootstraps b ON b.tenant_id=ten.id
+          WHERE ten.id=${t}::uuid AND ten.status='active' AND
+            m.identity_id=${i}::uuid AND m.active AND p.active AND
+            b.account_login=${accountLogin} AND
+            m.revision=${membershipRevision} AND p.revision=${pilotRevision})
+        RETURNING state_hash`;
+      return rows.length===1;
+    },
+    async consumePilotOptionalSetupState(stateHash) {
+      if(typeof stateHash!=='string'||!/^[a-f0-9]{64}$/.test(stateHash))return null;
+      const rows=await sql`DELETE FROM gh_tenant_optional_setup_states
+        WHERE state_hash=${stateHash} AND expires_at>now()
+        RETURNING tenant_id,identity_id,client_id,account_login,kind,
+          redirect_uri,membership_revision,pilot_revision,expected_fingerprint`;
+      const row=rows[0];
+      return row?{tenantId:String(row.tenant_id),identityId:String(row.identity_id),
+        clientId:row.client_id,accountLogin:row.account_login,
+        kind:row.kind,redirectUri:row.redirect_uri,
+        membershipRevision:Number(row.membership_revision),
+        pilotRevision:Number(row.pilot_revision),
+        expectedFingerprint:row.expected_fingerprint}:null;
+    },
+    /** Read the CAS of the previously sealed token even if its local proof
+     * has expired. Revoked rows cannot be renewed without fresh consent. */
+    async pilotOptionalFingerprint({tenantId,identityId,accountLogin,kind}) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      if(!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||
+        !['K','P'].includes(kind))return null;
+      const rows=await sql`SELECT g.cipher_fingerprint FROM gh_tenant_optional_credentials g
+        JOIN gh_tenants ten ON ten.id=g.tenant_id
+        JOIN gh_tenant_memberships m ON m.tenant_id=g.tenant_id AND m.identity_id=g.identity_id
+        JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=g.tenant_id AND p.identity_id=g.identity_id
+        WHERE g.tenant_id=${t}::uuid AND g.identity_id=${i}::uuid
+          AND g.account_login=${accountLogin} AND g.kind=${kind}
+          AND g.revoked_at IS NULL AND ten.status='active'
+          AND m.active AND p.active AND m.revision=g.membership_revision
+          AND p.revision=g.pilot_revision`;
+      return rows.length===1?{cipher_fingerprint:rows[0].cipher_fingerprint}:null;
+    },
+
     async createPilotOAuthFlow({ stateHash, tenantId, identityId, clientId,
       redirectUri, clientState, codeChallenge, accountLogin, mode, profile,
       listing, providerVerifier }) {
@@ -681,6 +776,7 @@ export function createTenantDirectory(sql) {
       if(typeof accountLogin!=='string' ||
           !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin))
         throw new TypeError('Invalid private pilot account.');
+      await ensureOptionalSetupSchema();
       const rows=await sql`WITH extras AS (
         DELETE FROM gh_tenant_optional_credentials g
         WHERE EXISTS (SELECT 1 FROM gh_tenant_pilot_bootstraps b
@@ -691,13 +787,18 @@ export function createTenantDirectory(sql) {
         WHERE EXISTS (SELECT 1 FROM gh_tenant_pilot_bootstraps p
           WHERE p.tenant_id=a.tenant_id AND p.account_login=${accountLogin})
         RETURNING identity_id
+      ), optional_states AS (
+        DELETE FROM gh_tenant_optional_setup_states f
+        WHERE EXISTS (SELECT 1 FROM gh_tenant_pilot_bootstraps p
+          WHERE p.tenant_id=f.tenant_id AND p.account_login=${accountLogin})
+        RETURNING state_hash
       ), states AS (
         DELETE FROM gh_tenant_oauth_flows f
         WHERE EXISTS (SELECT 1 FROM gh_tenant_pilot_bootstraps p
           WHERE p.tenant_id=f.tenant_id AND p.account_login=${accountLogin})
         RETURNING state_hash
       ) SELECT (SELECT count(*)::integer FROM auth) AS user_grants,
-        (SELECT count(*)::integer FROM states) AS pending_states,
+        (SELECT count(*)::integer FROM states) + (SELECT count(*)::integer FROM optional_states) AS pending_states,
         (SELECT count(*)::integer FROM extras) AS optional_grants`;
       return rows.length===1?{userGrants:Number(rows[0].user_grants),
         pendingStates:Number(rows[0].pending_states),

@@ -122,6 +122,43 @@ async function checkPermissions(args, ctx) {
     if(typeof ctx.credentials?.operationAuthority==='function')
       entry.operation_authority=await ctx.credentials.operationAuthority({
         account:account.login,operation:pinned.route});
+    // Private tenant optional authority has a different protected form from
+    // the operator's global setup. Never route a member or pass to owner setup.
+    // A single registered callback is required to return to the exact client;
+    // no caller-supplied arbitrary redirect can ever reach the browser.
+    if(pinned.route==='GET /notifications' &&
+       typeof ctx.credentials?.operationAuthority==='function' &&
+       ctx.connection?.pass!==true &&
+       typeof ctx.connection?.client_id==='string' &&
+       ctx.connection.client_id.startsWith('tcl_') &&
+       typeof ctx.db?.getOAuthClient==='function'){
+      try{
+        const {verifyTenantCredential}=await import('../tenancy/routed-credential.js');
+        const claim=verifyTenantCredential(ctx.connection.client_id,'tcl',ctx.env);
+        const client=claim?await ctx.db.getOAuthClient(ctx.connection.client_id):null;
+        const redirects=client?.redirect_uris;
+        if(ctx.env?.VERCEL_ENV==='production' &&
+           Array.isArray(redirects) && redirects.length===1){
+          const {validRedirectUri}=await import('../core/oauth.js');
+          if(validRedirectUri(redirects[0])){
+            const url=new URL('/api/tenant/optional',publicOrigin(ctx.env));
+            url.searchParams.set('client_id',ctx.connection.client_id);
+            url.searchParams.set('account',account.login.toLowerCase());
+            url.searchParams.set('kind','K');
+            url.searchParams.set('redirect_uri',redirects[0]);
+            const observed=entry.operation_authority?.status==='verified-for-scope';
+            entry.additional_setup={
+              status:observed?'renew-or-revoke':'protected-tenant-setup',
+              kind:'classic_pat',operation:pinned.route,
+              url:url.toString(),
+              note:observed
+                ?'An exact notification read was observed at enrollment; current rights are not rechecked. Use this protected page to renew or revoke.'
+                :'GitHub requires a classic personal token with notifications scope. Open this protected page; never paste the token into chat. This will return to your registered client and then you can recheck permissions.'
+            };
+          }
+        }
+      }catch{/* Missing origin/client/signed scope never becomes a setup link. */}
+    }
   }
   if(chosen) for(const entry of accounts){
     const account=rows.find(row=>sameLogin(row.login,entry.login));

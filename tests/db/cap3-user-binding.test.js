@@ -222,3 +222,90 @@ describe('CAP-3 sealed private-member optional K/P lifecycle in disposable Postg
       tenantId:second.id,identityId:identity,accountLogin:login,kind:'K'})).toBeNull();
   });
 });
+
+
+describe('CAP-3 browser one-use state and optional renewal on disposable PostgreSQL',()=>{
+  const stateArgs=async(t,state,kind='K')=>{
+    const current=await directory.authorizedPilotIdentity(t.id,identity);
+    return {stateHash:createHash('sha256').update(state).digest('hex'),
+      tenantId:t.id,identityId:identity,clientId:'tcl_FAKEsigned_private_client',
+      accountLogin:login,kind,redirectUri:'https://client.example/return',
+      membershipRevision:current.membershipRevision,
+      pilotRevision:current.pilotRevision};
+  };
+  it('stores only a hashed state, returns registered client context once and refuses expired/replayed state',async()=>{
+    await directory.initSchema();await directory.initSchema();
+    await admin.query('INSERT INTO gh_tenant_pilot_bootstraps(identity_id,account_login,tenant_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',
+      [identity,login,first.id]);
+    const args=await stateArgs(first,'FAKE_browser_1');
+    expect(await directory.createPilotOptionalSetupState(args)).toBe(true);
+    const stored=await admin.query('SELECT state_hash,client_id,expected_fingerprint,expires_at FROM gh_tenant_optional_setup_states WHERE state_hash=$1',
+      [args.stateHash]);
+    expect(stored.rows).toHaveLength(1);
+    expect(stored.rows[0].expected_fingerprint).toBeNull();
+    expect(stored.rows[0].client_id).toBe(args.clientId);
+    expect(await directory.consumePilotOptionalSetupState(args.stateHash))
+      .toMatchObject({tenantId:first.id,identityId:identity,clientId:args.clientId,
+        redirectUri:args.redirectUri,kind:'K'});
+    expect(await directory.consumePilotOptionalSetupState(args.stateHash)).toBeNull();
+    const interrupted=await stateArgs(first,'FAKE_interrupted_2');
+    expect(await directory.createPilotOptionalSetupState(interrupted)).toBe(true);
+    await admin.query("UPDATE gh_tenant_optional_setup_states SET expires_at=now()-interval '1 second' WHERE state_hash=$1",
+      [interrupted.stateHash]);
+    expect(await directory.consumePilotOptionalSetupState(interrupted.stateHash)).toBeNull();
+    const recovered=await stateArgs(first,'FAKE_recovered_3');
+    expect(await directory.createPilotOptionalSetupState(recovered)).toBe(true);
+    const both=await Promise.all([
+      directory.consumePilotOptionalSetupState(recovered.stateHash),
+      directory.consumePilotOptionalSetupState(recovered.stateHash)
+    ]);
+    expect(both.filter(Boolean)).toHaveLength(1);
+  });
+  it('binds state to active member epochs and exact bootstrap account across workspaces',async()=>{
+    const attempted=await stateArgs(first,'FAKE_stale_member');
+    expect(await directory.createPilotOptionalSetupState({
+      ...attempted,pilotRevision:attempted.pilotRevision-1})).toBe(false);
+    const secondCtx=await stateArgs(second,'FAKE_other_workspace');
+    expect(await directory.createPilotOptionalSetupState(secondCtx)).toBe(false);
+    await admin.query('INSERT INTO gh_tenant_pilot_bootstraps(identity_id,account_login,tenant_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',
+      [identity,login,second.id]);
+    expect(await directory.createPilotOptionalSetupState(secondCtx)).toBe(true);
+    const wrongIdentity=await directory.enrollVerifiedGithubSubject('30002');
+    expect(await directory.createPilotOptionalSetupState({
+      ...secondCtx,stateHash:createHash('sha256').update('wrongperson').digest('hex'),
+      identityId:wrongIdentity})).toBe(false);
+    expect(await directory.consumePilotOptionalSetupState(secondCtx.stateHash))
+      .toMatchObject({tenantId:second.id,identityId:identity});
+  });
+  it('revives a revoked K credential only with fresh epoch-bound identity proof; stale revoke CAS cannot erase renewal',async()=>{
+    const membership=await directory.authorizedPilotIdentity(first.id,identity);
+    const context={tenantId:first.id,identityId:identity,
+      accountLogin:login,actorId:30001,accountId:901,
+      membershipRevision:membership.membershipRevision,
+      pilotRevision:membership.pilotRevision};
+    const save=(accessEnc,expectedFingerprint=null)=>
+      directory.putPilotOptionalCredential({...context,kind:'K',
+        operation:'GET /notifications',resource:'user/30001',
+        accessEnc,scopes:['notifications'],
+        expectedFingerprint,expiresAt:new Date(Date.now()+3600000)});
+    const fresh='v1.'+randomBytes(45).toString('hex');
+    expect(await save(fresh)).toBe(true);
+    const old=await directory.pilotOptionalFingerprint({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'K'});
+    expect(old.cipher_fingerprint).toBe(createHash('sha256').update(fresh).digest('hex'));
+    const another='v1.'+randomBytes(45).toString('hex');
+    expect(await save(another,old.cipher_fingerprint)).toBe(true);
+    expect(await directory.revokePilotOptionalCredential({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'K',
+      expectedFingerprint:old.cipher_fingerprint})).toBe(false);
+    const latest=createHash('sha256').update(another).digest('hex');
+    expect(await directory.revokePilotOptionalCredential({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'K',
+      expectedFingerprint:latest})).toBe(true);
+    expect(await directory.pilotOptionalFingerprint({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'K'})).toBeNull();
+    expect(await save('v1.'+randomBytes(45).toString('hex'))).toBe(true);
+    expect(await directory.getPilotOptionalCredential({
+      tenantId:second.id,identityId:identity,accountLogin:login,kind:'K'})).toBeNull();
+  });
+});
