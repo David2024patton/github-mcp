@@ -62,7 +62,9 @@ describe('CAP-3 private optional K/P issuer proof and isolated AAD',()=>{
     fixture.directory.getPilotVerifiedSubject=async()=> '999';
     await expect(execute('K',{},fixture)).rejects.toThrow(/not verified/);
     expect(fixture.directory.putPilotOptionalCredential).not.toHaveBeenCalled();
-    expect(fixture.fetchImpl).toHaveBeenCalledTimes(0);
+    // The harmless GitHub /user identity read is necessary to detect the
+    // mismatch. Only the second optional-capability read must be suppressed.
+    expect(fixture.requests.map(x=>x.url)).toEqual(['https://api.github.com/user']);
   });
   it('refuses a GitHub numeric subject that JavaScript cannot represent safely',async()=>{
     const fixture=make();
