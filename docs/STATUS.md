@@ -1,3 +1,7 @@
+## 2026-10-22 — CAP-4 exact App webhook retry lifecycle (draft #277)
+
+A bounded JWT-only `github_app_webhook_redeliver` tool is added to the same original incomplete CAP-4 outcome. It requires exact enrolled App owner and installation, Full/production/confirmation, previous receipt GET, HTTPS destination read, provider accepted 202 and *new distinct* matching retry in a subsequent bounded delivery list before declaring a confirmed result. Accepted-but-not-observed returns unconfirmed; the journal request key prevents double-retry. No raw webhook payloads/credentials or real provider operation. All new exact-head CI and reviewed origin/tenant behavior remain to be tested; comparator remains honest CONTINUE, so no merge.
+
 ## 2026-10-22 — CAP-4 App JWT request-origin defect resolved in draft
 
 CI `39829336914` identified a write-metadata mismatch (`JWT` was cataloged but default declaration remained `I`) and a blocking Octokit request construction bug: a top-level webhook `url` parameter changes Octokit's HTTP destination rather than the GitHub JSON body. The JWT-only App config write now declares `cred:'JWT'` and sends `data:{url,content_type}` to the FIXED `PATCH /app/hook/config`. Unit and disposable PostgreSQL regressions enforce the GitHub API request path and zero unmatched/external calls. The initial defective source was never merged/deployed. Revalidate new exact-head CI and retain original CAP-4 `CONTINUE` until full original scope is finished.
