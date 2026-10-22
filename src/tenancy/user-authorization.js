@@ -8,6 +8,7 @@ import { verifyGithubBearerIdentity, verifyGithubUserInstallation } from './gith
 import {pilotOptionalAad,currentPilotOptionalReadback} from './optional-credentials.js';
 import { userGrantBinding, currentUserGrantBinding } from './credential-binding.js';
 import { resolveDocumentedCredential } from '../github/credential-authority.js';
+import {pilotAppClient} from './pilot-app-client.js';
 
 const aad=(tenantId,identityId,account,kind)=>
   `github-mcp/private-tenant/${tenantId}/identity/${identityId}/account/${account.toLowerCase()}/${kind}`;
@@ -53,8 +54,7 @@ export async function storePilotUserGrant({ directory, tenantId, identityId,
 async function renewPilotUser({ directory, tenant, db, account, row, env, now, fetchImpl }) {
   if (!row.refresh_enc || !row.refresh_expires_at ||
       new Date(row.refresh_expires_at).getTime()<=now() ||
-      typeof directory.claimPilotUserRefresh!=='function' || !db ||
-      !env.GITHUB_PILOT_APP_CLIENT_ID || !env.GITHUB_PILOT_APP_CLIENT_SECRET)
+      typeof directory.claimPilotUserRefresh!=='function' || !db)
     throw denied();
   const scope={tenantId:tenant.tenantId,identityId:tenant.identityId,
     accountLogin:account.toLowerCase()};
@@ -70,11 +70,12 @@ async function renewPilotUser({ directory, tenant, db, account, row, env, now, f
     const refreshToken=decryptSecret(got.refresh_enc,{
       aad:aad(tenant.tenantId,tenant.identityId,account,'refresh'),key
     });
+    const appClient=await pilotAppClient({env,db});
     const result=await fetchImpl('https://github.com/login/oauth/access_token',{
       method:'POST',signal:AbortSignal.timeout(15000),
       headers:{accept:'application/json','content-type':'application/x-www-form-urlencoded'},
-      body:new URLSearchParams({client_id:env.GITHUB_PILOT_APP_CLIENT_ID,
-        client_secret:env.GITHUB_PILOT_APP_CLIENT_SECRET,
+      body:new URLSearchParams({client_id:appClient.clientId,
+        client_secret:appClient.clientSecret,
         grant_type:'refresh_token',refresh_token:refreshToken})
     });
     const data=await result.json();

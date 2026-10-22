@@ -12,12 +12,14 @@ import { storePilotUserGrant } from './user-authorization.js';
 import { validRedirectUri } from '../core/oauth.js';
 import { publicOrigin } from '../core/http.js';
 import {createPrivateOptionalEnrollment} from './optional-setup.js';
+import {createDb} from '../db.js';
+import {pilotAppClient} from './pilot-app-client.js';
 
 const gitAuthorize = 'https://github.com/login/oauth/authorize';
 const gitToken = 'https://github.com/login/oauth/access_token';
 const challengeValid = /^[A-Za-z0-9_-]{43}$/;
 const codeValid = /^[A-Za-z0-9_-]{8,256}$/;
-const stateValid = /^[A-Za-z0-9_-]{32,256}$/;
+const stateValid = /^(?:pt\.)?[A-Za-z0-9_-]{32,256}$/;
 const sha = text => createHash('sha256').update(text).digest('hex');
 const random = n => randomBytes(n).toString('base64url');
 const refused = () => new Error('Private GitHub authorization was not verified.');
@@ -26,8 +28,7 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
   rootSqlFactory = neon, tenantSqlFactory = neon } = {}) {
   const active = () => {
     if (env.GITHUB_PRIVATE_TENANT_PILOT !== 'enabled') throw refused();
-    if (!env.DATABASE_URL || !env.GITHUB_PILOT_APP_CLIENT_ID ||
-        !env.GITHUB_PILOT_APP_CLIENT_SECRET ||
+    if (!env.DATABASE_URL ||
         !/^[1-9][0-9]{0,18}$/.test(String(env.GITHUB_PILOT_APP_ID || ''))) throw refused();
     return publicOrigin(env);
   };
@@ -36,7 +37,9 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
     directory, tenantId:claim.tenantId, verifiedIdentityId:claim.identityId,
     connectionString:env.DATABASE_URL,sqlFactory:tenantSqlFactory
   });
-  const callback = () => active()+'/api/tenant/oauth/callback';
+  // Reuse the callback already registered when the service App was created.
+  // Its purpose-tagged state routes to the private handler, never owner auth.
+  const callback = () => active()+'/api/github/user-callback';
 
   async function start(p) {
     active();
@@ -83,7 +86,8 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
         !['all','selected'].includes(account.repository_selection) ||
         (mode==='production' && (env.VERCEL_ENV!=='production' ||
           account.production_enabled!==true))) throw refused();
-    const state=random(32), verifier=random(48);
+    const appClient=await pilotAppClient({env,db:createDb(rootSqlFactory(env.DATABASE_URL))});
+    const state='pt.'+random(32), verifier=random(48);
     const challenge=createHash('sha256').update(verifier).digest('base64url');
     const stored=await dir.createPilotOAuthFlow({stateHash:sha(state),
       tenantId:claim.tenantId,identityId:claim.identityId,clientId:p.client_id,
@@ -92,7 +96,7 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
       mode,profile,listing,providerVerifier:verifier,
       optionalKind:p.scope==='github.notifications.read'?'K':null});
     if (!stored) throw refused();
-    const q=new URLSearchParams({client_id:env.GITHUB_PILOT_APP_CLIENT_ID,
+    const q=new URLSearchParams({client_id:appClient.clientId,
       redirect_uri:callback(),state,code_challenge:challenge,
       code_challenge_method:'S256'});
     return {url:gitAuthorize+'?'+q.toString(),csrfState:state};
@@ -129,11 +133,12 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
         account.installation_status!=='active' ||
         (flow.mode==='production' && (env.VERCEL_ENV!=='production' ||
           account.production_enabled!==true))) throw refused();
+    const appClient=await pilotAppClient({env,db:createDb(rootSqlFactory(env.DATABASE_URL))});
     const exchange=await fetchImpl(gitToken,{
       method:'POST',signal:AbortSignal.timeout(10000),
       headers:{accept:'application/json','content-type':'application/x-www-form-urlencoded'},
-      body:new URLSearchParams({client_id:env.GITHUB_PILOT_APP_CLIENT_ID,
-        client_secret:env.GITHUB_PILOT_APP_CLIENT_SECRET,code,
+      body:new URLSearchParams({client_id:appClient.clientId,
+        client_secret:appClient.clientSecret,code,
         redirect_uri:callback(),code_verifier:flow.providerVerifier})
     });
     if (!exchange.ok) throw refused();

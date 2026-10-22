@@ -60,7 +60,7 @@ export default async function privateTenantAuthorize(req,res,{env=process.env}={
     const {url,csrfState}=await createPrivateGitHubConsent({env}).start(p);
     res.setHeader('Set-Cookie',[clear,
       'gh_tenant_pilot_state='+csrfState+
-        '; Max-Age=600; Path=/api/tenant/oauth; HttpOnly; Secure; SameSite=Lax']);
+        '; Max-Age=600; Path=/api/github/user-callback; HttpOnly; Secure; SameSite=Lax']);
     res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Location',url);
     return res.status(302).end();
