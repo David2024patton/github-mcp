@@ -34,6 +34,8 @@ export default async function handler(req, res) {
     }
     const policy = createGithubPolicy();
     const answer = await createMcpHandler({
+      ...(tenantRoute?{toolSecuritySchemes:tool=>[{type:'oauth2',
+        scopes:tool.name==='github_notify_list'?['github.notifications.read']:[]}]}:{}),
       db, registry, toConnection: policy.toConnection, dispatch: createDispatch({ credentials, gates: createGates({ db }) }), serverInfo: { name: 'robinson-github-mcp', version: '0.1.0' }
     })(req, res);
     eventOutcome = 'ok';

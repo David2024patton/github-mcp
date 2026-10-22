@@ -6,7 +6,8 @@ import { MANIFEST_PERMISSIONS } from '../../src/github/app-manifest.js';
 import { parseCatalog } from '../../scripts/check-writes.mjs';
 import { makeWorld, parse } from '../../test/helpers/write-contract.js';
 import fs from 'node:fs';
-import {effectiveToolAccess,documentedOperationAccess,accessRecovery} from '../../src/github/effective-access.js';
+import {effectiveToolAccess,documentedOperationAccess,accessRecovery,additionalCredentialHandoff} from '../../src/github/effective-access.js';
+import {optionalCredentialIdentityStatus} from '../../src/github/optional-identity-status.js';
 import {registry} from '../../src/tools/index.js';
 import {createGithubPolicy} from '../../src/oauth/policy.js';
 import {createDispatch} from '../../src/tools/dispatch.js';
@@ -244,6 +245,133 @@ describe('CAP-2 explicit recovery without secret or privilege mutation',()=>{
       args:{name:'github_check_permissions',args},connection:w.connection,db:w.db});
     expect(viaMeta.structuredContent.accounts[0].recovery.verified).toBe(false);
     expect(w.gh.calls).toEqual([]);
+  });
+});
+
+describe('CAP-3 owner optional-kind status cannot claim endpoint authorization',()=>{
+  it('never exposes optional owner evidence on private-tenant or pass diagnostic paths',async()=>{
+    const w=await appWorld({metadata:'read'});
+    const original=w.db.additionalCredentialProofs;
+    let calls=0;
+    w.db.additionalCredentialProofs=async()=>{calls++;return {P:{version:1}};};
+    try{
+      const args={account:'example-org',tool:'github_pr_merge'};
+      const viaPass=await handlers.github_check_permissions(args,{
+        ...w.ctx,connection:{...w.connection,pass:true}
+      });
+      expect(viaPass.accounts[0].optional_credentials).toBeUndefined();
+      const tenant=await handlers.github_check_permissions(args,{
+        ...w.ctx,credentials:{...w.credentials,operationAuthority:async()=>({})}
+      });
+      expect(tenant.accounts[0].optional_credentials).toBeUndefined();
+      expect(calls).toBe(0);
+    }finally{w.db.additionalCredentialProofs=original;}
+  });
+  it('separates a matching encrypted fingerprint and identity from actual permission',async()=>{
+    const {createHash}=await import('node:crypto');
+    const account={account_id:901,package_enc:'sealed-package-value'};
+    const proof={version:1,kind:'P',host:'github.com',scope:'legacy-owner',
+      actorId:4001,accountId:901,verification:'identity-only',
+      fingerprint:createHash('sha256').update(account.package_enc).digest('hex')};
+    const good=optionalCredentialIdentityStatus({account,proofs:{P:proof}});
+    expect(good.P).toMatchObject({stored:true,identity:'verified-at-enrollment',
+      operationPermission:'not-proven'});
+    expect(good.K).toMatchObject({stored:false,identity:'unverified'});
+    const stale=optionalCredentialIdentityStatus({account:{
+      ...account,package_enc:'different-encrypted-value'},proofs:{P:proof}});
+    expect(stale.P.identity).toBe('unverified');
+    expect(optionalCredentialIdentityStatus({account,proofs:{
+      P:{...proof,scope:'tenant-b'}}}).P.identity).toBe('unverified');
+    expect(optionalCredentialIdentityStatus({account,proofs:{
+      P:{...proof,expiresAt:new Date(0).toISOString()}}}).P.identity).toBe('unverified');
+    expect(JSON.stringify(good)).not.toContain('sealed-package-value');
+    const readback={...proof,verification:'identity-and-capability-readback',
+      operation:'GET /orgs/{org}/packages',resource:'org/901',scopes:['read:packages']};
+    const observed=optionalCredentialIdentityStatus({account,proofs:{P:readback}});
+    expect(observed.P).toMatchObject({identity:'verified-at-enrollment',
+      operationPermission:'observed-for-read-at-enrollment',
+      documentedRead:'GET /orgs/{org}/packages'});
+    expect(optionalCredentialIdentityStatus({account,proofs:{P:{
+      ...readback,operation:'DELETE /orgs/{org}/packages'}}}).P.identity).toBe('unverified');
+  });
+});
+
+describe('CAP-3 exact-operation protected setup handoff without credential exchange',()=>{
+  const account={login:'example-org'};
+  const ownerContext=true,origin='https://mcp.example.test';
+  it('offers classic K only for reviewed classic-only notifications',()=>{
+    const x=additionalCredentialHandoff({account,operation:'GET /notifications',
+      origin,ownerContext});
+    expect(x).toMatchObject({status:'protected-setup',kind:'K',
+      setupUrl:'https://mcp.example.test/api/github/setup',
+      automaticProviderIssuance:false,grantVerified:false,account:'example-org'});
+    expect(x.instructions).toContain('never paste the token into chat');
+    expect(JSON.stringify(x)).not.toMatch(/gh[pousr]_[A-Za-z0-9]{8,}/);
+  });
+  it('does not gate Standard App package support behind optional token setup',()=>{
+    const x=additionalCredentialHandoff({account,
+      operation:'GET /orgs/{org}/packages',origin,ownerContext});
+    expect(x).toMatchObject({status:'standard-supported',
+      effectivePermission:'not-verified'});
+    expect(x.setupUrl).toBeUndefined();
+    expect(additionalCredentialHandoff({account,operation:'GET /not-reviewed',
+      origin,ownerContext}).status).toBe('unverified');
+  });
+  it('appears in direct and nested meta diagnostics without leaking a bearer',async()=>{
+    const w=await appWorld({metadata:'read'});
+    const env={...w.ctx.env,PUBLIC_BASE_URL:'https://mcp.example.test'};
+    const args={account:'example-org',tool:'github_repo_get',
+      operation:'GET /notifications'};
+    const direct=await handlers.github_check_permissions(args,{...w.ctx,env});
+    expect(direct.accounts[0].additional_setup).toMatchObject({
+      status:'protected-setup',kind:'K',setupUrl:'https://mcp.example.test/api/github/setup'});
+    const dispatch=createDispatch({env,credentials:w.credentials,fetch:w.gh.fetch});
+    const normal=await dispatch({registry,name:'github_check_permissions',
+      args,connection:w.connection,db:w.db});
+    const nested=await dispatch({registry,name:'github_call',
+      args:{name:'github_check_permissions',args},connection:w.connection,db:w.db});
+    for(const reply of [normal,nested]){
+      expect(reply.structuredContent.accounts[0].additional_setup).toMatchObject({
+        status:'protected-setup',kind:'K'});
+    }
+    expect(w.gh.calls).toEqual([]);
+    const record=await w.db.getAccount('example-org');
+    const {createHash}=await import('node:crypto');
+    const enc='sealed-fixture-notification-value';
+    await w.db.setClassicToken(record.login,{enc,scopes:['notifications'],last4:'last'});
+    expect(await w.db.bindAdditionalCredentialProof({
+      login:record.login,kind:'K',expectedCipher:enc,
+      proof:{version:1,kind:'K',host:'github.com',scope:'legacy-owner',
+        actorId:4201,accountId:record.account_id,
+        fingerprint:createHash('sha256').update(enc).digest('hex'),
+        verification:'identity-and-capability-readback',
+        operation:'GET /notifications',resource:'user/4201',scopes:['notifications']}
+    })).toBe(true);
+    const after=await handlers.github_check_permissions(args,{...w.ctx,env});
+    expect(after.accounts[0].additional_setup).toMatchObject({
+      status:'read-observed-at-enrollment',kind:'K'});
+    expect(after.accounts[0].additional_setup.note).toContain('NOT been rechecked');
+    expect(w.gh.calls).toEqual([]);
+    const tenant=await handlers.github_check_permissions(args,{
+      ...w.ctx,env,credentials:{...w.credentials,operationAuthority:async()=>({})}
+    });
+    expect(tenant.accounts[0].additional_setup.status).toBe('not-offered');
+    const pass=await handlers.github_check_permissions(args,{
+      ...w.ctx,env,connection:{...w.connection,pass:true}
+    });
+    expect(pass.accounts[0].additional_setup.status).toBe('not-offered');
+  });
+  it('refuses foreign origin, service pass and private tenant access to owner forms',()=>{
+    for(const x of ['http://mcp.example.test','https://user:pass@mcp.example.test',
+      'https://mcp.example.test/other','https://mcp.example.test?code=secret',
+      'https://mcp.example.test:4444']){
+      const out=additionalCredentialHandoff({account,operation:'GET /notifications',
+        origin:x,ownerContext});
+      expect(out.status).toBe('configuration-needed');
+      expect(out.setupUrl).toBeUndefined();
+    }
+    expect(additionalCredentialHandoff({account,operation:'GET /notifications',
+      origin,ownerContext:false})).toMatchObject({status:'not-offered'});
   });
 });
 

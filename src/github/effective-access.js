@@ -124,3 +124,38 @@ export function accessRecovery({connection,account,tool,missingPermissions=[],op
       operation:operation?.operation??null,registeredTool:tool.name},
     note:'Recovery is guidance only: no OAuth consent, permission escalation or provider operation has run.'};
 }
+
+/** CAP-3 guided setup link, not a credential or consent state.
+ * Only the verified owner's existing server-owned origin may host the
+ * protected form. A delegated pass or private tenant may not receive it.
+ * Compatibility is pinned to this exact operation: never promote K/P to
+ * broader auth and never ask for P when App credentials already work.
+ */
+export function additionalCredentialHandoff({operation,account,origin,ownerContext=false}={}){
+  if(!ownerContext||typeof account?.login!=='string'||!account.login)
+    return {status:'not-offered',reason:'Protected owner setup is not available in this connection context.'};
+  const doc=reviewedRestEvidence(operation);
+  if(!doc)return {status:'unverified',reason:'This operation has no reviewed credential classification.'};
+  const app=doc.decisions?.app_installation?.disposition;
+  const user=doc.decisions?.app_user?.disposition;
+  if(app==='supported'||user==='supported')
+    return {status:'standard-supported',operation,
+      reason:'A documented ordinary GitHub App credential works for this operation. Do not require optional extra setup.',
+      effectivePermission:'not-verified'};
+  if(operation!=='GET /notifications'||doc.decisions?.classic_pat?.disposition!=='supported')
+    return {status:'unverified',operation,
+      reason:'No safely reviewed extra-credential enrollment route is assigned to this exact operation.'};
+  let url;
+  try{
+    const base=new URL(origin);
+    if(base.protocol!=='https:'||!base.hostname||base.username||base.password||
+      base.search||base.hash||base.pathname!=='/' ||base.port&&base.port!=='443')throw Error('unsafe_origin');
+    url=base.origin+'/api/github/setup';
+  }catch{return {status:'configuration-needed',
+    reason:'A verified HTTPS server origin is needed to open protected credential setup.'};}
+  return {status:'protected-setup',operation,kind:'K',
+    account:account.login,setupUrl:url,officialDocumentation:doc.officialUrl,
+    instructions:'Open this server-owned protected page, choose Optional notifications token, and complete administrator confirmation. GitHub issues classic personal tokens on GitHub; never paste the token into chat or a tool argument. Return to the current MCP client and check the same operation and account again.',
+    automaticProviderIssuance:false,grantVerified:false,
+    note:'The protected form and GitHub are independent user actions. This link grants nothing and the app must verify permissions and membership on each call.'};
+}

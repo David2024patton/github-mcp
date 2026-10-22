@@ -3,6 +3,7 @@
 // changes nothing, and nothing here ever drops, alters or deletes. Credentials are ciphertext (*_enc) or hashes
 // (*_hash) only; no column holds a plain token, key or secret.
 import { neon } from '@neondatabase/serverless';
+import { createHash } from 'node:crypto';
 import { hashToken } from './core/oauth.js';
 import { createDevLedger } from './dev/ledger.js';
 import { DEFAULT_PROJECTS, validateProjectProfile, storedProject } from './data/profile-schema.js';
@@ -200,6 +201,11 @@ export function createDb(sql = productionSql()) {
         ADD COLUMN IF NOT EXISTS package_scopes TEXT[],
         ADD COLUMN IF NOT EXISTS package_actor TEXT,
         ADD COLUMN IF NOT EXISTS package_expires_at TIMESTAMPTZ`;
+      // CAP-3 owner-side optional grant proof contains NO token material.
+      // Legacy grants deliberately start unverified; proof lives in this same
+      // isolated database namespace and is cleared on any token replacement.
+      await sql`ALTER TABLE gh_accounts ADD COLUMN IF NOT EXISTS additional_credential_proofs
+        JSONB NOT NULL DEFAULT '{}'::jsonb`;
       // Coordinate one-use GitHub OAuth refresh without deleting existing credentials.
       await sql`ALTER TABLE gh_accounts ADD COLUMN IF NOT EXISTS user_refresh_claim TEXT,
         ADD COLUMN IF NOT EXISTS user_refresh_claim_expires_at TIMESTAMPTZ`;
@@ -977,25 +983,89 @@ export function createDb(sql = productionSql()) {
         user_refresh_expires_at = NULL, user_refresh_claim = NULL, user_refresh_claim_expires_at = NULL WHERE lower(login) = lower(${login})`;
     },
     async setFineGrainedToken(login, { enc, last4, expiresAt = null }) {
-      const rows = await sql`UPDATE gh_accounts SET fine_grained_enc = ${enc}, fine_grained_last4 = ${last4}, fine_grained_expires_at = ${expiresAt}
+      const rows = await sql`UPDATE gh_accounts SET fine_grained_enc = ${enc}, fine_grained_last4 = ${last4}, fine_grained_expires_at = ${expiresAt}, additional_credential_proofs = additional_credential_proofs - 'F'
         WHERE lower(login) = lower(${login}) RETURNING login`;
       return rows.length === 1;
     },
     async setClassicToken(login, { enc, scopes, last4 }) {
-      const rows = await sql`UPDATE gh_accounts SET classic_enc = ${enc}, classic_scopes = ${scopes}, classic_last4 = ${last4}
+      const rows = await sql`UPDATE gh_accounts SET classic_enc = ${enc}, classic_scopes = ${scopes}, classic_last4 = ${last4}, additional_credential_proofs = additional_credential_proofs - 'K'
         WHERE lower(login) = lower(${login}) RETURNING login`;
       return rows.length === 1;
     },
     async setPackageToken(login, { enc, scopes, actor, expiresAt = null }) {
       const rows = await sql`UPDATE gh_accounts SET package_enc = ${enc}, package_scopes = ${scopes},
-        package_actor = ${actor}, package_expires_at = ${expiresAt}
+        package_actor = ${actor}, package_expires_at = ${expiresAt}, additional_credential_proofs = additional_credential_proofs - 'P'
         WHERE lower(login) = lower(${login}) RETURNING login`;
       return rows.length === 1;
     },
+    async clearClassicToken(login) {
+      const rows=await sql`UPDATE gh_accounts SET classic_enc=NULL,
+        classic_scopes=NULL,classic_last4=NULL,
+        additional_credential_proofs=additional_credential_proofs-'K'
+        WHERE lower(login)=lower(${login}) AND classic_enc IS NOT NULL RETURNING login`;
+      return rows.length===1;
+    },
+    async clearFineGrainedToken(login) {
+      const rows=await sql`UPDATE gh_accounts SET fine_grained_enc=NULL,
+        fine_grained_last4=NULL,fine_grained_expires_at=NULL,
+        additional_credential_proofs=additional_credential_proofs-'F'
+        WHERE lower(login)=lower(${login}) AND fine_grained_enc IS NOT NULL RETURNING login`;
+      return rows.length===1;
+    },
     async clearPackageToken(login) {
       const rows = await sql`UPDATE gh_accounts SET package_enc = NULL, package_scopes = NULL,
-        package_actor = NULL, package_expires_at = NULL WHERE lower(login) = lower(${login}) RETURNING login`;
+        package_actor = NULL, package_expires_at = NULL, additional_credential_proofs = additional_credential_proofs - 'P' WHERE lower(login) = lower(${login}) RETURNING login`;
       return rows.length === 1;
+    },
+    /** Bind a provider-verified human to the CURRENT encrypted optional
+     * credential only. This never mints/reads a token or verifies an API
+     * permission by itself. A concurrent token replacement loses the CAS.
+     * JSON is allowlisted by the caller and validated here too.
+     */
+    async bindAdditionalCredentialProof({login,kind,expectedCipher,proof}) {
+      if (!['F','P','K'].includes(kind) ||
+          typeof login!=='string' || !/^[a-z0-9-]{1,39}$/i.test(login) ||
+          typeof expectedCipher!=='string' || expectedCipher.length<12 ||
+          !proof || proof.version!==1 || proof.kind!==kind ||
+          proof.host!=='github.com' ||
+          !Number.isSafeInteger(proof.actorId) || proof.actorId<=0 ||
+          !Number.isSafeInteger(proof.accountId) || proof.accountId<=0 ||
+          proof.scope!=='legacy-owner' ||
+          typeof proof.fingerprint!=='string' || !/^[a-f0-9]{64}$/.test(proof.fingerprint) ||
+          createHash('sha256').update(expectedCipher).digest('hex')!==proof.fingerprint ||
+          !['identity-only','identity-and-capability-readback'].includes(proof.verification) ||
+          (proof.verification==='identity-and-capability-readback' &&
+            !((kind==='K'&&proof.operation==='GET /notifications'&&
+              proof.resource==='user/'+proof.actorId&&
+              Array.isArray(proof.scopes)&&proof.scopes.includes('notifications')) ||
+              (kind==='P'&&proof.operation==='GET /orgs/{org}/packages'&&
+              proof.resource==='org/'+proof.accountId&&
+              Array.isArray(proof.scopes)&&proof.scopes.includes('read:packages')))))
+        throw new TypeError('Verified additional credential evidence is invalid.');
+      const payload=JSON.stringify({
+        version:1,kind,host:'github.com',actorId:proof.actorId,
+        accountId:proof.accountId,scope:'legacy-owner',
+        fingerprint:proof.fingerprint,verification:proof.verification,
+        operation:proof.verification==='identity-and-capability-readback'?proof.operation:null,
+        resource:proof.verification==='identity-and-capability-readback'?proof.resource:null,
+        scopes:proof.verification==='identity-and-capability-readback'?proof.scopes:[],
+        expiresAt:proof.expiresAt??null
+      });
+      const rows=await sql`UPDATE gh_accounts
+        SET additional_credential_proofs=jsonb_set(
+          additional_credential_proofs,ARRAY[${kind}],${payload}::jsonb)
+        WHERE lower(login)=lower(${login}) AND account_id=${proof.accountId}
+          AND (CASE ${kind} WHEN 'F' THEN fine_grained_enc
+            WHEN 'P' THEN package_enc WHEN 'K' THEN classic_enc ELSE NULL END)=${expectedCipher}
+        RETURNING login`;
+      return rows.length===1;
+    },
+    /** Public metadata only, never a credential or a capability grant. */
+    async additionalCredentialProofs(login) {
+      if(typeof login!=='string'||!/^[a-z0-9-]{1,39}$/i.test(login))return {};
+      const rows=await sql`SELECT additional_credential_proofs AS proofs
+        FROM gh_accounts WHERE lower(login)=lower(${login})`;
+      return rows[0]?.proofs??{};
     },
     async setAccountPlan(login, planName) {
       await sql`UPDATE gh_accounts SET plan_name = ${planName}, checked_at = now() WHERE lower(login) = lower(${login})`;

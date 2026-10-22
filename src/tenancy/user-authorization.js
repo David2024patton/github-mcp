@@ -5,6 +5,9 @@ import { encryptSecret, decryptSecret, readEncryptionKey } from '../core/crypto.
 import { GithubClientError } from '../github/errors.js';
 import { randomUUID } from 'node:crypto';
 import { verifyGithubBearerIdentity, verifyGithubUserInstallation } from './github-identity.js';
+import {pilotOptionalAad,currentPilotOptionalReadback} from './optional-credentials.js';
+import { userGrantBinding, currentUserGrantBinding } from './credential-binding.js';
+import { resolveDocumentedCredential } from '../github/credential-authority.js';
 
 const aad=(tenantId,identityId,account,kind)=>
   `github-mcp/private-tenant/${tenantId}/identity/${identityId}/account/${account.toLowerCase()}/${kind}`;
@@ -13,7 +16,7 @@ const denied=()=>new GithubClientError('no_credentials',
 
 export async function storePilotUserGrant({ directory, tenantId, identityId,
   account, userLogin, accessToken, refreshToken = null, expiresIn,
-  refreshExpiresIn = null, env = process.env, now = Date.now }) {
+  refreshExpiresIn = null, verifiedContext = null, env = process.env, now = Date.now }) {
   if (typeof accessToken!=='string' || accessToken.length<8 || accessToken.length>4096 ||
       !Number.isSafeInteger(expiresIn) || expiresIn<60 || expiresIn>31536000 ||
       (refreshToken!==null && (typeof refreshToken!=='string' ||
@@ -27,9 +30,15 @@ export async function storePilotUserGrant({ directory, tenantId, identityId,
     aad:aad(tenantId,identityId,account,'access'),key});
   const refreshEnc=refreshToken===null?null:encryptSecret(refreshToken,{
     aad:aad(tenantId,identityId,account,'refresh'),key});
+  const accessExpiresAt=new Date(at+expiresIn*1000);
+  if (verifiedContext && (verifiedContext.tenant?.tenantId!==tenantId ||
+      verifiedContext.tenant?.identityId!==identityId ||
+      verifiedContext.account?.login?.toLowerCase()!==account.toLowerCase())) throw denied();
+  const authorityBinding=verifiedContext?userGrantBinding({...verifiedContext,
+    accessEnc,expiresAt:accessExpiresAt}):null;
   const stored=await directory.storePilotUserAuthorization({
     tenantId,identityId,accountLogin:account.toLowerCase(),userLogin,
-    accessEnc,accessExpiresAt:new Date(at+expiresIn*1000),
+    accessEnc,accessExpiresAt,authorityBinding,
     refreshEnc,refreshExpiresAt:refreshToken===null?null:
       new Date(at+(refreshExpiresIn??15811200)*1000)
   });
@@ -90,11 +99,14 @@ async function renewPilotUser({ directory, tenant, db, account, row, env, now, f
           installationId:app.installation_id,appId:app.app_id,
           accountId:app.account_id,fetchImpl
         })) throw denied();
+    const accessEnc=encryptSecret(access,{
+      aad:aad(scope.tenantId,scope.identityId,account,'access'),key});
+    const accessExpiresAt=new Date(now()+expiresIn*1000);
+    const authorityBinding=userGrantBinding({subject:actual.subject,tenant,
+      account:app,accessEnc,expiresAt:accessExpiresAt});
     const newer=await directory.finishPilotUserRefresh({
       ...scope,expectedAccessEnc:row.access_enc,claimId,
-      accessEnc:encryptSecret(access,{
-        aad:aad(scope.tenantId,scope.identityId,account,'access'),key}),
-      accessExpiresAt:new Date(now()+expiresIn*1000),
+      accessEnc,accessExpiresAt,authorityBinding,
       refreshEnc:encryptSecret(refresh,{
         aad:aad(scope.tenantId,scope.identityId,account,'refresh'),key}),
       refreshExpiresAt:new Date(now()+refreshIn*1000)
@@ -122,10 +134,120 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
       !tenant?.tenantId || !tenant?.identityId)
     throw new TypeError('Private tenant credential scope required.');
   const key=()=>readEncryptionKey(env);
+  // An optional grant is usable only for the previously observed exact harmless
+  // read, not as a generic PAT or an App permission upgrade. Verify active
+  // private member + immutable account/principal binding on every acquisition
+  // AND at each HTTP request. No owner K/P credential can be borrowed.
+  const optionalDenied=()=>new GithubClientError('no_credentials',
+    'Your optional GitHub authorization is unavailable or expired. Verify it on the protected setup page.');
+  async function currentOptional(accountLogin,kind){
+    // A legacy in-memory directory without the optional lookup must deny
+    // before any decryption or provider traffic, not throw a raw TypeError.
+    if(typeof directory.getPilotOptionalCredential!=='function')
+      throw optionalDenied();
+    if(typeof accountLogin!=='string' ||
+        !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin.toLowerCase())||
+        !['K','P'].includes(kind))throw optionalDenied();
+    const active=await directory.authorizedPilotIdentity(tenant.tenantId,tenant.identityId);
+    if(!active||active.tenantId!==tenant.tenantId||
+      active.identityId!==tenant.identityId||
+      active.membershipRevision!==tenant.membershipRevision||
+      active.pilotRevision!==tenant.pilotRevision)throw optionalDenied();
+    const account=await db.getAccount(accountLogin);
+    const subject=await directory.getPilotVerifiedSubject(tenant.tenantId,tenant.identityId);
+    if(typeof subject!=='string'||!/^[1-9][0-9]{0,18}$/.test(subject)||
+      !Number.isSafeInteger(Number(subject))||
+      account?.login?.toLowerCase()!==accountLogin.toLowerCase())throw optionalDenied();
+    const row=await directory.getPilotOptionalCredential({
+      tenantId:tenant.tenantId,identityId:tenant.identityId,
+      accountLogin:accountLogin.toLowerCase(),kind});
+    const operation=kind==='K'?'GET /notifications':'GET /orgs/{org}/packages';
+    const resource=kind==='K'?'user/'+subject:'org/'+account.account_id;
+    if(!currentPilotOptionalReadback({row,tenant:active,account,subject,
+      kind,operation,resource,now:now()}))throw optionalDenied();
+    return {row,account};
+  }
+  function exactOptionalRequest({kind,account,method,url}){
+    if(method!=='GET' || typeof url!=='string')return false;
+    let parsed;
+    try{parsed=new URL(url,'https://api.github.com');}catch{return false;}
+    if(parsed.origin!=='https://api.github.com'||parsed.username||parsed.password||
+       parsed.hash)return false;
+    if(kind==='K')return parsed.pathname==='/user'||parsed.pathname==='/notifications';
+    if(kind==='P'){
+      const prefix='/orgs/';
+      if(!parsed.pathname.startsWith(prefix)||!parsed.pathname.endsWith('/packages'))
+        return false;
+      const encoded=parsed.pathname.slice(prefix.length,-'/packages'.length);
+      let owner;
+      try{owner=decodeURIComponent(encoded);}catch{return false;}
+      return owner.toLowerCase()===account.toLowerCase()&&
+        /^[a-z0-9][a-z0-9-]{0,38}$/i.test(owner);
+    }
+    return false;
+  }
   return {
     ...base,
+    // Diagnostic only: never decrypt a bearer or initiate provider operations.
+    // Only this explicitly reviewed identity read is proven by native consent.
+    async operationAuthority({account,operation,resource,host='github.com'}) {
+      const actualAccount=await db.getAccount(account);
+      const subject=await directory.getPilotVerifiedSubject(tenant.tenantId,tenant.identityId);
+      const active=await directory.authorizedPilotIdentity(tenant.tenantId,tenant.identityId);
+      const row=await directory.getPilotUserAuthorization(tenant.tenantId,
+        tenant.identityId,account.toLowerCase());
+      const isCurrent=active &&
+        active.membershipRevision===tenant.membershipRevision &&
+        active.pilotRevision===tenant.pilotRevision;
+      const binding=isCurrent
+        ?currentUserGrantBinding({row,tenant:active,subject,account:actualAccount,now:now()}):null;
+      // Classic K/P are private-member optional grants, never the shared owner
+      // K/P vault or a fallback for an unrelated tool. Read historical proof
+      // only: the MCP diagnostic cannot decrypt the bearer or dispatch it.
+      const optionalKind=operation==='GET /notifications'?'K':
+        operation==='GET /orgs/{org}/packages'?'P':null;
+      const selectedResource=resource??(
+        operation==='GET /user'||operation==='GET /notifications'
+          ?'user/'+subject
+          :operation==='GET /orgs/{org}/packages'&&Number.isSafeInteger(actualAccount?.account_id)
+            ?'org/'+actualAccount.account_id:null);
+      let optional=null;
+      if(isCurrent&&optionalKind&&host==='github.com'&&
+          typeof directory.getPilotOptionalCredential==='function'){
+        const entry=await directory.getPilotOptionalCredential({
+          tenantId:tenant.tenantId,identityId:tenant.identityId,
+          accountLogin:account.toLowerCase(),kind:optionalKind
+        });
+        optional=currentPilotOptionalReadback({row:entry,tenant,account:actualAccount,
+          subject,kind:optionalKind,operation,resource:selectedResource,now:now()});
+      }
+      return resolveDocumentedCredential({operation,host,
+        resource:selectedResource,
+        account:{accountId:actualAccount?.account_id,login:actualAccount?.login},
+        principal:{...tenant,host:'github.com',githubUserId:Number(subject)},
+        requestedKind:optionalKind?'classic_pat':'app_user',
+        grants:optional?[optional]:binding?.operations.includes(operation)?[binding]:[],
+        now:now()});
+    },
+    async authorizeOptionalRequest({account,kind,method,url}={}){
+      const entry=await currentOptional(account,kind);
+      if(!exactOptionalRequest({kind,account:entry.account.login,method,url}))
+        throw optionalDenied();
+      return true;
+    },
     async token(args={}) {
       const cred=args.cred??'I';
+      if(cred==='K'||cred==='P'){
+        if(args.scope?.repositories?.length||args.scope?.repository_ids?.length||
+            args.scope?.permissions)throw optionalDenied();
+        const {row}=await currentOptional(args.account,cred);
+        try{
+          return decryptSecret(row.access_enc,{
+            aad:pilotOptionalAad({tenantId:tenant.tenantId,
+              identityId:tenant.identityId,accountLogin:args.account,kind:cred}),
+            key:key()});
+        }catch{throw optionalDenied();}
+      }
       // GitHub explicitly limits an App USER token to the intersection of
       // the user's and the App's permissions. An invited member must NEVER
       // inherit an installation-wide I token; route ordinary I-mode tools
@@ -141,6 +263,16 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
       const row=await directory.getPilotUserAuthorization(
         tenant.tenantId,tenant.identityId,args.account.toLowerCase());
       if (!row || !row.access_enc) throw denied();
+      // A bound grant cannot retain authority through a context/install change.
+      // Legacy rows remain supported, but never become capability evidence.
+      if (row.authority_binding) {
+        const subject=await directory.getPilotVerifiedSubject(tenant.tenantId,tenant.identityId);
+        const active=await directory.authorizedPilotIdentity(tenant.tenantId,tenant.identityId);
+        const account=await db.getAccount(args.account);
+        if (!active || active.membershipRevision!==tenant.membershipRevision ||
+            active.pilotRevision!==tenant.pilotRevision || !currentUserGrantBinding({
+              row,tenant:active,subject,account,now:now(),allowExpired:true})) throw denied();
+      }
       if (new Date(row.access_expires_at).getTime()<=now()+60_000)
         return renewPilotUser({directory,tenant,db,account:args.account,
           row,env,now,fetchImpl});

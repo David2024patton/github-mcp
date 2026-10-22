@@ -11,6 +11,7 @@ import { verifyGithubBearerIdentity, verifyGithubUserInstallation } from './gith
 import { storePilotUserGrant } from './user-authorization.js';
 import { validRedirectUri } from '../core/oauth.js';
 import { publicOrigin } from '../core/http.js';
+import {createPrivateOptionalEnrollment} from './optional-setup.js';
 
 const gitAuthorize = 'https://github.com/login/oauth/authorize';
 const gitToken = 'https://github.com/login/oauth/access_token';
@@ -46,6 +47,7 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
         !challengeValid.test(String(p.code_challenge || '')) ||
         p.resource !== active()+'/api/mcp' || !validRedirectUri(p.redirect_uri) ||
         (p.state !== undefined && (typeof p.state !== 'string' || p.state.length > 256)) ||
+        (p.scope!==undefined && p.scope!=='' && p.scope!=='github.notifications.read') ||
         !['preview','production'].includes(mode) ||
         !['full','everyday','read_only'].includes(profile) ||
         !['compact','catalog'].includes(listing) ||
@@ -87,7 +89,8 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
       tenantId:claim.tenantId,identityId:claim.identityId,clientId:p.client_id,
       redirectUri:p.redirect_uri,clientState:p.state??null,
       codeChallenge:p.code_challenge,accountLogin:account.login,
-      mode,profile,listing,providerVerifier:verifier});
+      mode,profile,listing,providerVerifier:verifier,
+      optionalKind:p.scope==='github.notifications.read'?'K':null});
     if (!stored) throw refused();
     const q=new URLSearchParams({client_id:env.GITHUB_PILOT_APP_CLIENT_ID,
       redirect_uri:callback(),state,code_challenge:challenge,
@@ -169,9 +172,18 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
       directory:dir,tenantId:claim.tenantId,identityId:claim.identityId,
       account:account.login,userLogin:principal.login,
       accessToken:data.access_token,expiresIn,
+      verifiedContext:{subject:principal.subject,tenant:latest,account},
       refreshToken:data.refresh_token??null,refreshExpiresIn,env
     });
     if (!saved) throw refused();
+    if(flow.optionalKind){
+      const enrollment=createPrivateOptionalEnrollment({env,fetchImpl,
+        directoryFactory:()=>dir,
+        tenantAccess:()=>scoped(dir,claim)});
+      const optional=await enrollment.startOAuth(flow);
+      outcome='ok';
+      return {optional};
+    }
     const mcpCode=random(32);
     await db.createAuthCode({code:mcpCode,clientId:flow.clientId,
       redirectUri:flow.redirectUri,codeChallenge:flow.codeChallenge,

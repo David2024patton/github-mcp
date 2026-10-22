@@ -28,6 +28,33 @@ describe('supported package credential isolation', () => {
     await expect(client(w)).rejects.toMatchObject({ code: 'no_credentials' });
     expect(w.gh.calls).toEqual([]);
   });
+  it('records verified actor evidence only for a protected enrollment with numeric identity',async()=>{
+    const w=await world();
+    const row=await w.db.getAccount('example-org');
+    const bindings=[];
+    w.db.bindAdditionalCredentialProof=async entry=>{bindings.push(entry);return true;};
+    await w.credentials.storePackage('example-org',TOKEN,{
+      scopes:['read:packages'],actor:'example-owner',actorId:4001,accountId:row.account_id
+    });
+    expect(bindings).toHaveLength(1);
+    expect(bindings[0]).toMatchObject({login:'example-org',kind:'P',
+      proof:{kind:'P',actorId:4001,accountId:row.account_id,
+        scope:'legacy-owner',verification:'identity-only'}});
+    expect(bindings[0].proof.fingerprint).toMatch(/^[a-f0-9]{64}$/);
+    expect(bindings[0].expectedCipher).toBe((await w.db.getAccount('example-org')).package_enc);
+    expect(JSON.stringify(bindings)).not.toContain(TOKEN);
+    bindings.length=0;
+    await w.credentials.storePackage('example-org',TOKEN,{
+      scopes:['read:packages'],actor:'example-owner'
+    });
+    expect(bindings).toEqual([]);
+    await w.credentials.storeClassic('example-org','fixture-notifications-value-012345',['notifications'],
+      {actorId:4001,accountId:row.account_id});
+    await w.credentials.storeFineGrained('example-org','fixture-fine-grained-value-012345',
+      {actorId:4001,accountId:row.account_id});
+    expect(bindings.map(x=>x.kind)).toEqual(['K','F']);
+    expect(bindings.every(x=>x.proof.verification==='identity-only')).toBe(true);
+  });
   it('binds ciphertext to the package purpose and exact account', async () => {
     const w = await world();
     const row = await w.db.getAccount('example-org');

@@ -13,6 +13,7 @@ import { summarize } from './summaries.js';
 import { isToolVisible } from '../core/registry.js';
 import { passRefusal } from '../rtc/pass-scope.js';
 import { shapeResult, redact, containsCredential } from './util.js';
+import {optionalConsentChallenge,OptionalConsentRequired} from '../tenancy/optional-challenge.js';
 
 const fail = (text) => ({ isError: true, content: [{ type: 'text', text: redact(text) }] });
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -80,9 +81,13 @@ export function createDispatch({ env = process.env, now = Date.now, fetch = glob
     if (outside) return fail(outside);
     let result;
     try {
+      const challenge=await optionalConsentChallenge({
+        name,args:args??{},connection,credentials,env});
+      if(challenge)return challenge;
       const callTool = (innerName, innerArgs) => dispatch({ registry, name: innerName, args: innerArgs, connection, db });
       result = await handler(args ?? {}, { connection, db, env, now, fetch, credentials, ...(sleep ? { sleep } : {}), ...(isWrite ? { gates } : {}), ...(tool.usesRegistry ? { registry, callTool } : {}) });
     } catch (error) {
+      if(error instanceof OptionalConsentRequired)return error.reply;
       const response=fail(error instanceof TypeError ? error.message : 'That tool could not complete right now. Nothing was changed.');
       // Only the trusted canonical result handler may distinguish absent/foreign
       // handles. Keep the existing MCP-readable message, never parse its text.

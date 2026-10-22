@@ -40,7 +40,7 @@ Card(s): A-5, B-2, B-3, B-8, C-1, C-2, R-1, O-1, X-1. Meta-tools, connection and
 | `github_whoami` | Which GitHub accounts this connection can use, mode (PREVIEW/PRODUCTION), profile, credential types present, API version, rate budget left, spend limit | — | N | I | B,O,Op | R | A-5 built #13 |
 | `github_list_accounts` | Accounts (orgs and users) connected to the server: app installation, repo selection, user authorization, optional classic token, production on/off | — | N | I | O | R | A-5 built #13 |
 | `github_set_default_account` | Which account a tool uses when `owner` is omitted | P | N | — | O | F | B-8 built #23 |
-| `github_check_permissions` | Inspect App area grants, per-tool access layers and optionally a pinned REST operation's documented credential support (not effective authority) | — | N | — | O,B | R | B-8 built #24 |
+| `github_check_permissions` | Inspect App grants, per-tool layers, pinned operation compatibility and private-user identity-read grant proof; actual operation execution remains unverified | — | N | — | O,B | R | B-8 built #24; CAP-3 binding draft #274 |
 | `github_rate_status` | Primary and secondary rate-limit state per account (from `GET /rate_limit` `resources.*` and recent response headers) | — | F | I | Op,B | R | B-8 built #24 |
 | `github_list_connections` | Connector logins and passes: account scope, mode, profile, expiry, last used | — | N | — | O | R | B-8 built #23 |
 | `github_revoke_connection` | Switch a connection or pass off at once | C | N | — | O | F | B-8 built #23 |
@@ -488,7 +488,7 @@ Card(s): O-7. Source built in PR #205. Notifications require optional classic to
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_notify_list` | Unread (or all) notifications, by repository and reason | — | C | K | Op | R | O-7 built #205 |
+| `github_notify_list` | Unread (or all) notifications, by repository and reason | — | C | K | Op | R | O-7 built #205; CAP-3 private notifications OAuth reauthorization candidate #274 (live acceptance open) |
 | `github_notify_mark` | Mark one thread, a repository or everything as read or done | C·Prod | C | K | Op | E | O-7 built #205 |
 | `github_notify_set_subscription` | Watch, ignore or unsubscribe from a thread or repository | C·Prod | C | K | Op | E | O-7 built #205 |
 | `github_gist_list` | Chris's gists | — | C | U | B | R | O-7 built #205 |
