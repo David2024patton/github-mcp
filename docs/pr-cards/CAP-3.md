@@ -81,6 +81,10 @@ The approved private tenant architecture now has a source-only root registry tab
 
 This list makes unfinished engineering explicit; it does not create a new scope, waive the original acceptance or authorize a provider grant, real token, production write, release or expenditure. The earlier safety rejection has not recurred for this narrower metadata edit; there is no new claimed general execution blockade.
 
+## Root emergency cleanup regression (2026-10-21)
+
+The new private K/P SQL table extends existing owner-incident cleanup response with `optionalGrants`. A legacy PUB-3 DB test failed only because it expected the old two-field response; that contract test is now corrected and verified on exact-head CI `3a1c42e`. To prove real tenant isolation instead of merely matching the new response shape, a disposable PostgreSQL incident fixture now seeds a K grant into each of two tenants and asserts deleting only the affected tenant's optional grant, leaving the second tenant unchanged. This new fixture is pending its own exact-head CI. It is additional proof within original CAP-3; no whole CAP-3 subsection has been completed.
+
 <!-- bundle-plan:start -->
 ```json
 {

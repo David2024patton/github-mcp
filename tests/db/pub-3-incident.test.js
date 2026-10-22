@@ -79,6 +79,24 @@ describe('PUB-3 owner incident cleanup in real isolated PostgreSQL',()=>{
         VALUES (${t.id}::uuid,${id}::uuid,${login},${login},
           'v1.fake.test.fixture',now()+interval '1 hour')`;
     }
+    // Both workspaces possess independent synthetic optional-token records.
+    // The incident purge must delete ONLY incident-a, in the same transaction
+    // as its U grants and pending OAuth states. No real token is involved.
+    for(const [tenant,owner,account,subject] of [
+      [tenantA,ownerA,'incident-a','991001'],
+      [tenantB,ownerB,'incident-b','991002']
+    ]){
+      const active=await dir.authorizedPilotIdentity(tenant.id,owner);
+      expect(active).not.toBeNull();
+      await rootSql`INSERT INTO gh_tenant_optional_credentials(
+        tenant_id,identity_id,account_login,kind,provider_host,
+        actor_id,account_id,membership_revision,pilot_revision,
+        access_enc,cipher_fingerprint,verified_operation,verified_resource,scopes)
+        VALUES(${tenant.id}::uuid,${owner}::uuid,${account},'K','github.com',
+          ${Number(subject)},${Number(subject)},${active.membershipRevision},
+          ${active.pilotRevision},'v1.fake.test.fixture',${'a'.repeat(64)},
+          'GET /notifications',${'user/'+subject},${['notifications']}::text[])`;
+    }
     const pilots=await dir.listPilotsForAccount('incident-a');
     expect(pilots).toEqual([{tenantId:tenantA.id,ownerIdentityId:ownerA}]);
     expect(await dir.revokePrivatePilotsForAccount('incident-a')).toBe(1);
@@ -95,7 +113,10 @@ describe('PUB-3 owner incident cleanup in real isolated PostgreSQL',()=>{
     expect(await dbB.getOAuthClient(clientId)).not.toBeNull();
     expect(await dbB.getAccessToken('fixture-access-B')).not.toBeNull();
     const secrets=await dir.purgePrivatePilotRootSecrets('incident-a');
-    expect(secrets).toEqual({userGrants:1,pendingStates:0,optionalGrants:0});
+    expect(secrets).toEqual({userGrants:1,pendingStates:0,optionalGrants:1});
+    const remainingOptional=await rootSql`SELECT account_login
+      FROM gh_tenant_optional_credentials ORDER BY account_login`;
+    expect(remainingOptional.map(x=>x.account_login)).toEqual(['incident-b']);
     const remaining=await rootSql`SELECT account_login FROM gh_tenant_user_authorizations`;
     expect(remaining.map(x=>x.account_login)).toEqual(['incident-b']);
     // A second owner click after partial cleanup is safe and cannot resurrect anything.
