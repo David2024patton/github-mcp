@@ -59,7 +59,8 @@ export async function enrollVerifiedPilotOptionalCredential({
   if(!safeAccount(account)||account.login.toLowerCase()!==accountLogin.toLowerCase())
     throw denied();
   const subject=await directory.getPilotVerifiedSubject(tenant.tenantId,tenant.identityId);
-  if(typeof subject!=='string'||!SUBJECT.test(subject)) throw denied();
+  if(typeof subject!=='string'||!SUBJECT.test(subject)||
+      !Number.isSafeInteger(Number(subject))) throw denied();
   try {
     const principal=await verifyGithubBearerIdentity(bearer,{fetchImpl});
     if(principal.subject!==subject) throw denied();
@@ -120,7 +121,7 @@ export function currentPilotOptionalReadback({
       typeof subject!=='string'||!SUBJECT.test(subject)||
       !tenant?.tenantId||!tenant?.identityId||
       row.provider_host!=='github.com'||row.kind!==kind||
-      Number(row.actor_id)!==Number(subject)||
+      String(row.actor_id)!==subject||
       Number(row.account_id)!==account.account_id||
       row.verified_operation!==operation||
       row.verified_resource!==resource||
