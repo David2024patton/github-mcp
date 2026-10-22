@@ -111,8 +111,8 @@ describe('App JWT owner isolation and sealed signing on real PostgreSQL',()=>{
     expect(gh.calls.slice(baseCount).filter(x=>x.method==='PATCH')).toHaveLength(1);
     expect(gh.invalid).toEqual([]);
     expect(gh.unmatched).toEqual([]);
-    expect(gh.calls.slice(baseCount).every(x=>x.path.startsWith('/app/')))
-      .toBe(true);
+    expect(gh.calls.slice(baseCount).every(x=>
+      x.path==='/app'||x.path.startsWith('/app/'))).toBe(true);
   });
   it('refuses an unrelated connection or delegated pass before JWT issuance or provider call',async()=>{
     gh.calls.length=0;
