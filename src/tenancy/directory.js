@@ -33,10 +33,29 @@ export function tenantConnectionString(connectionString, tenantId) {
       url.searchParams.has('service') || url.searchParams.has('sslpassword')) {
     throw new TypeError('Tenant DB URL requires a direct, unmodified PostgreSQL connection configuration.');
   }
-  // Neon HTTP supports PostgreSQL's options=-c search_path=... connection parameter.
-  // An absent namespace makes current_schema() null, and is always refused below.
+  // For session-based PostgreSQL adapters. HTTP queries use transaction-local
+  // configuration below; pooled startup options are not portable.
   url.searchParams.set('options', '-c search_path=' + schema);
   return url.toString();
+}
+
+/** Production HTTP requests have no persistent session. Configure the path in
+ * the SAME transaction as every query, without public fallback or pooled SET
+ * leakage. Injected session adapters retain the connection-options contract. */
+export function createTenantSql(connectionString, tenantId, sqlFactory = neon) {
+  const scoped = tenantConnectionString(connectionString, tenantId);
+  if (sqlFactory !== neon) return sqlFactory(scoped);
+  const url = new URL(scoped);
+  url.searchParams.delete('options');
+  const raw = neon(url.toString());
+  const schema = tenantSchemaName(tenantId);
+  return async (strings, ...values) => {
+    const [, rows] = await raw.transaction([
+      raw`SELECT set_config('search_path', ${schema}, true)`,
+      raw(strings, ...values)
+    ]);
+    return rows;
+  };
 }
 
 /** A connection must prove the exact tenant namespace before *any* read or
@@ -865,8 +884,8 @@ export function createTenantDirectory(sql) {
 
 /** Never takes tenant from an HTTP parameter or cookie. PUB-2 must first verify
  * identity with GitHub and resolve membership through the service-owned registry.
- * Private tests may inject an isolated SQL factory; production uses Neon URL
- * options. Both must pass the exact current_schema and search_path assertions. */
+ * Private tests may inject an isolated session SQL factory; production pins
+ * every HTTP transaction. Both must pass exact namespace assertions. */
 export async function openAuthorizedTenantDb({ directory, tenantId, verifiedIdentityId,
   connectionString = process.env.DATABASE_URL, sqlFactory = neon }) {
   if (!directory || typeof directory.authorized !== 'function')
@@ -874,7 +893,7 @@ export async function openAuthorizedTenantDb({ directory, tenantId, verifiedIden
   const bound = await directory.authorized(tenantId, verifiedIdentityId);
   if (!bound || bound.namespace !== tenantSchemaName(tenantId))
     throw new Error('Tenant membership is not authorized.');
-  const sql = sqlFactory(tenantConnectionString(connectionString, tenantId));
+  const sql = createTenantSql(connectionString, tenantId, sqlFactory);
   await assertTenantSearchPath(sql, tenantId);
   return { tenant: Object.freeze(bound), db: createDb(sql), sql };
 }
@@ -883,7 +902,7 @@ export async function openAuthorizedTenantDb({ directory, tenantId, verifiedIden
  * code; never expose this to an MCP tool, arbitrary OAuth client or public URL. */
 export async function initializeProvisionedTenant({ tenantId, connectionString = process.env.DATABASE_URL,
   sqlFactory = neon }) {
-  const sql = sqlFactory(tenantConnectionString(connectionString, tenantId));
+  const sql = createTenantSql(connectionString, tenantId, sqlFactory);
   const namespace = await assertTenantSearchPath(sql, tenantId);
   const db = createDb(sql);
   await db.initSchema();
