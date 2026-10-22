@@ -100,6 +100,9 @@ export const orgScimProvision=defineGithubWrite({
   verify:({args:a,after:d,before:b})=>b?.existing?.length===0&&
     samePerson(d?.userName,a.userName)&&d.active===true&&
     d.displayName===(a.displayName??a.givenName+' '+a.familyName)&&
+    d.name?.givenName===a.givenName&&d.name?.familyName===a.familyName&&
+    Array.isArray(d.emails)&&d.emails.some(email=>
+      email?.primary===true&&samePerson(email.value,a.userName))&&
     (!a.externalId||d.externalId===a.externalId),
   inverse:()=>null,
   present:({after:d,target:t})=>({org:t.owner,identity:profile(d),

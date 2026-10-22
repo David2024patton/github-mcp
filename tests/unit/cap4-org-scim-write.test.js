@@ -18,7 +18,9 @@ const externalRoutes=Object.values(R);
 const USER='person@work.example';
 const SCIM_ID='0000-test-scim';
 const first={id:SCIM_ID,userName:USER,displayName:'Old Name',
-  externalId:'identity-1',active:true,emails:[{value:'private@work.example'}],
+  externalId:'identity-1',active:true,
+  name:{givenName:'New',familyName:'Person'},
+  emails:[{value:USER,primary:true},{value:'private@work.example'}],
   meta:{location:'https://private.example'}};
 const def=name=>({tool:writers.tools.find(t=>t.name===name),handler:writers.handlers[name]});
 const createArgs={userName:USER,givenName:'New',familyName:'Person',displayName:'New Person'};
@@ -71,7 +73,12 @@ async function run(w,name,args={}){
     credentials:w.credentials,fetch:w.gh.fetch,now:w.ctx.now,
     sleep:w.ctx.sleep,gates:[]})({registry,name,args,
       connection:w.connection,db:w.db});
-  return {result,body:parse(result)};
+  let body;
+  try{body=parse(result)}catch{
+    body={status:result.isError?'refused':'unknown',
+      error:result.content?.[0]?.text??'Malformed result'};
+  }
+  return {result,body};
 }
 describe('CAP-4 SCIM official request shape and negative authority',()=>{
   it('provisions only documented fields and requires independent exact identity',async()=>{

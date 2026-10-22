@@ -54,7 +54,9 @@ describe('SCIM replay and authorization with disposable PostgreSQL',()=>{
       Resources:member?[member]:[]}));
     gh.when(R.create).reply(201,()=>{
       member={id:'db-scim-person-1',userName:USER,
-        displayName:'Provider Test',active:true,externalId:'idp-1'};
+        displayName:'Provider Test',active:true,externalId:'idp-1',
+        name:{givenName:'Provider',familyName:'Test'},
+        emails:[{value:USER,primary:true}]};
       return member;
     });
     gh.when(R.get).reply(200,()=>member);
