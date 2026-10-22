@@ -64,6 +64,12 @@ describe('CAP-3 private optional K/P issuer proof and isolated AAD',()=>{
     expect(fixture.directory.putPilotOptionalCredential).not.toHaveBeenCalled();
     expect(fixture.fetchImpl).toHaveBeenCalledTimes(0);
   });
+  it('refuses a GitHub numeric subject that JavaScript cannot represent safely',async()=>{
+    const fixture=make();
+    fixture.directory.getPilotVerifiedSubject=async()=> '9999999999999999999';
+    await expect(execute('K',{},fixture)).rejects.toThrow(/not verified/);
+    expect(fixture.fetchImpl).not.toHaveBeenCalled();
+  });
   it('refuses wrong account before any provider call',async()=>{
     const fixture=make();
     fixture.db.getAccount=async()=>({...account,account_id:null});
