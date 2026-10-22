@@ -4,7 +4,7 @@
 // confirmation. A 2xx alone never proves provisioning or deprovisioning.
 import {defineGithubWrite} from './define-github-write.js';
 import {octo,ownerOf,refusal,missing} from './github-write.js';
-import {accessChange,invitation} from './people-guard.js';
+import {invitation} from './people-guard.js';
 
 const OWNER={type:'string',minLength:1,maxLength:39};
 const TEXT={type:'string',minLength:1,maxLength:150,pattern:'^[^\r\n\x00-\x1F]+$'};
