@@ -139,12 +139,16 @@ export const orgScimDeprovision=defineGithubWrite({
   properties:{owner:OWNER,scimUserId:ID,expectedUserName:USER},
   required:['scimUserId','expectedUserName'],
   declarations:{production:'always',confirm:'always',profiles:['full']},target,
-  read:async(a,c,t)=>exact(await scimGet(c,t,a.scimUserId),a),
+  read:async(a,c,t)=>{
+    const found=await missing(()=>scimGet(c,t,a.scimUserId));
+    return found?exact(found,a):null;
+  },
   classify:()=>({}),
   summarize:({args:a,target:t,before:b})=>
-    'PERMANENT SCIM deprovision '+a.expectedUserName+' ('+b.id+
+    'PERMANENT SCIM deprovision '+a.expectedUserName+' ('+(b?.id??'already absent')+
     ') in '+t.owner+'. This removes membership and deletes its external identity; the old ID cannot be restored.',
   apply:async({args:a,ctx:c,target:t,before:b})=>{
+    if(!b)throw refusal('SCIM identity is already absent; no deletion will be sent.');
     exact(b,a);
     return (await client(c,t)).request(R.remove,{org:t.owner,
       scim_user_id:a.scimUserId,headers});
