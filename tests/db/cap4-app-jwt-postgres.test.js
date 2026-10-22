@@ -13,7 +13,10 @@ import {openIsolatedSchema,closeIsolatedSchema,neonShapedQuery}
 
 const env={TOKEN_ENCRYPTION_KEY:crypto.randomBytes(32).toString('base64url')};
 const appId=911201,org='example-org',accountId=901101;
-const routes=['GET /app','GET /app/hook/config','PATCH /app/hook/config'];
+const routes=['GET /app','GET /app/hook/config','PATCH /app/hook/config',
+  'GET /app/hook/deliveries/{delivery_id}',
+  'GET /app/hook/deliveries',
+  'POST /app/hook/deliveries/{delivery_id}/attempts'];
 const owner={client_id:'real-db-jwt-owner',accounts:[org],
   default_account:org,profile:'read_only',mode:'preview',listing:'catalog'};
 let db,gh,credentials,publicKey;
@@ -113,6 +116,49 @@ describe('App JWT owner isolation and sealed signing on real PostgreSQL',()=>{
     expect(gh.unmatched).toEqual([]);
     expect(gh.calls.slice(baseCount).every(x=>
       x.path==='/app'||x.path.startsWith('/app/'))).toBe(true);
+  });
+  it('uses one real PostgreSQL replay claim for concurrent exact App webhook redelivery',async()=>{
+    gh.calls.length=0;
+    const id=8842,guid='0000-1234-5678-aaaa';
+    const original={id,guid,installation_id:911202,event:'issues',
+      delivered_at:'2026-10-22T16:30:00Z',status:'Failed',
+      redelivery:false,request:{payload:{token:'never-echo'}}};
+    const other={...original,id:9992,installation_id:99999,redelivery:true};
+    const retry={...original,id:8843,redelivery:true,
+      delivered_at:'2026-10-22T17:00:02Z'};
+    let accepted=false;
+    gh.when(routes[0]).reply(200,{id:appId,slug:'owner-app',
+      owner:{login:org,id:accountId},name:'Owner App'});
+    gh.when(routes[1]).reply(200,{url:'https://alerts.example.test/private-token',
+      content_type:'json',insecure_ssl:'0',secret:'fake-only-signing-secret'});
+    gh.when(routes[3]).reply(200,original);
+    gh.when(routes[4]).reply(200,()=>accepted?[retry,other,original]:[other,original]);
+    gh.when(routes[5]).reply(202,()=>{accepted=true;return {}});
+    const conn={...owner,profile:'full',mode:'production'};
+    const args={deliveryId:id,confirm:true};
+    const [first,second]=await Promise.all([
+      run(conn,'github_app_webhook_redeliver',args),
+      run(conn,'github_app_webhook_redeliver',args)
+    ]);
+    expect([first.structuredContent?.status,second.structuredContent?.status].sort())
+      .toEqual(['applied','replayed']);
+    const applied=first.structuredContent.status==='applied'?first:second;
+    const post=gh.calls.filter(c=>c.method==='POST');
+    expect(post).toHaveLength(1);
+    expect(post[0].route).toBe(routes[5]);
+    expect(post[0].path).toBe('/app/hook/deliveries/8842/attempts');
+    const change=await db.getChange(applied.structuredContent.logged.id);
+    expect(change.before).toMatchObject({
+      id,installation_id:911202,destination:'alerts.example.test'});
+    expect(change.after).toMatchObject({
+      delivery_id:id,independentlyObserved:true,retryReceiptId:8843});
+    expect(JSON.stringify({change,result:applied.structuredContent}))
+      .not.toMatch(/private-token|fake-only-signing-secret|never-echo/);
+    expect(gh.unmatched).toEqual([]);
+    expect(gh.invalid).toEqual([]);
+    const repeat=await run(conn,'github_app_webhook_redeliver',args);
+    expect(repeat.structuredContent.status).toBe('replayed');
+    expect(gh.calls.filter(c=>c.method==='POST')).toHaveLength(1);
   });
   it('refuses an unrelated connection or delegated pass before JWT issuance or provider call',async()=>{
     gh.calls.length=0;
