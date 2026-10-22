@@ -8,7 +8,6 @@ import { verifyGithubBearerIdentity, verifyGithubUserInstallation } from './gith
 import {pilotOptionalAad,currentPilotOptionalReadback} from './optional-credentials.js';
 import { userGrantBinding, currentUserGrantBinding } from './credential-binding.js';
 import { resolveDocumentedCredential } from '../github/credential-authority.js';
-import {currentPilotOptionalReadback} from './optional-credentials.js';
 
 const aad=(tenantId,identityId,account,kind)=>
   `github-mcp/private-tenant/${tenantId}/identity/${identityId}/account/${account.toLowerCase()}/${kind}`;
@@ -140,8 +139,12 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
   // private member + immutable account/principal binding on every acquisition
   // AND at each HTTP request. No owner K/P credential can be borrowed.
   const optionalDenied=()=>new GithubClientError('no_credentials',
-    'This private member has no current verified optional GitHub read grant. Renew it on the protected setup page.');
+    'Your optional GitHub authorization is unavailable or expired. Verify it on the protected setup page.');
   async function currentOptional(accountLogin,kind){
+    // A legacy in-memory directory without the optional lookup must deny
+    // before any decryption or provider traffic, not throw a raw TypeError.
+    if(typeof directory.getPilotOptionalCredential!=='function')
+      throw optionalDenied();
     if(typeof accountLogin!=='string' ||
         !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin.toLowerCase())||
         !['K','P'].includes(kind))throw optionalDenied();
