@@ -125,7 +125,8 @@ describe('CAP-4 SCIM official request shape and negative authority',()=>{
     expect(firstResult.body.status).toBe('applied');
     const persisted=await w.db.getChange(firstResult.body.logged.id);
     const recorded=JSON.stringify({before:persisted.before,after:persisted.after});
-    expect(recorded).not.toMatch(/private@work\\.example|https:\\/\\/private\\.example/);
+    expect(recorded).not.toContain('private@work.example');
+    expect(recorded).not.toContain('https://private.example');
     expect(persisted.after).toMatchObject({
       id:SCIM_ID,userName:USER,primaryEmail:USER,
       givenName:'New',familyName:'Person'});

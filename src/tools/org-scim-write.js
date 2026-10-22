@@ -26,7 +26,7 @@ const headers={accept:'application/scim+json'};
 const safeText=(value,label)=>{
   if(value===undefined||value===null)return null;
   if(typeof value!=='string'||value.length>512||
-    /[\\x00-\\x1F]/.test(value))
+    /[\x00-\x1F]/.test(value))
     throw refusal('GitHub returned an unsafe SCIM '+label+' value.');
   return value;
 };
