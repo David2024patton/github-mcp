@@ -761,7 +761,7 @@ Card(s): Y-9 (WU-Y9a). Organization-level, so every write is production-class an
 
 ## CAP-4 organization audit and SCIM (`github_org_audit_read, github_org_scim_*`) — 3
 
-Card(s): CAP-4. Read-only, account-bound organization audit and SAML-SSO SCIM identity visibility. GitHub plan/role/SSO/permission is verified by provider; 403/404 are not guessed plan limitations. Enterprise-managed-user SCIM and enterprise audit are distinct unresolved authority paths. Each page is bounded; SCIM emails and raw audit fields are not echoed.
+Card(s): CAP-4. Read-only, account-bound organization audit and SAML-SSO SCIM identity visibility. Cursor output is verified against exact GitHub.com organization and SCIM equality filters are constrained to provider-documented fields. GitHub plan/role/SSO/permission is verified by provider; 403/404 are not guessed plan limitations. Enterprise-managed-user SCIM and enterprise audit are distinct unresolved authority paths. Each page is bounded; SCIM emails and raw audit fields are not echoed.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |

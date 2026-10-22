@@ -46,6 +46,10 @@
 ```
 <!-- bundle-plan:end -->
 
+## 2026-10-22 continuation — governed response and pagination
+
+The existing organization audit + SAML SCIM reads now expose a usable `nextAfter` or `nextBefore` only after inspecting an exact-origin, exact-org, one-cursor GitHub pagination link. No raw URL is returned or followed; unexpected tenant or host, nested audit secrets and unbounded values are refused. SCIM list supports only documented `id`, `userName`, `externalId` and `emails` equality filters from escaped user values, never arbitrary filter expressions. Invalid or stalled page metadata and complex identity fields fail closed. Focused synthetic fixtures exercise all of these without live provider calls. Current GitHub.com enterprise-account audit credential contradiction remains unresolved. These are source changes only, not all of CAP-4.
+
 ## Source and release separation
 
 Plan commit must precede source edits. First implementation reuses scoped I/U read paths and strict target validation; no extra token, secret input/output, unrestricted raw audit log, or provider write. Add focused synthetic unit tests, repository check, then exact-head CI on assembled source. Complete all remaining same-unit gap families before whole CAP-4 counting/merge per repo rules. The local session:bundle/npm runner is unavailable through the current remote-only GitHub session; no bundle-check pass is claimed. Do not use this record to waive a pre-merge gate. No production activation, customer or tenant enrollment, spend, live credential, release or provider mutation is authorized by this card.

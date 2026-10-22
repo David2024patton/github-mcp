@@ -40,6 +40,34 @@ describe('CAP-4 organization audit and SCIM governed reads',()=>{
     expect(w.gh.calls[0].query).toMatchObject({per_page:'5',include:'web',order:'desc'});
     expect(w.gh.invalid).toEqual([]);
   });
+  it('returns an exact-provider reusable audit cursor and never a raw URL',async()=>{
+    const w=await newWorld({profile:'read_only'});
+    const link='<https://api.github.com/orgs/example-org/audit-log?per_page=1&after=after-001>; rel="next"';
+    w.gh.when(R.audit).reply(200,[{action:'org.update',org:'example-org'}],{link});
+    const out=await run(w,'github_org_audit_read',{max:1});
+    expect(out.res.isError).not.toBe(true);
+    expect(out.body).toMatchObject({complete:false,nextAfter:'after-001',nextBefore:null});
+    expect(JSON.stringify(out.body)).not.toContain('https://api.github.com/');
+    const again=await run(w,'github_org_audit_read',{max:1,after:out.body.nextAfter});
+    expect(again.res.isError).not.toBe(true);
+    expect(w.gh.calls[1].query.after).toBe('after-001');
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('refuses foreign/malformed audit cursors and nested secret-bearing event fields',async()=>{
+    for(const link of [
+      '<https://attacker.example/orgs/example-org/audit-log?after=A>; rel="next"',
+      '<https://api.github.com/orgs/foreign-org/audit-log?after=A>; rel="next"',
+      '<https://api.github.com/orgs/example-org/audit-log?after=A&before=B>; rel="next"'
+    ]){
+      const w=await newWorld({profile:'read_only'});
+      w.gh.when(R.audit).reply(200,[{action:'org.update',org:'example-org'}],{link});
+      expect((await run(w,'github_org_audit_read',{max:1})).res.isError).toBe(true);
+    }
+    const w=await newWorld({profile:'read_only'});
+    w.gh.when(R.audit).reply(200,[{action:'org.update',org:'example-org',
+      actor:{token:'ghp_FAKEcredential'}}]);
+    expect((await run(w,'github_org_audit_read')).res.isError).toBe(true);
+  });
   it('rejects foreign audit identity, raw oversized result and incompatible cursors',async()=>{
     for(const events of [
       [{action:'org.update',org:'elsewhere'}],
@@ -70,6 +98,33 @@ describe('CAP-4 organization audit and SCIM governed reads',()=>{
     expect(w.gh.calls[0].path).toBe('/scim/v2/organizations/example-org/Users');
     expect(w.gh.calls[0].query).toMatchObject({count:'1',startIndex:'1'});
     expect(w.gh.calls[0].headers.accept).toBe('application/scim+json');
+  });
+  it('provides bounded SCIM equality filtering, never arbitrary expressions',async()=>{
+    const w=await newWorld({profile:'read_only'});
+    w.gh.when(R.scim).reply(200,{totalResults:1,startIndex:1,
+      itemsPerPage:1,Resources:[id]});
+    const result=await run(w,'github_org_scim_list',{
+      matchField:'userName',matchValue:'alice@example.org',max:1});
+    expect(result.res.isError).not.toBe(true);
+    expect(result.body.complete).toBe(true);
+    expect(w.gh.calls[0].query.filter).toBe('userName eq "alice@example.org"');
+    const bad=await run(w,'github_org_scim_list',{matchField:'emails'});
+    expect(bad.res.isError).toBe(true);
+    expect(w.gh.calls).toHaveLength(1);
+  });
+  it('refuses stalled/inconsistent SCIM pages or nested SCIM values',async()=>{
+    for(const body of [
+      {totalResults:2,startIndex:1,Resources:[]},
+      {totalResults:2,startIndex:1,Resources:[id,id]},
+      {totalResults:1,startIndex:1,Resources:[{...id,displayName:{secret:'x'}}]},
+      {totalResults:1,startIndex:1,itemsPerPage:9,Resources:[id]}
+    ]){
+      const w=await newWorld({profile:'read_only'});
+      w.gh.when(R.scim).reply(200,body);
+      const result=await run(w,'github_org_scim_list',{max:2});
+      expect(result.res.isError).toBe(true);
+      expect(w.gh.calls.every(x=>x.method==='GET')).toBe(true);
+    }
   });
   it('checks exact SCIM subject for single-user read and rejects mismatches',async()=>{
     const w=await newWorld({profile:'read_only'});
