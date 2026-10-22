@@ -1,0 +1,35 @@
+{
+  "subsections": [
+    {
+      "id": "CAP-4",
+      "criteria": [
+        {
+          "criterion": "Every active inventory gap assigned to this unit is implemented or has an explicit provider-evidenced unavoidable disposition, without duplicate names or treating universal discovery as coverage.",
+          "evidence": "CAP-1 inventory source is pinned; this delivery adds eleven exact specialized governance, SCIM, SAML and App-JWT reads/writes with guarded methods, registry/catalog entries and tests. Broad CAP-4 operation-gap closure is NOT yet implemented or proven, so the original criterion remains OPEN."
+        },
+        {
+          "criterion": "Enterprise audit/governance and identity; organization versus enterprise SAML/SCIM/IP policy; security/compliance; packages and registry lifecycle; permission and credential administration; App JWT and integration/event lifecycle; remaining active services are reconciled in approved CAP-4 order.",
+          "evidence": "The organization audit/SCIM/SAML family and owner-bound App JWT read-only configuration/deliveries source have synthetic request/readback/isolation proof. Enterprise principal and enterprise-managed SCIM/IP governance, package upload/download registry protocols, complete credential administration, App JWT write/event lifecycle and remaining active inventory gaps are NOT finished."
+        },
+        {
+          "criterion": "Each supported workflow has exact official API/credential/host/tenant/secret/guard contracts with request-shape, guarded-write, isolation, error, replay/readback and bounded-result proof; real provider/device acceptance remains independently open.",
+          "evidence": "Same-account/foreign-account, SAML revocation, SCIM preview/replay/redaction and synthetic GitHub request-shape checks passed as of exact source head d744edfc8e907547459249aef597dc00a99119ae (Actions 39827031521). New real disposable-PostgreSQL sealed App JWT test is pending exact new-head verification; live owner-provider/device and complete family proof remain OPEN."
+        }
+      ],
+      "remainingEngineering": [
+        "Complete a verified enterprise principal and owner-grant enrollment path, enterprise audit/SCIM/SAML/IP governance and compliance permission matrix; keep disputed enterprise audit bearer contracts unresolved until independently evidenced.",
+        "Implement and verify actual GitHub package registry upload/download and lifecycle streaming, host/size/transport contracts and authentication without pretending REST metadata equals registry publish/pull.",
+        "Complete App JWT authorized write/event lifecycle and remaining operation-specific credential, permission and token administration with exact guarded confirmation and provider readback.",
+        "Reconcile every remaining CAP-1 active operation/workflow row against implemented exact dispatch or provider-evidenced unavailable/retired disposition, with no invented coverage ratio or duplicate handler.",
+        "Complete full synthetic and disposable PostgreSQL source/request-shape/isolation/replay tests, relevant App JWT setup and event semantics, and final independent full-diff security review.",
+        "Run the original frozen CAP-4 bundle comparator successfully on final code and report, along with exact-head CI/release-policy checks, verified mergeability and required review dispositions; retain separate owner-authorized real GitHub and device acceptance."
+      ]
+    }
+  ],
+  "productionAdded": 679,
+  "productionRemoved": 2,
+  "newEngineering": "Eleven connected CAP-4 tools across bounded organization audit, SCIM read/write, SAML SSO authorization inventory/revocation and encrypted-key App JWT owner identity/webhook metadata. Added safe provider cursor projections, new App owner principal matching and encrypted JWT issuance, native dispatch/catalog integration, fail-closed scope and cross-tenant guards, and unit plus disposable PostgreSQL tests.",
+  "planComparison": "The original pre-source plan commit a33d9eeef17a20617f3f2bc1d733d3a008050f46 estimated 600 meaningful production lines for one whole CAP-4 unit. The candidate at d744edfc8e907547459249aef597dc00a99119ae has 679 production additions and 2 removals versus main 473aa9b, computed from src/github and src/tools git compare and excluding tests/docs/helpers. Despite meaningful work, all three original acceptance lines remain unfinished and no completed CAP-4 unit is claimed. The report records that exact unfinished scope rather than rewriting plan boundaries.",
+  "relatedWorkDecision": "Continue work inside the existing open draft CAP-4 PR #277, not a helper-sized merged PR. CAP-3 optional live provider/device verification stays deferred but not waived; PUB-4 #268 owns separate client implementation; CAP-5 is dependent on original CAP-4 and PUB-4. Other provider and production gates remain independent.",
+  "decision": "CONTINUE"
+}
