@@ -50,10 +50,14 @@ describe('CAP-4 SAML authorization inventory and revocation shapes',()=>{
     const {result,body}=await run(w,'github_org_saml_authorizations',{
       owner:'example-org',login:'alice',max:5,page:2});
     expect(result.isError).not.toBe(true);
-    expect(body.authorizations).toEqual([{
+    expect(body.authorizations).toHaveLength(1);
+    expect(body.authorizations[0]).toMatchObject({
       org:'example-org',credential_id:24680,login:'alice',
       credential_type:'OAuth app token',
-      credential_authorized_at:'2026-10-20T10:00:00Z'}]);
+      credential_authorized_at:'2026-10-20T10:00:00Z'});
+    expect(Object.keys(body.authorizations[0]).sort()).toEqual([
+      'credential_authorized_at','credential_authorized_at_local',
+      'credential_id','credential_type','login','org']);
     expect(JSON.stringify(body)).not.toMatch(/PASSWORD|private-ssh-fingerprint|private key|scopes/);
     expect(w.gh.calls).toHaveLength(1);
     expect(w.gh.calls[0].route).toBe(R.list);
