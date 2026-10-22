@@ -30,8 +30,11 @@ const auth=async(c,t,cred)=>{
       throw refusal('The authenticated user is not readable.');
     return {gh,principal:{id:principal.id,login:principal.login}};
   }catch(e){
-    if(cred==='K'&&e?.code==='no_credentials')
+    if(cred==='K'&&e?.code==='no_credentials'){
+      if(typeof c.credentials?.authorizeOptionalRequest==='function')
+        throw refusal('This private member needs a verified notifications token. Ask github_check_permissions for GET /notifications and use that client-specific protected setup link. Never paste a token in chat.');
       throw refusal('Notifications require the optional classic GitHub token (notifications scope); connect it on the Owner Setup page. No token was created.');
+    }
     throw e;
   }
 };

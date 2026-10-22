@@ -5,6 +5,7 @@ import { encryptSecret, decryptSecret, readEncryptionKey } from '../core/crypto.
 import { GithubClientError } from '../github/errors.js';
 import { randomUUID } from 'node:crypto';
 import { verifyGithubBearerIdentity, verifyGithubUserInstallation } from './github-identity.js';
+import {pilotOptionalAad,currentPilotOptionalReadback} from './optional-credentials.js';
 import { userGrantBinding, currentUserGrantBinding } from './credential-binding.js';
 import { resolveDocumentedCredential } from '../github/credential-authority.js';
 import {currentPilotOptionalReadback} from './optional-credentials.js';
@@ -134,6 +135,54 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
       !tenant?.tenantId || !tenant?.identityId)
     throw new TypeError('Private tenant credential scope required.');
   const key=()=>readEncryptionKey(env);
+  // An optional grant is usable only for the previously observed exact harmless
+  // read, not as a generic PAT or an App permission upgrade. Verify active
+  // private member + immutable account/principal binding on every acquisition
+  // AND at each HTTP request. No owner K/P credential can be borrowed.
+  const optionalDenied=()=>new GithubClientError('no_credentials',
+    'This private member has no current verified optional GitHub read grant. Renew it on the protected setup page.');
+  async function currentOptional(accountLogin,kind){
+    if(typeof accountLogin!=='string' ||
+        !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin.toLowerCase())||
+        !['K','P'].includes(kind))throw optionalDenied();
+    const active=await directory.authorizedPilotIdentity(tenant.tenantId,tenant.identityId);
+    if(!active||active.tenantId!==tenant.tenantId||
+      active.identityId!==tenant.identityId||
+      active.membershipRevision!==tenant.membershipRevision||
+      active.pilotRevision!==tenant.pilotRevision)throw optionalDenied();
+    const account=await db.getAccount(accountLogin);
+    const subject=await directory.getPilotVerifiedSubject(tenant.tenantId,tenant.identityId);
+    if(typeof subject!=='string'||!/^[1-9][0-9]{0,18}$/.test(subject)||
+      !Number.isSafeInteger(Number(subject))||
+      account?.login?.toLowerCase()!==accountLogin.toLowerCase())throw optionalDenied();
+    const row=await directory.getPilotOptionalCredential({
+      tenantId:tenant.tenantId,identityId:tenant.identityId,
+      accountLogin:accountLogin.toLowerCase(),kind});
+    const operation=kind==='K'?'GET /notifications':'GET /orgs/{org}/packages';
+    const resource=kind==='K'?'user/'+subject:'org/'+account.account_id;
+    if(!currentPilotOptionalReadback({row,tenant:active,account,subject,
+      kind,operation,resource,now:now()}))throw optionalDenied();
+    return {row,account};
+  }
+  function exactOptionalRequest({kind,account,method,url}){
+    if(method!=='GET' || typeof url!=='string')return false;
+    let parsed;
+    try{parsed=new URL(url,'https://api.github.com');}catch{return false;}
+    if(parsed.origin!=='https://api.github.com'||parsed.username||parsed.password||
+       parsed.hash)return false;
+    if(kind==='K')return parsed.pathname==='/user'||parsed.pathname==='/notifications';
+    if(kind==='P'){
+      const prefix='/orgs/';
+      if(!parsed.pathname.startsWith(prefix)||!parsed.pathname.endsWith('/packages'))
+        return false;
+      const encoded=parsed.pathname.slice(prefix.length,-'/packages'.length);
+      let owner;
+      try{owner=decodeURIComponent(encoded);}catch{return false;}
+      return owner.toLowerCase()===account.toLowerCase()&&
+        /^[a-z0-9][a-z0-9-]{0,38}$/i.test(owner);
+    }
+    return false;
+  }
   return {
     ...base,
     // Diagnostic only: never decrypt a bearer or initiate provider operations.
@@ -177,8 +226,25 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
         grants:optional?[optional]:binding?.operations.includes(operation)?[binding]:[],
         now:now()});
     },
+    async authorizeOptionalRequest({account,kind,method,url}={}){
+      const entry=await currentOptional(account,kind);
+      if(!exactOptionalRequest({kind,account:entry.account.login,method,url}))
+        throw optionalDenied();
+      return true;
+    },
     async token(args={}) {
       const cred=args.cred??'I';
+      if(cred==='K'||cred==='P'){
+        if(args.scope?.repositories?.length||args.scope?.repository_ids?.length||
+            args.scope?.permissions)throw optionalDenied();
+        const {row}=await currentOptional(args.account,cred);
+        try{
+          return decryptSecret(row.access_enc,{
+            aad:pilotOptionalAad({tenantId:tenant.tenantId,
+              identityId:tenant.identityId,accountLogin:args.account,kind:cred}),
+            key:key()});
+        }catch{throw optionalDenied();}
+      }
       // GitHub explicitly limits an App USER token to the intersection of
       // the user's and the App's permissions. An invited member must NEVER
       // inherit an installation-wide I token; route ordinary I-mode tools

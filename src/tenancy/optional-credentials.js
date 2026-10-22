@@ -1,6 +1,7 @@
-// CAP-3 internal-only private K/P enrollment seam. No network route or MCP
-// tool exposes this function. A trusted protected, single-use browser flow is
-// still required before it may be called with a user's optional bearer.
+// CAP-3 internal-only private K/P enrollment primitive. The protected
+// one-use /api/tenant/optional browser form is its sole bearer entry point.
+// A separately scoped runtime adapter decrypts only current enrolled K/P
+// grants; Octokit additionally limits each request to the verified read.
 import {createHash} from 'node:crypto';
 import { encryptSecret, readEncryptionKey } from '../core/crypto.js';
 import { verifyGithubBearerIdentity } from './github-identity.js';
@@ -112,7 +113,8 @@ export async function enrollVerifiedPilotOptionalCredential({
 /** Nonsecret historical observation for the same private member. The directory
  * performs fresh SQL epoch/revocation checks; this function rechecks record,
  * ciphertext fingerprint, account and exact resource before any diagnostic.
- * It NEVER authorizes dispatch or decrypts/replays a bearer. */
+ * By itself it NEVER authorizes dispatch or decrypts/replays a bearer;
+ * the runtime adapter separately revalidates it before an exact-read-only call. */
 export function currentPilotOptionalReadback({
   row,tenant,account,subject,kind,operation,resource,now=Date.now()
 }={}){

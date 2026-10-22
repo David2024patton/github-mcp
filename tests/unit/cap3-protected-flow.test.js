@@ -3,6 +3,8 @@ import {randomUUID,createHash} from 'node:crypto';
 import {issueTenantCredential} from '../../src/tenancy/routed-credential.js';
 import {createPrivateOptionalEnrollment} from '../../src/tenancy/optional-setup.js';
 import {makePrivateOptionalPage} from '../../api/tenant/optional.js';
+import {createTenantScopedCredentials} from '../../src/tenancy/user-authorization.js';
+import {credentialFor,githubFor} from '../../src/github/client.js';
 import {handlers as diagnosticHandlers} from '../../src/tools/server-diagnostics.js';
 import {decryptSecret} from '../../src/core/crypto.js';
 import {pilotOptionalAad} from '../../src/tenancy/optional-credentials.js';
@@ -289,5 +291,107 @@ describe('CAP-3 agent-initiated private diagnostic only exposes registered clien
     const result=await diagnosticHandlers.github_check_permissions({
       account:'fixture-org',operation:'GET /notifications',area:'organization'},ctx);
     expect(result.accounts[0].additional_setup?.url).toBeUndefined();
+  });
+});
+
+
+describe('CAP-3 enrolled private K/P tokens only dispatch exact observed reads',()=>{
+  const authorize=(f)=>{
+    f.directory.getPilotUserAuthorization=vi.fn(async()=>null);
+    const base={token:vi.fn(async()=>{throw Error('Must not borrow owner token');})};
+    const credentials=createTenantScopedCredentials({
+      base,directory:f.directory,tenant:f.tenant,db:f.db,env});
+    return {base,credentials};
+  };
+  it('decrypts only the matching active member K token and gates every HTTP request',async()=>{
+    const f=fixture();
+    const flow=await f.enrollment.start(f.args);
+    await f.enrollment.finish({state:flow.state,action:'save',value:token});
+    const {base,credentials}=authorize(f);
+    expect(await credentials.token({account:'fixture-org',cred:'K'})).toBe(token);
+    expect(base.token).not.toHaveBeenCalled();
+    for(const path of ['https://api.github.com/user',
+      'https://api.github.com/notifications?per_page=100']){
+      expect(await credentials.authorizeOptionalRequest({
+        account:'fixture-org',kind:'K',method:'GET',url:path})).toBe(true);
+    }
+    for(const testCase of [
+      ['PATCH','https://api.github.com/notifications'],
+      ['GET','https://api.github.com/repos/fixture-org/foreign/notifications'],
+      ['GET','https://other.example/notifications'],
+      ['GET','https://api.github.com/orgs/fixture-org/packages'],
+      ['POST','https://api.github.com/graphql']
+    ])await expect(credentials.authorizeOptionalRequest({
+      account:'fixture-org',kind:'K',method:testCase[0],url:testCase[1]}))
+      .rejects.toThrow();
+    await expect(credentials.token({account:'fixture-org',cred:'K',
+      scope:{repositories:['foreign']}})).rejects.toThrow();
+    await expect(credentialFor({connection:{
+      default_account:'fixture-org',accounts:['fixture-org'],
+      profile:'full',pass:true},credentials},{
+      owner:'fixture-org',cred:'K'})).rejects.toThrow();
+    f.grants.get('K').expires_at=new Date(Date.now()-60000);
+    await expect(credentials.token({account:'fixture-org',cred:'K'})).rejects.toThrow();
+    await expect(credentials.authorizeOptionalRequest({
+      account:'fixture-org',kind:'K',method:'GET',
+      url:'https://api.github.com/notifications'})).rejects.toThrow();
+  });
+
+  it('sends an enrolled K/P token only on the audited Octokit read path; denies writes before fetch',async()=>{
+    const f=fixture();
+    const k=await f.enrollment.start(f.args);
+    await f.enrollment.finish({state:k.state,action:'save',value:token});
+    f.changeScope('read:packages');
+    const p=await f.enrollment.start({...f.args,kind:'P'});
+    await f.enrollment.finish({state:p.state,action:'save',
+      value:'ghp_FAKEpackages_same_member'});
+    const {credentials}=authorize(f);
+    const transport=vi.fn(async()=>new Response('[]',{
+      status:200,headers:{'content-type':'application/json'}
+    }));
+    const ctx={
+      credentials,db:{...f.db,getRateState:async()=>null},
+      connection:{default_account:'fixture-org',accounts:['fixture-org'],
+        profile:'read_only',mode:'preview',pass:false},
+      fetch:transport
+    };
+    const kClient=await githubFor(ctx,{owner:'fixture-org',cred:'K'});
+    const beforeK=await kClient.request('GET /notifications',{per_page:1});
+    expect(beforeK.status).toBe(200);
+    expect(transport).toHaveBeenCalledTimes(1);
+    await expect(kClient.request('PUT /notifications',{})).rejects.toThrow();
+    expect(transport).toHaveBeenCalledTimes(1);
+    const pClient=await githubFor(ctx,{owner:'fixture-org',cred:'P'});
+    const beforeP=await pClient.request('GET /orgs/{org}/packages',{
+      org:'fixture-org',package_type:'container'});
+    expect(beforeP.status).toBe(200);
+    expect(transport).toHaveBeenCalledTimes(2);
+    await expect(pClient.request('DELETE /orgs/{org}/packages/{package_type}/{package_name}',{
+      org:'fixture-org',package_type:'container',package_name:'fake'}))
+      .rejects.toThrow();
+    expect(transport).toHaveBeenCalledTimes(2);
+  });
+
+  it('limits optional P to exactly the verified organization packages collection',async()=>{
+    const f=fixture();
+    f.changeScope('read:packages');
+    const flow=await f.enrollment.start({...f.args,kind:'P'});
+    await f.enrollment.finish({state:flow.state,
+      action:'save',value:'ghp_FAKEpackages_same_member'});
+    const {credentials}=authorize(f);
+    expect(await credentials.token({account:'fixture-org',cred:'P'}))
+      .toBe('ghp_FAKEpackages_same_member');
+    expect(await credentials.authorizeOptionalRequest({account:'fixture-org',
+      kind:'P',method:'GET',url:'https://api.github.com/orgs/fixture-org/packages?package_type=container'}))
+      .toBe(true);
+    for(const [method,url] of [
+      ['DELETE','https://api.github.com/orgs/fixture-org/packages/container/image'],
+      ['GET','https://api.github.com/orgs/foreign-org/packages'],
+      ['GET','https://api.github.com/orgs/fixture-org/packages/container/image'],
+      ['GET','https://api.github.com/notifications'],
+      ['GET','https://github.com/orgs/fixture-org/packages']
+    ])await expect(credentials.authorizeOptionalRequest({
+      account:'fixture-org',kind:'P',method,url})).rejects.toThrow();
+    await expect(credentials.token({account:'foreign-org',cred:'P'})).rejects.toThrow();
   });
 });
