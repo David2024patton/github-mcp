@@ -265,10 +265,11 @@ describe('CAP-3 browser one-use state and optional renewal on disposable Postgre
     const attempted=await stateArgs(first,'FAKE_stale_member');
     expect(await directory.createPilotOptionalSetupState({
       ...attempted,pilotRevision:attempted.pilotRevision-1})).toBe(false);
-    const secondCtx=await stateArgs(second,'FAKE_other_workspace');
+    const secondCtx={...(await stateArgs(second,'FAKE_other_workspace')),
+      accountLogin:'cap3-other-workspace'};
     expect(await directory.createPilotOptionalSetupState(secondCtx)).toBe(false);
     await admin.query('INSERT INTO gh_tenant_pilot_bootstraps(identity_id,account_login,tenant_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',
-      [identity,login,second.id]);
+      [identity,secondCtx.accountLogin,second.id]);
     expect(await directory.createPilotOptionalSetupState(secondCtx)).toBe(true);
     const wrongIdentity=await directory.enrollVerifiedGithubSubject('30002');
     expect(await directory.createPilotOptionalSetupState({
