@@ -2,6 +2,7 @@
 // through MCP, query strings, cookies, rendered HTML or error descriptions.
 import {timingSafeEqual} from 'node:crypto';
 import {createPrivateOptionalEnrollment} from '../../src/tenancy/optional-setup.js';
+import {TenantCapacityError} from '../../src/tenancy/runtime-limits.js';
 import {escapeHtml,paramsOf,publicOrigin,send} from '../../src/core/http.js';
 
 const NAME='gh_tenant_optional_state';
@@ -61,7 +62,11 @@ export function makePrivateOptionalPage({
         state:observed,action:p.action,value:p.value});
       res.setHeader('Location',result.destination);
       return res.status(303).end();
-    }catch{
+    }catch(error){
+      if(error instanceof TenantCapacityError){
+        res.setHeader('Retry-After',String(error.retryAfterSeconds));
+        return send(res,429,{error:'rate_limited',description:'This private connection is temporarily busy.'});
+      }
       if(req.method==='POST')res.setHeader('Set-Cookie',CLEAR);
       return send(res,403,{error:'credential_setup_denied',
         description:'This setup was not verified. Restart from your connection.'});

@@ -10,6 +10,7 @@ import {enrollVerifiedPilotOptionalCredential,currentPilotOptionalReadback}
   from './optional-credentials.js';
 import {publicOrigin} from '../core/http.js';
 import {validRedirectUri} from '../core/oauth.js';
+import {admitTenantOAuth} from './runtime-limits.js';
 
 const digest=s=>createHash('sha256').update(s).digest('hex');
 const randomState=()=>randomBytes(32).toString('base64url');
@@ -25,7 +26,7 @@ const isAccount=(row,login,env)=>row?.login?.toLowerCase()===login &&
   row.app_id===Number(env.GITHUB_PILOT_APP_ID);
 
 export function createPrivateOptionalEnrollment({
-  env=process.env,fetchImpl=fetch,
+  env=process.env,fetchImpl=fetch,admitOAuth=admitTenantOAuth,
   directoryFactory=()=>createTenantDirectory(neon(env.DATABASE_URL)),
   tenantAccess=(directory,claim)=>openAuthorizedTenantDb({
     directory,tenantId:claim.tenantId,verifiedIdentityId:claim.identityId,
@@ -53,7 +54,7 @@ export function createPrivateOptionalEnrollment({
       scope.tenant.membershipRevision!==active.membershipRevision)throw denied();
     const client=await scope.db.getOAuthClient(clientId);
     if(!client || !Array.isArray(client.redirect_uris))throw denied();
-    return {claim,directory,tenant:active,db:scope.db,client};
+    return {claim,directory,tenant:active,db:scope.db,client,sql:scope.sql};
   }
   async function start({client_id,account,kind,redirect_uri}={}){
     if(typeof account!=='string'||!LOGIN.test(account)||
@@ -68,6 +69,7 @@ export function createPrivateOptionalEnrollment({
       scope.claim.tenantId,scope.claim.identityId);
     if(!/^[1-9][0-9]{0,18}$/.test(String(subject)) ||
       !Number.isSafeInteger(Number(subject)))throw denied();
+    await admitOAuth(scope.sql,client_id);
     const prior=await scope.directory.pilotOptionalFingerprint({
       tenantId:scope.claim.tenantId,identityId:scope.claim.identityId,
       accountLogin:account,kind});

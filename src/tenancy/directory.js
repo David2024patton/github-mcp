@@ -435,11 +435,8 @@ export function createTenantDirectory(sql) {
           verified_operation=EXCLUDED.verified_operation,verified_resource=EXCLUDED.verified_resource,
           scopes=EXCLUDED.scopes,expires_at=EXCLUDED.expires_at,revoked_at=NULL,
           revision=gh_tenant_optional_credentials.revision+1
-        WHERE ( ${expectedFingerprint}::text IS NOT NULL AND
-          gh_tenant_optional_credentials.cipher_fingerprint=${expectedFingerprint} AND
-          gh_tenant_optional_credentials.revoked_at IS NULL )
-          OR ( ${expectedFingerprint}::text IS NULL AND
-          gh_tenant_optional_credentials.revoked_at IS NOT NULL )
+        WHERE ${expectedFingerprint}::text IS NOT NULL AND
+          gh_tenant_optional_credentials.cipher_fingerprint=${expectedFingerprint}
         RETURNING revision`;
       return rows.length===1;
     },
@@ -470,8 +467,10 @@ export function createTenantDirectory(sql) {
       if(!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||!['K','P'].includes(kind)||
         (expectedFingerprint!==null&&!/^[a-f0-9]{64}$/.test(expectedFingerprint)))return false;
       const rows=await sql`UPDATE gh_tenant_optional_credentials g
-        SET revoked_at=now(),revision=g.revision+1
-        FROM gh_tenants ten,gh_tenant_memberships m,gh_tenant_pilot_allowlist p
+        SET revoked_at=now(),revision=g.revision+1,
+          access_enc='v1.revoked',cipher_fingerprint=repeat('0',64)
+        FROM gh_tenants ten,gh_tenant_memberships m,gh_tenant_pilot_allowlist p,
+          gh_tenant_identities ident,gh_tenant_pilot_bootstraps b
         WHERE g.tenant_id=${t}::uuid AND g.identity_id=${i}::uuid
           AND g.account_login=${accountLogin} AND g.kind=${kind}
           AND g.revoked_at IS NULL
@@ -480,7 +479,9 @@ export function createTenantDirectory(sql) {
           AND ten.id=g.tenant_id AND ten.status='active'
           AND m.tenant_id=ten.id AND m.identity_id=g.identity_id AND m.active
           AND p.tenant_id=ten.id AND p.identity_id=g.identity_id AND p.active
-          AND g.membership_revision=m.revision AND g.pilot_revision=p.revision
+          AND ident.id=g.identity_id AND ident.provider='github'
+          AND ident.provider_subject=g.actor_id::text
+          AND b.tenant_id=g.tenant_id AND b.account_login=g.account_login
         RETURNING g.kind`;
       return rows.length===1;
     },
@@ -664,7 +665,7 @@ export function createTenantDirectory(sql) {
         !Number.isSafeInteger(pilotRevision)||pilotRevision<1||
         (expectedFingerprint!==null&&!/^[a-f0-9]{64}$/.test(expectedFingerprint)))
         throw new TypeError('Invalid optional credential setup.');
-      await ensureOptionalSetupSchema();
+      // Provisioning owns DDL: user GET cannot silently migrate the registry.
       await sql`DELETE FROM gh_tenant_optional_setup_states WHERE expires_at<now()`;
       const rows=await sql`INSERT INTO gh_tenant_optional_setup_states (
         state_hash,tenant_id,identity_id,client_id,account_login,kind,
@@ -706,11 +707,13 @@ export function createTenantDirectory(sql) {
         JOIN gh_tenants ten ON ten.id=g.tenant_id
         JOIN gh_tenant_memberships m ON m.tenant_id=g.tenant_id AND m.identity_id=g.identity_id
         JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=g.tenant_id AND p.identity_id=g.identity_id
+        JOIN gh_tenant_identities ident ON ident.id=g.identity_id
+        JOIN gh_tenant_pilot_bootstraps b ON b.tenant_id=g.tenant_id
         WHERE g.tenant_id=${t}::uuid AND g.identity_id=${i}::uuid
           AND g.account_login=${accountLogin} AND g.kind=${kind}
-          AND g.revoked_at IS NULL AND ten.status='active'
-          AND m.active AND p.active AND m.revision=g.membership_revision
-          AND p.revision=g.pilot_revision`;
+          AND ten.status='active' AND m.active AND p.active
+          AND ident.provider='github' AND ident.provider_subject=g.actor_id::text
+          AND b.account_login=g.account_login`;
       return rows.length===1?{cipher_fingerprint:rows[0].cipher_fingerprint}:null;
     },
 

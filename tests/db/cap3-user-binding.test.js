@@ -289,7 +289,9 @@ describe('CAP-3 browser one-use state and optional renewal on disposable Postgre
         accessEnc,scopes:['notifications'],
         expectedFingerprint,expiresAt:new Date(Date.now()+3600000)});
     const fresh='v1.'+randomBytes(45).toString('hex');
-    expect(await save(fresh)).toBe(true);
+    const tombstone=await directory.pilotOptionalFingerprint({
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'K'});
+    expect(await save(fresh,tombstone?.cipher_fingerprint??null)).toBe(true);
     const old=await directory.pilotOptionalFingerprint({
       tenantId:first.id,identityId:identity,accountLogin:login,kind:'K'});
     expect(old.cipher_fingerprint).toBe(createHash('sha256').update(fresh).digest('hex'));
@@ -303,8 +305,10 @@ describe('CAP-3 browser one-use state and optional renewal on disposable Postgre
       tenantId:first.id,identityId:identity,accountLogin:login,kind:'K',
       expectedFingerprint:latest})).toBe(true);
     expect(await directory.pilotOptionalFingerprint({
-      tenantId:first.id,identityId:identity,accountLogin:login,kind:'K'})).toBeNull();
-    expect(await save('v1.'+randomBytes(45).toString('hex'))).toBe(true);
+      tenantId:first.id,identityId:identity,accountLogin:login,kind:'K'}))
+      .toEqual({cipher_fingerprint:'0'.repeat(64)});
+    expect(await save('v1.'+randomBytes(45).toString('hex'),
+      '0'.repeat(64))).toBe(true);
     expect(await directory.getPilotOptionalCredential({
       tenantId:second.id,identityId:identity,accountLogin:login,kind:'K'})).toBeNull();
   });

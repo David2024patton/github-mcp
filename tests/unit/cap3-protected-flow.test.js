@@ -3,6 +3,7 @@ import {randomUUID,createHash} from 'node:crypto';
 import {issueTenantCredential} from '../../src/tenancy/routed-credential.js';
 import {createPrivateOptionalEnrollment} from '../../src/tenancy/optional-setup.js';
 import {makePrivateOptionalPage} from '../../api/tenant/optional.js';
+import {handlers as diagnosticHandlers} from '../../src/tools/server-diagnostics.js';
 import {decryptSecret} from '../../src/core/crypto.js';
 import {pilotOptionalAad} from '../../src/tenancy/optional-credentials.js';
 
@@ -57,11 +58,15 @@ function fixture(){
       };
       grants.set(row.kind,entry);return true;
     }),
-    getPilotOptionalCredential:vi.fn(async({kind})=>grants.get(kind)||null),
+    getPilotOptionalCredential:vi.fn(async({kind})=>{
+      const found=grants.get(kind);return found?.revoked_at?null:found||null;
+    }),
     revokePilotOptionalCredential:vi.fn(async({kind,expectedFingerprint})=>{
       const value=grants.get(kind);
       if(!value||value.cipher_fingerprint!==expectedFingerprint)return false;
-      grants.delete(kind);return true;
+      grants.set(kind,{...value,access_enc:'v1.revoked',
+        cipher_fingerprint:'0'.repeat(64),revoked_at:new Date()});
+      return true;
     })
   };
   const fetchImpl=vi.fn(async(url,opts)=>{
@@ -74,7 +79,7 @@ function fixture(){
       headers:{get:()=>scopeHeader}};
   });
   const enrollment=createPrivateOptionalEnrollment({
-    env,fetchImpl,directoryFactory:()=>directory,
+    env,fetchImpl,admitOAuth:vi.fn(async()=>{}),directoryFactory:()=>directory,
     tenantAccess:async()=>({tenant,db})
   });
   const args={client_id:client,account:'fixture-org',kind:'K',
@@ -171,12 +176,19 @@ describe('CAP-3 protected private member handoff',()=>{
       state,action:'save',value:'ghp_FAKEnew_member_bearer'});
     expect(renewed.status).toBe('read-observed-at-enrollment');
     expect(f.grants.get('K').cipher_fingerprint).not.toBe(old);
+    const stale=(await f.enrollment.start(f.args)).state;
     state=(await f.enrollment.start(f.args)).state;
     const outcome=await f.enrollment.finish({
       state,action:'revoke',value:'ghp_FAKEnew_member_bearer'});
     expect(outcome.status).toBe('revoked-on-this-service');
-    expect(f.grants.size).toBe(0);
+    expect(f.grants.get('K').access_enc).toBe('v1.revoked');
+    await expect(f.enrollment.finish({state:stale,
+      action:'save',value:token})).rejects.toThrow();
+    expect(await f.directory.getPilotOptionalCredential({kind:'K'})).toBeNull();
     await expect(f.enrollment.finish({state,action:'revoke',value:token})).rejects.toThrow();
+    const fresh=(await f.enrollment.start(f.args)).state;
+    await f.enrollment.finish({state:fresh,action:'save',value:token});
+    expect(f.grants.get('K').revoked_at).toBeUndefined();
   });
 });
 function response(){
@@ -230,5 +242,52 @@ describe('CAP-3 browser POST rejects CSRF, forged Origin and raw-token output',(
     expect(res.statusCode).toBe(303);
     expect(res.headers.location).toBe('https://client.example/return?github_mcp_optional=ok');
     expect(JSON.stringify(res)).not.toContain(token);
+  });
+});
+
+
+describe('CAP-3 agent-initiated private diagnostic only exposes registered client setup',()=>{
+  it('provides a nonsecret, canonical protected handoff before/after scoped readback',async()=>{
+    const f=fixture();
+    const ctx={
+      env,connection:{client_id:f.client,accounts:['fixture-org'],
+        default_account:'fixture-org',profile:'full',mode:'preview'},
+      credentials:{operationAuthority:vi.fn(async()=>({
+        status:'needs-consent',providerExecution:'not-tested'}))},
+      db:{...f.db,listAccounts:async()=>[await f.db.getAccount('fixture-org')]}
+    };
+    const args={account:'fixture-org',operation:'GET /notifications',area:'organization'};
+    const before=await diagnosticHandlers.github_check_permissions(args,ctx);
+    const entry=before.accounts[0];
+    expect(entry.additional_setup).toMatchObject({
+      status:'protected-tenant-setup',kind:'classic_pat',
+      operation:'GET /notifications'});
+    const link=new URL(entry.additional_setup.url);
+    expect(link.origin).toBe(env.PUBLIC_BASE_URL);
+    expect(link.pathname).toBe('/api/tenant/optional');
+    expect(link.searchParams.get('client_id')).toBe(f.client);
+    expect(link.searchParams.get('redirect_uri')).toBe(returnUri);
+    expect(link.toString()).not.toContain(token);
+    ctx.credentials.operationAuthority.mockResolvedValue({
+      status:'verified-for-scope',providerExecution:'not-tested'});
+    const after=await diagnosticHandlers.github_check_permissions(args,ctx);
+    expect(after.accounts[0].additional_setup.status).toBe('renew-or-revoke');
+    expect(after.accounts[0].operation_authority.providerExecution).toBe('not-tested');
+    ctx.db.getOAuthClient=async()=>({redirect_uris:[returnUri,'https://other.example/callback']});
+    const ambiguous=await diagnosticHandlers.github_check_permissions(args,ctx);
+    expect(ambiguous.accounts[0].additional_setup?.url).toBeUndefined();
+    expect(JSON.stringify(ambiguous)).not.toContain(token);
+  });
+  it('never gives signed tenant setup link to a delegated service pass',async()=>{
+    const f=fixture();
+    const ctx={
+      env,connection:{client_id:f.client,accounts:['fixture-org'],
+        default_account:'fixture-org',profile:'full',mode:'preview',pass:true},
+      credentials:{operationAuthority:vi.fn(async()=>({status:'needs-consent'}))},
+      db:{...f.db,listAccounts:async()=>[await f.db.getAccount('fixture-org')]}
+    };
+    const result=await diagnosticHandlers.github_check_permissions({
+      account:'fixture-org',operation:'GET /notifications',area:'organization'},ctx);
+    expect(result.accounts[0].additional_setup?.url).toBeUndefined();
   });
 });
