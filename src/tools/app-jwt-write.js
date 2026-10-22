@@ -6,6 +6,7 @@ import {createHash} from 'node:crypto';
 import {defineGithubWrite} from './define-github-write.js';
 import {ownerOf,refusal} from './github-write.js';
 import {appFor} from './app-jwt-read.js';
+import {takeWriteSlot,assertNotBlocked,recordRate} from '../github/rate.js';
 
 const OWNER={type:'string',minLength:1,maxLength:39};
 const URL_VALUE={type:'string',minLength:12,maxLength:600,
@@ -15,6 +16,18 @@ const R={
   read:'GET /app/hook/config',
   update:'PATCH /app/hook/config'
 };
+// Bare JWT Octokit is intentionally not an installation-token client. Restore
+// the database-shared App write pacing and provider rate-state checks that the
+// ordinary installation client normally provides before EACH App JWT mutation.
+async function appWrite(ctx,app,route,params){
+  const rateKey='github-app-jwt:'+app.appId;
+  await assertNotBlocked(ctx.db,rateKey,'core');
+  await takeWriteSlot(ctx.db,rateKey,{sleep:ctx.sleep});
+  const response=await app.gh.request(route,params);
+  await recordRate(ctx.db,rateKey,response.headers,
+    {status:response.status,now:ctx.now??Date.now});
+  return response;
+}
 function safeUrl(value){
   if(typeof value!=='string'||value.length>600)
     throw refusal('A bounded webhook HTTPS URL is required.');
@@ -78,11 +91,11 @@ export const appWebhookSet=defineGithubWrite({
     if((!requested||requested.hash===b.url_hash)&&
       (a.contentType===undefined||a.contentType===b.content_type))
       throw refusal('Webhook configuration is already set; no write sent.');
-    const {gh}=await appFor({owner:t.owner},ctx);
+    const app=await appFor({owner:t.owner},ctx);
     // Octokit reserves a top-level "url" option as the HTTP destination.
     // Use "data" to serialize the webhook destination into the JSON BODY,
     // keeping the bearer App JWT exclusively on api.github.com.
-    return gh.request(R.update,{data:{
+    return appWrite(ctx,app,R.update,{data:{
       ...(requested?{url:requested.normalized}:{}),
       ...(a.contentType?{content_type:a.contentType}:{})
     }});
@@ -163,8 +176,8 @@ export const appWebhookRedeliver=defineGithubWrite({
     ', notifying HTTPS host '+b.destination+
     '. GitHub can queue without completing it; confirmation requires an independent new retry receipt.',
   apply:async({args:a,ctx,target:t})=>{
-    const {gh}=await appFor({owner:t.owner},ctx);
-    const response=await gh.request(REDO.attempt,{delivery_id:a.deliveryId});
+    const app=await appFor({owner:t.owner},ctx);
+    const response=await appWrite(ctx,app,REDO.attempt,{delivery_id:a.deliveryId});
     if(response.status!==202)throw refusal('GitHub did not confirm a queued App redelivery.');
     return response;
   },
