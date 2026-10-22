@@ -70,7 +70,7 @@ function delivery(d,installationId){
 // One exact stored App owner only. An installation grantee cannot use its
 // installation's app JWT to view GLOBAL app settings or other tenants.
 // A current provider GET /app proves owner id and login before any other call.
-async function appFor(a,ctx){
+export async function appFor(a,ctx){
   if(ctx.connection?.pass===true)
     throw new TypeError('App-owner JWT operations cannot be delegated to service passes.');
   const requested=a.owner??ctx.connection?.default_account;
