@@ -20,6 +20,28 @@ const R={
   remove:'DELETE /scim/v2/organizations/{org}/Users/{scim_user_id}'
 };
 const headers={accept:'application/scim+json'};
+// Only these bounded scalar fields can reach the write journal or replay
+// response. SCIM has arbitrary IdP extensions and contact lists that must
+// never be copied from a provider readback into persistent change history.
+const safeText=(value,label)=>{
+  if(value===undefined||value===null)return null;
+  if(typeof value!=='string'||value.length>512||
+    /[\\x00-\\x1F]/.test(value))
+    throw refusal('GitHub returned an unsafe SCIM '+label+' value.');
+  return value;
+};
+const identityView=d=>{
+  if(d.emails!==undefined&&!Array.isArray(d.emails))
+    throw refusal('GitHub returned invalid SCIM email metadata.');
+  const primary=(d.emails??[]).filter(e=>e?.primary===true);
+  if(primary.length>1)throw refusal('GitHub returned ambiguous SCIM primary email.');
+  return {id:safeText(d.id,'id'),userName:safeText(d.userName,'userName'),
+    active:d.active,displayName:safeText(d.displayName,'displayName'),
+    externalId:safeText(d.externalId,'externalId'),
+    givenName:safeText(d.name?.givenName,'givenName'),
+    familyName:safeText(d.name?.familyName,'familyName'),
+    primaryEmail:safeText(primary[0]?.value,'primaryEmail')};
+};
 const target=(a,c)=>({owner:ownerOf(a,c),scope:'org',kind:'org-scim',
   ...(a.scimUserId?{scimUserId:a.scimUserId}:{})});
 async function client(c,t){
@@ -34,7 +56,7 @@ async function scimGet(c,t,id){
   if(!d||typeof d!=='object'||d.id!==id||typeof d.userName!=='string'||
     !d.userName||typeof d.active!=='boolean')
     throw refusal('GitHub returned an invalid or mismatched SCIM identity.');
-  return d;
+  return identityView(d);
 }
 const exact=(d,a)=>{
   if(!d||d.id!==a.scimUserId ||
@@ -59,7 +81,8 @@ async function matches(c,t,name){
     typeof d.Resources[0]?.userName!=='string' ||
     d.Resources[0].userName.toLowerCase()!==name.toLowerCase()))
     throw refusal('SCIM identity inventory did not match the selected person.');
-  return d.Resources;
+  return d.Resources.map(x=>({id:safeText(x.id,'id'),
+    userName:safeText(x.userName,'userName')}));
 }
 const samePerson=(x,y)=>typeof x==='string'&&typeof y==='string'&&
   x.toLowerCase()===y.toLowerCase();
@@ -102,9 +125,8 @@ export const orgScimProvision=defineGithubWrite({
   verify:({args:a,after:d,before:b})=>b?.existing?.length===0&&
     samePerson(d?.userName,a.userName)&&d.active===true&&
     d.displayName===(a.displayName??a.givenName+' '+a.familyName)&&
-    d.name?.givenName===a.givenName&&d.name?.familyName===a.familyName&&
-    Array.isArray(d.emails)&&d.emails.some(email=>
-      email?.primary===true&&samePerson(email.value,a.primaryEmail))&&
+    d.givenName===a.givenName&&d.familyName===a.familyName&&
+    samePerson(d.primaryEmail,a.primaryEmail)&&
     (!a.externalId||d.externalId===a.externalId),
   inverse:()=>null,
   present:({after:d,target:t})=>({org:t.owner,identity:profile(d),

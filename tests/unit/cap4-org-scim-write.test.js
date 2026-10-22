@@ -117,6 +117,26 @@ describe('CAP-4 SCIM official request shape and negative authority',()=>{
     expect(w.gh.calls.filter(x=>x.route===R.list)[0].query.filter)
       .toBe('userName eq "scim.person-id"');
   });
+  it('persists only projected SCIM fields in the change journal and replay',async()=>{
+    const w=await makeWorld({profile:'full',mode:'production',externalRoutes});
+    arrangeCreate(w.gh,'ok');
+    const firstResult=await run(w,'github_org_scim_provision',{
+      ...createArgs,confirm:true});
+    expect(firstResult.body.status).toBe('applied');
+    const persisted=await w.db.getChange(firstResult.body.logged.id);
+    const recorded=JSON.stringify({before:persisted.before,after:persisted.after});
+    expect(recorded).not.toMatch(/private@work\\.example|https:\\/\\/private\\.example/);
+    expect(persisted.after).toMatchObject({
+      id:SCIM_ID,userName:USER,primaryEmail:USER,
+      givenName:'New',familyName:'Person'});
+    expect(persisted.after.emails).toBeUndefined();
+    const repeat=await run(w,'github_org_scim_provision',{
+      ...createArgs,confirm:true});
+    expect(repeat.body.status).toBe('replayed');
+    expect(JSON.stringify(repeat.body)).not.toContain('private@work.example');
+    expect(JSON.stringify(repeat.body)).not.toContain('https://private.example');
+    expect(readWrites(w)).toHaveLength(1);
+  });
   it('scoped PATCH only changes displayName; full PUT, active=false and arbitrary SCIM paths are unavailable',async()=>{
     const w=await makeWorld({profile:'full',mode:'production',externalRoutes});
     arrangeDisplay(w.gh,'ok');
