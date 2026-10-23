@@ -66,7 +66,7 @@ describe('GitHub client on throwaway Postgres only', () => {
     const b = await githubFor(instance(dbB, gh, []), {});
     const error = await b.request('GET /repos/{owner}/{repo}', { owner: 'example-org', repo: 'hello' }).catch((e) => e);
     expect(error.code).toBe('rate_limited');
-    expect(error.details.reset_display).toMatch(/ M[SD]T$/);
+    expect(error.details.reset_display).toMatch(/ UTC$/);
     expect(gh.calls).toHaveLength(1);
     const [row] = await rawQuery(`SELECT blocked_until > now() AS blocked FROM gh_rate_state WHERE account = 'example-org' AND resource = 'core'`);
     expect(row.blocked).toBe(true);

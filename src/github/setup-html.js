@@ -121,6 +121,8 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
     '<h2>Your own people</h2><p>Comments, reviews and assignments that only reach your own people need no confirmation. These always count: your connected accounts, their organization members, github-actions[bot] and this server\'s own App bots. Add other GitHub names here, separated by commas. Saving replaces this extra list.</p>' +
     (ownPeopleExtra ? `<p><small>Extra names: ${h(ownPeopleExtra.join(', ') || 'none')}</small></p>` : '') +
     form('set-own-people', '<label>Extra names<input name="logins" maxlength="1000" autocomplete="off"></label>', 'Save own people') +
+    '<h2>Time zone</h2><p>Times shown to your assistants use this zone. If none is saved they show in UTC. Use a name like America/Denver.</p>' +
+    form('set-time-zone', '<label>Time zone<input name="zone" maxlength="64" autocomplete="off" placeholder="UTC"></label>', 'Save time zone') +
     unlockSection({ form, login }) +
     (show ? `<h2>Reveal a one-time secret</h2>${form('reveal', '', 'Reveal this one-time secret', hidden('id', show))}` : '') +
     '</body></html>';

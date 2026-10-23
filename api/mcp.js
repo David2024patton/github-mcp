@@ -7,6 +7,7 @@ import { getSecretsRuntime } from '../src/runtime.js';
 import { isPrivateTenantBearer, resolvePrivateTenantMcpBearer } from '../src/tenancy/mcp-route.js';
 import { serverInfo } from '../src/brand/brand.js';
 import { publicOrigin } from '../src/core/http.js';
+import { loadZone, withTimeZone } from '../src/core/time-zone.js';
 import { admitTenantMcp, TenantCapacityError, recordTenantMetric } from '../src/tenancy/runtime-limits.js';
 
 const safeOrigin = () => { try { return publicOrigin(); } catch { return null; } };
@@ -37,11 +38,12 @@ export default async function handler(req, res) {
       await admitTenantMcp(tenantSql, context.clientId);
     }
     const policy = createGithubPolicy();
-    const answer = await createMcpHandler({
+    const zone = await loadZone(db);
+    const answer = await withTimeZone(zone, () => createMcpHandler({
       ...(tenantRoute?{toolSecuritySchemes:tool=>[{type:'oauth2',
         scopes:tool.name==='github_notify_list'?['github.notifications.read']:[]}]}:{}),
       db, registry, toConnection: policy.toConnection, dispatch: createDispatch({ credentials, gates: createGates({ db }) }), serverInfo: serverInfo(safeOrigin())
-    })(req, res);
+    })(req, res));
     eventOutcome = 'ok';
     return answer;
   } catch (error) {

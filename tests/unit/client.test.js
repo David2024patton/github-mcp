@@ -208,7 +208,7 @@ describe('rate discipline (A9)', () => {
     expect(gh.calls).toHaveLength(2);
   });
 
-  it('answers rate_limited with the reset time in Denver time when the wait is longer than the budget', async () => {
+  it('answers rate_limited with the reset time in UTC (the default zone) when the wait is longer than the budget', async () => {
     const { gh, ctx, db, clock } = await setup({ budgetMs: 20_000 });
     gh.when('GET /repos/{owner}/{repo}').replySequence([secondary(90)]);
     const octokit = await githubFor(ctx, {});
@@ -217,7 +217,7 @@ describe('rate discipline (A9)', () => {
     expect(error.code).toBe('rate_limited');
     const until = new Date(clock.t + 90_000);
     expect(error.details).toMatchObject({ reason: 'github_limit', resource: 'core', reset_at: until.toISOString(), reset_display: formatDenver(until) });
-    expect(error.message).toContain('Oct 10, 2026, 6:01 AM MDT'.replace('6:01 AM', '6:01 AM'));
+    expect(error.message).toContain('Oct 10, 2026, 12:01 PM UTC');
     expect(gh.calls).toHaveLength(1); // no retry: 90 s does not fit in 20 s
     // The next request refuses without calling GitHub.
     const again = await (await githubFor(ctx, {})).request('GET /repos/{owner}/{repo}', { owner: 'example-org', repo: 'hello' }).catch((e) => e);

@@ -10,6 +10,7 @@
 // * A public client's secret is stored as a hash; the tenant copy is the hash too.
 // * Authorization codes carry the tenant routing marker `pc.<tenant>.<identity>.<random>`: only a selector. The tenant's
 //   own single-use code row, the client secret hash, PKCE and live membership revisions still decide everything.
+import { validZone, ZONE_SETTING } from '../core/time-zone.js';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { createTenantDirectory, initializeProvisionedTenant, openAuthorizedTenantDb } from './directory.js';
@@ -114,7 +115,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const challenge = createHash('sha256').update(verifier).digest('base64url');
     const stored = await dir.createPublicFlow({ stateHash: sha(state), stage, clientId: client.clientId,
       redirectUri: flow.redirectUri, clientState: flow.clientState ?? null, codeChallenge: flow.codeChallenge,
-      tier: flow.tier, accountLogin: flow.accountLogin ?? null, allowChanges: flow.allowChanges === true,
+      tier: flow.tier, accountLogin: flow.accountLogin ?? null, allowChanges: flow.allowChanges === true, timeZone: flow.timeZone ?? null,
       providerVerifier: stage === 'signin' ? verifier : null, maxOpen: limits.maxOpenFlows, afterInstall });
     if (!stored) throw new PublicConnectError('capacity', 'Too many people are connecting right now. Please try again in a few minutes.');
     if (stage !== 'signin') return { state };
@@ -139,7 +140,8 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const client = await loadClient(p.client_id, p.redirect_uri);
     const tier = p.tier === 'god' ? 'god' : 'standard';
     return await openSignIn({ client, flow: { redirectUri: p.redirect_uri, clientState: p.state, codeChallenge: p.code_challenge,
-      tier, accountLogin: parseAccounts(p.account), allowChanges: p.allow_changes === 'yes' } });
+      tier, accountLogin: parseAccounts(p.account), allowChanges: p.allow_changes === 'yes',
+      timeZone: p.time_zone ? (validZone(String(p.time_zone)) ?? (() => { throw refused(); })()) : null } });
   }
 
   const sameState = (state, browserCsrf) => typeof browserCsrf === 'string' && browserCsrf.length === state.length &&
@@ -243,6 +245,8 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
         verifiedIdentityId: made.identityId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory });
       metricSql = sql;
       await admitTenantOAuth(sql, flow.clientId);
+      // Display-only; a blank choice keeps whatever the person saved before (UTC if nothing).
+      if (flow.timeZone) await db.setSetting(ZONE_SETTING, flow.timeZone);
       const latest = await made.dir.authorizedPilotIdentity(made.tenantId, made.identityId);
       if (!latest) throw refused();
       const expiresIn = Number(data.expires_in ?? 28800);

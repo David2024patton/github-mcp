@@ -1,4 +1,5 @@
 import {describe,it,expect} from 'vitest';
+import {withTimeZone} from '../../src/core/time-zone.js';
 import {registry} from '../../src/tools/index.js';
 import {validateArgs} from '../../src/core/validate.js';
 import {find,digest,newRepo} from '../../src/tools/workflows-find.js';
@@ -71,10 +72,10 @@ describe('W-7 weekly digest uses actual date-bound billed cents',()=>{
   });
   it('separates account scopes and handles month boundaries and Denver DST dates',async()=>{
     const other='personal';const w=fixture({github_whoami:{accounts:[{login:owner,type:'Organization'},{login:other,type:'User'}]},github_billing_get_usage:billing});
-    w.c.connection.accounts.push(other);w.at('2026-11-04T12:00:00Z');const r=await digest({},w.c);
+    w.c.connection.accounts.push(other);w.at('2026-11-04T12:00:00Z');const r=await withTimeZone('America/Denver',()=>digest({},w.c));
     expect(r.accounts).toHaveLength(2);expect(r.accounts[1].pending_invitations.status).toBe('not_applicable');
     const costs=w.calls.filter(x=>x.name==='github_billing_get_usage');expect(costs).toHaveLength(14);expect(new Set(costs.map(x=>x.args.month))).toEqual(new Set([10,11]));expect(costs.filter(x=>x.args.owner===other).every(x=>x.args.scope==='user')).toBe(true);
-    expect(r.period.from_denver).toContain('6:00');expect(r.period.until_denver).toContain('5:00');
+    expect(r.period.from_local).toContain('6:00');expect(r.period.until_local).toContain('5:00');
   });
   it('never turns unreadable, incomplete or wrong-date costs into zero spend',async()=>{
     const invalid=[

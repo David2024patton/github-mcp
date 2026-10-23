@@ -4,6 +4,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { createPublicConnect, PublicConnectError, publicConnectEnabled } from './public-connect.js';
 import { TenantCapacityError } from './runtime-limits.js';
 import { escapeHtml as h, paramsOf, publicOrigin, send } from '../core/http.js';
+import { COMMON_ZONES } from '../core/time-zone.js';
 import { BRAND_CSS, brandHeader, brandFooter } from '../brand/brand.js';
 
 const CSP = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self' https://github.com; base-uri 'none'; frame-ancestors 'none'";
@@ -66,6 +67,7 @@ export async function publicAuthorize(req, res, { env = process.env, ...deps } =
       return page(res, 200, 'Connect GitHub', `<p>Sign in with GitHub to let ${who} use your GitHub through Robinson GitHub MCP. You will not be asked for any password or token here.</p>` +
         `<p><strong>Only continue if you started this from an app you trust.</strong> After GitHub, you will be sent back to <code>${host}</code>.</p>` +
         `<form method="post" action="/api/oauth/authorize">${fields}<input type="hidden" name="form_csrf" value="${csrf}">` +
+        '<label>Your time zone<select name="time_zone">' + COMMON_ZONES.map((z) => `<option value="${h(z)}"${z === 'UTC' ? ' selected' : ''}>${h(z === 'UTC' ? 'UTC (default)' : z.replace('_', ' '))}</option>`).join('') + '</select></label><small>Times your assistant shows you use this zone. Leave it on UTC if you are unsure.</small>' +
         '<label>Accounts to connect (optional)<input name="account" maxlength="400" autocomplete="off" placeholder="leave blank for all"></label>' +
         '<small>Leave blank to connect every account where the GitHub App is installed and you have access: your own, a client\'s, a test account. Or type account names separated by commas.</small>' +
         '<div class="choice"><input type="radio" id="t1" name="tier" value="standard" checked><label for="t1"><strong>Standard</strong><small>Everything that signing in with GitHub alone can unlock. Nothing else to enter.</small></label></div>' +
