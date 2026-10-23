@@ -47,7 +47,7 @@ curated tools with write specifications for the 234 GraphQL mutations the invent
 
 Order: finish the remaining acceptance testing first, then this, then PUB-5. Build it as one whole outcome, not slivers.
 
-- **Simple connect flow for anyone:** Connect, Sign in with GitHub, pick the account, Approve. Mode, profile and tool listing default to safe
+- **Simple connect flow for anyone:** Connect, Sign in with GitHub, pick the account, Approve. Mode, profile and tool listing default to safe **Two tiers (owner design 2026-10-23):** normal sign-in unlocks everything sign-in alone can authorize; an optional "God mode" step on the same screen collects the extra tokens/secrets for the rest. See `docs/DECISIONS.md`.
   choices and move to a settings page. No administrator passphrase for ordinary users. Today's owner form stays for the owner.
   Decided by Chris 2026-10-23: the simple flow is the normal way to connect. Today's owner form (account, mode, profile, tool listing, passphrase)
   becomes development-only: kept for building and testing, not shown to ordinary users, and out of the product's normal path.
@@ -83,3 +83,12 @@ Approach: one public GitHub App, opened gradually. Every item below is part of "
 7. **Gradual opening:** invite-only first (a handful of people), watch errors, cost and support questions, then widen. Each step needs Chris's go-ahead.
 8. **Honest acceptance:** a first-time user on a phone connects, installs the App, adds an extra token and sees tools unlock, checked on real
    devices, plus the load test result, before the setting is switched on.
+
+## Remaining after PUB-6 (named, not built)
+- Make the GitHub App publicly installable and turn on `GITHUB_PUBLIC_CONNECT` (needs Chris's go-ahead; see the rollout plan above).
+- Production confirmation as a separate follow-up step for people who connect WITHOUT ticking "let my assistant make changes" (they can reconnect with it ticked today).
+- Fine-grained-token tenants (God mode currently offers the notifications and package keys).
+- Revoke or delete a stranger's tenant and data by identity (today's revoke tools are keyed by account for the private pilot).
+- Self-host the brand fonts (pages currently use system fonts) and a favicon `.ico`.
+- Move the connector to `github.robinsonaisystems.com` (OAuth callbacks, App settings, existing clients; DNS row on the owner checklist).
+- Real-device acceptance of the new flow (owner checklist, optional).

@@ -6,10 +6,15 @@ import { isTenantRoutedCredential } from '../tenancy/routed-credential.js';
 import { privateTenantToken } from '../tenancy/oauth-token.js';
 import { paramsOf, send } from '../core/http.js';
 import privateTenantAuthorize from '../../api/tenant/oauth/authorize.js';
+import { isPublicClientId } from '../tenancy/public-code.js';
+import { publicConnectEnabled } from '../tenancy/public-connect.js';
+import { publicAuthorize, publicRegister } from '../tenancy/public-http.js';
 
 /** Runs one OAuth handler. Any failure answers 503 with no detail (never SQL, tokens, passphrases or stack text). */
 export async function handleOAuth(which, req, res, { db, env = process.env, consentFactory } = {}) {
   try {
+    // PUB-6 (dark): while GITHUB_PUBLIC_CONNECT is on, registration creates public clients (pcl_), never owner clients.
+    if (which === 'register' && publicConnectEnabled(env)) return await publicRegister(req, res, { env });
     if (which === 'authorize' && ['GET','POST'].includes(req.method)) {
       let params;
       try { params = paramsOf(req); } catch { return send(res, 400, { error: 'invalid_request' }); }
@@ -17,6 +22,7 @@ export async function handleOAuth(which, req, res, { db, env = process.env, cons
       // PRIVATE tenant client must land on GitHub consent there, not the
       // global owner's administrator-passphrase authorization page.
       // Invalid signed clients fail closed; never query the owner DB for them.
+      if (isPublicClientId(params.client_id)) return await publicAuthorize(req, res, { env });
       if (isTenantRoutedCredential(params.client_id))
         return privateTenantAuthorize(req,res,{env,consentFactory});
     }
@@ -25,7 +31,7 @@ export async function handleOAuth(which, req, res, { db, env = process.env, cons
       try { params = paramsOf(req); } catch { return send(res, 400, { error: 'invalid_request' }); }
       // Never try an explicitly tenant-routed client/refresh token against
       // the legacy owner database, even if the marker/signature is invalid.
-      if (isTenantRoutedCredential(params.client_id))
+      if (isTenantRoutedCredential(params.client_id) || isPublicClientId(params.client_id))
         return privateTenantToken(req, res, { env });
       if (isTenantRoutedCredential(params.refresh_token) ||
           isTenantRoutedCredential(params.code))

@@ -1916,7 +1916,27 @@
       ],
       "readiness": "WRITE_CARD_AT_START",
       "ownerInputs": [],
-      "pr": [268]
+      "pr": [
+        268
+      ]
+    },
+    {
+      "id": "PUB-6",
+      "title": "Simple public connect: GitHub sign-in, multi-account, God mode, branded (dark)",
+      "batch": "PUB",
+      "design": "docs/designs/PUBLIC-SCALE.md",
+      "dependencies": [
+        "PUB-4"
+      ],
+      "card": "docs/pr-cards/PUB-6.md",
+      "status": "IN_PROGRESS",
+      "migration": "additive tables gh_public_clients and gh_public_flows",
+      "budget": 900,
+      "units": [
+        "PUB-6"
+      ],
+      "readiness": "READY",
+      "ownerInputs": []
     }
   ],
   "gatewayBoundary": {

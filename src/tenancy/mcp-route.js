@@ -5,6 +5,7 @@
 import { neon } from '@neondatabase/serverless';
 import { createTenantDirectory, openAuthorizedTenantDb } from './directory.js';
 import { isTenantRoutedCredential, verifyTenantCredential } from './routed-credential.js';
+import { isPublicClientId } from './public-code.js';
 import { createCredentials } from '../github/credentials.js';
 import { createTenantScopedCredentials } from './user-authorization.js';
 import { withTenantStorageLimits, withTenantProviderMetrics } from './runtime-limits.js';
@@ -40,23 +41,35 @@ export async function resolvePrivateTenantMcpBearer({
     // The token must be a real tenant-scoped connector issued to exactly
     // this identity, with its registered client also MAC-bound to the same
     // tenant/identity. Arbitrary legacy client IDs never inherit tenant access.
-    const client = grant?.client_id &&
-      verifyTenantCredential(grant.client_id, 'tcl', env);
-    if (!client || client.tenantId !== claim.tenantId ||
-        client.identityId !== claim.identityId ||
-        client.membershipRevision !== claim.membershipRevision ||
-        client.pilotRevision !== claim.pilotRevision) return null;
+    // PUB-6 (dark): a public (pcl_) client has no tenant inside its id. The access token itself is tenant/identity
+    // signed and revision-pinned (checked above); the client must still exist at the root (deleting it is the
+    // emergency lever) and be mirrored in this tenant. Such a connection may span several of the SAME person's
+    // accounts; every one is validated below. Signed (tcl_) clients keep the exact single-account rule.
+    const isPublic = typeof grant?.client_id === 'string' && isPublicClientId(grant.client_id);
+    if (isPublic) {
+      if (!await directory.getPublicClient(grant.client_id) || !await db.getOAuthClient(grant.client_id)) return null;
+    } else {
+      const client = grant?.client_id &&
+        verifyTenantCredential(grant.client_id, 'tcl', env);
+      if (!client || client.tenantId !== claim.tenantId ||
+          client.identityId !== claim.identityId ||
+          client.membershipRevision !== claim.membershipRevision ||
+          client.pilotRevision !== claim.pilotRevision) return null;
+    }
     const selectedAccount = grant.default_account;
-    if (!Array.isArray(grant.accounts) || grant.accounts.length !== 1 ||
-        grant.accounts[0] !== selectedAccount) return null;
-    const account = await db.getAccount(selectedAccount);
-    if (!account || account.credential_kind !== 'app' ||
-        account.installation_status !== 'active' ||
-        !Number.isSafeInteger(account.installation_id) || account.installation_id <= 0 ||
-        !Number.isSafeInteger(account.app_id) ||
-        account.app_id !== Number(env.GITHUB_PILOT_APP_ID) ||
-        (grant.mode === 'production' &&
-          (env.VERCEL_ENV !== 'production' || account.production_enabled !== true))) return null;
+    if (!Array.isArray(grant.accounts) || !grant.accounts.length || grant.accounts.length > 10 ||
+        !grant.accounts.includes(selectedAccount) ||
+        (!isPublic && (grant.accounts.length !== 1 || grant.accounts[0] !== selectedAccount))) return null;
+    for (const login of grant.accounts) {
+      const account = await db.getAccount(login);
+      if (!account || account.credential_kind !== 'app' ||
+          account.installation_status !== 'active' ||
+          !Number.isSafeInteger(account.installation_id) || account.installation_id <= 0 ||
+          !Number.isSafeInteger(account.app_id) ||
+          account.app_id !== Number(env.GITHUB_PILOT_APP_ID) ||
+          (grant.mode === 'production' &&
+            (env.VERCEL_ENV !== 'production' || account.production_enabled !== true))) return null;
+    }
     // Keep transport events in this tenant's validated SQL namespace. Metrics
     // contain no URL, GitHub subject, repository, token or exception text.
     const meteredFetch=withTenantProviderMetrics(sql,fetchImpl);

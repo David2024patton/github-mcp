@@ -113,3 +113,63 @@ export async function verifyGithubUserInstallation(bearer, {
     return false;
   } catch { return false; }
 }
+
+/** PUB-6: the active installations of ONE configured GitHub App that this user's own token can see. Same strict,
+ * exact-endpoint paging as the proof above; an incomplete or inconsistent inventory returns null (refusal), never a
+ * partial list. Only plain facts are returned; the bearer never leaves this function. */
+export async function listUserAppInstallations(bearer, { appId, fetchImpl = fetch } = {}) {
+  if (!Number.isSafeInteger(appId) || appId <= 0) return null;
+  if (typeof bearer !== 'string' || bearer.length < 8 || bearer.length > 4096) return null;
+  const pageSize = 100, maxPages = 20;
+  let total = null, inspected = 0;
+  const seen = new Set(), found = [];
+  try {
+    for (let pageNumber = 1; pageNumber <= maxPages; pageNumber++) {
+      const url = 'https://api.github.com/user/installations?per_page=100' + (pageNumber === 1 ? '' : '&page=' + pageNumber);
+      const response = await fetchImpl(url, { method: 'GET',
+        headers: { accept: 'application/vnd.github+json', authorization: 'Bearer ' + bearer, 'x-github-api-version': '2022-11-28' },
+        signal: AbortSignal.timeout(10000) });
+      if (!response?.ok || response.status !== 200) return null;
+      const result = await response.json();
+      const count = result?.total_count;
+      if (!Number.isSafeInteger(count) || count < 0 || count > pageSize * maxPages ||
+          !Array.isArray(result?.installations) || (total !== null && count !== total)) return null;
+      if (total === null) total = count;
+      const required = Math.min(pageSize, total - inspected);
+      if (result.installations.length !== required) return null;
+      for (const entry of result.installations) {
+        if (!Number.isSafeInteger(entry?.id) || entry.id <= 0 || seen.has(entry.id)) return null;
+        seen.add(entry.id);
+        if (entry.app_id !== appId || entry.suspended_at) continue;
+        const login = entry.account?.login, type = entry.account?.type;
+        if (!Number.isSafeInteger(entry.account?.id) || entry.account.id <= 0 ||
+            typeof login !== 'string' || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(login) ||
+            !['User', 'Organization'].includes(type) ||
+            !['all', 'selected'].includes(entry.repository_selection)) continue;
+        found.push(Object.freeze({ installationId: entry.id, accountId: entry.account.id, login, type,
+          repositorySelection: entry.repository_selection, permissions: entry.permissions ?? {} }));
+      }
+      inspected += required;
+      if (inspected === total) return found;
+    }
+    return null;
+  } catch { return null; }
+}
+
+/** PUB-6: may this signed-in person act for the installation's account? Installation tokens act with the App's own rights,
+ * so a person may only connect their OWN personal account or an organization where GitHub says they are an active ADMIN.
+ * Anything unclear (missing permission, error, mismatch) is a refusal. */
+export async function verifyAccountAuthority(bearer, { installation, subject, fetchImpl = fetch } = {}) {
+  if (!installation || typeof bearer !== 'string' || bearer.length < 8 || bearer.length > 4096) return false;
+  if (installation.type === 'User') return String(installation.accountId) === String(subject);
+  if (installation.type !== 'Organization' || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(String(installation.login))) return false;
+  try {
+    const response = await fetchImpl('https://api.github.com/user/memberships/orgs/' + installation.login, {
+      method: 'GET',
+      headers: { accept: 'application/vnd.github+json', authorization: 'Bearer ' + bearer, 'x-github-api-version': '2022-11-28' },
+      signal: AbortSignal.timeout(10000) });
+    if (!response?.ok || response.status !== 200) return false;
+    const data = await response.json();
+    return data?.state === 'active' && data?.role === 'admin' && data?.organization?.id === installation.accountId;
+  } catch { return false; }
+}

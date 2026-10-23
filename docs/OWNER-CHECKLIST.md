@@ -75,3 +75,7 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 - [ ] **Choose the support contact** (an email address) that appears on the App and the legal pages.
 - [ ] **Decide pricing, if any,** once the cost numbers from the load test exist.
 - [x] **Package token saved and fully tested (done 2026-10-23).** Agents published a throwaway package themselves with a GitHub workflow; read, delete and restore all passed. Nothing more needed from you.
+
+## Added 2026-10-23 (simple connect and the github.robinsonaisystems.com address; blocks nothing now)
+- [ ] **When you are ready to move the connector to `github.robinsonaisystems.com`:** add one DNS record for `github` at Spaceship (your registrar; the value comes from the Vercel project's Domains page, the agent will tell you the exact record). Agents then move the sign-in callbacks and test it before anything is advertised. Until then the current address keeps working.
+- [ ] **Say go** before `GITHUB_PUBLIC_CONNECT` is switched on in production (the simple connect flow is built but off).

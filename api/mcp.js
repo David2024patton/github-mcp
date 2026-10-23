@@ -5,7 +5,11 @@ import { createDispatch } from '../src/tools/dispatch.js';
 import { createGates } from '../src/tools/gates.js';
 import { getSecretsRuntime } from '../src/runtime.js';
 import { isPrivateTenantBearer, resolvePrivateTenantMcpBearer } from '../src/tenancy/mcp-route.js';
+import { serverInfo } from '../src/brand/brand.js';
+import { publicOrigin } from '../src/core/http.js';
 import { admitTenantMcp, TenantCapacityError, recordTenantMetric } from '../src/tenancy/runtime-limits.js';
+
+const safeOrigin = () => { try { return publicOrigin(); } catch { return null; } };
 
 export const config = { api: { bodyParser: true } };
 
@@ -36,7 +40,7 @@ export default async function handler(req, res) {
     const answer = await createMcpHandler({
       ...(tenantRoute?{toolSecuritySchemes:tool=>[{type:'oauth2',
         scopes:tool.name==='github_notify_list'?['github.notifications.read']:[]}]}:{}),
-      db, registry, toConnection: policy.toConnection, dispatch: createDispatch({ credentials, gates: createGates({ db }) }), serverInfo: { name: 'robinson-github-mcp', version: '0.1.0' }
+      db, registry, toConnection: policy.toConnection, dispatch: createDispatch({ credentials, gates: createGates({ db }) }), serverInfo: serverInfo(safeOrigin())
     })(req, res);
     eventOutcome = 'ok';
     return answer;

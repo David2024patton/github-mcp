@@ -11,6 +11,7 @@ import {enrollVerifiedPilotOptionalCredential,currentPilotOptionalReadback}
 import {publicOrigin} from '../core/http.js';
 import {validRedirectUri} from '../core/oauth.js';
 import {admitTenantOAuth} from './runtime-limits.js';
+import {publicAuthCode} from './public-code.js';
 
 const digest=s=>createHash('sha256').update(s).digest('hex');
 const randomState=()=>randomBytes(32).toString('base64url');
@@ -39,12 +40,18 @@ export function createPrivateOptionalEnrollment({
       throw denied();
     return publicOrigin(env);
   }
-  async function scoped(clientId){
+  // PUB-6: a public (pcl_) client has no tenant inside its id. Only server-side callers that already verified the person
+  // pass `hint` (from a single-use stored row); the live membership and revisions are still read and enforced below.
+  async function scoped(clientId,hint=null){
     origin();
-    const claim=verifyTenantCredential(clientId,'tcl',env);
+    const claim=String(clientId).startsWith('pcl_')
+      ? (hint && typeof hint.tenantId==='string' && typeof hint.identityId==='string'
+        ? {tenantId:hint.tenantId,identityId:hint.identityId,membershipRevision:null,pilotRevision:null} : null)
+      : verifyTenantCredential(clientId,'tcl',env);
     if(!claim)throw denied();
     const directory=directoryFactory();
     const active=await directory.authorizedPilotIdentity(claim.tenantId,claim.identityId);
+    if(claim.membershipRevision===null){claim.membershipRevision=active?.membershipRevision;claim.pilotRevision=active?.pilotRevision;}
     if(!active || active.tenantId!==claim.tenantId ||
       active.identityId!==claim.identityId ||
       active.membershipRevision!==claim.membershipRevision ||
@@ -56,12 +63,12 @@ export function createPrivateOptionalEnrollment({
     if(!client || !Array.isArray(client.redirect_uris))throw denied();
     return {claim,directory,tenant:active,db:scope.db,client,sql:scope.sql};
   }
-  async function begin({client_id,account,kind,redirect_uri}={},oauthContext=null){
+  async function begin({client_id,account,kind,redirect_uri}={},oauthContext=null,hint=null){
     if(typeof account!=='string'||!LOGIN.test(account)||
       !Object.hasOwn(OPERATIONS,kind) ||
       typeof redirect_uri!=='string'||!validRedirectUri(redirect_uri))
       throw denied();
-    const scope=await scoped(client_id);
+    const scope=await scoped(client_id,hint);
     if(!scope.client.redirect_uris.includes(redirect_uri))throw denied();
     const row=await scope.db.getAccount(account);
     if(!isAccount(row,account,env))throw denied();
@@ -86,7 +93,7 @@ export function createPrivateOptionalEnrollment({
   }
   // Only the verified provider callback invokes this server-side continuation.
   // Public setup queries cannot supply OAuth state, PKCE or connection settings.
-  const start=args=>begin(args);
+  const start=(args,context=null,hint=null)=>begin(args,context,hint);
   async function startOAuth(flow){
     const context={clientState:flow.clientState,codeChallenge:flow.codeChallenge,
       mode:flow.mode,profile:flow.profile,listing:flow.listing};
@@ -108,7 +115,7 @@ export function createPrivateOptionalEnrollment({
     // Atomic DELETE before provider traffic: no replay after failure.
     const flow=await directory.consumePilotOptionalSetupState(digest(state));
     if(!flow)throw denied();
-    const scope=await scoped(flow.clientId);
+    const scope=await scoped(flow.clientId,{tenantId:flow.tenantId,identityId:flow.identityId});
     if(flow.tenantId!==scope.claim.tenantId||
       flow.identityId!==scope.claim.identityId||
       flow.membershipRevision!==scope.tenant.membershipRevision||
@@ -160,11 +167,22 @@ export function createPrivateOptionalEnrollment({
     destination.searchParams.set('github_mcp_optional',status);
     destination.searchParams.set('github_mcp_operation',OPERATIONS[flow.kind]);
     if(flow.oauthContext){
-      const code=randomState();
+      const code=String(flow.clientId).startsWith('pcl_')?publicAuthCode(flow.tenantId,flow.identityId):randomState();
+      // PUB-6: a public connection may span several of the same person's accounts. Every one is re-checked here.
+      let accounts=[flow.accountLogin];
+      if(String(flow.clientId).startsWith('pcl_') && Array.isArray(o.accounts)){
+        accounts=[...new Set(o.accounts)];
+        if(accounts.length<1||accounts.length>10||!accounts.includes(flow.accountLogin)||
+          !accounts.every(x=>typeof x==='string'&&LOGIN.test(x)))throw denied();
+        for(const login of accounts){
+          const other=await scope.db.getAccount(login);
+          if(!isAccount(other,login,env)||(o.mode==='production'&&other.production_enabled!==true))throw denied();
+        }
+      }
       await scope.db.createAuthCode({code,clientId:flow.clientId,
         redirectUri:flow.redirectUri,codeChallenge:o.codeChallenge,
-        codeChallengeMethod:'S256',defaultAccount:flow.accountLogin,
-        accounts:[flow.accountLogin],mode:o.mode,profile:o.profile,listing:o.listing});
+        codeChallengeMethod:'S256',defaultAccount:accounts[0],
+        accounts,mode:o.mode,profile:o.profile,listing:o.listing});
       const callback=new URL(flow.redirectUri);
       callback.searchParams.set('code',code);
       if(o.clientState!==null)callback.searchParams.set('state',o.clientState);

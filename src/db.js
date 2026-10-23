@@ -597,6 +597,18 @@ export function createDb(sql = productionSql()) {
       await sql`INSERT INTO oauth_clients (client_id, data) VALUES (${clientId}, ${data}::jsonb)`;
     },
 
+    /** PUB-6: copies an already-registered public client into this tenant's own table. Only the secret's hash is
+     * ever known here, never the secret itself. Idempotent; a changed redirect list or secret overwrites. */
+    async mirrorOAuthClient({ clientId, secretHash, redirectUris, clientName, authorizedAccount }) {
+      if (!clientId || !/^[a-f0-9]{64}$/.test(String(secretHash)) || !Array.isArray(redirectUris) || !redirectUris.length ||
+          (authorizedAccount !== null && (typeof authorizedAccount !== 'string' || !/^[A-Za-z0-9-]{1,39}$/.test(authorizedAccount))))
+        throw new TypeError('Invalid OAuth client mirror.');
+      const data = JSON.stringify({ client_secret_hash: secretHash, redirect_uris: redirectUris,
+        client_name: clientName || null, authorized_account: authorizedAccount?.toLowerCase() ?? null });
+      await sql`INSERT INTO oauth_clients (client_id, data) VALUES (${clientId}, ${data}::jsonb)
+        ON CONFLICT (client_id) DO UPDATE SET data = EXCLUDED.data`;
+    },
+
     async getOAuthClient(clientId) {
       const rows = await sql`SELECT client_id, data FROM oauth_clients WHERE client_id = ${clientId}`;
       return rows[0] ? { client_id: rows[0].client_id, ...rows[0].data } : null;

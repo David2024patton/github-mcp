@@ -4,6 +4,7 @@ import {timingSafeEqual} from 'node:crypto';
 import {createPrivateOptionalEnrollment} from '../../src/tenancy/optional-setup.js';
 import {TenantCapacityError} from '../../src/tenancy/runtime-limits.js';
 import {escapeHtml,paramsOf,publicOrigin,send} from '../../src/core/http.js';
+import {publicGodPost,clearGodCookie,publicFailure} from '../../src/tenancy/public-http.js';
 
 const NAME='gh_tenant_optional_state';
 const CLEAR=NAME+'=; Max-Age=0; Path=/api/tenant/optional; HttpOnly; Secure; SameSite=Strict';
@@ -61,6 +62,19 @@ export function makePrivateOptionalPage({
         return renderOptionalForm(res,result);
       }
       const p=paramsOf(req),observed=cookie(req);
+      // PUB-6 (dark): the God-mode page posts here. Its own cookie, handle and checks live in public-http.js.
+      if(p.connect_god==='1'){
+        try{
+          const chosen=await publicGodPost(req,{env});
+          if(chosen.redirect){
+            res.setHeader('Set-Cookie',clearGodCookie());
+            res.setHeader('Referrer-Policy','no-referrer');
+            res.setHeader('Location',chosen.redirect);
+            return res.status(303).end();
+          }
+          return renderOptionalForm(res,chosen.optional,[clearGodCookie()]);
+        }catch(error){ res.setHeader('Set-Cookie',clearGodCookie()); return publicFailure(res,error); }
+      }
       if(String(req.headers?.origin||'')!==publicOrigin(env) ||
         !observed || typeof p.csrf!=='string' ||
         p.csrf.length!==observed.length ||

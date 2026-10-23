@@ -239,6 +239,34 @@ export function createTenantDirectory(sql) {
       )`;
       await sql`ALTER TABLE gh_tenant_oauth_flows
         ADD COLUMN IF NOT EXISTS optional_kind TEXT`;
+      // PUB-6 (dark): public simple-connect. Root-level, additive. A public client
+      // stores only a hash of its secret; flows are short-lived single-use rows.
+      await sql`CREATE TABLE IF NOT EXISTS gh_public_clients (
+        client_id TEXT PRIMARY KEY CHECK (client_id ~ '^pcl_[A-Za-z0-9_-]{32,64}$'),
+        secret_hash TEXT NOT NULL,
+        redirect_uris TEXT[] NOT NULL CHECK (cardinality(redirect_uris) BETWEEN 1 AND 8),
+        client_name TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS gh_public_flows (
+        state_hash TEXT PRIMARY KEY,
+        stage TEXT NOT NULL CHECK (stage IN ('signin','install','god')),
+        client_id TEXT NOT NULL REFERENCES gh_public_clients(client_id) ON DELETE CASCADE,
+        redirect_uri TEXT NOT NULL,
+        client_state TEXT,
+        code_challenge TEXT NOT NULL,
+        tier TEXT NOT NULL CHECK (tier IN ('standard','god')),
+        account_login TEXT,
+        allow_changes BOOLEAN NOT NULL DEFAULT FALSE,
+        after_install BOOLEAN NOT NULL DEFAULT FALSE,
+        provider_verifier TEXT,
+        tenant_id UUID,
+        identity_id UUID,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS gh_public_flows_expires
+        ON gh_public_flows (expires_at)`;
       // This function only accepts server-generated opaque namespaces. Unlike
       // concatenating raw SQL in JS, %I quotes the identifier within PostgreSQL.
       // It is SECURITY INVOKER (no privilege elevation) and has no public HTTP route.
@@ -450,7 +478,7 @@ export function createTenantDirectory(sql) {
             AND m.active=TRUE AND p.active=TRUE AND
             m.revision=${membershipRevision} AND p.revision=${pilotRevision} AND
             ident.provider='github' AND ident.provider_subject=${String(actorId)} AND
-            b.account_login=${accountLogin})
+            (b.account_login=${accountLogin} OR b.account_login='public-connect'))
         ON CONFLICT (tenant_id,identity_id,account_login,kind)
         DO UPDATE SET actor_id=EXCLUDED.actor_id,account_id=EXCLUDED.account_id,
           membership_revision=EXCLUDED.membership_revision,pilot_revision=EXCLUDED.pilot_revision,
@@ -481,7 +509,7 @@ export function createTenantDirectory(sql) {
           AND g.revoked_at IS NULL AND ten.status='active' AND m.active=TRUE AND p.active=TRUE
           AND g.membership_revision=m.revision AND g.pilot_revision=p.revision
           AND ident.provider='github' AND ident.provider_subject=g.actor_id::text
-          AND b.account_login=g.account_login AND
+          AND (b.account_login=g.account_login OR b.account_login='public-connect') AND
           (g.expires_at IS NULL OR g.expires_at>now())`;
       return rows.length===1?rows[0]:null;
     },
@@ -504,7 +532,7 @@ export function createTenantDirectory(sql) {
           AND p.tenant_id=ten.id AND p.identity_id=g.identity_id AND p.active
           AND ident.id=g.identity_id AND ident.provider='github'
           AND ident.provider_subject=g.actor_id::text
-          AND b.tenant_id=g.tenant_id AND b.account_login=g.account_login
+          AND b.tenant_id=g.tenant_id AND (b.account_login=g.account_login OR b.account_login='public-connect')
         RETURNING g.kind`;
       return rows.length===1;
     },
@@ -680,7 +708,7 @@ export function createTenantDirectory(sql) {
       expectedFingerprint=null,oauthContext=null}) {
       const t=validUuid(tenantId),i=validUuid(identityId);
       if(!/^[a-f0-9]{64}$/.test(stateHash)||typeof clientId!=='string'||
-        !clientId.startsWith('tcl_')||
+        !(clientId.startsWith('tcl_')||clientId.startsWith('pcl_'))||
         !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||
         !['K','P'].includes(kind)||typeof redirectUri!=='string'||
         redirectUri.length>2048||
@@ -702,7 +730,7 @@ export function createTenantDirectory(sql) {
           JOIN gh_tenant_pilot_bootstraps b ON b.tenant_id=ten.id
           WHERE ten.id=${t}::uuid AND ten.status='active' AND
             m.identity_id=${i}::uuid AND m.active AND p.active AND
-            b.account_login=${accountLogin} AND
+            (b.account_login=${accountLogin} OR b.account_login='public-connect') AND
             m.revision=${membershipRevision} AND p.revision=${pilotRevision})
         RETURNING state_hash`;
       return rows.length===1;
@@ -737,7 +765,7 @@ export function createTenantDirectory(sql) {
           AND g.account_login=${accountLogin} AND g.kind=${kind}
           AND ten.status='active' AND m.active AND p.active
           AND ident.provider='github' AND ident.provider_subject=g.actor_id::text
-          AND b.account_login=g.account_login`;
+          AND (b.account_login=g.account_login OR b.account_login='public-connect')`;
       return rows.length===1?{cipher_fingerprint:rows[0].cipher_fingerprint}:null;
     },
 
@@ -783,6 +811,87 @@ export function createTenantDirectory(sql) {
         codeChallenge:row.code_challenge,accountLogin:row.account_login,
         mode:row.mode,profile:row.profile,listing:row.listing,
         providerVerifier:row.provider_verifier,optionalKind:row.optional_kind } : null;
+    },
+
+    // ---- PUB-6 public simple-connect (dark; see src/tenancy/public-connect.js) ----
+    /** Returns false when the configured client cap is already reached. */
+    async createPublicClient({ clientId, secretHash, redirectUris, clientName = null, maxClients }) {
+      if (!/^pcl_[A-Za-z0-9_-]{32,64}$/.test(String(clientId)) ||
+          !/^[a-f0-9]{64}$/.test(String(secretHash)) ||
+          !Array.isArray(redirectUris) || redirectUris.length < 1 || redirectUris.length > 8 ||
+          !Number.isSafeInteger(maxClients) || maxClients < 1)
+        throw new TypeError('Invalid public client registration.');
+      const rows = await sql`INSERT INTO gh_public_clients (client_id,secret_hash,redirect_uris,client_name)
+        SELECT ${clientId},${secretHash},${redirectUris}::text[],${clientName}
+        WHERE (SELECT count(*) FROM gh_public_clients) < ${maxClients}
+        RETURNING client_id`;
+      return rows.length === 1;
+    },
+    async getPublicClient(clientId) {
+      if (!/^pcl_[A-Za-z0-9_-]{32,64}$/.test(String(clientId))) return null;
+      const rows = await sql`SELECT client_id,secret_hash,redirect_uris,client_name
+        FROM gh_public_clients WHERE client_id=${clientId}`;
+      const r = rows[0];
+      return r ? { clientId: r.client_id, secretHash: r.secret_hash,
+        redirectUris: r.redirect_uris, clientName: r.client_name } : null;
+    },
+    /** Emergency lever: removing a public client stops every future token for it. */
+    async deletePublicClient(clientId) {
+      const rows = await sql`DELETE FROM gh_public_clients WHERE client_id=${String(clientId)} RETURNING client_id`;
+      return rows.length === 1;
+    },
+    /** Returns false when too many sign-ins are already open (capacity guard). */
+    async createPublicFlow({ stateHash, stage, clientId, redirectUri, clientState = null,
+      codeChallenge, tier, accountLogin = null, allowChanges = false,
+      providerVerifier = null, afterInstall = false, tenantId = null, identityId = null, ttlSeconds = 600, maxOpen }) {
+      if (!/^[a-f0-9]{64}$/.test(String(stateHash)) ||
+          !['signin', 'install', 'god'].includes(stage) ||
+          !['standard', 'god'].includes(tier) ||
+          !/^[A-Za-z0-9_-]{43}$/.test(String(codeChallenge)) ||
+          typeof redirectUri !== 'string' ||
+          (clientState !== null && (typeof clientState !== 'string' || clientState.length > 256)) ||
+          (accountLogin !== null && !/^[a-z0-9][a-z0-9-]{0,38}(,[a-z0-9][a-z0-9-]{0,38}){0,9}$/.test(String(accountLogin))) ||
+          !Number.isSafeInteger(ttlSeconds) || ttlSeconds < 60 || ttlSeconds > 1800 ||
+          !Number.isSafeInteger(maxOpen) || maxOpen < 1)
+        throw new TypeError('Invalid public connection state.');
+      const t = tenantId === null ? null : validUuid(tenantId);
+      const i = identityId === null ? null : validUuid(identityId);
+      await sql`DELETE FROM gh_public_flows WHERE expires_at < now() - interval '1 hour'`;
+      const rows = await sql`INSERT INTO gh_public_flows (state_hash,stage,client_id,redirect_uri,
+          client_state,code_challenge,tier,account_login,allow_changes,after_install,provider_verifier,
+          tenant_id,identity_id,expires_at)
+        SELECT ${stateHash},${stage},${clientId},${redirectUri},${clientState},${codeChallenge},
+          ${tier},${accountLogin},${allowChanges === true},${afterInstall === true},${providerVerifier},
+          ${t}::uuid,${i}::uuid,now() + (${ttlSeconds} * interval '1 second')
+        WHERE (SELECT count(*) FROM gh_public_flows WHERE expires_at > now()) < ${maxOpen}
+        RETURNING state_hash`;
+      return rows.length === 1;
+    },
+    /** Single use: the row is deleted as it is read. */
+    async consumePublicFlow(stateHash, stage) {
+      if (!/^[a-f0-9]{64}$/.test(String(stateHash)) ||
+          !['signin', 'install', 'god'].includes(stage)) return null;
+      const rows = await sql`DELETE FROM gh_public_flows
+        WHERE state_hash=${stateHash} AND stage=${stage} AND expires_at > now()
+        RETURNING client_id,redirect_uri,client_state,code_challenge,tier,account_login,
+          allow_changes,after_install,provider_verifier,tenant_id,identity_id`;
+      const r = rows[0];
+      return r ? { clientId: r.client_id, redirectUri: r.redirect_uri, clientState: r.client_state,
+        codeChallenge: r.code_challenge, tier: r.tier, accountLogin: r.account_login,
+        allowChanges: r.allow_changes, afterInstall: r.after_install, providerVerifier: r.provider_verifier,
+        tenantId: r.tenant_id ? String(r.tenant_id) : null,
+        identityId: r.identity_id ? String(r.identity_id) : null } : null;
+    },
+    /** Self-serve tenants created so far (one per verified identity and account). */
+    async countPilotTenants() {
+      const rows = await sql`SELECT count(*)::integer AS n FROM gh_tenant_pilot_bootstraps`;
+      return rows[0].n;
+    },
+    async findPilotTenant(identityId, accountLogin) {
+      const i = validUuid(identityId);
+      const rows = await sql`SELECT tenant_id FROM gh_tenant_pilot_bootstraps
+        WHERE identity_id=${i}::uuid AND account_login=${String(accountLogin)}`;
+      return rows[0] ? String(rows[0].tenant_id) : null;
     },
 
     /** Privileged owner setup only: list the trusted server-bootstrap tenants

@@ -404,3 +404,14 @@ Device checks (e.g. PUB-4 on phone and desktop) live in `docs/OWNER-CHECKLIST.md
 - ChatGPT on Android works; iPhone and desktop are optional, done only if convenient.
 - Disconnect/reconnect has been exercised many times in real use (account adding, preview-to-production switch).
 - Second GitHub account: only if actually needed. Package token: needs a guided walk-through when he is ready. PUB-5 stays a "much later, optional" item.
+
+## 2026-10-23 — Connect screen has two tiers: normal sign-in and "God mode" (owner design, Chris)
+- **Normal sign-in** (GitHub sign-in, pick account, App install, approve) unlocks **every tool that kind of sign-in can authorize**. No token, secret or passphrase is shown to the user.
+- **God mode** is an option on the same connect screen. It walks the user through adding the extra tokens/secrets (package, notifications, fine-grained, and any later ones) on the protected page only, and unlocks the tools that only those keys allow. Removable at any time; off by default.
+- Every tool's listing says which tier it needs, so the user sees what God mode adds. The owner setup form becomes development-only. Built dark behind a flag; the GitHub App is not made public without Chris's explicit go-ahead. The guided "Unlock more tools" section (PR #319) is the God-mode key page.
+
+## 2026-10-23 — Simple connect is built dark; branding and address (owner, Chris)
+- PUB-6 is built behind `GITHUB_PUBLIC_CONNECT` (default off). One sign-in connects several of the same person's accounts (own, a client's organization, test accounts); separate test people sign in as themselves. Nobody sets an account up first: the server creates each person's isolated tenant on their first GitHub sign-in, and the App install is a one-click GitHub prompt in the flow.
+- Pages and the MCP server icon use the Robinson AI Systems look (colors from `robinsonaisystems.com/assets/brand.css`; system fonts so no outside request). The product icon is the company R mark plus a generic branch badge (`src/brand/`).
+- The planned address is `github.robinsonaisystems.com` (listed in the website repo's `docs/DOMAINS.md`; DNS is at Spaceship). Moving the connector is a separate, tested migration, not done here.
+- **Changes through the public sign-in (2026-10-23):** `docs/AI-PR-READ-FIRST.md` item 9 (production only via the passphrase page) protects the developer's own accounts. Under the owner's end-user-authority decision (2026-10-16) a person who signs in as the owner of their own account (verified: own personal account, or organization admin per GitHub) may switch real changes on for it with a clear tick-box on the sign-in page; every individual change still needs the normal confirm. A plain organization member can never connect that organization.

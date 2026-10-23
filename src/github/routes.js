@@ -4,6 +4,7 @@ import { createSetupHandlers } from './setup-page.js';
 import { createWebhookHandler } from './webhook.js';
 import { getSecretsRuntime } from '../runtime.js';
 import privateTenantCallback from '../../api/tenant/oauth/callback.js';
+import { publicCallback, publicInstallReturn } from '../tenancy/public-http.js';
 
 const ROUTES = { 'setup': 'setup', 'manifest-callback': 'manifestCallback', 'user-callback': 'userCallback' };
 
@@ -19,6 +20,11 @@ export async function handleGithub(action, req, res, { runtime, env = process.en
     // including malformed ones, privately; never retry it through owner auth.
     if(action==='user-callback' && String(req.query?.state||'').startsWith('pt.'))
       return privateTenantCallback(req,res);
+    // PUB-6 (dark): the simple public connect flow's own marked states; never retried through owner auth.
+    if(action==='user-callback' && String(req.query?.state||'').startsWith('pc.'))
+      return await publicCallback(req,res,{env});
+    if(action==='setup' && String(req.query?.state||'').startsWith('pc.'))
+      return await publicInstallReturn(req,res,{env});
     const { db, credentials, oneTimeStore } = runtime ?? await getSecretsRuntime({ env, fetch });
     const handlers = createSetupHandlers({ db, credentials, oneTimeStore, env, fetch });
     res.setHeader('Cache-Control', 'no-store');
