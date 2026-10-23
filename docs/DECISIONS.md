@@ -382,3 +382,14 @@ Dispatch additionally refuses a workflow file that differs on the test branch fr
 
 
 **2026-10-22 — private K/P are usable only for exact observed harmless reads, never general bearer delegation.** An otherwise valid private-member classic token is not equivalent to App installation/user authorization. The tenant-scoped adapter verifies member epochs, bound account, numeric human and encrypted record before decrypting K/P; the shared Octokit request boundary checks *each outgoing expanded URL and HTTP method*, permitting only K identity + notifications GET or P the exact connected org packages collection GET. Deny all optional-token writes, GraphQL, other account/org/repository routes and service passes, including when the underlying GitHub PAT carries broader provider scope. Ordinary owner K/P and tenant App I/U behavior remains unchanged. Historic enrollment observation is not a live assertion; current provider 401/403 remains a refusal, never cause to fall back to another token.
+
+## 2026-10-22 — Instructions simplified (owner request, Chris)
+
+AGENTS.md had grown to 534 lines over 31 edits (Oct 10–21) and carried contradictory or drag-causing rules: bundle/
+subsection/line-count accounting with "zero credit for partial work", whole-unit-or-nothing merging (long-lived draft PRs
+such as CAP-4 and PUB-4), inventory-row counts as completion obligations, acceptance queue coupled to development,
+polling bans beside bounded waits, and "no docs-only PR" beside repeated docs repairs. Replaced with a ~200-line file
+with an explicit finish line (development never waits for acceptance; merge finished pieces; new scope needs Chris;
+inventory rows without a dedicated tool are backlog; counts are diagnostics). All hard limits and owner decisions were
+carried over unchanged. Old text: `docs/archive/AGENTS-2026-10-22-before-simplification.md` and
+`docs/archive/SESSION-START-2026-10-22-before-simplification.md`. No code, script, CI or release-policy change.

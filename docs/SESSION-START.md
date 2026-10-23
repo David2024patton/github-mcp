@@ -22,115 +22,22 @@ An actual execution limit gets an explicit incomplete recoverable checkpoint, ne
 a completion claim. Preserve every real safety, spending, release and approval gate.
 
 
-## Bundle target and delivery boundaries — product completion correction 2026-10-15
+## Scope of a session (simplified 2026-10-22)
 
-“Do N bundles” sets substantial NEW completion workload inside the approved plan.
-It starts the repository's WHOLE workflow, not just coding. Perform every currently
-eligible authorized session obligation in its existing priority/dependency order:
-acceptance catch-up, unfinished/concurrent work, verification, reviews, safe merges,
-authorized release procedures, cleanup and permanent records. Reaching N never
-excuses another ready obligation. Preserve every actual gate and release restriction.
+The current owner prompt sets the scope ("do N bundles" means N substantial finished outcomes, nothing more).
+There is no standing quota, no line-count or subsection-count target, and no "zero credit for partial work" rule.
+Those figures in older cards and `npm run session:bundle` output are advisory planning aids; the full text of the
+retired rules is in `docs/archive/SESSION-START-2026-10-22-before-simplification.md`.
 
-Default ENGINEERING bundles retain the normal guide: 2–5 complete original batch
-subsections and 400–800 meaningful production lines, excluding tests/docs/generated
-or mechanical churn. Larger coherent work and substantial single-subsection exceptions
-remain valid. Small helpers/remainders contribute to the same bundle; no padding,
-recounting old code, invented subcards or repeated full publication per helper.
+- Pick the highest-priority eligible card, state its observable result and finite acceptance, and build the
+  coherent piece that delivers it. Split a card that is too large for one safe, reviewable PR into independently
+  useful PRs; merge each when its own acceptance is met. Do not hold finished work as a long draft.
+- Do not invent features, cards or sub-cards to reach a number, and do not relabel work to change a count.
+- Acceptance (real-account checks) runs when its prerequisite exists and is recorded once in the existing ledger; a
+  blocked row never stops development or merges. When code work is exhausted, a session may be spent on genuinely new
+  acceptance evidence; a repeated permission-denied probe, audit or reused pass is not progress.
+- Every real safety, spending, release and approval gate in `AGENTS.md` still applies.
 
-When eligible code work is exhausted, do not invent features to create more lines.
-A COMPLETION bundle may instead finish substantial previously unmet original
-configuration, integration, deployment verification or real acceptance criteria,
-possibly with zero production lines. A checklist, audit, repeated permission-denied
-probe, isolated read, waiting or reused pass counts zero. New genuine evidence and
-substantive workload review are required. Acceptance remains mandatory regardless of
-whether it counts: count a substantial outcome once only if explicitly planned as a
-completion bundle, then handle ALL other ready obligations too. No double credit.
-
-Resolve uncertain original criteria once against actual source/callers/tests and
-retain exact evidence in the existing card/status. A MERGED label or zero-ahead
-candidate branch does not prove real acceptance; it also does not justify rewriting
-working code. Reopen affected criteria only for relevant changes/failure evidence.
-Date/professional/provider gates restrict their named real operation, not eligible
-design, inactive implementation or synthetic proof. Never call missing code external.
-Only dependencies already designated optional are optional; actual prerequisites and
-publication gates remain binding. No new phase/scope request until the approved
-requirements and current blockers have been concretely reconciled.
-
-### Freeze one finite outcome, then compare
-
-Use the existing selected execution card, not another roadmap. Preserve one fenced
-`json` object between `<!-- bundle-plan:start -->` and `<!-- bundle-plan:end -->`.
-Common fields: `baseRevision` (full current HEAD), `outcome`, `integrationBoundary`,
-`newEngineering`, `estimatedProductionLines`, `relatedWorkDecision`, `subsections`.
-Each subsection names its existing `id`, full original `acceptance` strings and
-`remainingEngineering` strings. ENGINEERING is the default; keep its existing scope,
-whole-subsection, focused-development/full-publication and independent review rules.
-
-For `workKind: "COMPLETION"`, state explicitly when no code is needed in
-`newEngineering`; `estimatedProductionLines` may be 0. Each subsection has
-`remainingEngineering: []`, a nonempty `remainingWork` list, and `acceptanceTasks`
-listing its precise EXISTING queue IDs. The plan also has root `acceptanceTasks`
-listing their distinct union. These mappings preserve the full original outcome;
-they do not create or approve scope. Existing authorizations are checked per operation.
-
-Run `npm run session:bundle -- --card docs/EXISTING-CARD.md`, commit that local plan
-before the work and retain its SHA. This is a checkpoint within the substantive
-outcome PR, not a separate planning PR, permission stop or new owner burden.
-Already-started sessions keep honest transition evidence; never invent past plans.
-
-Delivery JSON has `subsections` with identical IDs, `criteria` entries in original
-order (`criterion` exact original text, `evidence` concrete proof), and explicit
-`remainingEngineering` lists. COMPLETION also has `remainingWork` per subsection.
-Include actual `productionAdded`, `productionRemoved`, `newEngineering`,
-`planComparison`, `relatedWorkDecision` and `decision`. Use `CONTINUE` if incomplete;
-`SUBSTANTIAL` when at guide; otherwise `SUBSTANTIAL_EXCEPTION` with concrete
-`exceptionEvidence` of substantial NEW work. Zero-code completion requires that
-explicit substantive review. Never rewrite the plan around a smaller delivery.
-
-Commit sanitized actual acceptance results in the existing permanent ledger, then run
-`npm run session:bundle -- --card docs/EXISTING-CARD.md --planned-at FULL_SHA
---report /tmp/bundle-delivery.json`. COMPLETION verifies each selected task changed
-from not-passed at baseline/planning to PASSED in committed HEAD, with new evidence
-and unchanged source pin, requirements, prerequisites and approvals. Existing approved
-IDs must be approved at baseline and delivery; optional/planned/proposed work cannot
-become authorized by changing its label. Pending dependencies refuse completion.
-Uncommitted claims, old passes and merely accessing a checklist cannot satisfy it.
-
-Publish real evidence through the normal PR/CI/review gates; a substantial genuine
-acceptance artifact may be the outcome without application-code changes. This permits
-evidence publication, not filler documentation-only PRs. Rerun comparison on actual
-merged main at closeout. Rechecking one claim never creates another bundle. Keep
-counts/proof in the existing card/handoff, all N outcomes distinct. The helper is
-accounting only: not permission, truth attestation, CI/review or a bundle certificate.
-
-The owner may instead request “Finish the approved project.” Then original product
-completion criteria set the target; do not manufacture a bundle count. Continue
-through eligible obligations and ask exact missing owner input in the active chat.
-If N cannot be met, continue independent authorized work, then report incomplete
-with each investigated blocker, attempted remedy, responsible party, exact needed
-action and re-entry trigger. A clean checkpoint, elapsed minutes, main ahead of live
-or inability to find 400 lines is not a blocker. Keep actual execution-limit recovery
-checkpoints and every security, spending, activation, production and fixture safeguard.
-This owner-requested workflow maintenance claims zero product bundles.
-
-## Count complete predefined batch subsections
-
-Follow AGENTS' **Bundle, card and PR boundaries** rule. Choose related whole
-cards for a coherent outcome before coding; a card is not a mandatory separate
-PR. The current owner bundle count measures those completed outcomes, not PRs.
-No 500/800-line ceiling, one-risk-area rule or one-migration quota forces smaller
-PRs. Preserve each actual guard, approval, migration-order and test requirement;
-justify any delivery split and count the full bundle once, after all parts merge.
-
-The PR workload target is 2–5 whole predefined batch subsections on average,
-using the existing roadmap/design IDs such as H-3 or B-5. Technical slices,
-functions, tools, UI hookups, guards and packet checklist tasks are internal
-implementation steps, not countable batch subsections. List the subsection IDs
-and full scope before coding. Partial subsections count zero; count each once
-when eligible engineering and required pre-merge proof are complete, with
-external acceptance tracked separately. Use focused checks while building,
-then the full required gates on the substantial assembled PR. See the governing
-instructions' **PR workload is measured in predefined batch subsections** rule.
 
 ## 0. Reconcile and recover
 
@@ -156,6 +63,8 @@ alone is insufficient. Run `npm run session:status -- --deployed FULL_SHA --stat
 with those observations, or use the same ledger and exact GitHub compare/deployment
 evidence manually when no shell is available. The command is read-only: it does not
 execute acceptance, release software or authorize provider operations.
+
+Acceptance never blocks development (owner, 2026-10-22): do the eligible checks quickly, record deferrals once, then move on to implementation and merges.
 
 Evaluate EACH outstanding check against its required revision in deployed ancestry.
 Main/live equality is never a global acceptance prerequisite. Perform every currently

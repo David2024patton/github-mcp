@@ -53,6 +53,9 @@ New draft #277 source adds exact GitHub.com organization audit cursor extraction
 ## 2026-10-22 — CAP-4 approved source continuation, private-device acceptance deferred
 
 Owner explicitly requested deferring CAP-3 real-client/provider acceptance while proceeding with CAP-4/CAP-5 eligible source work. Frozen original CAP-4 one-unit plan is on feature branch `ai/chatgpt/cap-4-governance-identity-20261022`, planned at `a33d9eeef17a20617f3f2bc1d733d3a008050f46`; its complete enterprise/governance/registry/integration scope is **IN PROGRESS (zero whole CAP-4 acceptance credit)**. First guarded organization audit + SAML-SSO SCIM read seam uses existing I scoped actor (new token kinds and enterprise principal deliberately not inferred), projects only bounded fields, returns incomplete paginations, and preserves provider 403/404 rather than manufacturing unavailable-on-plan. Exact official 2026-03-10 API contracts and unresolved enterprise-audit credential contradiction are in `docs/pr-cards/CAP-4.md`. No live tenant, credential, provider write, spend, source merge, plugin publication or release. The current remote-only GitHub session cannot run the local `session:bundle` runner; strict plan comparison and exact-head CI are still required before any merge. CAP-5 external acceptance cannot complete until CAP-4 and PUB-4.
+## 2026-10-22 — instructions simplified (owner request)
+
+AGENTS.md (534 → ~200 lines) and the bundle section of SESSION-START replaced with a finish-line policy: development never waits for acceptance, finished pieces merge, new scope needs Chris, un-curated inventory rows are backlog, counts are diagnostics. All hard limits/owner decisions kept; old text archived under docs/archive/. No code or CI change. Open work unchanged: CAP-4 #277 (green draft, split into mergeable pieces next), PUB-4 #268 (needs real device acceptance), CAP-5 not started.
 
 ## 2026-10-22 — private bootstrap HTTP namespace recovery
 
