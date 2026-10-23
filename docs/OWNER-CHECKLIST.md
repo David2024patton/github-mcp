@@ -68,3 +68,9 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 - [ ] **Optional, only if really needed: a second GitHub account** (a throwaway you control) to finish the collaborator-invitation test (H3). Agents will say if it is the last thing blocking a result.
 - [ ] **Package token — needs a walk-through.** When you are ready, tell the agent "walk me through the package token" and it will guide you one small step at a time. Blocks nothing.
 - The Hub is not a checklist item. The Hub finds and connects to this server; our only job is to keep following the Hub's published spec (`docs/HUB-COMPATIBILITY.md`). No Hub-run tests are tracked here.
+
+## Later, for the public launch (approved 2026-10-23; blocks nothing now)
+- [ ] **Read and approve the terms of service and privacy policy** the agent drafts, and have a lawyer look at them before launch.
+- [ ] **Say go** before the GitHub App is switched to "installable by any account", and before each widening of the invite list.
+- [ ] **Choose the support contact** (an email address) that appears on the App and the legal pages.
+- [ ] **Decide pricing, if any,** once the cost numbers from the load test exist.
