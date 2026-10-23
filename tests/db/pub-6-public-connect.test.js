@@ -243,6 +243,21 @@ describe('PUB-6 public simple connect (dark) in REAL PostgreSQL', () => {
     expect(named.redirect).toContain(CB);
   });
 
+  it('ends the redirect chain with a small page, because Chrome blocks a chain from our form to another site', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const started = await c.start(authorizeParams(client));
+    const done = await call((req, res) => publicCallback(req, res, { env, connect: c }),
+      request('GET', { state: started.csrfState, code: 'alice-fixture-code-1' }, { cookie: 'gh_public_state=' + started.csrfState }));
+    expect(done.statusCode).toBe(200);
+    expect(done.headers.Location).toBeUndefined();
+    const target = /http-equiv="refresh" content="0;url=([^"]+)"/.exec(done.body)?.[1]?.replaceAll('&amp;', '&');
+    expect(target).toContain(CB);
+    expect(new URL(target).searchParams.get('code')).toBeTruthy();
+    expect(done.body).toContain('Continue');
+    expect(done.headers['Referrer-Policy']).toBe('same-origin'); // nothing is sent to the other site
+  });
+
   it('rejects a mismatched browser cookie before any GitHub request, and unknown or revoked clients', async () => {
     const c = make();
     const client = await c.registerClient({ redirect_uris: [CB] });
