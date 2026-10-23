@@ -31,14 +31,18 @@ export async function readActionSections(gh,p){
   const pre='/repos/{owner}/{repo}',base=root(p);
   const main=await get(gh,pre+actionsRoutes.actions,base);
   const workflow=await get(gh,pre+actionsRoutes.workflow,base);
-  const fork=await get(gh,pre+actionsRoutes.fork,base);
+  // GitHub answers HTTP 422 for the fork-approval setting on private repositories (it only exists for public ones,
+  // observed live 2026-10-23); that is "not applicable", not a failure of the whole Actions policy read.
+  let fork=null,forkNotApplicable=false;
+  try{fork=await get(gh,pre+actionsRoutes.fork,base);}
+  catch(error){if(error?.status===422)forkNotApplicable=true;else throw error;}
   const retention=await get(gh,pre+actionsRoutes.retention,base);
   let selected=null;
   if(main?.allowed_actions==='selected')selected=await get(gh,
     pre+actionsRoutes.selected,base);
   if(typeof main?.enabled!=='boolean'||!main?.allowed_actions||
     !workflow?.default_workflow_permissions||
-    !(['all_external_contributors','first_time_contributors',
+    !(forkNotApplicable||['all_external_contributors','first_time_contributors',
       'first_time_contributors_new_to_github'].includes(fork?.approval_policy)||
       Number.isInteger(fork?.approval_policy))||!Number.isInteger(retention?.days))
     throw new TypeError('GitHub Actions policy returned incomplete required fields.');
@@ -48,7 +52,7 @@ export async function readActionSections(gh,p){
     workflow:{default_workflow_permissions:workflow.default_workflow_permissions,
       can_approve_pull_request_reviews:workflow.can_approve_pull_request_reviews??null},
     selected:main.allowed_actions==='selected'?selection(selected):null,
-    fork:{approval_policy:fork.approval_policy},
+    fork:forkNotApplicable?{approval_policy:null,not_applicable:'GitHub has no fork-approval setting for this (private) repository.'}:{approval_policy:fork.approval_policy},
     retention:{days:retention.days,maximum_allowed_days:retention.maximum_allowed_days??null}
   };
 }

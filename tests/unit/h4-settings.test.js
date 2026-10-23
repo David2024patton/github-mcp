@@ -193,6 +193,16 @@ describe('H-4 security feature and Actions policy safety',()=>{
       can_approve_pull_request_reviews:false});
     expect(w.gh.invalid).toEqual([]);
   });
+  it('reads a private repository whose fork-approval setting GitHub answers with 422',async()=>{
+    const w=await makeWorld({mode:'preview',profile:'full'});
+    arrangeWorkflow(w.gh,'ok');
+    // Observed on real GitHub 2026-10-23: the setting exists only for public repositories.
+    w.gh.when(routes.fork).reply(422,{message:'Validation Failed'});
+    const a=await call(w,'github_actions_get_settings',{repo:'hello'});
+    expect(a.retention.days).toBe(30);
+    expect(a.fork.approval_policy).toBeNull();
+    expect(a.fork.not_applicable).toMatch(/private/);
+  });
   it('read policy failure never turns into invented defaults',async()=>{
     const w=await makeWorld({mode:'preview',profile:'full'});
     arrangeWorkflow(w.gh,'ok');
