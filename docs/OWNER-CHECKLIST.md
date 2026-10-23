@@ -23,8 +23,13 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 
 ## B2. Give the agent a working connection to your deployed server (lets agents run the real-account tests for you)
 
-- [ ] **Only if the agent says it has no saved connection:** it will tell you exactly which sign-in screen to open.
-      You click "Allow" once; after that agents re-use the saved connection and never ask again. (`docs/pr-cards/DEVELOPER-CONNECTION.md`)
+- [ ] **Add the server as a connector in Claude (simplest; one time, about two minutes).** claude.ai → Settings →
+      Connectors → Add custom connector. Address: `https://github-mcp-chris-projects-de6cd1bf.vercel.app/api/mcp`.
+      Click Connect, enter your administrator passphrase on the server's own sign-in page and choose **preview** mode
+      (safe: no production writes, no spending). Then start a NEW chat or session and say "run the acceptance checks"; the
+      agent there can use the GitHub tools directly. Background: the agent's cloud workspace cannot reach your server by
+      itself, and the environment refused reading the saved sign-in from the Hub's Vercel settings, so the connector is
+      the clean route. Until then the 56 real-account checks wait; development is not blocked.
 
 ## B3. Things that cannot be tested until you have them
 
