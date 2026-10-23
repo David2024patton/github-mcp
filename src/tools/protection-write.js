@@ -143,8 +143,14 @@ const read=async(a,ctx,t)=>{
 };
 // A first-time protection sends only the flags it names; GitHub then reports every other flag at its default (false). Those extra, default-off flags are
 // accepted; any flag we did not send that is ON, and any difference in a field we did send, still fails verification.
-const verifySnapshot=(expected,actual)=>{
+// app_id -1 means "any app"; GitHub reads it back as null, which `reads` turns into "no app_id". Treat the two as the same when verifying.
+const anyApp=(v)=>v&&v.required_status_checks
+  ?{...v,required_status_checks:{...v.required_status_checks,
+    checks:v.required_status_checks.checks.map(q=>q.app_id===-1?{context:q.context}:q)}}
+  :v;
+const verifySnapshot=(expectedRaw,actual)=>{
   if(!actual)return false;
+  const expected=anyApp(expectedRaw);
   const got=reads(actual);
   for(const k of Object.keys(got)){
     if(k in expected){if(!isDeepStrictEqual(expected[k],got[k]))return false;}
