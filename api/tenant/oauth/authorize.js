@@ -19,7 +19,8 @@ const clear='gh_tenant_pilot_form=; Max-Age=0; Path=/api/tenant/oauth; HttpOnly;
 const choices=(name,items)=>'<label>'+escapeHtml(name)+
   '<select name="'+name+'">'+items.map(v=>'<option value="'+v+'">'+escapeHtml(v)+'</option>').join('')+'</select></label>';
 
-export default async function privateTenantAuthorize(req,res,{env=process.env}={}){
+export default async function privateTenantAuthorize(req,res,{env=process.env,
+  consentFactory=createPrivateGitHubConsent}={}){
   res.setHeader('Cache-Control','no-store');
   if(!['GET','POST'].includes(req.method)){
     res.setHeader('Allow','GET, POST');
@@ -33,6 +34,10 @@ export default async function privateTenantAuthorize(req,res,{env=process.env}={
     // client. This does not grant access; registration and provider proof do.
     if(!verifyTenantCredential(p.client_id,'tcl',env)) return refuse(res);
     if(req.method==='GET'){
+      // A signed, but revoked or unregistered client may NOT display a plausible
+      // GitHub sign-in screen. Verify live tenant membership, client redirect
+      // and the exact GitHub App account before displaying consent choices.
+      const inspected=await consentFactory({env}).inspect(p);
       const csrf=fresh();
       res.setHeader('Set-Cookie',cookieName+'='+csrf+
         '; Max-Age=600; Path=/api/tenant/oauth; HttpOnly; Secure; SameSite=Strict');
@@ -40,7 +45,7 @@ export default async function privateTenantAuthorize(req,res,{env=process.env}={
       res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
       res.setHeader('Referrer-Policy','same-origin');
       const fields=hidden.map(k=>'<input type="hidden" name="'+k+'" value="'+escapeHtml(p[k]??'')+'">').join('');
-      const modes=env.VERCEL_ENV==='production'?['preview','production']:['preview'];
+      const modes=env.VERCEL_ENV==='production' && inspected.productionAllowed?['preview','production']:['preview'];
       const html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
         '<title>Connect GitHub by Robinson AI Systems</title><style>body{font:16px system-ui,sans-serif;max-width:430px;margin:6vh auto;padding:20px}form{display:grid;gap:14px}input,select,button{font:inherit;padding:10px}p{line-height:1.5}</style></head><body>'+
         '<h1>Connect GitHub by Robinson AI Systems</h1>'+
@@ -57,7 +62,7 @@ export default async function privateTenantAuthorize(req,res,{env=process.env}={
     if(String(req.headers?.origin||'')!==origin || !cookie ||
         typeof p.form_csrf!=='string' || p.form_csrf.length!==cookie.length ||
         !timingSafeEqual(Buffer.from(cookie),Buffer.from(p.form_csrf))) return refuse(res);
-    const {url,csrfState}=await createPrivateGitHubConsent({env}).start(p);
+    const {url,csrfState}=await consentFactory({env}).start(p);
     res.setHeader('Set-Cookie',[clear,
       'gh_tenant_pilot_state='+csrfState+
         '; Max-Age=600; Path=/api/github/user-callback; HttpOnly; Secure; SameSite=Lax']);

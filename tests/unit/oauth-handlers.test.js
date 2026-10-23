@@ -52,6 +52,7 @@ describe('connector metadata and registration', () => {
     expect(auth.issuer).toBe(baseEnv.PUBLIC_BASE_URL);
     expect(auth.authorization_endpoint).toBe(baseEnv.PUBLIC_BASE_URL + '/api/oauth/authorize');
     expect(auth.code_challenge_methods_supported).toEqual(['S256']);
+    expect(auth.authorization_response_iss_parameter_supported).toBe(true);
     expect(json(await call(h.resourceMetadata, request('GET', {}))).resource).toBe(resource);
     expect((await call(h.metadata, request('POST', {}))).statusCode).toBe(405);
   });
@@ -256,6 +257,7 @@ describe('code and token exchange', () => {
     const location = new URL(authorized.headers.Location);
     expect(location.origin + location.pathname).toBe(callback);
     expect(location.searchParams.get('state')).toBe('nonce123');
+    expect(location.searchParams.get('iss')).toBe(baseEnv.PUBLIC_BASE_URL);
     const code = location.searchParams.get('code');
     expect(authorized.headers['Cache-Control']).toBe('no-store');
 

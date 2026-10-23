@@ -19,8 +19,11 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 
 - [x] **Phone check, Claude app** — done 2026-10-22: the Claude phone app reported the connector, account robinson-ai-scratch,
       live mode, no spending limit. Desktop/web is covered by the connector you added on claude.ai.
-- [ ] **Decide what PUB-4 covers:** its card is written for ChatGPT phone/desktop clients. Choose Claude only (agent rewrites the
-      card; PUB-4 can then close), ChatGPT only, or both. Tell the agent in chat.
+- [x] **Phone check, ChatGPT** — done 2026-10-22: ChatGPT reached the custom server as robinson-ai-scratch (read-only preview, by your
+      choice of permissions at sign-in).
+- [x] **PUB-4 scope decided:** covers Claude and ChatGPT both; code part merged.
+- [ ] **Later, whenever convenient (blocks nothing): desktop app test.** Open the connector in the desktop Claude or ChatGPT app and ask
+      "which GitHub account am I connected to?" Also optionally disconnect and reconnect once on a phone. Tell the agent the answer.
 
 ## B2. Give the agent a working connection to your deployed server (lets agents run the real-account tests for you)
 

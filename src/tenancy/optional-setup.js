@@ -168,6 +168,8 @@ export function createPrivateOptionalEnrollment({
       const callback=new URL(flow.redirectUri);
       callback.searchParams.set('code',code);
       if(o.clientState!==null)callback.searchParams.set('state',o.clientState);
+      // Same canonical issuer the metadata and the other callback advertise (RFC 9207).
+      callback.searchParams.set('iss',origin());
       return Object.freeze({status,kind:flow.kind,
         operation:OPERATIONS[flow.kind],destination:callback.toString()});
     }

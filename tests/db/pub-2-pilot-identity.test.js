@@ -409,7 +409,43 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     expect(info.client_id).toMatch(/^tcl_/);
     expect(info.client_secret).toHaveLength(43);
     expect((await dbA.getOAuthClient(info.client_id)).client_secret_hash).toBeDefined();
+    expect((await dbA.getOAuthClient(info.client_id)).authorized_account).toBe('client-register-fixture');
     expect(JSON.stringify(await dbA.getOAuthClient(info.client_id))).not.toContain(info.client_secret);
+    // Two approved installations may coexist. Standard MCP/mobile consent
+    // must silently use THIS client registration's verified account, never
+    // pick a different installation or display a tenant-wide account list.
+    await dbA.upsertAccount({login:'different-fixture-org',accountId:84002,
+      accountType:'Organization',label:'Other private App',credentialKind:'app',appId:83001});
+    await dbA.setInstallation('different-fixture-org',{installationId:85002,
+      repositorySelection:'all',permissions:{contents:'read'},status:'active'});
+    const consent=createPrivateGitHubConsent({
+      env:{...env,GITHUB_PILOT_APP_CLIENT_ID:'fixture-pilot-client-id',
+        GITHUB_PILOT_APP_CLIENT_SECRET:'fixture-pilot-client-secret'},
+      rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:args.tenantSqlFactory,
+      fetchImpl
+    });
+    const baseConsent={client_id:info.client_id,response_type:'code',
+      redirect_uri:args.redirectUris[0],state:'private-client-state',
+      code_challenge:'v'.repeat(43),code_challenge_method:'S256',
+      resource:env.PUBLIC_BASE_URL+'/api/mcp',mode:'preview',
+      profile:'full',listing:'compact'};
+    await expect(consent.start(baseConsent)).resolves.toMatchObject({
+      url:expect.stringContaining('https://github.com/login/oauth/authorize?')});
+    await expect(consent.start({...baseConsent,account:'different-fixture-org'}))
+      .rejects.toThrow(/not verified/);
+    // A pre-binding legacy client must refuse ambiguous installations even
+    // when the caller supplies a legitimate second account. The account
+    // selector is not provider-verified registration evidence.
+    const unbound=await signed('tcl',{tenantId:a.id,identityId:ownerA},env);
+    await dbA.createOAuthClient({clientId:unbound,
+      clientSecret:'fixture-unbound-secret',
+      redirectUris:args.redirectUris,clientName:'old-unbound-client'});
+    await expect(consent.start({...baseConsent,client_id:unbound}))
+      .rejects.toThrow(/not verified/);
+    await expect(consent.start({...baseConsent,client_id:unbound,
+      account:'different-fixture-org'})).rejects.toThrow(/not verified/);
+    await expect(consent.start({...baseConsent,client_id:unbound,
+      account:'client-register-fixture'})).rejects.toThrow(/not verified/);
     providerId=20002;
     await expect(registerPrivatePilotClient(args)).rejects.toThrow(/private tenant pilot/);
     providerId=20001;installation=85002;
@@ -573,6 +609,43 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
       .toBeGreaterThan(Number(oldRecord.revision));
   });
 
+  it('preflights the genuine tenant OAuth client and exact App before displaying a mobile/desktop consent page',async()=>{
+    const env={PUBLIC_BASE_URL:'https://pilot.github.example.test',VERCEL_ENV:'production',
+      GITHUB_PRIVATE_TENANT_PILOT:'enabled',
+      GITHUB_TENANT_ROUTING_KEY:crypto.randomBytes(32).toString('base64url'),
+      GITHUB_PILOT_APP_CLIENT_ID:'fixture-inspect-client',
+      GITHUB_PILOT_APP_CLIENT_SECRET:'fixture-not-a-real-secret',
+      GITHUB_PILOT_APP_ID:'92001',DATABASE_URL:process.env.TEST_DATABASE_URL};
+    const db=createDb(tenantA);
+    const account='inspect-ready';
+    await db.upsertAccount({login:account,accountId:92002,accountType:'Organization',
+      label:'Private consent inspection',credentialKind:'app',appId:92001,isScratch:true});
+    await db.setInstallation(account,{installationId:92003,
+      repositorySelection:'all',permissions:{contents:'read'},status:'active'});
+    await directory.allowlistPilotIdentity(a.id,ownerA,ownerA);
+    const client=await signed('tcl',{tenantId:a.id,identityId:ownerA},env);
+    const redirect='https://private-inspect.example.test/callback';
+    await db.createOAuthClient({clientId:client,clientSecret:'fixture-inspect-secret',
+      redirectUris:[redirect],clientName:'Android or desktop',authorizedAccount:account});
+    const consent=createPrivateGitHubConsent({env,
+      rootSqlFactory:()=>sqlFor(admin),tenantSqlFactory:()=>tenantA});
+    const fields={client_id:client,redirect_uri:redirect,response_type:'code',
+      code_challenge:'x'.repeat(43),code_challenge_method:'S256',
+      resource:env.PUBLIC_BASE_URL+'/api/mcp'};
+    expect(await consent.inspect(fields)).toEqual({productionAllowed:false});
+    await db.setProductionEnabled(account,true);
+    expect(await consent.inspect(fields)).toEqual({productionAllowed:true});
+    await expect(consent.inspect({...fields,redirect_uri:'https://wrong.example.test/cb'}))
+      .rejects.toThrow(/not verified/);
+    await db.setInstallationStatus(account,'suspended');
+    await expect(consent.inspect(fields)).rejects.toThrow(/not verified/);
+    await db.setInstallationStatus(account,'active');
+    expect(await consent.inspect(fields)).toEqual({productionAllowed:true});
+    await directory.revokePilotIdentity(a.id,ownerA,ownerA);
+    await expect(consent.inspect(fields)).rejects.toThrow(/not verified/);
+    await directory.allowlistPilotIdentity(a.id,ownerA,ownerA);
+  });
+
   it('proves real tenant GitHub consent state, browser CSRF, installation scope, PKCE and token issuance',async()=>{
     const env={PUBLIC_BASE_URL:'https://pilot.github.example.test',VERCEL_ENV:'production',
       GITHUB_PRIVATE_TENANT_PILOT:'enabled',
@@ -634,6 +707,7 @@ describe('PUB-2 private-only provider identity and tenant pilot allowlist in REA
     const redirected=new URL(target);
     expect(redirected.origin).toBe('https://private-pilot.example.test');
     expect(redirected.searchParams.get('state')).toBe('caller-nonce');
+    expect(redirected.searchParams.get('iss')).toBe(env.PUBLIC_BASE_URL);
     const mcpCode=redirected.searchParams.get('code');
     expect(mcpCode.length).toBeGreaterThan(30);
     expect(exchangeCalls).toBe(1);

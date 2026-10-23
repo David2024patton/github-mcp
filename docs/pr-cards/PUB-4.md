@@ -1,0 +1,93 @@
+# PUB-4 — PRIVATE genuine mobile AND desktop ChatGPT GitHub MCP
+
+**Stage: APPROVED / PLAN FROZEN BEFORE CODING.** No actual mobile or desktop real-client acceptance is claimed. Baseline main `315a3259faafa474a9b36cc8410c5718d5b9326f` (PUB-3 source merged PR #267, merged-main CI/release policy still subject to exact head check). The original 57-row provider acceptance remains separate. Distribution remains PRIVATE and GitHub by Robinson AI Systems is not officially GitHub-endorsed; public Directory eligibility is blocked.
+
+## Drift check before implementation
+
+- Native/direct plugin: `plugins_6ad4e0de57f48191a150db0d040b67c7`, PRIVATE, display **GitHub by Robinson AI Systems**, `.mcp.json` `https://github-mcp-chris-projects-de6cd1bf.vercel.app/api/mcp`. Its previously observed `chatgpt.com/codex/open-...` prompt launch did not work on Android. A green plugin/MCP indicator is NOT a working authorized connection.
+- Hosted/Sites adapter: `plugin_asdk_app_sites_6cfcd475448481919dbea3f6730ae7b0`, PRIVATE, `Robinson GitHub Cloud`. Its ChatGPT sign-in UI is different from the MCP's server-owned OAuth form and the last truly observed session remained FULL/PREVIEW despite account-level scratch PRODUCTION enabled by owner. PR #260 provided an owner-protected per-connection upgrade, but genuine new mobile session still must be rechecked on deployed live code.
+- Source current `main` includes PUB-1 verified isolated tenant store, PUB-2 private provider-verified OAuth, PUB-3 tenant capacity and owner-only revocation. **Private pilot remains OFF** and no outside customer registration is authorized. Existing original single-owner OAuth must remain usable throughout a safe migration.
+- Current independently released `live=f98b45c4e53a154b369d126c59cda35b7a1886fa` is behind merged main. No unscheduled release approved. Keep official GitHub ChatGPT connector untouched until both custom real-device acceptances are evidenced.
+- Hub optional, never an individual server product completion requirement; verify advertised Hub spec interoperability at service boundary but no forced Hub relay/sandbox test.
+
+## Acceptance criteria (entire approved PUB-4)
+
+1. [ ] A supported desktop/web ChatGPT client can establish its own PRIVATE native/direct OAuth MCP connection to the real deployed service, select a verified GitHub identity/account, PREVIEW or independently authorized PRODUCTION, and profile, then call github_whoami and representative authorized provider reads. GitHub's official ChatGPT connector remains separate and untouched.
+2. [ ] A real Android/iOS ChatGPT client can establish its own PRIVATE supported hosted/ChatGPT app connection without a Codex desktop-only deep link, obtain genuine service-owned consent and a selected account/mode/profile, then call github_whoami with those actual source scopes; hosted adapter session reuse cannot silently change them.
+3. [ ] Both clients use one versioned standalone native MCP implementation independent of Hub, share truthful tool schemas and delegated user authority, and preserve confirmed GitHub App installation, tenant, profile, protected resource, production/money/notification and request-key/replay safeguards on every action.
+4. [ ] Client sign-in and callback errors are actionable and safe: an unrecognized or revoked principal, unauthorised installation, stale expired refresh, mismatched state/PKCE, missing mobile surface support or blocked PRODUCTION selection returns a truthful refusal without pretending install status or a green MCP indicator means working access.
+5. [ ] Real separate Android/iOS and desktop/web connection acceptance captures exact source/released SHA, true identity/account/mode/profile, observed provider read and independently authorized disposable scratch guarded write/denial, reconnect, refresh, revocation and switching behavior; synthetic OAuth/HTTP tests are preparatory and never counted as real-platform success.
+6. [ ] Both GitHub by Robinson AI Systems plugin candidates stay PRIVATE and clearly independently branded; no outside user enrollment, public Directory submission, GitHub App public distribution, live change, spend, or official GitHub connector removal occurs without separate required owner approval and verified completion.
+
+## Execution method
+
+1. Read governing rules, source and actual plugin manifests; document any platform limitations with current official specifications, not assumptions. No cloning of a third-party service or publishing through unofficial directory.
+2. Reuse server's genuine GitHub OAuth consent and scoped connection state rather than duplicate provider credentials in Sites. Keep owner protected setup separate from customer OAuth; native desktop and hosted mobile must not leak tenant IDs, passwords or bearer material.
+3. Stage and exercise real HTTP/POST/auth code/refresh/PKCE/provider mocks in full source tests and disposable Postgres. For any client software limitations beyond this environment, clearly record the exact missing capability, no false success.
+4. Where supported in connected user interfaces, run real mobile and desktop private client tool calls and confirm provider identity/account/mode/profile, preview refuses writes, approved scratch write exact target, readback, revoke. Do not perform unauthorized production changes, public signups, paid operations, destructive cleanup or email/SMS.
+5. Reconcile original 57 case queue and dependent data/evidence, run exact-head CI, independent security review, update card evidence, merge only full eligible engineering. If real client acceptance requires user-controlled device sign-in, continue the other work first and request one precise owner action after checked release.
+
+## Dangers
+
+A plugin display name is not account authority; adapter sign-in does not prove GitHub consent; a GitHub App installation being active is not an authorized tenant token; a private connector on Android must never launch only a Codex desktop deep link. No public listing, fake affiliation, tool permission elevation, user-cap override, early release, billable capacity or production DB mutation.
+
+<!-- bundle-plan:start -->
+```json
+{
+  "workKind": "ENGINEERING",
+  "baseRevision": "315a3259faafa474a9b36cc8410c5718d5b9326f",
+  "outcome": "Make the PRIVATE Robinson GitHub MCP independently usable through genuinely supported mobile ChatGPT and desktop/web clients with truthful OAuth/connection scopes, preserving standalone authority and two-platform live acceptance as independent mandatory gate.",
+  "integrationBoundary": "Current private direct MCP plugin + private ChatGPT-hosted Sites adapter + versioned GitHub MCP OAuth/connection state; Hub discover/connect is optional Hub responsibility. No public listing, paid capacity, unscheduled release, outside-user sign-up or GitHub App distribution.",
+  "newEngineering": "Audit both client entry points, update the server/adapter integration so mobile users reach supported sign-in and exact account/mode/profile selection without Codex desktop deep link, validate native desktop OAuth and no-silent-elevation refresh, add focused browser/HTTP/real DB contract tests and clear client-facing setup/correction guidance. Finish with genuine two-client acceptance evidence or leave exact external prerequisite blocked.",
+  "estimatedProductionLines": 650,
+  "relatedWorkDecision": "One substantial entire PUB-4 connection cross-platform boundary; not a helper PR. Implement all safe in-repo engineering now, but real mobile and desktop acceptance cannot be declared from plugin install, mocked OAuth or source CI. PUB-5 directory eligibility and owner publication remain separately blocked.",
+  "subsections": [
+    {
+      "id": "PUB-4",
+      "acceptance": [
+        "A supported desktop/web ChatGPT client can establish its own PRIVATE native/direct OAuth MCP connection to the real deployed service, select a verified GitHub identity/account, PREVIEW or independently authorized PRODUCTION, and profile, then call github_whoami and representative authorized provider reads. GitHub's official ChatGPT connector remains separate and untouched.",
+        "A real Android/iOS ChatGPT client can establish its own PRIVATE supported hosted/ChatGPT app connection without a Codex desktop-only deep link, obtain genuine service-owned consent and a selected account/mode/profile, then call github_whoami with those actual source scopes; hosted adapter session reuse cannot silently change them.",
+        "Both clients use one versioned standalone native MCP implementation independent of Hub, share truthful tool schemas and delegated user authority, and preserve confirmed GitHub App installation, tenant, profile, protected resource, production/money/notification and request-key/replay safeguards on every action.",
+        "Client sign-in and callback errors are actionable and safe: an unrecognized or revoked principal, unauthorised installation, stale expired refresh, mismatched state/PKCE, missing mobile surface support or blocked PRODUCTION selection returns a truthful refusal without pretending install status or a green MCP indicator means working access.",
+        "Real separate Android/iOS and desktop/web connection acceptance captures exact source/released SHA, true identity/account/mode/profile, observed provider read and independently authorized disposable scratch guarded write/denial, reconnect, refresh, revocation and switching behavior; synthetic OAuth/HTTP tests are preparatory and never counted as real-platform success.",
+        "Both GitHub by Robinson AI Systems plugin candidates stay PRIVATE and clearly independently branded; no outside user enrollment, public Directory submission, GitHub App public distribution, live change, spend, or official GitHub connector removal occurs without separate required owner approval and verified completion."
+      ],
+      "remainingEngineering": [
+        "Inspect private plugin manifests, native client specs, installed custom adapter behavior, current deployed OAuth; compare to actual ChatGPT Android and desktop workflows",
+        "Implement compatible private supported entrypoints and service-owned user/account/mode/profile chooser without end-user global owner passphrase; preserve existing owner-only admin controls",
+        "Prove native MCP authorize/token/client registration + hosted client flows through truthful HTTP/PKCE/refresh/revoke contracts and genuine disposable Postgres, never Hub-owned routing acceptance",
+        "Get real private ChatGPT mobile and desktop connections and github_whoami reads/guarded scratch operations verified separately after checked scheduled release; request owner sign-in only for unavoidable human steps",
+        "Reconcile STATUS/PLAN/roadmap/owner guide and CI, self-review, merge only after full eligible engineering; do not mark device acceptance passed without actual proof"
+      ]
+    }
+  ]
+}
+```
+<!-- bundle-plan:end -->
+
+## 2026-10-20 engineering continuation (source draft; real client criteria still open)
+
+- Added a read-only `createPrivateGitHubConsent.inspect` preflight that checks server-signed client, live private tenant owner/member allowlist and revisions, registered redirect, exact bound GitHub App installation, and independently enabled production setting before the mobile/desktop OAuth form appears. POST invokes the same shared check and further binds browser-CSRF/state/PKCE to provider GitHub sign-in.
+- Corrected `api/tenant/oauth/authorize.js` to display PRODUCTION only when inspected account/deployment allows it; expired/suspended/revoked/wrong client sessions no longer present a misleading chooser.
+- New unit and disposable PostgreSQL regression exercises refused client, absent production, suspended installation, wrong redirect, revocation and restored eligibility. CI and security review are required before declaring engineering green, and none of six full PUB-4 user-device acceptance lines are yet passed.
+- Supported Android/iOS app entry point and independent desktop/web real sign-in/WHOAMI/write/refusal remain external acceptance requirements. Hosted Sites adapter source/presentation remains outside this standalone service and is not falsely claimed fixed by this change. Both candidate plugins PRIVATE, owner single-account original OAuth unaffected; no release requested.
+
+
+## 2026-10-21 provider inventory + OAuth issuer integration continuation (staged for exact-head CI)
+
+- Source now verifies GitHub App U-token installation inventories across up to twenty complete 100-item pages rather than refusing all users with more than one page. Inconsistent totals, duplicate/malformed identities, incomplete results, provider 403 and over-cap inventories refuse without accepting an earlier match. New deterministic unit cases cover page 3 success, incomplete or changing inventory, duplicates, provider refusal and over-cap responses. This remains server-owned GitHub U-token identity verification, not a trusted ChatGPT email assertion.
+- Both existing owner and private-pilot OAuth paths advertise RFC 9207 issuer response validation and echo their exact canonical issuer in successful code redirects. The real PostgreSQL pilot callback test now asserts `iss`; the owner authorization unit suite checks both metadata and response. This is source interoperability preparation, **not proof of a stable ChatGPT callback, install or device sign-in**.
+- The normal dynamic client registration endpoint remains the original admin-bound owner route; signed private pilot registration requires verified U bearer/installation plus the existing trusted tenant binding. Do not claim an unbound DCR client receives tenant access. OpenAI currently documents custom MCP apps in ChatGPT as web-only, so Android/iOS requires independently proven supported hosted app/plugin behavior and cannot be inferred from a native custom MCP install or Codex deep link.
+- Six full criteria above remain OPEN for genuine device/provider evidence and the hosted Sites bridge is NOT fixed by these server changes. The owner-backed original service and official GitHub plugin remain in place; pilot/public enrollment and production/spending remain unchanged. Exact-head CI, independent review, source merge, checked release and separate real client acceptance are still to be verified.
+
+
+## 2026-10-22 closeout (owner decision: do not wait for devices)
+
+Owner decision: PUB-4 covers **both** Claude and ChatGPT clients, and **desktop testing never blocks development or merge**.
+- **Source part (criteria 3, 4, 6): done and merged** with PR #268 — account-bound private clients, read-only consent preflight, truthful refusals,
+  RFC 9207 issuer, full installation pagination; unit and disposable-Postgres tests green at the merged head.
+- **Criteria 1, 2, 5 are real-client acceptance, not engineering.** Observed so far through the owner's connected custom server (no new code needed):
+  Claude phone app and ChatGPT (separate permissions: Claude live, ChatGPT read-only preview) both reached the server, showed account
+  robinson-ai-scratch and the correct mode. See `docs/status/2026-10-22-acceptance-org-reads-and-phone.md`.
+  Still open and owner-timed: a native desktop app test, and reconnect/refresh/revoke on a device. These sit on `docs/OWNER-CHECKLIST.md`
+  and do not block anything. Criterion text above stays the full target; nothing is relabelled as passed.

@@ -129,10 +129,13 @@ export function createFakeDb({ clock = Date.now } = {}) {
     async put(key, value) { rows.set(key, structuredClone(value)); },
     async get(key) { return rows.has(key) ? structuredClone(rows.get(key)) : null; },
 
-    async createOAuthClient({ clientId, clientSecret, redirectUris, clientName }) {
+    async createOAuthClient({ clientId, clientSecret, redirectUris, clientName, authorizedAccount = null }) {
       if (!clientId || !clientSecret || !Array.isArray(redirectUris) || !redirectUris.length) throw new TypeError('Missing OAuth client registration fields.');
       if (clients.has(clientId)) throw new Error('duplicate key value violates unique constraint "oauth_clients_pkey"');
-      clients.set(clientId, { client_secret_hash: hashToken(clientSecret), redirect_uris: [...redirectUris], client_name: clientName || null });
+      if (authorizedAccount !== null && (typeof authorizedAccount !== 'string' ||
+          !/^[A-Za-z0-9-]{1,39}$/.test(authorizedAccount))) throw new TypeError('Invalid OAuth client account binding.');
+      clients.set(clientId, { client_secret_hash: hashToken(clientSecret), redirect_uris: [...redirectUris],
+        client_name: clientName || null, authorized_account: authorizedAccount?.toLowerCase() ?? null });
     },
     async getOAuthClient(clientId) { return clients.has(clientId) ? { client_id: clientId, ...structuredClone(clients.get(clientId)) } : null; },
     async getConnectorOAuthReadiness() {

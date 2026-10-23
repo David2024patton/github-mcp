@@ -41,7 +41,7 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
   // Its purpose-tagged state routes to the private handler, never owner auth.
   const callback = () => active()+'/api/github/user-callback';
 
-  async function start(p) {
+  async function preflight(p) {
     active();
     const claim = verifyTenantCredential(p.client_id,'tcl',env);
     const mode=p.mode??'preview', profile=p.profile??'everyday',
@@ -61,7 +61,6 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
     if (!pilot || pilot.membershipRevision!==claim.membershipRevision ||
         pilot.pilotRevision!==claim.pilotRevision) throw refused();
     const { db,sql }=await scoped(dir,claim);
-    await admitTenantOAuth(sql,claim.tenantId+':'+claim.identityId);
     const client=await db.getOAuthClient(p.client_id);
     if (!client || !client.redirect_uris.includes(p.redirect_uri)) throw refused();
     // Standard MCP OAuth clients don't carry custom account selections. For
@@ -74,9 +73,26 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
       row.app_id===Number(env.GITHUB_PILOT_APP_ID) &&
       row.installation_status==='active' &&
       Number.isSafeInteger(row.installation_id) && row.installation_id>0);
-    const selected=p.account!==undefined
-      ? candidates.find(row=>row.login.toLowerCase()===p.account.toLowerCase())
-      : candidates.length===1?candidates[0]:null;
+    // An account selected during provider-verified private registration is
+    // binding for this exact client. Standard MCP clients send no account
+    // input, and the anonymous consent form must not list tenant accounts.
+    // Older unbound test/pilot clients keep the fail-closed single-App rule.
+    const boundAccount=client.authorized_account;
+    if (boundAccount !== null && boundAccount !== undefined &&
+        (typeof boundAccount !== 'string' ||
+          !/^[a-z0-9-]{1,39}$/.test(boundAccount))) throw refused();
+    if (boundAccount && p.account!==undefined &&
+        p.account.toLowerCase()!==boundAccount.toLowerCase()) throw refused();
+    // A legacy, unbound client was never authorized for any particular
+    // installation. Only permit the sole unambiguous active App account;
+    // a request-supplied account field is NOT provider-verified registration
+    // and cannot turn an ambiguous client into access to another App.
+    if (!boundAccount && (candidates.length!==1 ||
+        (p.account!==undefined &&
+          p.account.toLowerCase()!==candidates[0].login.toLowerCase()))) throw refused();
+    const selected=boundAccount
+      ? candidates.find(row=>row.login.toLowerCase()===boundAccount)
+      : candidates[0];
     if (!selected) throw refused();
     const account=await db.getAccount(selected.login);
     if (!account || account.credential_kind!=='app' ||
@@ -86,6 +102,22 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
         !['all','selected'].includes(account.repository_selection) ||
         (mode==='production' && (env.VERCEL_ENV!=='production' ||
           account.production_enabled!==true))) throw refused();
+    return { claim, mode, profile, listing, dir, db, sql, account,
+      productionAllowed: env.VERCEL_ENV === 'production' &&
+        account.production_enabled === true };
+  }
+
+  /** Read-only consent readiness: anonymous visitors never see tenant details
+   * or production choices for an expired/revoked/unauthorized client. */
+  async function inspect(p) {
+    const result=await preflight({ ...p, mode:'preview',
+      profile:'everyday',listing:'compact' });
+    return Object.freeze({ productionAllowed: result.productionAllowed });
+  }
+
+  async function start(p) {
+    const {claim,mode,profile,listing,dir,sql,account}=await preflight(p);
+    await admitTenantOAuth(sql,claim.tenantId+':'+claim.identityId);
     const appClient=await pilotAppClient({env,db:createDb(rootSqlFactory(env.DATABASE_URL))});
     const state='pt.'+random(32), verifier=random(48);
     const challenge=createHash('sha256').update(verifier).digest('base64url');
@@ -127,6 +159,8 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
     const account=await db.getAccount(flow.accountLogin);
     const client=await db.getOAuthClient(flow.clientId);
     if (!client || !client.redirect_uris.includes(flow.redirectUri) ||
+        (client.authorized_account !== null && client.authorized_account !== undefined &&
+          client.authorized_account !== flow.accountLogin.toLowerCase()) ||
         !account || account.credential_kind!=='app' ||
         account.app_id!==Number(env.GITHUB_PILOT_APP_ID) ||
         !Number.isSafeInteger(account.installation_id) || account.installation_id<=0 ||
@@ -197,6 +231,8 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
     const url=new URL(flow.redirectUri);
     url.searchParams.set('code',mcpCode);
     if (flow.clientState !== null) url.searchParams.set('state',flow.clientState);
+    // The private consent path uses the same canonical issuer as legacy OAuth.
+    url.searchParams.set('iss',active());
     outcome='ok';
     return url.toString();
     } finally {
@@ -205,5 +241,5 @@ export function createPrivateGitHubConsent({ env = process.env, fetchImpl = fetc
       }).catch(()=>{});
     }
   }
-  return {start,finish};
+  return {inspect,start,finish};
 }

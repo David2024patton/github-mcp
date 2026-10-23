@@ -49,7 +49,8 @@ describe('PUB-2 private browser entry routes',()=>{
     const params={client_id:clientId,redirect_uri:'https://app.example.test/cb',
       resource:origin+'/api/mcp',response_type:'code',code_challenge:'a'.repeat(43),
       code_challenge_method:'S256',state:'testcaller'};
-    const response=await call(consentPage,request('GET',params));
+    const response=await call((req,res)=>consentPage(req,res,{env,
+      consentFactory:()=>({inspect:async()=>({productionAllowed:true})})}),request('GET',params));
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('GitHub by Robinson AI Systems');
     expect(response.body).toContain('<select name="mode">');
@@ -78,12 +79,13 @@ describe('PUB-2 private browser entry routes',()=>{
     // A mock owner DB that throws proves the tenant route cannot accidentally
     // interrogate the owner's OAuth clients or ask for ADMIN_PASSPHRASE.
     const rootDb={getOAuthClient:async()=>{throw new Error('Owner DB must not be read');}};
-    const response=await call((req,res)=>handleOAuth('authorize',req,res,{db:rootDb,env}),
+    const consentFactory=()=>({inspect:async()=>({productionAllowed:true})});
+    const response=await call((req,res)=>handleOAuth('authorize',req,res,{db:rootDb,env,consentFactory}),
       request('GET',params));
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('Continue to GitHub');
     expect(response.body).not.toContain('ADMIN_PASSPHRASE');
-    const forged=await call((req,res)=>handleOAuth('authorize',req,res,{db:rootDb,env}),
+    const forged=await call((req,res)=>handleOAuth('authorize',req,res,{db:rootDb,env,consentFactory}),
       request('GET',{...params,client_id:'tcl_forged'}));
     expect(forged.statusCode).toBe(403);
     vi.stubEnv('GITHUB_PRIVATE_TENANT_PILOT','disabled');
@@ -95,7 +97,10 @@ describe('PUB-2 private browser entry routes',()=>{
     const env=makeEnv();
     vi.stubEnv('VERCEL_ENV','preview');
     const token=issueTenantCredential('tcl',{tenantId,identityId,membershipRevision:1,pilotRevision:1},env);
-    const response=await call(consentPage,request('GET',{client_id:token}));
+    const response=await call((req,res)=>consentPage(req,res,{env,
+      consentFactory:()=>({inspect:async()=>({productionAllowed:false})})}),request('GET',{
+        client_id:token,redirect_uri:'https://agent.example.test/cb',resource:origin+'/api/mcp',
+        response_type:'code',code_challenge:'a'.repeat(43),code_challenge_method:'S256'}));
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('<option value="preview">');
     expect(response.body).not.toContain('<option value="production">');

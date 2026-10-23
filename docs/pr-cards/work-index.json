@@ -1775,15 +1775,17 @@
         "PUB-3"
       ],
       "card": "docs/pr-cards/PUB-4.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "no schema unless documented after drift",
       "budget": 650,
       "units": [
         "PUB-4"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "READY",
       "ownerInputs": [],
-      "pr": []
+      "pr": [
+        268
+      ]
     },
     {
       "id": "PUB-5",
@@ -1906,7 +1908,7 @@
         "PUB-4"
       ],
       "card": "docs/pr-cards/CAP-5.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "JIT contract before implementation",
       "budget": 650,
       "units": [
@@ -1914,7 +1916,7 @@
       ],
       "readiness": "WRITE_CARD_AT_START",
       "ownerInputs": [],
-      "pr": []
+      "pr": [268]
     }
   ],
   "gatewayBoundary": {
