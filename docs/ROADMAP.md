@@ -36,3 +36,9 @@ for hand-building something is repeated `github_api_*` / `github_graphql_*` call
 
 
 **2026-10-16:** the items in this file that Batch Y now plans (self-hosted/larger runners, merge queue, Copilot agent and Spaces, org issue types and fields, autolinks, interaction limits, SBOM/attestations, migrations) are scheduled in `docs/designs/BATCH-Y.md`; money-related ones wait for IN-16.
+
+## Backlog carried from CAP-4 closeout (2026-10-22)
+
+Not scheduled; each is built as a whole outcome only when an owner workflow asks: packages/registry streaming; credential
+administration beyond SAML revocation; remaining GitHub App lifecycle routes (suspend/unsuspend, installation listing);
+curated tools for individual GraphQL mutations; enterprise audit/SCIM/IP policy once an enterprise principal exists.

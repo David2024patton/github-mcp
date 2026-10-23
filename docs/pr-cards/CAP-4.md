@@ -1,6 +1,6 @@
 # CAP-4 — advanced GitHub gaps: governed enterprise, organization and integration workflows
 
-**Status: IN PROGRESS — source engineering only, whole original CAP-4 incomplete.** Planned 2026-10-22 from main `abb5f177770de8bdedc31cbce0ef7181e85d55be`. CAP-4 is a single original unit, not a sequence of countable helper PRs. CAP-3 real private/device acceptance is deferred, **not declared passed**. CAP-5 cannot be completed without CAP-4 and PUB-4 evidence. Preserve independent PUB-4 draft #268.
+**Status: CLOSED 2026-10-22 (owner-approved finish-line policy, PR #279) — see "Closeout" at the end. Earlier text below is history.** Planned 2026-10-22 from main `abb5f177770de8bdedc31cbce0ef7181e85d55be`. CAP-4 is a single original unit, not a sequence of countable helper PRs. CAP-3 real private/device acceptance is deferred, **not declared passed**. CAP-5 cannot be completed without CAP-4 and PUB-4 evidence. Preserve independent PUB-4 draft #268.
 
 ## Drift check A and official contract (first coherent code seam)
 
@@ -97,3 +97,23 @@ Plan commit must precede source edits. First implementation reuses scoped I/U re
 
 Reconciles CAP-4's own already-built JWT tools with the CAP-1 inventory, which still listed their routes as unresolved. `src/github/hand-built-map.js` now names the exact native tool for seven routes: `GET`/`PATCH /app/hook/config`, `GET /app/hook/deliveries`, `GET /app/hook/deliveries/{delivery_id}`, `POST /app/hook/deliveries/{delivery_id}/attempts`, `GET /app/installations/{installation_id}` and `GET /app/installation-requests`. Universal tools still refuse every `/app` path before any curated lookup, so this changes the inventory and API-describe output only, not access. `GET /app` stays unmapped (identity tool is a projection), as do sibling methods, `GET /app/installations`, suspend/unsuspend, uninstall and token minting. `tests/unit/cap4-inventory-reconciliation.test.js` ties each mapping to a registered tool and to a literal route in that tool's source, and checks the inventory rows and validator. Pinned REST contains no `/scim/v2` or organization audit-log operations, so those routes cannot be reached by universal tools and are not inventory rows. The inventory now reads 139 implemented-unverified, 1,176 unresolved and 234 missing. This is reconciliation only: no new capability, no provider call, original CAP-4 still CONTINUE with zero completed-unit credit.
 
+
+
+## Closeout — 2026-10-22
+
+Delivered and merged (#277, follow-up #281): organization audit and SCIM reads, guarded SCIM provision / display-name /
+deprovision, SAML authorization inventory and exact revocation, App-owner JWT webhook configuration, deliveries and
+redelivery, installation grants and installation requests, with the exact curated routes recorded in the capability
+inventory.
+
+Dispositions for the rest of the original wording (acceptance item 1 permits an explicit disposition):
+- **Rest of the REST inventory (about 1,176 rows):** reachable through the universal REST tools under their existing
+  policy and guards; not individually curated. Backlog, not a gate (AGENTS.md finish line).
+- **234 GraphQL mutations marked missing:** reachable through the universal GraphQL tool under its policy; individual
+  curation is backlog, to be done on request or when an owner workflow needs one.
+- **Enterprise-level audit, SAML/SCIM and IP policy:** needs a distinct enterprise principal that does not exist (and
+  the audit-log credential documentation is contradictory). Listed on `docs/OWNER-CHECKLIST.md`; not buildable or
+  testable until it exists.
+- **Packages/registry streaming, credential administration, remaining App lifecycle:** carried as named backlog
+  items in `docs/ROADMAP.md`; each ships as its own whole outcome when an owner workflow asks for it.
+Real provider/device acceptance for everything above stays independently open (acceptance queue and checklist).

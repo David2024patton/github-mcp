@@ -174,7 +174,9 @@ feature works.
 
 ## Verify, push, review, merge
 
-- **Before pushing:** `npm run check` and the card's targeted tests (`npm run test:db`, `npm run test:shapes`, as
+- **Before pushing:** run `npm run check` the way CI does (`BASE_SHA=<PR base sha> npm run check`; the docs-drift step only runs
+  with it, and a PR that changes `src/` needs `docs/STATUS.md`, a PR card and, for tool changes, `docs/TOOL-CATALOG.md` — or a
+  `Docs-update: not needed — <reason>` line in the PR body), plus the card's targeted tests (`npm run test:db`, `npm run test:shapes`, as
   applicable). Never `--no-verify`. After a red run, read all failures, reproduce, fix them all, push once. "Flake" is
   not a cause; never skip, weaken or quarantine a test.
 - **Review:** this repo has no automated review (IN-01). For anything touching credentials, secrets, guards,
