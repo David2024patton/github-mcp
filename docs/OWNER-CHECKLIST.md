@@ -17,9 +17,10 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 
 ## B. Device checks (need your phone and computer)
 
-- [ ] **Private mobile and desktop connection (PUB-4):** after the PUB-4 code is merged and live, add the private
-      connection on your phone and on your computer, sign in, and ask each for "who am I on GitHub" plus one
-      read. Tell the agent the result. (Row appears when PUB-4 is ready; not yet.)
+- [x] **Phone check, Claude app** — done 2026-10-22: the Claude phone app reported the connector, account robinson-ai-scratch,
+      live mode, no spending limit. Desktop/web is covered by the connector you added on claude.ai.
+- [ ] **Decide what PUB-4 covers:** its card is written for ChatGPT phone/desktop clients. Choose Claude only (agent rewrites the
+      card; PUB-4 can then close), ChatGPT only, or both. Tell the agent in chat.
 
 ## B2. Give the agent a working connection to your deployed server (lets agents run the real-account tests for you)
 
