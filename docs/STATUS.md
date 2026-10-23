@@ -1,6 +1,6 @@
 ## 2026-10-22 — device checks separated
 
-Real-device checks (PUB-4 phone/desktop) moved to docs/OWNER-DEVICE-CHECKS.md; they no longer block implementation or merges. Docs only.
+Real-device checks (PUB-4 phone/desktop) moved to docs/OWNER-CHECKLIST.md; they no longer block implementation or merges. Docs only.
 
 ## 2026-10-22 — CAP-4 signed App owner installation governance source and tests assembled
 

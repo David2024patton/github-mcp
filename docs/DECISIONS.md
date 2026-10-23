@@ -396,4 +396,4 @@ carried over unchanged. Old text: `docs/archive/AGENTS-2026-10-22-before-simplif
 
 ## 2026-10-22 — Real-device checks separated from development (owner request, Chris)
 
-Device checks (e.g. PUB-4 on phone and desktop) live in `docs/OWNER-DEVICE-CHECKS.md` and never block implementation or merges.
+Device checks (e.g. PUB-4 on phone and desktop) live in `docs/OWNER-CHECKLIST.md` and never block implementation or merges.
