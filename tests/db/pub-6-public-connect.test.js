@@ -210,6 +210,8 @@ describe('PUB-6 public simple connect (dark) in REAL PostgreSQL', () => {
     await expect(c.start(authorizeParams(client, { redirect_uri: 'https://elsewhere.example.test/cb' }))).rejects.toThrow();
     await expect(c.start(authorizeParams(client, { resource: 'https://elsewhere.example.test/api/mcp' }))).rejects.toThrow();
     await expect(c.start(authorizeParams(client, { account: 'not valid!' }))).rejects.toThrow();
+    await expect(c.start(authorizeParams(client, { scope: 'admin everything' }))).rejects.toThrow();
+    await expect(c.start(authorizeParams(client, { scope: 'github.notifications.read' }))).resolves.toBeTruthy();
     const a = await (await signIn(c, client, 'alice')).finished;
     expect(await directory.deletePublicClient(client.client_id)).toBe(true);
     expect((await exchange(client, new URL(a.redirect).searchParams.get('code'))).statusCode).toBe(401);
