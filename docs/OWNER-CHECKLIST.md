@@ -74,4 +74,4 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 - [ ] **Say go** before the GitHub App is switched to "installable by any account", and before each widening of the invite list.
 - [ ] **Choose the support contact** (an email address) that appears on the App and the legal pages.
 - [ ] **Decide pricing, if any,** once the cost numbers from the load test exist.
-- [x] **Package token saved (done 2026-10-23).** Reads work. Optional later: to test package delete/restore, publish any tiny throwaway package (for example a one-file npm package or a hello-world container) under `christcr2012`, then tell the agent its name. Ask the agent for a walk-through when you want to.
+- [x] **Package token saved and fully tested (done 2026-10-23).** Agents published a throwaway package themselves with a GitHub workflow; read, delete and restore all passed. Nothing more needed from you.
