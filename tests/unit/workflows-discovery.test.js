@@ -149,6 +149,10 @@ describe('W-7 standard repository stages preserve all independent guards',()=>{
     await newRepo(args,w.c);expect(changed(w)[1].args.requestKey).toBe(key);
     if(step==='fork-approval')expect(changed(w)[0].args.changes).toEqual({approval_policy:'all_external_contributors'});
   });
+  it('treats a private repository with no fork-approval setting as configured, not unreadable (seen live 2026-10-23)',async()=>{
+    const w=fixture();w.outputs.github_actions_get_settings={workflow:{default_workflow_permissions:'read',can_approve_pull_request_reviews:false},fork:{approval_policy:null,not_applicable:'GitHub has no fork-approval setting for this (private) repository.'}};
+    const r=result(await newRepo({repo,confirm:true,requestKey:'same-intent'},w.c));expect(r.status).toBe('configured');expect(changed(w)).toEqual([]);
+  });
   it('continues independent defaults but retains private paid-feature owner review',async()=>{
     const w=fixture({github_workflow_project_setup:{stage:'needs_owner_review',conditional_feature:'secret_scanning'}});
     const r=result(await newRepo({repo},w.c));expect(r).toMatchObject({done:false,status:'partially_configured',conditional_security:{status:'owner_review_required'}});expect(changed(w)).toEqual([]);
