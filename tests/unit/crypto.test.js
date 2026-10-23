@@ -86,3 +86,28 @@ describe('one-time secrets', () => {
     expect(() => createOneTimeStore({ db, service: 'github', setupPath: 'x', encryptionKey: keyOf() })).toThrow(TypeError);
   });
 });
+
+describe('key change (previous keys are read-only)', () => {
+  const k1 = Buffer.alloc(32, 1), k2 = Buffer.alloc(32, 2), k3 = Buffer.alloc(32, 3);
+  const text = (k) => k.toString('base64url');
+  const withEnv = (value, fn) => { const old = process.env.TOKEN_ENCRYPTION_KEY_PREVIOUS; if (value === undefined) delete process.env.TOKEN_ENCRYPTION_KEY_PREVIOUS; else process.env.TOKEN_ENCRYPTION_KEY_PREVIOUS = value; try { return fn(); } finally { if (old === undefined) delete process.env.TOKEN_ENCRYPTION_KEY_PREVIOUS; else process.env.TOKEN_ENCRYPTION_KEY_PREVIOUS = old; } };
+  it('reads a value sealed with the old key after the key changes, and seals new values with the new key only', () => {
+    const sealedOld = encryptSecret('secret-value', { aad: 'ctx', key: k1 });
+    withEnv(undefined, () => expect(() => decryptSecret(sealedOld, { aad: 'ctx', key: k2 })).toThrow());
+    withEnv(text(k1), () => expect(decryptSecret(sealedOld, { aad: 'ctx', key: k2 })).toBe('secret-value'));
+    const sealedNew = encryptSecret('another', { aad: 'ctx', key: k2 });
+    withEnv(undefined, () => expect(decryptSecret(sealedNew, { aad: 'ctx', key: k2 })).toBe('another'));
+    withEnv(text(k1), () => expect(() => decryptSecret(sealedNew, { aad: 'ctx', key: k1 })).toThrow()); // the old key alone never opens new values
+  });
+  it('still checks the context, tolerates two old keys, and ignores a malformed setting', () => {
+    const sealed = encryptSecret('v', { aad: 'ctx', key: k1 });
+    withEnv(text(k1), () => expect(() => decryptSecret(sealed, { aad: 'other', key: k2 })).toThrow());
+    withEnv(text(k3) + ',' + text(k1), () => expect(decryptSecret(sealed, { aad: 'ctx', key: k2 })).toBe('v'));
+    withEnv('not-a-key', () => expect(() => decryptSecret(sealed, { aad: 'ctx', key: k2 })).toThrow());
+    withEnv(text(k1) + ',' + text(k2) + ',' + text(k3), () => expect(() => decryptSecret(sealed, { aad: 'ctx', key: k2 })).toThrow());
+  });
+  it('never returns plaintext for a value sealed with an unlisted key', () => {
+    const sealed = encryptSecret('v', { aad: 'ctx', key: k3 });
+    withEnv(text(k1), () => expect(() => decryptSecret(sealed, { aad: 'ctx', key: k2 })).toThrow('Unable to decrypt'));
+  });
+});

@@ -1,3 +1,7 @@
+## 2026-10-23 — launch safety: key change without sign-out, and legal drafts
+
+`TOKEN_ENCRYPTION_KEY_PREVIOUS` (up to two older keys) lets the encryption key be changed without making people reconnect: it is used only for reading, authenticated per value with the same context, and new values are always sealed with the current key. The routing key stays single-key on purpose: changing it signs everyone out, which is the emergency lever. Procedure is in `docs/GO-LIVE-CHECKLIST.md`. Draft terms of use and privacy notice are in `docs/legal/` (unpublished, for the owner and a lawyer to approve; nothing serves them yet).
+
 ## 2026-10-23 — owner can delete one public person's data (no stranger's data is kept against their wish)
 
 The protected owner setup page can remove everything stored for one person who connected through the public sign-in, found by their personal GitHub account name typed twice with a tick-box. The database function `gh_forget_public_tenant` deletes every shared row pointing at that person's private area (sign-in, grants, optional keys, open flows, membership), then drops the whole area (their settings, tokens, saved results), and deletes the person's identity row if nothing else uses it. It refuses private-pilot tenants and any area with other members, and an organization name never identifies a person. Their tokens stop working at once. They can connect again later as a new person. A self-serve "delete my data" page for the person themselves is still to build (ROADMAP).

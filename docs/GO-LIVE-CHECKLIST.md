@@ -98,3 +98,8 @@ explanations is `docs/APP-NEEDS-APPLIANCE-DESK.md`; the app's own checklist stay
 - [ ] `GITHUB_PUBLIC_CONNECT=enabled` turns the flow on (needs `GITHUB_PRIVATE_TENANT_PILOT=enabled`, `GITHUB_PILOT_APP_ID`, production deployment). Unset it to stop new sign-ins at once; existing connections keep working until revoked.
 - [ ] Caps (stored as environment settings, sensible defaults): `GITHUB_PUBLIC_MAX_CLIENTS` (500), `GITHUB_PUBLIC_MAX_OPEN_FLOWS` (200), `GITHUB_PUBLIC_MAX_TENANTS` (25). Raise gradually.
 - [ ] GitHub App settings: "Request user authorization (OAuth) during installation" must be OFF and the Setup URL must be `/api/github/setup`; the App must be installable by the people being invited.
+
+## Changing the encryption or routing key (public sign-in)
+- **Encryption key (`TOKEN_ENCRYPTION_KEY`)** seals stored GitHub grants and optional keys. To change it without making everyone reconnect: put the OLD key into `TOKEN_ENCRYPTION_KEY_PREVIOUS` (up to two old keys, comma separated), set the NEW key in `TOKEN_ENCRYPTION_KEY`, and release. Old values stay readable; every value written afterwards is sealed with the new key. Remove an old key only after the people it covers have reconnected or their grants have been rewritten; anyone still sealed with a removed key simply sees "reconnect".
+- **Routing key (`GITHUB_TENANT_ROUTING_KEY`)** signs every public client, access and refresh token. Changing it signs EVERYONE out at once (an emergency lever, for example if the key leaked). People reconnect with one click; nothing is lost. There is deliberately no overlap period for this key.
+- Neither key is ever typed into a chat, a tool or a pull request.
