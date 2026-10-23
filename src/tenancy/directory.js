@@ -1,6 +1,7 @@
 // PUB-1: PRIVATE, unexposed tenant isolation foundation. No request route may call this
 // until PUB-2 binds a verified GitHub numeric subject to the session. Existing owner
 // data in the legacy (public) schema is never migrated, copied or modified here.
+import { validZone } from '../core/time-zone.js';
 import { randomUUID,createHash } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { createDb, SCHEMA_TABLES } from '../db.js';
@@ -265,6 +266,7 @@ export function createTenantDirectory(sql) {
         expires_at TIMESTAMPTZ NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
+      await sql`ALTER TABLE gh_public_flows ADD COLUMN IF NOT EXISTS time_zone TEXT`;
       await sql`CREATE INDEX IF NOT EXISTS gh_public_flows_expires
         ON gh_public_flows (expires_at)`;
       // This function only accepts server-generated opaque namespaces. Unlike
@@ -842,7 +844,7 @@ export function createTenantDirectory(sql) {
     },
     /** Returns false when too many sign-ins are already open (capacity guard). */
     async createPublicFlow({ stateHash, stage, clientId, redirectUri, clientState = null,
-      codeChallenge, tier, accountLogin = null, allowChanges = false,
+      codeChallenge, tier, accountLogin = null, allowChanges = false, timeZone = null,
       providerVerifier = null, afterInstall = false, tenantId = null, identityId = null, ttlSeconds = 600, maxOpen }) {
       if (!/^[a-f0-9]{64}$/.test(String(stateHash)) ||
           !['signin', 'install', 'god'].includes(stage) ||
@@ -851,6 +853,7 @@ export function createTenantDirectory(sql) {
           typeof redirectUri !== 'string' ||
           (clientState !== null && (typeof clientState !== 'string' || clientState.length > 256)) ||
           (accountLogin !== null && !/^[a-z0-9][a-z0-9-]{0,38}(,[a-z0-9][a-z0-9-]{0,38}){0,9}$/.test(String(accountLogin))) ||
+          (timeZone !== null && !validZone(timeZone)) ||
           !Number.isSafeInteger(ttlSeconds) || ttlSeconds < 60 || ttlSeconds > 1800 ||
           !Number.isSafeInteger(maxOpen) || maxOpen < 1)
         throw new TypeError('Invalid public connection state.');
@@ -859,10 +862,10 @@ export function createTenantDirectory(sql) {
       await sql`DELETE FROM gh_public_flows WHERE expires_at < now() - interval '1 hour'`;
       const rows = await sql`INSERT INTO gh_public_flows (state_hash,stage,client_id,redirect_uri,
           client_state,code_challenge,tier,account_login,allow_changes,after_install,provider_verifier,
-          tenant_id,identity_id,expires_at)
+          tenant_id,identity_id,expires_at,time_zone)
         SELECT ${stateHash},${stage},${clientId},${redirectUri},${clientState},${codeChallenge},
           ${tier},${accountLogin},${allowChanges === true},${afterInstall === true},${providerVerifier},
-          ${t}::uuid,${i}::uuid,now() + (${ttlSeconds} * interval '1 second')
+          ${t}::uuid,${i}::uuid,now() + (${ttlSeconds} * interval '1 second'),${timeZone}
         WHERE (SELECT count(*) FROM gh_public_flows WHERE expires_at > now()) < ${maxOpen}
         RETURNING state_hash`;
       return rows.length === 1;
@@ -874,11 +877,11 @@ export function createTenantDirectory(sql) {
       const rows = await sql`DELETE FROM gh_public_flows
         WHERE state_hash=${stateHash} AND stage=${stage} AND expires_at > now()
         RETURNING client_id,redirect_uri,client_state,code_challenge,tier,account_login,
-          allow_changes,after_install,provider_verifier,tenant_id,identity_id`;
+          allow_changes,after_install,provider_verifier,tenant_id,identity_id,time_zone`;
       const r = rows[0];
       return r ? { clientId: r.client_id, redirectUri: r.redirect_uri, clientState: r.client_state,
         codeChallenge: r.code_challenge, tier: r.tier, accountLogin: r.account_login,
-        allowChanges: r.allow_changes, afterInstall: r.after_install, providerVerifier: r.provider_verifier,
+        allowChanges: r.allow_changes, afterInstall: r.after_install, providerVerifier: r.provider_verifier, timeZone: r.time_zone ?? null,
         tenantId: r.tenant_id ? String(r.tenant_id) : null,
         identityId: r.identity_id ? String(r.identity_id) : null } : null;
     },

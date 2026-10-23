@@ -1,3 +1,4 @@
+import { formatLocal as formatLocalTime } from '../core/time-zone.js';
 // Errors the GitHub client raises on its own (A-4). Tools turn these into plain-language results (Batch B); none of
 // them ever carries a token, a request body or any credential.
 
@@ -15,14 +16,6 @@ export class GithubClientError extends Error {
   }
 }
 
-const DENVER = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'America/Denver', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
-});
-
-/** "Oct 10, 2026, 7:45 PM" in America/Denver, with the zone's current abbreviation (MST or MDT). */
-export function formatDenver(date) {
-  const d = date instanceof Date ? date : new Date(date);
-  const zone = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', timeZoneName: 'short' })
-    .formatToParts(d).find((part) => part.type === 'timeZoneName')?.value || 'MT';
-  return `${DENVER.format(d)} ${zone}`;
-}
+/** Kept under its old name so every caller keeps working: shows the time in the current person's zone (UTC when none chosen). */
+export const formatLocal = formatLocalTime;
+export const formatDenver = formatLocalTime;

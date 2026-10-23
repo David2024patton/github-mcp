@@ -146,7 +146,7 @@ date, and a test checks the hash. Search them with `node scripts/openapi-find.mj
 | `githubFor(ctx, { owner, cred, scope })` | One Octokit per request. `ctx = { connection, db, credentials, fetch?, now?, sleep?, budgetMs? }`; `credentials.token({ account, cred, scope })` is supplied by A-5. `cred` is `I` installation, `U` user or `K` fine-grained token |
 | Writes | Never retried after an error; each waits for its `gh_write_slots` turn (1 s apart per account and credential kind, across instances; refused with `rate_limited` if the queue is over 5 s) |
 | Reads | Retried twice on 5xx; `request: { etag: true }` sends `If-None-Match` from `gh_etag_cache` and returns the stored body on a 304 (`notModified: true`) |
-| Rate limits | Every response's headers go to `gh_rate_state`; a spent budget or a `retry-after` on 403/429 blocks that account and resource; waits are honoured only inside the 20 s budget, otherwise `rate_limited` with the reset in Denver time |
+| Rate limits | Every response's headers go to `gh_rate_state`; a spent budget or a `retry-after` on 403/429 blocks that account and resource; waits are honoured only inside the 20 s budget, otherwise `rate_limited` with the reset in the person's own time zone (UTC when none is saved) |
 | `requestKey(ctx, tool, args)` | `rmcp_<tool>_<sha256>_<10-minute bucket>`; ignores `dryRun`, `confirm`, `fields`, `detail`; a caller `requestKey` replaces the arguments |
 
 ### Write layer (B-1)
@@ -203,7 +203,7 @@ Only the setup page raises the limit; `github_set_spend_limit` only lowers it.
 
 `src/tools/errors.js` turns a GitHub failure into four parts (what happened, likely cause, what to do, one technical line with the request id); unknown errors keep the plain
 status line. `src/tools/util.js` `shapeResult` runs on every result in `src/tools/dispatch.js`: secret-named fields and token- or key-shaped text become `[hidden]`; times gain
-`_local` (Denver); whole cents gain `_display`; text from people whose `author_association` is not OWNER, MEMBER or COLLABORATOR is marked `untrusted: true`; a production
+`_local` (the person's saved time zone, UTC when none is saved; set on the connect page or the setup page, kept in the `time_zone` setting); whole cents gain `_display`; text from people whose `author_association` is not OWNER, MEMBER or COLLABORATOR is marked `untrusted: true`; a production
 connection's results start with `"mode": "PRODUCTION"`. The dispatcher still withholds anything credential-shaped that survives shaping.
 
 ### Profiles and downscoped tokens (B-6)

@@ -1,6 +1,7 @@
 // W-7: scoped discovery/digest plus the original standard-repository desired state.
 import {createHash} from 'node:crypto';
 import {defineRead} from './define-read.js';
+import {currentZone} from '../core/time-zone.js';
 const OWNER={type:'string',minLength:1,maxLength:39},REPO={type:'string',minLength:1,maxLength:100,pattern:'^[A-Za-z0-9._-]+$'};
 const safe=r=>r&&!r.isError?r.structuredContent??null:null;
 const partial=x=>!x||!!(x.kept_result||x.more_exist||x.more_possible||x.next_page_possible||x.incomplete_results||x.complete===false);
@@ -62,7 +63,7 @@ export async function find(a,c){
   return s.finish({owner,...a.repo?{repo:a.repo}:{},query:a.query,groups,
     next:'Use each group continuation where present. Capped/truncated metadata is not an exhaustive negative search.'});
 }
-const denver=ms=>new Intl.DateTimeFormat('en-US',{timeZone:'America/Denver',dateStyle:'medium',timeStyle:'short'}).format(new Date(ms));
+const denver=ms=>new Intl.DateTimeFormat('en-US',{timeZone:currentZone(),dateStyle:'medium',timeStyle:'short'}).format(new Date(ms))+(currentZone()==='UTC'?' UTC':'');
 const dollar=cents=>Number.isSafeInteger(cents)?'$'+(cents/100).toFixed(2):null;
 export async function digest(a,c){
   const requested=a.accounts??c.connection.accounts;
@@ -135,7 +136,7 @@ export async function digest(a,c){
     report.billed_usage.coverage='Provider-reported billed usage only. Fixed subscriptions or seat invoices not exposed in usage are not inferred from estimated prices.';
     accounts.push(report);
   }
-  return s.finish({period:{from:new Date(start).toISOString(),until:new Date(end).toISOString(),from_denver:denver(start),until_denver:denver(end),basis:'Last seven complete UTC billing days, end exclusive; the same activity interval is displayed in Denver time.'},accounts});
+  return s.finish({period:{from:new Date(start).toISOString(),until:new Date(end).toISOString(),from_local:denver(start),until_local:denver(end),basis:'Last seven complete UTC billing days, end exclusive; the same activity interval is displayed in Denver time.'},accounts});
 }
 async function child(c,name,args){const r=await c.callTool(name,args);return r?.structuredContent??{status:'unknown',reason:(r?.content?.[0]?.text??'No verified result').slice(0,400)};}
 const allowedSetup=new Set(['github_repo_create','github_repo_update_settings','github_ruleset_save','github_label_save','github_env_save','github_security_set_feature']);

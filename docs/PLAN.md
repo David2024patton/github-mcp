@@ -41,7 +41,7 @@ Owner-approved **engineering scope** and approved original acceptance remain dis
   organization (IN-06).
 - Every tool name starts with `github_`; every tool is in `docs/TOOL-CATALOG.md` with the marks its code declares.
 - Owner inputs are inputs, not things to invent: build the mechanism, keep the dependent behavior off, list the `IN-xx`.
-- Money shown in dollars and cents, stored in cents; times shown America/Denver, stored UTC.
+- Money shown in dollars and cents, stored in cents; times stored UTC and shown in each person's own saved zone (UTC when none is saved).
 - The PR description carries the card's acceptance checklist with evidence and a "Self-review" (AI-PR-READ-FIRST).
 
 ## Batch A — Foundation (`designs/BATCH-A.md`)

@@ -324,6 +324,26 @@ describe('PUB-6 God-mode keys, revocation and the MCP gate', () => {
   });
 });
 
+describe('PUB-6 display time zone', () => {
+  it('saves the zone chosen on the sign-in page for that person only, keeps it when later left blank, and refuses a fake zone', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    await expect(c.start(authorizeParams(client, { time_zone: 'Mars/Base' }))).rejects.toThrow();
+    const one = await (await signIn(c, client, 'alice', { time_zone: 'America/Denver' })).finished;
+    const token = json(await exchange(client, new URL(one.redirect).searchParams.get('code')));
+    const routed = await resolvePrivateTenantMcpBearer({ authorization: 'Bearer ' + token.access_token, env, fetchImpl, rootSqlFactory, tenantSqlFactory });
+    expect(await routed.db.getSetting('time_zone')).toBe('America/Denver');
+    const again = await (await signIn(c, client, 'alice')).finished;
+    const token2 = json(await exchange(client, new URL(again.redirect).searchParams.get('code')));
+    const routed2 = await resolvePrivateTenantMcpBearer({ authorization: 'Bearer ' + token2.access_token, env, fetchImpl, rootSqlFactory, tenantSqlFactory });
+    expect(await routed2.db.getSetting('time_zone')).toBe('America/Denver');
+    const other = await (await signIn(c, client, 'bob')).finished;
+    const tokenB = json(await exchange(client, new URL(other.redirect).searchParams.get('code')));
+    const routedB = await resolvePrivateTenantMcpBearer({ authorization: 'Bearer ' + tokenB.access_token, env, fetchImpl, rootSqlFactory, tenantSqlFactory });
+    expect(await routedB.db.getSetting('time_zone')).toBeNull();
+  });
+});
+
 describe('PUB-6 branding', () => {
   it('shows the Robinson look and icon on the connect page and lists the icon on the MCP server', async () => {
     const { serverInfo, BRAND_CSS, iconBytes } = await import('../../src/brand/brand.js');

@@ -15,6 +15,7 @@ import { renderSetup, resultPage } from './setup-html.js';
 import { summarizeConnectorReadiness } from './oauth-readiness.js';
 import { PRODUCTION_NAMES_KEY, cleanNames, productionNames, productionReason } from '../tools/production-guard.js';
 import { matchingEntries, protectedList } from '../tools/protect-guard.js';
+import { DEFAULT_ZONE, ZONE_SETTING, validZone } from '../core/time-zone.js';
 import { OWN_PEOPLE_KEY, cleanLogins, extraOwnPeople } from '../tools/people-guard.js';
 import { spendStatus } from '../tools/spend-guard.js';
 import { dollars as money } from '../github/prices.js';
@@ -209,6 +210,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
         target:passId,summary:'Revoked an RTC test pass',confirmed:true,production:false}).catch(()=>{});
       return page(revoked?200:404,{result:revoked?'RTC pass revoked immediately.':'No active RTC pass with that identifier.'});
     }
+    if (action === 'set-time-zone') return await setTimeZone(p, page);
     if (action === 'set-own-people') return await setOwnPeople(p, page);
     if (action === 'save-protected' || action === 'remove-protected') return await editProtected(action, p, page);
     if (!['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'add-package', 'remove-package', 'remove-classic', 'remove-fine-grained'].includes(action)) return page(400, { result: 'Unknown action.' });
@@ -358,6 +360,15 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     await db.recordChange({ account: row.login, mode: 'setup', tool: 'setup_set_spend_limit', target: row.login, summary: `Monthly spend limit for ${row.login} set to ${money(cents)} (was ${money(Number(row.spend_limit_cents) || 0)})`,
       production: true, accessWidening: false, confirmed: true }).catch(() => {});
     return page(200, { result: `The monthly spend limit for ${row.login} is now ${money(cents)}${raised ? '. Actions that cost money still ask you first.' : '.'}`, spendLimits: await spendView() });
+  }
+
+  /** Display-only time zone for times shown to assistants. Blank means UTC. Not a security setting, so it works in any mode. */
+  async function setTimeZone(p, page) {
+    const text = String(p.zone ?? '').trim();
+    const zone = text === '' ? DEFAULT_ZONE : validZone(text);
+    if (!zone) return page(400, { result: 'That is not a time zone name. Use a name like America/Denver or UTC.' });
+    await db.setSetting(ZONE_SETTING, zone);
+    return page(200, { result: `Saved. Times will now show in ${zone}${zone === DEFAULT_ZONE ? ' (UTC)' : ''}.` });
   }
 
   /** Extra names that count as the owner's own people (they reduce confirmations, so only this page sets them). */

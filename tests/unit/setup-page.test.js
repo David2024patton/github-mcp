@@ -755,6 +755,16 @@ describe('spend limit and own people on the setup page (B-4)', () => {
     await preview.open();
     expect((await preview.post({ action: 'set-spend-limit', login: 'example-org', dollars: '5' })).statusCode).toBe(403);
   });
+  it('saves a display time zone (blank means UTC) and rejects a name that is not a real zone', async () => {
+    const t = await build();
+    await t.open();
+    expect((await t.post({ action: 'set-time-zone', zone: 'America/Denver' })).statusCode).toBe(200);
+    expect(await t.db.getSetting('time_zone')).toBe('America/Denver');
+    expect((await t.post({ action: 'set-time-zone', zone: '' })).statusCode).toBe(200);
+    expect(await t.db.getSetting('time_zone')).toBe('UTC');
+    expect((await t.post({ action: 'set-time-zone', zone: 'Mars/Base' })).statusCode).toBe(400);
+    expect(await t.db.getSetting('time_zone')).toBe('UTC');
+  });
   it('saves, replaces and rejects the extra own-people list', async () => {
     const t = await build();
     await t.open();

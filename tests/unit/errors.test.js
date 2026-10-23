@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { acceptedPermissions, describeGithubError, describeGraphqlErrors, explainGithubError, ruleViolations } from '../../src/tools/errors.js';
 import { GithubClientError } from '../../src/github/errors.js';
+import { withTimeZone } from '../../src/core/time-zone.js';
 
 const err = (status, data = {}, headers = {}) => Object.assign(new Error(data.message ?? 'x'), { status, response: { data, headers: { 'x-github-request-id': 'AB12:34', ...headers } } });
 const d = (status, data, headers, opts) => describeGithubError(err(status, data, headers), opts);
@@ -40,7 +41,10 @@ describe('specific rules', () => {
   it('403 without a real grant header preserves integration refusal without inventing missing consent', () => {
     expect(d(403, { message: 'Resource not accessible by integration' }).kind).toBe('forbidden');
   });
-  it('separates primary from secondary rate limits and shows the reset in Denver time', () => {
+  it('separates primary from secondary rate limits and shows the reset in the person\'s time zone, UTC when none is saved', () => {
+    const primary0 = d(403, { message: 'API rate limit exceeded for installation' }, { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(Date.UTC(2026, 9, 10, 20, 0, 0) / 1000) });
+    expect(primary0.todo).toContain('Oct 10, 2026, 8:00 PM UTC');
+    withTimeZone('America/Denver', () => {
     const primary = d(403, { message: 'API rate limit exceeded for installation' }, { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(Date.UTC(2026, 9, 10, 20, 0, 0) / 1000) });
     expect(primary.kind).toBe('primary_rate_limit');
     expect(primary.todo).toContain('Oct 10, 2026, 2:00 PM MDT');
@@ -48,10 +52,12 @@ describe('specific rules', () => {
     expect(secondary.kind).toBe('secondary_rate_limit');
     expect(secondary.todo).toContain('90 seconds');
     expect(d(429, { message: 'slow down' }).kind).toBe('primary_rate_limit');
+    });
   });
   it('shows a winter reset in standard time (daylight-saving change)', () => {
     const x = d(429, {}, { 'x-ratelimit-reset': String(Date.UTC(2026, 10, 2, 20, 0, 0) / 1000) });
-    expect(x.todo).toContain('Nov 2, 2026, 1:00 PM MST');
+    expect(withTimeZone('America/Denver', () => d(429, {}, { 'x-ratelimit-reset': String(Date.UTC(2026, 10, 2, 20, 0, 0) / 1000) }).todo)).toContain('Nov 2, 2026, 1:00 PM MST');
+    expect(x.todo).toContain('Nov 2, 2026, 8:00 PM UTC');
   });
   it('404 says "not found or no access" and names the account used', () => {
     const x = d(404, { message: 'Not Found' }, {}, { account: 'example-org' });

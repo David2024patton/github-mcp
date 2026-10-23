@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { withTimeZone } from '../../src/core/time-zone.js';
 import { HIDDEN, redact, shapeResult } from '../../src/tools/util.js';
 
 describe('shapeResult', () => {
@@ -11,8 +12,10 @@ describe('shapeResult', () => {
     expect(JSON.stringify(out)).not.toMatch(/ghp_|github_pat_|ghs_|BEGIN/);
     expect(redact('plain text')).toBe('plain text');
   });
-  it('adds Denver times, across the daylight-saving change', () => {
-    const out = shapeResult({ created_at: '2026-10-10T20:00:00Z', updated_at: '2026-11-02T20:00:00Z', note: '2026-10-10T20:00:00Z', closedAt: 'not a date' });
+  it('adds local times in the person\'s zone (UTC by default), across the daylight-saving change', () => {
+    const raw = { created_at: '2026-10-10T20:00:00Z' };
+    expect(shapeResult(raw).created_at_local).toBe('Oct 10, 2026, 8:00 PM UTC');
+    const out = withTimeZone('America/Denver', () => shapeResult({ created_at: '2026-10-10T20:00:00Z', updated_at: '2026-11-02T20:00:00Z', note: '2026-10-10T20:00:00Z', closedAt: 'not a date' }));
     expect(out.created_at_local).toBe('Oct 10, 2026, 2:00 PM MDT');
     expect(out.updated_at_local).toBe('Nov 2, 2026, 1:00 PM MST');
     expect(out.note_local).toBeUndefined();
