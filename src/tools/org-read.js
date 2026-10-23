@@ -12,7 +12,7 @@ const projection=x=>({login:x.login,id:x.id,role:x.role??null,
 const invite=x=>({id:x.id,login:x.invitee?.login??null,email:x.email??null,
   role:x.role??null,team_ids:x.team_ids??[],created_at:x.created_at??null,
   failed_reason:x.failed_reason??null});
-async function orgReader(a,ctx,fn){
+export async function orgReader(a,ctx,fn){
   return plain(async()=>{
     const {owner,octokit:gh}=await readerFor(a,ctx);
     const account=await ctx.db.getAccount(owner);
