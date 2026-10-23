@@ -123,7 +123,7 @@ privileges or bypass a destruction gate.
    database code passes against throwaway Postgres.
 3. CI green at the exact head: both GitHub Actions `ci` **and** `release-policy`.
 4. The card's acceptance for the piece being merged is checked item by item with evidence (test names, CI run).
-5. `docs/STATUS.md` updated (short — see Ending a session).
+5. A short status note added under `docs/status/` (see Ending a session).
 
 If something isn't finished, say so and record it. A passing typecheck, a screenshot or a plan is not evidence a
 feature works.
@@ -221,7 +221,8 @@ feature works.
 
 ## Ending a session
 
-1. `docs/STATUS.md`: add one short entry at the top — merged, in progress (branch, PR, head SHA, CI), blocked and why,
+1. Status: add one short note as its own file `docs/status/YYYY-MM-DD-<topic>.md` (never edit the top of `docs/STATUS.md`; that
+   caused a merge conflict on nearly every PR) — merged, in progress (branch, PR, head SHA, CI), blocked and why,
    next. Do not rewrite history entries.
 2. `docs/DECISIONS.md` for any design decision; `docs/ROADMAP.md` for out-of-scope finds; `docs/GO-LIVE-CHECKLIST.md`
    for any new switch, credential or owner step.
