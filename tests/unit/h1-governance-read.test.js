@@ -44,6 +44,23 @@ describe('H-1 governance read-only provider routes',()=>{
   expect(x).toMatchObject({protected:false,classic_protection_readable:true,classic:null});
   expect(x.note).toMatch(/ruleset/i);expect(x.warning).toBeUndefined();
  });
+ it('says plainly that branch protection is unavailable on a free plan for a private repository (real GitHub answer)',async()=>{
+  const w=await makeWorld();w.gh.when('GET /repos/{owner}/{repo}/branches/{branch}')
+    .reply(200,{name:'main',protected:false});
+  w.gh.when('GET /repos/{owner}/{repo}/branches/{branch}/protection')
+    .reply(403,{message:'Upgrade to GitHub Pro or make this repository public to enable this feature.'});
+  const x=await call(w,'github_protection_get',{repo:'hello',branch:'main'});
+  expect(x).toMatchObject({protected:false,classic_protection_readable:false});
+  expect(x.plan_limits[0]).toMatch(/not available.*plan/i);
+ });
+ it('still refuses any other 403 on the protection read instead of calling it a plan limit',async()=>{
+  const w=await makeWorld();w.gh.when('GET /repos/{owner}/{repo}/branches/{branch}')
+    .reply(200,{name:'main',protected:true});
+  w.gh.when('GET /repos/{owner}/{repo}/branches/{branch}/protection')
+    .reply(403,{message:'Resource not accessible by integration'});
+  const x=await call(w,'github_protection_get',{repo:'hello',branch:'main'});
+  expect(x.plan_limits).toBeUndefined();
+ });
  it('lists repository rulesets with clear named rules and enforcement',async()=>{
   const w=await makeWorld();
   w.gh.when('GET /repos/{owner}/{repo}/rulesets').reply(200,[rs]);
