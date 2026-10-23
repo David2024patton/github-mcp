@@ -35,7 +35,9 @@ const people = {
     { id: 41010, app_id: APP, account: { id: 31002, login: 'bob-test', type: 'User' }, repository_selection: 'all', suspended_at: null }] },
   erin: { token: 'tok-erin-00005', id: 31005, login: 'erin-member', roles: { 'client-co': 'member' }, installs: [
     { id: 41040, app_id: APP, account: { id: 51001, login: 'client-co', type: 'Organization' }, repository_selection: 'all', suspended_at: null }] },
-  carol: { token: 'tok-carol-003', id: 31003, login: 'carol-new', installs: [] }
+  carol: { token: 'tok-carol-003', id: 31003, login: 'carol-new', installs: [] },
+  dave: { token: 'tok-dave-0006', id: 31006, login: 'dave-solo', roles: { 'client-co': 'admin' }, installs: [
+    { id: 41050, app_id: APP, account: { id: 51001, login: 'client-co', type: 'Organization' }, repository_selection: 'all', suspended_at: null }] }
 };
 const fetchImpl = async (url, opts = {}) => {
   if (url === 'https://github.com/login/oauth/access_token') {
@@ -200,6 +202,24 @@ describe('PUB-6 public simple connect (dark) in REAL PostgreSQL', () => {
     people.carol.installs = [{ id: 41020, app_id: APP, account: { id: 31003, login: 'carol-new', type: 'User' }, repository_selection: 'selected', suspended_at: null }];
     const done = await (await signIn(c, client, 'carol')).finished;
     expect(done.redirect).toContain(CB);
+  });
+
+  it('offers the App on the person\'s own personal account once, then connects what is available without looping', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    // dave administers an installed organization but his own account has no App yet: he is offered the install first.
+    const first = await (await signIn(c, client, 'dave')).finished;
+    expect(first.redirect).toBeUndefined();
+    expect(first.install.url).toMatch(/^https:\/\/github\.com\/apps\/public-connect-app\/installations\/new\?state=pc\./);
+    const installState = new URL(first.install.url).searchParams.get('state');
+    const resumed = await c.resumeInstall({ state: installState, browserCsrf: installState });
+    // back from GitHub without installing on himself: the organization is connected, no second offer.
+    const done = await c.finish({ state: resumed.csrfState, code: 'dave-fixture-code-1', browserCsrf: resumed.csrfState });
+    expect(done.install).toBeUndefined();
+    expect(done.redirect).toContain(CB);
+    // someone who names accounts is never pushed to install their personal one
+    const named = await (await signIn(c, client, 'dave', { account: 'client-co' })).finished;
+    expect(named.redirect).toContain(CB);
   });
 
   it('rejects a mismatched browser cookie before any GitHub request, and unknown or revoked clients', async () => {
