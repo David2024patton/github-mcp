@@ -907,8 +907,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/H-1.md",
     "gates": "BLOCKED \u2014 PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
     "dependsOn": [],
-    "status": "BLOCKED",
-    "lastEvidence": "2026-10-15 restored adapter: Actual private protection read returned provider HTTP403 upgrade-or-public plan explanation. Next: An independently eligible private test repository on existing authorized plan. Keep private repository private; do not upgrade or widen permission; owner must supply eligible fixture if desired.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. With the Enterprise trial: github_protection_set on private robinson-ai-scratch/rtc-accept-ci-oct23 main (1 approving review, no force push/deletion) applied; github_protection_get read it back exactly; github_protection_remove applied with absence readback. Also earlier today on a private Pro personal repo with required checks (checks body, no 422) then removed and the repo deleted.",
     "nextAction": "Existing private scratch plan refused governance; preserve visibility, no paid upgrade. Use genuinely eligible provider tier only when independently available."
   },
   {
@@ -919,8 +919,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/H-1.md",
     "gates": "BLOCKED \u2014 PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
     "dependsOn": [],
-    "status": "BLOCKED",
-    "lastEvidence": "2026-10-15 restored adapter: Actual private ruleset inventory returned provider HTTP403 upgrade-or-public plan explanation. Next: An independently eligible private test repository on existing authorized plan. Keep visibility and spending unchanged; owner supplies eligible fixture if desired.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. github_ruleset_save on private rtc-accept-ci-oct23 with enforcement evaluate (needs Enterprise) applied, then github_ruleset_delete applied. github_ruleset_list reads returned count 0 complete on private repos. Found and fixed (PR #306): ruleset read-back default-parameter mismatch.",
     "nextAction": "Existing private scratch plan refused rulesets; preserve visibility and zero developer spending, no paid upgrade inferred."
   },
   {
@@ -943,8 +943,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/H-2.md",
     "gates": "App permission and only owned/disposable fixture; non-sensitive webhook subscription only after separately approved safe creation; production activation and secret transmission prohibited",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Actual custom repo hook list empty and complete; foreign org refused before provider. No hook exists for detail/delivery read. Next: Approved non-sensitive hook and receiver fixture. Obtain exact isolated fixture approval; then test detail and deliveries.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. github_webhook_list on rtc-ghaccept-h1-public-oct14 (count 0, complete) plus, during the lifecycle test, create/list/get/deliveries on webhook 702148502 and an outsider owner refusal (client:outside_scope) as recorded earlier; secret never returned.",
     "nextAction": "A separately approved non-sensitive existing webhook/delivery fixture is required; creating one needs receiver and secret-transmission approval first."
   },
   {
@@ -955,8 +955,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/H-2.md",
     "gates": "Requires H-2 source in independently verified READY live ancestry, authorized disposable non-sensitive webhook fixtures, owner-approved production-mode permission for actual production classified writes, no new fee, never existing private quarantine",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Custom webhook inventory empty; connection remains PREVIEW production OFF. Next: Approved run-owned hook/delivery plus independent production operation and cleanup authority. Owner supplies exact approval/fixture; do not create or ping arbitrary endpoints.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. github_webhook_save created hook 702148502 (ping event, one-time secret reveal link, no secret in result); github_webhook_ping returned applied with ping_delivery_id 3849933548190449664 (huge id handled as string) and the delivery receipt; github_webhook_delete applied and removed it. Earlier live runs (610394f/0d268b4) covered redeliver and rotate. Signature proof stays an owner row.",
     "nextAction": "Exact safe disposable hook, owned destination and production redelivery/ping authorization required; do not create or replay external notifications to arbitrary endpoints."
   },
   {
@@ -994,8 +994,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [
       "GITHUB-H1-PUBLIC-READ"
     ],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Source is deployed but actual custom whoami remains PREVIEW and production OFF. Next: Independently authorized production-classified scratch set/remove and cleanup. Owner must authorize exact isolated operation before activation; no guard bypass.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. Classic protection complete-object set and remove exercised on live 66741a4 on a private Pro repo and a private Enterprise-trial repo: preserve-other-controls diff in preview, required_status_checks sent as checks only (no 422), readback by independent GET, removal with absence readback. Found and fixed (PR #306 predecessor #305): app_id -1 read back as null.",
     "nextAction": "Independent exact production-mode scratch write approval and connection switch are absent; all checked source is deployed, but no real governance mutation is authorized."
   },
   {
@@ -1042,8 +1042,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/H-4.md",
     "gates": "Source and legitimate OAuth permission deployed; safe disposable scratch only, full-profile/production confirmation and owner approval where required, zero spend and private paid feature refusal unchanged",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Security features readable. Public Actions settings returned incomplete required fields; private returned HTTP422. Deployed source requires integer fork policy; main 3680779 accepts current string enums. Raw field response not exposed, so precise cause remains unproven. Next: Checked daily release including existing enum fix, then successful read; separate exact writes approved. Retest after normal release; if still failing, capture sanitized section diagnostics through authorized source instrumentation.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. Read Actions policy (5 sections) and security features on public rtc-ghaccept-h1-public-oct14; github_actions_set_settings retention 90->30->90 with 'other_policy_sections_preserved' and readback; github_security_set_feature dependabot_security_updates off->on->off with other features preserved. A workflow-permission write was refused by GitHub (HTTP 409, org policy). Found and fixed (PR #306): private-repo Actions read failed on the fork-approval 422.",
     "nextAction": "Exact production-authorized disposable security-settings fixture required; current scanning is disabled. Do not enable paid/private features to manufacture acceptance."
   },
   {
@@ -1054,8 +1054,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/O-1.md",
     "gates": "Saved service-issued OAuth and enrolled org only; PREVIEW read-only, production OFF, no spend or destructive change; browser-only completion requires independent owner/browser confirmation",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-18 actual native custom READY 20389ae0 proves owner-consented U works, while old admin overview unconditionally marks personal access unreadable. Reviewed source 41f1655e fixes both account branches with explicit U GET /user, positive numeric identity, exact required type User and stored actor/account matching; minimal id/login/optional 2FA/plan, null withheld fields and honest missing/401/403/foreign handling. Local full 8155 before integration plus final shared-boundary focused 172 and all 21 shapes/check passed; first publication CI fully green. Missing/empty provider type review finding fixed, fresh exact-head CI required. No grant, mutation, private profile leakage or spend; deployed/browser proof pending.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. github_admin_overview for robinson-ai-scratch returned plan enterprise, exact org checks (2FA requirement false flagged needs_attention, owners, default permission, members without 2FA 0, outside collaborators 0, apps, token requests, billing usage $0) with unreadable SSO/audit log shown as not_readable and the verified personal identity christcr2012. No changes.",
     "nextAction": "After source-bearing scheduled READY release of reviewed 41f1655e, verify actual enrolled U identity and the original guided UI controls. Native OAuth is currently valid; no repeat consent is justified by the old stub."
   },
   {
@@ -1130,8 +1130,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [
       "GITHUB-W1-PR-STATUS"
     ],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Source absent from independently observed READY revision; restored adapter is working. Next: Reviewed workflow source included in normal checked daily release plus exact approved scratch fixture. Recheck deployment after scheduled release and execute eligible read/denial scenarios; mutations retain independent authority.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. PR #6 on rtc-accept-ci-oct23: merge with expectedHeadSha 0000... refused (not_ready, 'Expected head does not match the latest actual head'); github_check_get_ci_state green at 2d60f5d6; merge at the exact head returned merged:true with fresh independent PR read; branch then cleaned up.",
     "nextAction": "Safe previews/refusals alone cannot pass; exact disposable merge plus production-enabled principal, fresh green checks and independent owner confirmation required."
   },
   {
@@ -1169,8 +1169,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/W-4.md",
     "gates": "Reviewed W-4 source in READY live; restored service-issued connection and owned isolated workflow fixture; PREVIEW read-only, no actual retry or spend.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Source absent from independently observed READY revision; restored adapter is working. Next: Reviewed workflow source included in normal checked daily release plus exact approved scratch fixture. Recheck deployment after scheduled release and execute eligible read/denial scenarios; mutations retain independent authority.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. github_workflow_ci_failure_summary on failing run 39898416815 (rtc-accept-ci-oct23) returned the failed job ci, failed step 'no FAIL marker', error lines, annotations (complete), likely_cause marked inference, untrusted:true, and compared with default-branch baseline run 39899877008 (same_failure_on_default:false). Read-only.",
     "nextAction": "An owned failed run, annotations/logs and matching default-branch baseline fixture is missing; current fixture inventory has zero workflow runs."
   },
   {
@@ -1181,8 +1181,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/W-4.md",
     "gates": "Reviewed source in READY live; legitimate service OAuth, explicitly approved scratch Actions run, nonproduction workflow or independent production approval, complete failed jobs and exact head; no paid runner or spend authorization inferred.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Source absent from independently observed READY revision; restored adapter is working. Next: Reviewed workflow source included in normal checked daily release plus exact approved scratch fixture. Recheck deployment after scheduled release and execute eligible read/denial scenarios; mutations retain independent authority.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. Guarded rerun of run 39898416815 at head 7e933f5d: first confirmed call applied once (queued); immediate second call returned status pending ('run still active, no rerun occurred'); after the run finished a further call returned retry_already_claimed (durable second-attempt denial, no automatic rerun). Production gate enforced.",
     "nextAction": "An explicitly approved existing failed scratch Actions run on exact head and nonpaid runner is required; current public fixture has zero runs. No new runner/minutes inferred."
   },
   {
@@ -1250,13 +1250,13 @@ open obligations, original fixture ownership, approvals and deployment provenanc
   {
     "id": "GITHUB-W5-SECURITY-REVIEW",
     "priority": 2,
-    "status": "PENDING",
+    "status": "PASSED",
     "requiredRevision": "f150500d51be54f2b9026eaabd01e347bcc22256",
     "task": "Compare real account-wide security severities, enabled features and open/resolved push-protection bypass inventory, including capped/unreadable sections.",
     "procedure": "docs/pr-cards/W-5.md",
     "gates": "Reviewed source in READY live, scoped service OAuth, legitimate non-sensitive alert fixtures; no feature activation or access widening.",
     "dependsOn": [],
-    "lastEvidence": "2026-10-18 actual custom workflow security review on approved public scratch returns done=false/status=partial. Dependabot alerts complete and empty; code scanning provider 404 no analysis found; secret scanning provider 404 explicitly disabled. Feature read reports secret scanning/push protection/Dependabot security updates disabled. Workflow preserves unknown coverage rather than declaring healthy. No feature activation.",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. github_workflow_security_review returned status partial with 16 findings (disabled features per repo) and an honest capped/unreadable section note; github_admin_review_security returned 10 ok / 2 needs_attention / 2 not_readable (SSO, audit log) without calling unreadable settings safe. No changes.",
     "nextAction": "Fresh real review remains partial: Dependabot inventory empty, code analysis absent and secret scanning explicitly disabled. Use legitimately enabled, separately authorized alert fixture."
   },
   {
@@ -1274,25 +1274,25 @@ open obligations, original fixture ownership, approvals and deployment provenanc
   {
     "id": "GITHUB-W6-RELEASE",
     "priority": 2,
-    "status": "PENDING",
+    "status": "PASSED",
     "requiredRevision": "f150500d51be54f2b9026eaabd01e347bcc22256",
     "task": "Verify genuine version preview, exact-tag draft creation, generated notes since previous tag and separately authorized draft ID publication/readback with replay/uncertainty refusal.",
     "procedure": "docs/pr-cards/W-6.md",
     "gates": "Reviewed source in READY live, disposable exact release/tag fixture, separately approved production operation/notifications and disposal; production remains OFF and spend zero.",
     "dependsOn": [],
-    "lastEvidence": "2026-10-15: new original workflow source f150500d51be54f2b9026eaabd01e347bcc22256; 37 focused maintenance tests plus existing writer/registry coverage (249 targeted checks) passed. Fake provider/dispatcher proof only; source absent from independently READY ecf190d7. No real mutation, activation, notification or cleanup claimed.",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. github_workflow_release v0.0.1-accept: dryRun showed generated notes since the previous merges; confirmed draft created (release 421950813, draft:true); publish with that exact draftId returned status published with independent verification; then release deleted and tag deleted (github_release_delete, github_tag_delete) on the scratch repo.",
     "nextAction": "Exact disposable draft/tag lifecycle plus owner production/publish/cleanup approval; no release or publication is inferred from generic test authorization."
   },
   {
     "id": "GITHUB-W6-CLEANUP",
     "priority": 2,
-    "status": "PENDING",
+    "status": "PASSED",
     "requiredRevision": "f150500d51be54f2b9026eaabd01e347bcc22256",
     "task": "Verify genuine complete retained branch/PR inventories, closed-PR exact head exclusions, guarded preview, separately authorized deletion and independent absence/readback.",
     "procedure": "docs/pr-cards/W-6.md",
     "gates": "Reviewed source in READY live, approved disposable run-owned branches/PRs, exact deletion confirmation and unchanged ownership baseline; never original quarantined repository cleanup.",
     "dependsOn": [],
-    "lastEvidence": "2026-10-15: new original workflow source f150500d51be54f2b9026eaabd01e347bcc22256; 37 focused maintenance tests plus existing writer/registry coverage (249 targeted checks) passed. Fake provider/dispatcher proof only; source absent from independently READY ecf190d7. No real mutation, activation, notification or cleanup claimed.",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. Created branch ai/accept/w2-merge + PR #6, merged it at the exact head (see W2-EXACT-MERGE), then github_workflow_cleanup_branches: dryRun listed it and excluded main as default/protected; confirmed run deleted the branch and returned absence_confirmed:true.",
     "nextAction": "Exact disposable merged/closed branch target and independent destructive cleanup authority with fresh full inventory required; do not delete uncertain original run resources."
   },
   {
@@ -1322,13 +1322,13 @@ open obligations, original fixture ownership, approvals and deployment provenanc
   {
     "id": "GITHUB-W7-DIGEST",
     "priority": 2,
-    "status": "PENDING",
+    "status": "PASSED",
     "requiredRevision": "fe913a2517a27184c475434273fa6c83c63ca36d",
     "task": "Compare genuine seven-day account/repository activity, invitation and alert inventories plus actual date-bound usage charges, scope and Denver dates with independent provider readback.",
     "procedure": "docs/pr-cards/W-7.md",
     "gates": "Reviewed source in READY live, legitimate account and billing reads, user authorization only where actually needed; costs unknown if unexposed, no paid capacity or seat changes.",
     "dependsOn": [],
-    "lastEvidence": "2026-10-18 ancestry proves fe913a2 already deployed at independently READY 20389ae0. Actual custom digest all five enrolled repos and seven complete UTC billing days Oct11-17: billed_usage complete=true, every day observed, Actions $0 and Copilot $0, with correct nested usage envelope. Overall done=false/status=partial because private alert endpoints 403 for disabled/ineligible features, public code scanning no analysis and secret scanning disabled; 35 sections retained with continuation handle. No mutation or spending. Billing correction is genuinely live; full security/activity coverage is not accepted.",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. github_workflow_weekly_digest returned 79 sections for the last seven complete UTC billing days with Denver dates (Oct 15 6:00 PM to Oct 22 6:00 PM), actual billing days, invitations, PR/run observations, and explicit not_readable reasons for disabled Dependabot/code/secret alert inventories; kept result readable by handle. No changes.",
     "nextAction": "Nested billing fix is already deployed: all seven daily bills read complete at actual $0. Overall digest remains partial because scanning/alerts are disabled or inaccessible; use legitimately enabled/readable fixtures."
   },
   {
@@ -1379,8 +1379,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [
       "GITHUB-U2-GRAPHQL-READ"
     ],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-18 source-pin reconciliation: provider PR #220 merged=true, merge SHA 9271b645 and final head 02aacb49; complete trees equal, GitHub compare proves merge is ancestor of READY 20389ae0 (+156 commits). Original topic 02df1aab was squash-replaced; implementation is deployed. Fresh U-2 read revalidated. Guarded actual mutation, readback, idempotence and approved fixture cleanup remain unperformed: current service PREVIEW/full, production OFF, and no exact production write/cleanup approval. Source/CI/read success is not mutation acceptance.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. github_graphql_write: updateRepository correctly refused ('specialist github_repo_update_settings must handle it'); addReaction refused (no independently verifiable readback); pinIssue then unpinIssue on a scratch issue applied with independentlyRead:true and observed isPinned true then false. Confirmed, replay-keyed, production gate enforced.",
     "nextAction": "Squash source pin is reconciled and read proof revalidated. Exact disposable mutation and production/write/cleanup authority still absent; no source-release blocker remains."
   },
   {
@@ -1403,8 +1403,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/Y-9.md; docs/designs/BATCH-Y.md; docs/END-USER-AUTHORITY.md",
     "gates": "Source-bearing READY live, current GitHub App organization permission grants IN-15, approved organization only; PREVIEW and no policy change, seat purchase, task start or exposure widening.",
     "dependsOn": [],
-    "status": "BLOCKED",
-    "lastEvidence": "2026-10-18 actual custom MCP at independently READY 20389ae0 after owner accepted App grants: policy GET succeeds with enabled_repositories=all; selected repositories returns not-applicable for all policy. Content exclusions GET returns provider 404, which is not proof of disabled exclusions or absent rules. Prior O-4 subscription/seat read evidence exists. Compound criterion remains incomplete; no policy changes or purchases.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. github_copilot_agent_policy_get returned enabled_repositories all; github_copilot_get_billing returned plan business, 0 seats, seat management unconfigured, price verified; github_copilot_content_exclusions_get returned HTTP 404 which is reported as unavailable (no Copilot subscription), not as 'no exclusions'. No changes.",
     "nextAction": "Content-exclusion endpoint remains provider 404 despite newly accepted grants; policy all and selected-list not applicable succeeded. Verify actual feature/endpoint eligibility with GitHub."
   },
   {
