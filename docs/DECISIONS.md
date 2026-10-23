@@ -404,3 +404,8 @@ Device checks (e.g. PUB-4 on phone and desktop) live in `docs/OWNER-CHECKLIST.md
 - ChatGPT on Android works; iPhone and desktop are optional, done only if convenient.
 - Disconnect/reconnect has been exercised many times in real use (account adding, preview-to-production switch).
 - Second GitHub account: only if actually needed. Package token: needs a guided walk-through when he is ready. PUB-5 stays a "much later, optional" item.
+
+## 2026-10-23 — Connect screen has two tiers: normal sign-in and "God mode" (owner design, Chris)
+- **Normal sign-in** (GitHub sign-in, pick account, App install, approve) unlocks **every tool that kind of sign-in can authorize**. No token, secret or passphrase is shown to the user.
+- **God mode** is an option on the same connect screen. It walks the user through adding the extra tokens/secrets (package, notifications, fine-grained, and any later ones) on the protected page only, and unlocks the tools that only those keys allow. Removable at any time; off by default.
+- Every tool's listing says which tier it needs, so the user sees what God mode adds. The owner setup form becomes development-only. Built dark behind a flag; the GitHub App is not made public without Chris's explicit go-ahead. The guided "Unlock more tools" section (PR #319) is the God-mode key page.

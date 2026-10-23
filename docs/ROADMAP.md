@@ -47,7 +47,7 @@ curated tools with write specifications for the 234 GraphQL mutations the invent
 
 Order: finish the remaining acceptance testing first, then this, then PUB-5. Build it as one whole outcome, not slivers.
 
-- **Simple connect flow for anyone:** Connect, Sign in with GitHub, pick the account, Approve. Mode, profile and tool listing default to safe
+- **Simple connect flow for anyone:** Connect, Sign in with GitHub, pick the account, Approve. Mode, profile and tool listing default to safe **Two tiers (owner design 2026-10-23):** normal sign-in unlocks everything sign-in alone can authorize; an optional "God mode" step on the same screen collects the extra tokens/secrets for the rest. See `docs/DECISIONS.md`.
   choices and move to a settings page. No administrator passphrase for ordinary users. Today's owner form stays for the owner.
   Decided by Chris 2026-10-23: the simple flow is the normal way to connect. Today's owner form (account, mode, profile, tool listing, passphrase)
   becomes development-only: kept for building and testing, not shown to ordinary users, and out of the product's normal path.
