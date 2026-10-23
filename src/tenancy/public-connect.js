@@ -41,7 +41,8 @@ export class PublicConnectError extends Error {
 export const FORGET_CLIENT = 'pcl_forget_my_data_built_in_page_0000000';
 // Claude asks for the permission names this server advertises in its discovery document; sign-in gives no extra power for them.
 const ADVERTISED_SCOPES = ['github.notifications.read'];
-const refused = () => new PublicConnectError('refused', 'GitHub could not verify this sign-in. Start again from your client.');
+// `why` is an internal label for the server log only (never shown to the person, never a secret).
+const refused = (why = '') => Object.assign(new PublicConnectError('refused', 'GitHub could not verify this sign-in. Start again from your client.'), { why });
 
 export { isPublicClientId, publicAuthCode, parsePublicCode };
 export const publicConnectEnabled = (env = process.env) => env.GITHUB_PUBLIC_CONNECT === 'enabled';
@@ -61,7 +62,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   const active = () => {
     if (!publicConnectEnabled(env) || env.GITHUB_PRIVATE_TENANT_PILOT !== 'enabled' ||
         env.VERCEL_ENV !== 'production' || !env.DATABASE_URL ||
-        !Number.isSafeInteger(appId) || appId <= 0) throw refused();
+        !Number.isSafeInteger(appId) || appId <= 0) throw refused('r1');
     return publicOrigin(env);
   };
   const rootSql = () => rootSqlFactory(env.DATABASE_URL);
@@ -76,7 +77,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
 
   async function loadClient(clientId, redirectUri) {
     const client = await directory().getPublicClient(clientId);
-    if (!client || !client.redirectUris.includes(redirectUri)) throw refused();
+    if (!client || !client.redirectUris.includes(redirectUri)) throw refused('r2');
     return client;
   }
   function checkAuthorizeRequest(p) {
@@ -85,7 +86,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
         !CHALLENGE.test(String(p.code_challenge ?? '')) || p.resource !== origin + '/api/mcp' ||
         typeof p.redirect_uri !== 'string' || !validRedirectUri(p.redirect_uri) ||
         (p.state !== undefined && (typeof p.state !== 'string' || p.state.length > 256)) ||
-        (p.scope !== undefined && !(typeof p.scope === 'string' && p.scope.split(/\s+/).filter(Boolean).every((x) => ADVERTISED_SCOPES.includes(x))))) throw refused();
+        (p.scope !== undefined && !(typeof p.scope === 'string' && p.scope.split(/\s+/).filter(Boolean).every((x) => ADVERTISED_SCOPES.includes(x))))) throw refused('r3');
   }
 
   /** RFC 7591 registration for the public flow. Capped; the secret is shown once and only its hash is kept. */
@@ -133,7 +134,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   const parseAccounts = (text) => {
     if (typeof text !== 'string' || !text.trim()) return null;
     const names = [...new Set(text.split(/[\s,]+/).filter(Boolean).map((n) => n.toLowerCase()))];
-    if (names.length < 1 || names.length > 10 || !names.every((n) => LOGIN.test(n))) throw refused();
+    if (names.length < 1 || names.length > 10 || !names.every((n) => LOGIN.test(n))) throw refused('r4');
     return names.join(',');
   };
 
@@ -144,7 +145,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const tier = p.tier === 'god' ? 'god' : 'standard';
     return await openSignIn({ client, flow: { redirectUri: p.redirect_uri, clientState: p.state, codeChallenge: p.code_challenge,
       tier, accountLogin: parseAccounts(p.account), allowChanges: p.read_only !== 'yes',
-      timeZone: p.time_zone ? (validZone(String(p.time_zone)) ?? (() => { throw refused(); })()) : null } });
+      timeZone: p.time_zone ? (validZone(String(p.time_zone)) ?? (() => { throw refused('r5'); })()) : null } });
   }
 
   const sameState = (state, browserCsrf) => typeof browserCsrf === 'string' && browserCsrf.length === state.length &&
@@ -153,9 +154,9 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   /** GitHub sent the person back to install the App and we resume: sign in once more (no second approval needed). */
   async function resumeInstall({ state, browserCsrf }) {
     active();
-    if (!STATE.test(String(state ?? '')) || !sameState(state, browserCsrf)) throw refused();
+    if (!STATE.test(String(state ?? '')) || !sameState(state, browserCsrf)) throw refused('r6');
     const flow = await directory().consumePublicFlow(sha(state), 'install');
-    if (!flow) throw refused();
+    if (!flow) throw refused('r7');
     const client = await loadClient(flow.clientId, flow.redirectUri);
     return await openSignIn({ client, flow, afterInstall: true });
   }
@@ -170,20 +171,20 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const tenantId = await dir.provisionPilotForOwnerAccount(identityId, TENANT_KEY);
     const { db } = await initializeProvisionedTenant({ tenantId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory });
     const app = await root.getApp(appId);
-    if (!app || !app.client_secret_enc || !app.private_key_enc || !app.webhook_secret_enc) throw refused();
+    if (!app || !app.client_secret_enc || !app.private_key_enc || !app.webhook_secret_enc) throw refused('r8');
     await db.saveApp({ id: app.id, slug: app.slug, ownerLogin: app.owner_login, ownerType: app.owner_type, clientId: app.client_id,
       clientSecretEnc: app.client_secret_enc, privateKeyEnc: app.private_key_enc, webhookSecretEnc: app.webhook_secret_enc,
       permissions: app.permissions });
-    if (!await dir.authorized(tenantId, identityId) && !await dir.activate(tenantId, 'gh_t_' + tenantId.replaceAll('-', ''))) throw refused();
+    if (!await dir.authorized(tenantId, identityId) && !await dir.activate(tenantId, 'gh_t_' + tenantId.replaceAll('-', ''))) throw refused('r9');
     if (!await dir.resolveAllowlistedPilotSubject(tenantId, principal.subject) &&
-        !await dir.allowlistPilotIdentity(tenantId, identityId, identityId)) throw refused();
+        !await dir.allowlistPilotIdentity(tenantId, identityId, identityId)) throw refused('r10');
     const logins = [];
     for (const installation of installations) {
       const login = installation.login.toLowerCase();
       await db.upsertAccount({ login, accountId: installation.accountId, accountType: installation.type, label: login,
         credentialKind: 'app', appId });
       if (!await db.setInstallation(login, { installationId: installation.installationId,
-        repositorySelection: installation.repositorySelection, permissions: installation.permissions, status: 'active' })) throw refused();
+        repositorySelection: installation.repositorySelection, permissions: installation.permissions, status: 'active' })) throw refused('r11');
       // The person was verified as the owner of this account (own account, or organization admin) before we got here, and
       // used a page that says plainly that their assistant can make changes (each one still confirmed) unless they tick Read-only. That is their own confirmation.
       if (allowChanges === true && env.VERCEL_ENV === 'production') await db.setProductionEnabled(login, true);
@@ -209,23 +210,23 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const started = Date.now(); let metricSql = null, outcome = 'error';
     try {
       active();
-      if (!STATE.test(String(state ?? '')) || !CODE.test(String(code ?? '')) || !sameState(state, browserCsrf)) throw refused();
+      if (!STATE.test(String(state ?? '')) || !CODE.test(String(code ?? '')) || !sameState(state, browserCsrf)) throw refused('r12');
       const dir = directory();
       const flow = await dir.consumePublicFlow(sha(state), 'signin');
-      if (!flow) throw refused();
+      if (!flow) throw refused('r13');
       const client = await loadClient(flow.clientId, flow.redirectUri);
       const appClient = await pilotAppClient({ env, db: createDb(rootSql()) });
       const exchange = await fetchImpl(gitToken, { method: 'POST', signal: AbortSignal.timeout(10000),
         headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ client_id: appClient.clientId, client_secret: appClient.clientSecret, code,
           redirect_uri: callback(), code_verifier: flow.providerVerifier }) });
-      if (!exchange.ok) throw refused();
+      if (!exchange.ok) throw refused('r14');
       const data = await exchange.json();
-      if (!data?.access_token || data.error) throw refused();
+      if (!data?.access_token || data.error) throw refused('r15');
       const principal = await verifyGithubBearerIdentity(data.access_token, { fetchImpl });
       if (flow.purpose === 'forget') { outcome = 'ok'; return await forgetLookup(principal); }
       const installs = await listUserAppInstallations(data.access_token, { appId, fetchImpl });
-      if (installs === null) throw refused();
+      if (installs === null) throw refused('r16');
       const asked = flow.accountLogin ? flow.accountLogin.split(',') : null;
       const candidates = (asked ? installs.filter((i) => asked.includes(i.login.toLowerCase())) : installs).slice(0, 10);
       // Installation tokens act with the App's own rights, so only accounts this person owns (their personal account, or an
@@ -238,7 +239,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
           'The GitHub App is not installed on that account yet, or you are not an owner of it. Ask an owner of the account to install it (or connect it themselves), then connect again.');
         const root = createDb(rootSql());
         const app = await root.getApp(appId);
-        if (!app?.slug || !/^[a-z0-9-]{1,100}$/.test(app.slug)) throw refused();
+        if (!app?.slug || !/^[a-z0-9-]{1,100}$/.test(app.slug)) throw refused('r17');
         const next = await openSignIn({ client, flow, stage: 'install' });
         return { install: { url: `https://github.com/apps/${app.slug}/installations/new?state=${next.state}`, csrfState: next.state } };
       }
@@ -252,20 +253,20 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       // Display-only; a blank choice keeps whatever the person saved before (UTC if nothing).
       if (flow.timeZone) await db.setSetting(ZONE_SETTING, flow.timeZone);
       const latest = await made.dir.authorizedPilotIdentity(made.tenantId, made.identityId);
-      if (!latest) throw refused();
+      if (!latest) throw refused('r18');
       const expiresIn = Number(data.expires_in ?? 28800);
       const refreshExpiresIn = data.refresh_token_expires_in == null ? null : Number(data.refresh_token_expires_in);
       if (!Number.isSafeInteger(expiresIn) || expiresIn < 60 || expiresIn > 31536000 ||
           (refreshExpiresIn !== null && (!Number.isSafeInteger(refreshExpiresIn) || refreshExpiresIn < 60 || refreshExpiresIn > 31536000)) ||
-          (data.refresh_token !== undefined && (typeof data.refresh_token !== 'string' || data.refresh_token.length < 8 || data.refresh_token.length > 4096))) throw refused();
+          (data.refresh_token !== undefined && (typeof data.refresh_token !== 'string' || data.refresh_token.length < 8 || data.refresh_token.length > 4096))) throw refused('r19');
       const rows = [];
       for (const login of made.logins) {
         const account = await db.getAccount(login);
-        if (!account || account.installation_status !== 'active') throw refused();
+        if (!account || account.installation_status !== 'active') throw refused('r20');
         if (!await storePilotUserGrant({ directory: made.dir, tenantId: made.tenantId, identityId: made.identityId,
           account: login, userLogin: principal.login, accessToken: data.access_token, expiresIn,
           verifiedContext: { subject: principal.subject, tenant: latest, account },
-          refreshToken: data.refresh_token ?? null, refreshExpiresIn, env })) throw refused();
+          refreshToken: data.refresh_token ?? null, refreshExpiresIn, env })) throw refused('r21');
         rows.push(account);
       }
       await db.mirrorOAuthClient({ clientId: client.clientId, secretHash: client.secretHash, redirectUris: client.redirectUris,
@@ -312,9 +313,9 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   /** Confirm: one use per handle, and only the browser that just signed in can use it. Returns true when data was deleted. */
   async function forgetConfirm({ handle, browserCsrf }) {
     active();
-    if (!STATE.test(String(handle ?? '')) || !sameState(handle, browserCsrf)) throw refused();
+    if (!STATE.test(String(handle ?? '')) || !sameState(handle, browserCsrf)) throw refused('r22');
     const flow = await directory().consumePublicFlow(sha(handle), 'god');
-    if (!flow || flow.purpose !== 'forget' || !flow.tenantId) throw refused();
+    if (!flow || flow.purpose !== 'forget' || !flow.tenantId) throw refused('r23');
     return await directory().forgetPublicTenant(flow.tenantId);
   }
 
@@ -323,7 +324,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const { db, sql, tenant } = await openAuthorizedTenantDb({ directory: dir, tenantId: flow.tenantId, verifiedIdentityId: flow.identityId,
       connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory });
     const live = await dir.authorizedPilotIdentity(flow.tenantId, flow.identityId);
-    if (!live || live.membershipRevision !== tenant.membershipRevision) throw refused();
+    if (!live || live.membershipRevision !== tenant.membershipRevision) throw refused('r24');
     return { dir, db, sql };
   }
 
@@ -331,15 +332,15 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
    * `account` says which of the connected accounts a token is for. */
   async function godChoose({ handle, browserCsrf, choice, account }) {
     active();
-    if (!STATE.test(String(handle ?? '')) || !sameState(handle, browserCsrf) || !['finish', 'notifications', 'package'].includes(choice)) throw refused();
+    if (!STATE.test(String(handle ?? '')) || !sameState(handle, browserCsrf) || !['finish', 'notifications', 'package'].includes(choice)) throw refused('r25');
     const flow = await directory().consumePublicFlow(sha(handle), 'god');
-    if (!flow || flow.purpose || !flow.tenantId || !flow.identityId || !flow.accountLogin) throw refused();
+    if (!flow || flow.purpose || !flow.tenantId || !flow.identityId || !flow.accountLogin) throw refused('r26');
     const logins = flow.accountLogin.split(',');
     const { db } = await godScope(flow);
     const mode = flow.allowChanges ? 'production' : 'preview';
     for (const login of logins) {
       const row = await db.getAccount(login);
-      if (!row || (mode === 'production' && row.production_enabled !== true)) throw refused();
+      if (!row || (mode === 'production' && row.production_enabled !== true)) throw refused('r27');
     }
     if (choice === 'finish') {
       return { redirect: await mintCode({ db, tenantId: flow.tenantId, identityId: flow.identityId, logins,
@@ -347,7 +348,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     }
     const target = typeof account === 'string' && logins.includes(account.toLowerCase()) ? account.toLowerCase() : logins[0];
     const row = await db.getAccount(target);
-    if (choice === 'package' && row.account_type !== 'Organization') throw refused();
+    if (choice === 'package' && row.account_type !== 'Organization') throw refused('r28');
     const enrollment = createPrivateOptionalEnrollment({ env, fetchImpl, directoryFactory: directory,
       tenantAccess: (dir, claim) => openAuthorizedTenantDb({ directory: dir, tenantId: claim.tenantId, verifiedIdentityId: claim.identityId,
         connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory }) });

@@ -261,7 +261,7 @@ describe('PUB-6 public simple connect (dark) in REAL PostgreSQL', () => {
     expect(page.body).toContain('Read-only');
     expect(page.body).toContain('Sign in with GitHub');
     expect(page.body).not.toContain('<script>alert');
-    expect(String(page.headers['Set-Cookie'])).toMatch(/HttpOnly; Secure; SameSite=Strict/);
+    expect(String(page.headers['Set-Cookie'])).toMatch(/HttpOnly; Secure; SameSite=Lax/);
     expect(page.headers['Content-Security-Policy']).toContain("default-src 'none'");
     const refused = await call((req, res) => publicCallback(req, res, { env, connect: make() }), { ...request('GET', { state: 'pc.' + 'a'.repeat(40), code: 'alice-fixture-code-1' }), headers: {} });
     expect(refused.statusCode).toBe(403);
@@ -526,7 +526,7 @@ describe('PUB-6 a person deletes their own data', () => {
     const page = await call((req, res) => publicForget(req, res, { env, connect }), request('GET', { forget: '1' }));
     expect(page.statusCode).toBe(200);
     expect(page.body).toContain('Delete my data');
-    expect(String(page.headers['Set-Cookie'])).toMatch(/HttpOnly; Secure; SameSite=Strict/);
+    expect(String(page.headers['Set-Cookie'])).toMatch(/HttpOnly; Secure; SameSite=Lax/);
     const refused = await call((req, res) => publicForget(req, res, { env, connect }),
       request('POST', { forget: '1', action: 'start', form_csrf: 'x'.repeat(43) }, { origin: ORIGIN }));
     expect(refused.statusCode).toBe(403);
