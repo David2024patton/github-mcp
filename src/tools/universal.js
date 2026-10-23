@@ -191,7 +191,9 @@ const apiWrite=defineGithubWrite({
       // A delete is confirmed by the same object no longer being readable (HTTP 404); anything still readable is not confirmed.
       try{
         const still=await requestFor(c,{...chosen,op:same,request:chosen.params});
-        return {independentlyRead:true,deleted:false,data:still.data};
+        // A single setting (for example interaction limits) answers an empty object once removed, not 404 (seen live 2026-10-23).
+        const emptied=still.data!==null&&typeof still.data==='object'&&!Array.isArray(still.data)&&Object.keys(still.data).length===0;
+        return {independentlyRead:true,deleted:emptied,emptied,data:still.data};
       }catch(error){
         if(error?.status===404)return {independentlyRead:true,deleted:true,data:null};
         throw error;
@@ -202,7 +204,10 @@ const apiWrite=defineGithubWrite({
   },
   verify:({args:a,before,after,response})=>{
     if(!after?.independentlyRead)return false;
-    if(after.deleted!==undefined)return after.deleted===true&&before?.kind==='exact';
+    if(after.deleted!==undefined){
+      if(after.emptied)return before?.kind==='exact'&&before.state!==null&&typeof before.state==='object'&&Object.keys(before.state).length>0;
+      return after.deleted===true&&before?.kind==='exact';
+    }
     if(before?.kind==='exact' && beforeFingerprint(before.state)===beforeFingerprint(after.data))
       return false;
     const changes=Object.entries(a.body??{});
