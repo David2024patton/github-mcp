@@ -3,6 +3,7 @@
 // A tool's `classify` calls `productionReason`; the write layer then refuses the change on a preview connection and always
 // asks first on a production one. `productionEnabledGate` additionally requires the account's production switch to be on.
 import { githubFor } from '../github/client.js';
+import { isPlanLimit } from '../github/plan-limit.js';
 
 /** Names that always count as production (IN-12). The owner can add more on the setup page; these can never be removed. */
 export const DEFAULT_PRODUCTION_NAMES = Object.freeze({ environments: Object.freeze(['production', 'prod', 'live']), branches: Object.freeze([]) });
@@ -94,7 +95,10 @@ export async function productionReason(ctx, target, { profile = {}, names } = {}
     try {
       const rules = (await octokit.request('GET /repos/{owner}/{repo}/rules/branches/{branch}', { owner: target.owner, repo: target.repo, branch: ref })).data;
       if (Array.isArray(rules) && rules.length) return `a ruleset applies to "${ref}" in ${slug}`;
-    } catch { return `the rules for "${ref}" in ${slug} could not be checked, so it is treated as production`; }
+    } catch (error) {
+      // GitHub's exact free-plan answer means this repository cannot hold rulesets; any other failure stays production.
+      if (!isPlanLimit(error)) return `the rules for "${ref}" in ${slug} could not be checked, so it is treated as production`;
+    }
   }
   return null;
 }
