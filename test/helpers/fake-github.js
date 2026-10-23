@@ -65,6 +65,10 @@ function json(status, body, headers = {}) {
  */
 export function makeFakeGitHub({ routes = [], baseUrl = 'https://api.github.com', validate = true } = {}) {
   const described = validate ? operations().map((o) => o.route) : [];
+  // Explicit test-only provider-documented routes absent from the pinned schema
+  // can be supplied by a focused fixture. Every pinned route still validates
+  // unchanged; callers of external fixtures assert the exact request shape.
+  const outsidePinned = new Set(routes.filter(r => !described.includes(r)));
   // Most specific first: fewer {parameters}, then longer templates, so '/pulls/comments' beats '/pulls/{pull_number}'.
   const specificity = (route) => [route.split('{').length, -route.length];
   const table = [...new Set([...A1_ROUTES, ...described, ...routes])]
@@ -138,7 +142,7 @@ export function makeFakeGitHub({ routes = [], baseUrl = 'https://api.github.com'
           return json(200, { errors: problems.map((message) => ({ message })) });
         }
       }
-    } else if (validate) {
+    } else if (validate && !outsidePinned.has(hit.route)) {
       const problems = validateRestRequest(hit.route, request);
       if (problems.length) {
         request.invalid = problems;
