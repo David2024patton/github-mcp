@@ -6,8 +6,7 @@ OAuth credential maintenance (A-5/Y-9, PR #258): user authorization refresh is c
 Restricted preview RTC successful replies revalidate service pass and scratch ownership at send time (#150), without an extra rate unit. Restricted preview RTC search/describe tool metadata is size-bounded to 8192 UTF-8 bytes. Oversized catalog pages and schemas are retained whole under connection-owned 24-hour result handles (#149), without expanding independent MCP tool authority.
 
 Every tool this server will have, by area — the product scope. The implementing model builds exactly these; anything
-else goes in `docs/ROADMAP.md` and the PR report, and the universal tools (last section) reach the rest of GitHub's API
-on day one. Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
+else goes in `docs/ROADMAP.md` and the PR report, and universal tools (last section) provide guarded access only where their actual credential, classification and request support permits. Endpoint-level completeness remains unproven; see [MAXIMUM-AUTHORITY](designs/MAXIMUM-AUTHORITY.md). Counts are checked by `python3 scripts/count-catalog.py` (run by `npm run check` and CI since A-1, #1). When a
 tool merges, its Card cell gains `built #<PR>`. Built so far: **411 cataloged tools** (every row below is in the registry, `src/tools/index.js`; `scripts/count-catalog.py` and `scripts/check-writes.mjs` fail the build if a tool and its row disagree)
 and holds the two A-5 tools, the B-3 protected-list reader the two B-2 production-switch tools and the B-4 spend-limit tool. Since B-5 every result of these tools is shaped (`src/tools/util.js`) and failures are explained by `src/tools/errors.js`. Since B-6 a connection sees only the tools its profile allows (`tools/list` and by-name calls). Every write tool below is built with `defineGithubWrite` (B-1, #16, `src/tools/define-github-write.js`) and pass the nine write-contract checks (`test/helpers/write-contract.js`); the two B-2 tools are the first (`src/tools/server.js`).
 
@@ -41,7 +40,7 @@ Card(s): A-5, B-2, B-3, B-8, C-1, C-2, R-1, O-1, X-1. Meta-tools, connection and
 | `github_whoami` | Which GitHub accounts this connection can use, mode (PREVIEW/PRODUCTION), profile, credential types present, API version, rate budget left, spend limit | — | N | I | B,O,Op | R | A-5 built #13 |
 | `github_list_accounts` | Accounts (orgs and users) connected to the server: app installation, repo selection, user authorization, optional classic token, production on/off | — | N | I | O | R | A-5 built #13 |
 | `github_set_default_account` | Which account a tool uses when `owner` is omitted | P | N | — | O | F | B-8 built #23 |
-| `github_check_permissions` | Compare App grants, name real missing permissions, and separately identify unverified package credential capability | — | N | — | O,B | R | B-8 built #24 |
+| `github_check_permissions` | Inspect App grants, per-tool layers, pinned operation compatibility and private-user identity-read grant proof; actual operation execution remains unverified | — | N | — | O,B | R | B-8 built #24; CAP-3 binding draft #274 |
 | `github_rate_status` | Primary and secondary rate-limit state per account (from `GET /rate_limit` `resources.*` and recent response headers) | — | F | I | Op,B | R | B-8 built #24 |
 | `github_list_connections` | Connector logins and passes: account scope, mode, profile, expiry, last used | — | N | — | O | R | B-8 built #23 |
 | `github_revoke_connection` | Switch a connection or pass off at once | C | N | — | O | F | B-8 built #23 |
@@ -489,7 +488,7 @@ Card(s): O-7. Source built in PR #205. Notifications require optional classic to
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_notify_list` | Unread (or all) notifications, by repository and reason | — | C | K | Op | R | O-7 built #205 |
+| `github_notify_list` | Unread (or all) notifications, by repository and reason | — | C | K | Op | R | O-7 built #205; CAP-3 private notifications OAuth reauthorization candidate #274 (live acceptance open) |
 | `github_notify_mark` | Mark one thread, a repository or everything as read or done | C·Prod | C | K | Op | E | O-7 built #205 |
 | `github_notify_set_subscription` | Watch, ignore or unsubscribe from a thread or repository | C·Prod | C | K | Op | E | O-7 built #205 |
 | `github_gist_list` | Chris's gists | — | C | U | B | R | O-7 built #205 |

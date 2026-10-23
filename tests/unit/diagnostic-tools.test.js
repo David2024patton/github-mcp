@@ -6,6 +6,11 @@ import { MANIFEST_PERMISSIONS } from '../../src/github/app-manifest.js';
 import { parseCatalog } from '../../scripts/check-writes.mjs';
 import { makeWorld, parse } from '../../test/helpers/write-contract.js';
 import fs from 'node:fs';
+import {effectiveToolAccess,documentedOperationAccess,accessRecovery,additionalCredentialHandoff} from '../../src/github/effective-access.js';
+import {optionalCredentialIdentityStatus} from '../../src/github/optional-identity-status.js';
+import {registry} from '../../src/tools/index.js';
+import {createGithubPolicy} from '../../src/oauth/policy.js';
+import {createDispatch} from '../../src/tools/dispatch.js';
 
 const CATALOG = parseCatalog(fs.readFileSync(new URL('../../docs/TOOL-CATALOG.md', import.meta.url), 'utf8'));
 const SECRET = [/gh[pousr]_[A-Za-z0-9]{8,}/, /github_pat_[A-Za-z0-9_]{8,}/];
@@ -107,6 +112,266 @@ describe('github_check_permissions', () => {
     const w = await appWorld({ ...MANIFEST_PERMISSIONS });
     await expect(call('github_check_permissions', w, { area: 'nope' })).rejects.toThrow(/Unknown area/);
     await expect(call('github_check_permissions', w, { account: 'other-org' })).rejects.toThrow(/not one of the GitHub accounts/);
+  });
+});
+
+describe('CAP-2 Standard Full diagnosis without token or permission escalation',()=>{
+  const tool={name:'github_test_write',writes:true,profiles:['full'],declarations:{cred:'I',production:'always'}};
+  it('shows ordinary Full in owner sign-in without changing the Everyday default or production gate',()=>{
+    const policy=createGithubPolicy({env:{VERCEL_ENV:'production'}});
+    const account={login:'example-org',label:'Example',is_default:true,production_enabled:false};
+    const html=policy.page({params:{mode:'preview'},choices:[account],client:{client_name:'ChatGPT'}});
+    expect(html).toContain('Full — every operation allowed by your real GitHub grant and user policy');
+    expect(html).toContain('no God Mode or extra token is required');
+    expect(html).toContain('value="everyday" selected');
+    expect(html).not.toContain('value="full" selected');
+    const args={'acct:example-org':'on',default_account:'example-org',mode:'preview',profile:'full',listing:'compact'};
+    expect(policy.validate({params:args,choices:[account]}).settings.profile).toBe('full');
+    expect(policy.validate({params:{...args,mode:'production'},choices:[account]}).error).toContain('not turned on');
+  });
+  it('never confuses stored credentials with verified grants or silently widens a scope',()=>{
+    const account={login:'example-org',credential_kind:'app',app_id:500,installation_id:501,
+      installation_status:'active',repository_selection:'selected',has_user_token:false};
+    const c={accounts:['example-org'],profile:'read_only',mode:'preview'};
+    const denied=effectiveToolAccess({connection:c,account,tool});
+    expect(denied.refusedBy).toEqual(['profile','mode']);
+    expect(denied.credential.state).toBe('stored-unverified');
+    expect(denied.resource.state).toBe('not-enumerated');
+    const full=effectiveToolAccess({connection:{...c,profile:'full',mode:'production'},account,tool});
+    expect(full.status).toBe('unverified');
+    expect(full.permissionProof).toBe('not-performed');
+    const user=effectiveToolAccess({connection:{...c,profile:'full'},account,
+      tool:{...tool,declarations:{cred:'U',production:'never'}}});
+    expect(user.refusedBy).toEqual(['credential']);
+    expect(()=>effectiveToolAccess({connection:c,account:{...account,login:'foreign'},tool})).toThrow(/not in this connection/);
+  });
+  it('routes a source-layer refusal identically by direct, MCP dispatcher and github_call',async()=>{
+    const w=await appWorld({metadata:'read'});
+    const ctx={...w.ctx,registry};
+    const args={account:'example-org',tool:'github_pr_merge'};
+    const direct=await handlers.github_check_permissions(args,ctx);
+    expect(direct.accounts[0].effective_access.refusedBy).toContain('profile');
+    expect(direct.checked_areas).toBe(1);
+    const dispatch=createDispatch({env:w.ctx.env,credentials:w.credentials,fetch:w.gh.fetch});
+    const plain=await dispatch({registry,name:'github_check_permissions',args,connection:w.connection,db:w.db});
+    expect(plain.structuredContent.checked_areas).toBe(1);
+    expect(plain.structuredContent.accounts[0].effective_access.refusedBy).toContain('profile');
+    const meta=await dispatch({registry,name:'github_call',args:{name:'github_check_permissions',args},
+      connection:w.connection,db:w.db});
+    expect(meta.structuredContent.accounts[0].effective_access.refusedBy).toContain('profile');
+    expect(w.gh.calls).toEqual([]);
+    await expect(handlers.github_check_permissions({account:'foreign',tool:'github_pr_merge'},ctx)).rejects.toThrow(/not one/);
+  });
+});
+
+describe('CAP-2 operation evidence without permission inflation',()=>{
+  it('separates documented token support from effective provider execution',()=>{
+    const account={login:'example-org',credential_kind:'app',installation_status:'active'};
+    const repo=documentedOperationAccess({account,route:'GET /repos/{owner}/{repo}'});
+    expect(repo).toMatchObject({documentation:'operation-reviewed',
+      I:{credentialType:'app_installation',documentation:'supported',grantedToThisConnection:'not-proven'},
+      U:{documentation:'supported'},otherCredential:null,
+      matchingToolDispatch:'not-verified',effectiveProviderExecution:'not-verified'});
+    expect(repo.I.requiredPermissions).toEqual(['repository:metadata:read']);
+    expect(repo.restrictedKinds.K).toContain('never an API fallback');
+    const app=documentedOperationAccess({account,route:'GET /app'});
+    expect(app).toMatchObject({I:{documentation:'unsupported'},U:{documentation:'unsupported'},
+      otherCredential:{credentialType:'app_jwt',documentation:'supported'}});
+    const fine=documentedOperationAccess({account:{...account,credential_kind:'fine_grained'},route:'GET /user'});
+    expect(fine.I.credentialType).toBe('fine_grained_pat');
+    const unreviewed=documentedOperationAccess({account,route:'GET /unreviewed'});
+    expect(unreviewed).toMatchObject({documentation:'unknown',I:{documentation:'unknown'},
+      effectiveProviderExecution:'not-verified'});
+  });
+  it('only reports exact pinned routes for one connection-selected account, never contacting GitHub',async()=>{
+    const w=await appWorld({...MANIFEST_PERMISSIONS});
+    const args={account:'example-org',tool:'github_repo_get',operation:'GET /repos/{owner}/{repo}'};
+    const result=await handlers.github_check_permissions(args,w.ctx);
+    expect(result.checked_areas).toBe(1);
+    expect(result.accounts[0].operation_evidence.I.documentation).toBe('supported');
+    expect(result.accounts[0].operation_evidence.effectiveProviderExecution).toBe('not-verified');
+    expect(w.gh.calls).toHaveLength(0);
+    await expect(handlers.github_check_permissions({operation:args.operation},w.ctx))
+      .rejects.toThrow(/select one connection account/);
+    await expect(handlers.github_check_permissions({...args,account:'foreign'},w.ctx))
+      .rejects.toThrow(/not one of the GitHub accounts/);
+    await expect(handlers.github_check_permissions({...args,operation:'GET /nonexistent-route'},w.ctx))
+      .rejects.toThrow(/absent from pinned/);
+  });
+});
+
+describe('CAP-2 explicit recovery without secret or privilege mutation',()=>{
+  const tool={name:'github_sensitive_write',area:'repo',writes:true,
+    profiles:['full'],declarations:{cred:'I',production:'always'}};
+  const account={login:'example-org',account_type:'Organization',credential_kind:'app',
+    app_id:10,installation_id:11,installation_status:'active',repository_selection:'selected'};
+  const connection={accounts:['example-org'],profile:'everyday',mode:'preview'};
+  it('separately identifies connection, installation permissions and production approval',()=>{
+    const missing=[{permission:'administration',needed:'write',granted:'read'}];
+    const r=accessRecovery({connection,account,tool,missingPermissions:missing});
+    expect(r.verified).toBe(false);
+    expect(r.capability).toBe('not-tested');
+    expect(r.requiresUserConsent).toBe(true);
+    expect(r.actions.map(x=>x.layer)).toEqual([
+      'connection-profile','github-installation-permissions','production-mode','repository-selection']);
+    expect(r.actions[1].missing).toEqual(missing);
+    expect(r.actions[1].documentation).toContain('approving-updated-permissions');
+    expect(r.recheck).toMatchObject({tool:'github_check_permissions',account:'example-org',
+      registeredTool:'github_sensitive_write'});
+    expect(JSON.stringify(r)).not.toMatch(/gh[pousr]_[A-Za-z0-9]{8,}/);
+  });
+  it('never offers K or P as fallback; unreviewed source remains unverified',()=>{
+    const u={...tool,declarations:{cred:'U',production:'never'}};
+    const r=accessRecovery({connection:{...connection,profile:'full'},account,tool:u});
+    expect(r.actions[0].action).toBe('explicit-github-user-authorization');
+    const p=accessRecovery({connection:{...connection,profile:'full'},account,
+      tool:{...tool,declarations:{cred:'P',production:'never'}}});
+    expect(p.actions[0].action).toBe('protected-setup-only');
+    const denied=accessRecovery({connection:{...connection,profile:'full'},account,tool,
+      operation:documentedOperationAccess({account,route:'GET /app'})});
+    expect(denied.actions.map(x=>x.action)).toContain('no-supported-standard-token-proven');
+    expect(denied.verified).toBe(false);
+  });
+  it('carries bounded recovery via real handler and nested meta call without provider side effects',async()=>{
+    const w=await appWorld({metadata:'read'});
+    const args={account:'example-org',tool:'github_pr_merge',operation:'GET /repos/{owner}/{repo}'};
+    const reg=await handlers.github_check_permissions(args,w.ctx);
+    expect(reg.accounts[0].recovery.verified).toBe(false);
+    expect(reg.accounts[0].recovery.recheck.registeredTool).toBe('github_pr_merge');
+    const dispatch=createDispatch({env:w.ctx.env,credentials:w.credentials,fetch:w.gh.fetch});
+    const out=await dispatch({registry,name:'github_check_permissions',args,connection:w.connection,db:w.db});
+    expect(out.structuredContent.accounts[0].recovery.capability).toBe('not-tested');
+    const viaMeta=await dispatch({registry,name:'github_call',
+      args:{name:'github_check_permissions',args},connection:w.connection,db:w.db});
+    expect(viaMeta.structuredContent.accounts[0].recovery.verified).toBe(false);
+    expect(w.gh.calls).toEqual([]);
+  });
+});
+
+describe('CAP-3 owner optional-kind status cannot claim endpoint authorization',()=>{
+  it('never exposes optional owner evidence on private-tenant or pass diagnostic paths',async()=>{
+    const w=await appWorld({metadata:'read'});
+    const original=w.db.additionalCredentialProofs;
+    let calls=0;
+    w.db.additionalCredentialProofs=async()=>{calls++;return {P:{version:1}};};
+    try{
+      const args={account:'example-org',tool:'github_pr_merge'};
+      const viaPass=await handlers.github_check_permissions(args,{
+        ...w.ctx,connection:{...w.connection,pass:true}
+      });
+      expect(viaPass.accounts[0].optional_credentials).toBeUndefined();
+      const tenant=await handlers.github_check_permissions(args,{
+        ...w.ctx,credentials:{...w.credentials,operationAuthority:async()=>({})}
+      });
+      expect(tenant.accounts[0].optional_credentials).toBeUndefined();
+      expect(calls).toBe(0);
+    }finally{w.db.additionalCredentialProofs=original;}
+  });
+  it('separates a matching encrypted fingerprint and identity from actual permission',async()=>{
+    const {createHash}=await import('node:crypto');
+    const account={account_id:901,package_enc:'sealed-package-value'};
+    const proof={version:1,kind:'P',host:'github.com',scope:'legacy-owner',
+      actorId:4001,accountId:901,verification:'identity-only',
+      fingerprint:createHash('sha256').update(account.package_enc).digest('hex')};
+    const good=optionalCredentialIdentityStatus({account,proofs:{P:proof}});
+    expect(good.P).toMatchObject({stored:true,identity:'verified-at-enrollment',
+      operationPermission:'not-proven'});
+    expect(good.K).toMatchObject({stored:false,identity:'unverified'});
+    const stale=optionalCredentialIdentityStatus({account:{
+      ...account,package_enc:'different-encrypted-value'},proofs:{P:proof}});
+    expect(stale.P.identity).toBe('unverified');
+    expect(optionalCredentialIdentityStatus({account,proofs:{
+      P:{...proof,scope:'tenant-b'}}}).P.identity).toBe('unverified');
+    expect(optionalCredentialIdentityStatus({account,proofs:{
+      P:{...proof,expiresAt:new Date(0).toISOString()}}}).P.identity).toBe('unverified');
+    expect(JSON.stringify(good)).not.toContain('sealed-package-value');
+    const readback={...proof,verification:'identity-and-capability-readback',
+      operation:'GET /orgs/{org}/packages',resource:'org/901',scopes:['read:packages']};
+    const observed=optionalCredentialIdentityStatus({account,proofs:{P:readback}});
+    expect(observed.P).toMatchObject({identity:'verified-at-enrollment',
+      operationPermission:'observed-for-read-at-enrollment',
+      documentedRead:'GET /orgs/{org}/packages'});
+    expect(optionalCredentialIdentityStatus({account,proofs:{P:{
+      ...readback,operation:'DELETE /orgs/{org}/packages'}}}).P.identity).toBe('unverified');
+  });
+});
+
+describe('CAP-3 exact-operation protected setup handoff without credential exchange',()=>{
+  const account={login:'example-org'};
+  const ownerContext=true,origin='https://mcp.example.test';
+  it('offers classic K only for reviewed classic-only notifications',()=>{
+    const x=additionalCredentialHandoff({account,operation:'GET /notifications',
+      origin,ownerContext});
+    expect(x).toMatchObject({status:'protected-setup',kind:'K',
+      setupUrl:'https://mcp.example.test/api/github/setup',
+      automaticProviderIssuance:false,grantVerified:false,account:'example-org'});
+    expect(x.instructions).toContain('never paste the token into chat');
+    expect(JSON.stringify(x)).not.toMatch(/gh[pousr]_[A-Za-z0-9]{8,}/);
+  });
+  it('does not gate Standard App package support behind optional token setup',()=>{
+    const x=additionalCredentialHandoff({account,
+      operation:'GET /orgs/{org}/packages',origin,ownerContext});
+    expect(x).toMatchObject({status:'standard-supported',
+      effectivePermission:'not-verified'});
+    expect(x.setupUrl).toBeUndefined();
+    expect(additionalCredentialHandoff({account,operation:'GET /not-reviewed',
+      origin,ownerContext}).status).toBe('unverified');
+  });
+  it('appears in direct and nested meta diagnostics without leaking a bearer',async()=>{
+    const w=await appWorld({metadata:'read'});
+    const env={...w.ctx.env,PUBLIC_BASE_URL:'https://mcp.example.test'};
+    const args={account:'example-org',tool:'github_repo_get',
+      operation:'GET /notifications'};
+    const direct=await handlers.github_check_permissions(args,{...w.ctx,env});
+    expect(direct.accounts[0].additional_setup).toMatchObject({
+      status:'protected-setup',kind:'K',setupUrl:'https://mcp.example.test/api/github/setup'});
+    const dispatch=createDispatch({env,credentials:w.credentials,fetch:w.gh.fetch});
+    const normal=await dispatch({registry,name:'github_check_permissions',
+      args,connection:w.connection,db:w.db});
+    const nested=await dispatch({registry,name:'github_call',
+      args:{name:'github_check_permissions',args},connection:w.connection,db:w.db});
+    for(const reply of [normal,nested]){
+      expect(reply.structuredContent.accounts[0].additional_setup).toMatchObject({
+        status:'protected-setup',kind:'K'});
+    }
+    expect(w.gh.calls).toEqual([]);
+    const record=await w.db.getAccount('example-org');
+    const {createHash}=await import('node:crypto');
+    const enc='sealed-fixture-notification-value';
+    await w.db.setClassicToken(record.login,{enc,scopes:['notifications'],last4:'last'});
+    expect(await w.db.bindAdditionalCredentialProof({
+      login:record.login,kind:'K',expectedCipher:enc,
+      proof:{version:1,kind:'K',host:'github.com',scope:'legacy-owner',
+        actorId:4201,accountId:record.account_id,
+        fingerprint:createHash('sha256').update(enc).digest('hex'),
+        verification:'identity-and-capability-readback',
+        operation:'GET /notifications',resource:'user/4201',scopes:['notifications']}
+    })).toBe(true);
+    const after=await handlers.github_check_permissions(args,{...w.ctx,env});
+    expect(after.accounts[0].additional_setup).toMatchObject({
+      status:'read-observed-at-enrollment',kind:'K'});
+    expect(after.accounts[0].additional_setup.note).toContain('NOT been rechecked');
+    expect(w.gh.calls).toEqual([]);
+    const tenant=await handlers.github_check_permissions(args,{
+      ...w.ctx,env,credentials:{...w.credentials,operationAuthority:async()=>({})}
+    });
+    expect(tenant.accounts[0].additional_setup.status).toBe('not-offered');
+    const pass=await handlers.github_check_permissions(args,{
+      ...w.ctx,env,connection:{...w.connection,pass:true}
+    });
+    expect(pass.accounts[0].additional_setup.status).toBe('not-offered');
+  });
+  it('refuses foreign origin, service pass and private tenant access to owner forms',()=>{
+    for(const x of ['http://mcp.example.test','https://user:pass@mcp.example.test',
+      'https://mcp.example.test/other','https://mcp.example.test?code=secret',
+      'https://mcp.example.test:4444']){
+      const out=additionalCredentialHandoff({account,operation:'GET /notifications',
+        origin:x,ownerContext});
+      expect(out.status).toBe('configuration-needed');
+      expect(out.setupUrl).toBeUndefined();
+    }
+    expect(additionalCredentialHandoff({account,operation:'GET /notifications',
+      origin,ownerContext:false})).toMatchObject({status:'not-offered'});
   });
 });
 

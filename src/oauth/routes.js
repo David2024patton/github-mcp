@@ -31,7 +31,8 @@ export async function handleOAuth(which, req, res, { db, env = process.env, cons
           isTenantRoutedCredential(params.code))
         return send(res, 401, { error: 'invalid_client' });
     }
-    const handlers = createOAuthHandlers({ db: db ?? await getDb(), env, policy: createGithubPolicy({ env }) });
+    const handlers = createOAuthHandlers({ db: db ?? await getDb(), env, policy: createGithubPolicy({ env }),
+      ...(env.GITHUB_PRIVATE_TENANT_PILOT==='enabled'?{scopesSupported:['github.notifications.read']}:{}) });
     return await handlers[which](req, res);
   } catch {
     res.setHeader('Cache-Control', 'no-store');

@@ -6,6 +6,11 @@ import { createGithubPolicy } from '../../src/oauth/policy.js';
 import { requireMcpToken } from '../../src/core/mcp-auth.js';
 import { openIsolatedSchema, closeIsolatedSchema, neonShapedQuery, rawQuery } from '../../test/helpers/pg-neon-adapter.js';
 import { call, json, request, response } from '../../test/helpers/http-harness.js';
+import {createDispatch} from '../../src/tools/dispatch.js';
+import {createGates} from '../../src/tools/gates.js';
+import {mergeNamespaces} from '../../src/core/registry.js';
+import * as server from '../../src/tools/server.js';
+import * as meta from '../../src/tools/meta.js';
 
 const env = { PUBLIC_BASE_URL: 'https://github-mcp.example.test', ADMIN_PASSPHRASE: 'only-the-owner-knows', VERCEL_ENV: 'production' };
 const resource = env.PUBLIC_BASE_URL + '/api/mcp';
@@ -61,6 +66,108 @@ describe('connector login end to end on throwaway Postgres', () => {
     expect((await refresh(first.refresh_token)).statusCode).toBe(400);
     const third = json(await refresh(second.refresh_token));
     expect(await gate(third.access_token)).toEqual(expected);
+  });
+
+  it('requires explicit renewed owner consent for Full while older Everyday and refresh credentials stay narrow',async()=>{
+    const client=json(await call(h.register,request('POST',{
+      redirect_uris:[callback],client_name:'Full reauthorization fixture'
+    })));
+    const common={
+      client_id:client.client_id,redirect_uri:callback,response_type:'code',
+      code_challenge:challenge,code_challenge_method:'S256',resource,
+      'acct:example-org':'on',default_account:'example-org',mode:'preview',
+      listing:'compact',passphrase:env.ADMIN_PASSPHRASE
+    };
+    const issue=async profile=>{
+      const consent=await call(h.authorize,request('POST',{...common,profile}));
+      expect(consent.statusCode).toBe(302);
+      const code=new URL(consent.headers.Location).searchParams.get('code');
+      return json(await call(h.token,request('POST',{
+        grant_type:'authorization_code',client_id:client.client_id,
+        client_secret:client.client_secret,redirect_uri:callback,
+        code,code_verifier:verifier,resource
+      })));
+    };
+    const gate=async token=>requireMcpToken(
+      request('POST',{}, {authorization:`Bearer ${token}`}),
+      response(),db,env,{toConnection:createGithubPolicy({env}).toConnection}
+    );
+    const everyday=await issue('everyday');
+    expect(await gate(everyday.access_token)).toMatchObject({
+      profile:'everyday',mode:'preview',accounts:['example-org']
+    });
+    const full=await issue('full');
+    expect(await gate(full.access_token)).toMatchObject({
+      profile:'full',mode:'preview',accounts:['example-org']
+    });
+    // A second explicit grant never upgrades or revokes the existing client's
+    // unrelated grant; both refresh families retain their original profiles.
+    expect(await gate(everyday.access_token)).toMatchObject({
+      profile:'everyday',mode:'preview',default_account:'example-org'
+    });
+    const renew=async token=>json(await call(h.token,request('POST',{
+      grant_type:'refresh_token',client_id:client.client_id,
+      client_secret:client.client_secret,refresh_token:token,resource
+    })));
+    const oldRotated=await renew(everyday.refresh_token);
+    const fullRotated=await renew(full.refresh_token);
+    expect(await gate(oldRotated.access_token)).toMatchObject({
+      profile:'everyday',mode:'preview',accounts:['example-org']
+    });
+    expect(await gate(fullRotated.access_token)).toMatchObject({
+      profile:'full',mode:'preview',accounts:['example-org']
+    });
+    expect(await gate(everyday.access_token)).toBeNull();
+    expect(await gate(full.access_token)).toBeNull();
+    expect((await rawQuery(`SELECT production_enabled FROM gh_accounts WHERE login = 'example-org'`))[0].production_enabled).toBe(false);
+  });
+
+  it('executes an authorized Full-only native MCP operation through direct and meta dispatch while Everyday remains refused',async()=>{
+    const client=json(await call(h.register,request('POST',{redirect_uris:[callback]})));
+    const params={client_id:client.client_id,redirect_uri:callback,
+      response_type:'code',code_challenge:challenge,code_challenge_method:'S256',
+      resource,'acct:example-org':'on','acct:example-user':'on',
+      default_account:'example-org',mode:'preview',listing:'catalog',
+      passphrase:env.ADMIN_PASSPHRASE};
+    const issue=async profile=>{
+      const authorized=await call(h.authorize,request('POST',{...params,profile}));
+      expect(authorized.statusCode).toBe(302);
+      const code=new URL(authorized.headers.Location).searchParams.get('code');
+      const token=json(await call(h.token,request('POST',{
+        grant_type:'authorization_code',client_id:client.client_id,
+        client_secret:client.client_secret,redirect_uri:callback,
+        code,code_verifier:verifier,resource})));
+      return requireMcpToken(request('POST',{},{
+        authorization:`Bearer ${token.access_token}`}),response(),db,env,{
+        toConnection:createGithubPolicy({env}).toConnection});
+    };
+    const everyday=await issue('everyday'),full=await issue('full');
+    const registry=mergeNamespaces([meta,server]);
+    const dispatch=createDispatch({env,gates:createGates()});
+    const args={account:'example-user',confirm:true};
+    const forbidden=await dispatch({registry,name:'github_set_default_account',
+      args,connection:everyday,db});
+    expect(forbidden.isError).toBe(true);
+    expect(forbidden.content[0].text).toContain('Unknown or unavailable tool');
+    expect((await db.listConnections()).filter(x=>x.client_id===client.client_id)
+      .every(x=>x.default_account==='example-org')).toBe(true);
+    const allowed=await dispatch({registry,name:'github_set_default_account',
+      args,connection:full,db});
+    expect(allowed.structuredContent).toMatchObject({
+      done:true,status:'applied',confirmed:true,result:{default_account:'example-user'}});
+    const viaMeta=await dispatch({registry,name:'github_call',
+      args:{name:'github_set_default_account',args:{account:'example-org',confirm:true}},
+      connection:full,db});
+    expect(viaMeta.structuredContent).toMatchObject({
+      done:true,status:'applied',confirmed:true,result:{default_account:'example-org'}});
+    const stillRestricted=await dispatch({registry,name:'github_call',
+      args:{name:'github_set_default_account',args},
+      connection:everyday,db});
+    expect(stillRestricted.isError).toBe(true);
+    expect((await db.listConnections()).filter(x=>x.client_id===client.client_id)
+      .every(x=>x.profile==='full'||x.profile==='everyday')).toBe(true);
+    expect((await db.listConnections()).filter(x=>x.client_id===client.client_id)
+      .map(x=>x.default_account)).toEqual(['example-org','example-org']);
   });
 
   it('grants production to the one account that has it turned on, and the MCP gate then accepts it on the production deployment', async () => {

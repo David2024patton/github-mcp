@@ -89,6 +89,30 @@ describe('the HTTPS door with scoped passes', () => {
     expect(guarded.data.result).toMatchObject({ done: false, needsConfirmation: true });
     expect(state.guarded).toBe('initial');
   });
+  it('separates Full, Everyday and read-only through the real scoped HTTP tool door',async()=>{
+    const world=await passWorld(),{registry,state}=fixtureRegistry();
+    const {url}=await serve(world,registry);
+    const everyday=await world.issue({profile:'everyday',allowWrites:true});
+    const readOnly=await world.issue({profile:'read_only',allowWrites:false});
+    const full=await world.issue({profile:'full',allowWrites:true});
+    const path='/api/tools/github_fixture_full_only';
+    const narrow=await http(url,everyday.pass,path,{value:'wrong',confirm:true});
+    expect(narrow.status).toBe(403);
+    expect((await http(url,readOnly.pass,path,{value:'wrong',confirm:true})).status).toBe(403);
+    expect(state.full).toBe('initial');
+    const accepted=await http(url,full.pass,path,{value:'Full authorized',confirm:true});
+    expect(accepted.status).toBe(200);
+    expect(accepted.data.result).toMatchObject({done:true,status:'applied',confirmed:true});
+    expect(state.full).toBe('Full authorized');
+    const replay=await http(url,full.pass,path,{value:'Full authorized',confirm:true});
+    expect(replay.data.result).toMatchObject({status:'replayed'});
+    expect(state.full).toBe('Full authorized');
+    const scopeLimited=await world.issue({profile:'full',allowWrites:true,areas:['issue']});
+    const barred=await http(url,scopeLimited.pass,path,{value:'outside scope',confirm:true});
+    expect(barred.status).toBe(403);
+    expect(state.full).toBe('Full authorized');
+    expect(world.gh.calls).toEqual([]);
+  });
   it('a batch never runs a change', async () => {
     const world = await passWorld(); const { registry, state } = fixtureRegistry();
     const { url } = await serve(world, registry);

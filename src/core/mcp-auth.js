@@ -7,7 +7,7 @@ export async function requireMcpToken(req, res, db, env = process.env, { toConne
   if (typeof toConnection !== 'function') throw new TypeError('requireMcpToken needs a toConnection function.');
   const origin = publicOrigin(env);
   const challenge = `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`;
-  const match = /^Bearer ([A-Za-z0-9_-]{30,256})$/.exec(String(req.headers?.authorization || ''));
+  const match = /^[Bb][Ee][Aa][Rr][Ee][Rr][ \t]+([A-Za-z0-9_-]{30,256})$/.exec(String(req.headers?.authorization || ''));
   if (!match) {
     res.setHeader('WWW-Authenticate', challenge);
     send(res, 401, { error: 'unauthorized', error_description: 'A valid connection is required' });

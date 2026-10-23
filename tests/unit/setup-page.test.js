@@ -157,7 +157,7 @@ describe('the setup page', () => {
   it('refuses every credential step off the production deployment, but still shows status', async () => {
     const t = await build({ env: { ...PROD, VERCEL_ENV: 'preview' } });
     await t.open();
-    for (const action of ['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'add-package', 'remove-package', 'reveal']) {
+    for (const action of ['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'add-package', 'remove-package', 'remove-classic', 'remove-fine-grained', 'reveal']) {
       const res = await t.post({ action, login: 'example-org', token: 'ghp_FAKE'.padEnd(40, 'x') });
       expect(res.statusCode, action).toBe(403);
       expect(res.body).toContain('production deployment');
@@ -166,6 +166,71 @@ describe('the setup page', () => {
     expect(await t.db.listAccounts()).toEqual([]);
   });
 
+  it('binds only an observed exact protected package metadata read, never package writes',async()=>{
+    const t=await build();await t.open();
+    await t.db.upsertAccount({login:'fixture-org',accountId:901,
+      accountType:'Organization',label:'Fixture'});
+    await t.credentials.storeUserAuthorization('fixture-org',{userLogin:'fixture-user',
+      accessToken:'fixture-user-access-token-for-test'});
+    t.gh.when('GET /rate_limit').reply(200,{}, {'x-oauth-scopes':'read:packages'});
+    t.gh.when('GET /user').reply(200,{id:4001,login:'fixture-user',type:'User'});
+    t.gh.when('GET /orgs/{org}/packages').reply(200,[]);
+    const token='fixture-package-token-for-readback-012345';
+    const res=await t.post({action:'add-package',login:'fixture-org',token});
+    expect(res.statusCode).toBe(200);
+    const proof=(await t.db.additionalCredentialProofs('fixture-org')).P;
+    expect(proof).toMatchObject({actorId:4001,accountId:901,
+      verification:'identity-and-capability-readback',
+      operation:'GET /orgs/{org}/packages',resource:'org/901',
+      scopes:['read:packages']});
+    expect(JSON.stringify(proof)).not.toContain(token);
+    t.gh.when('GET /orgs/{org}/packages').reply(403,{message:'Organization policy denied'});
+    const another=await t.post({action:'add-package',login:'fixture-org',
+      token:token+'replacement'});
+    expect(another.statusCode).toBe(200);
+    expect((await t.db.additionalCredentialProofs('fixture-org')).P.verification)
+      .toBe('identity-only');
+  });
+  it('proves only the one classic notification read when GitHub accepts the exact token',async()=>{
+    const t=await build();await withApp(t);
+    await t.credentials.storeUserAuthorization('example-org',{
+      userLogin:'fixture-human',accessToken:'fixture-user-access-token-012345'
+    });
+    t.gh.when('GET /rate_limit').reply(200,{}, {'x-oauth-scopes':'notifications'});
+    t.gh.when('GET /user').reply(200,{id:5001,login:'fixture-human',type:'User'});
+    t.gh.when('GET /notifications').reply(200,[]);
+    const value='fixture-classic-notifications-token-012345';
+    expect((await t.post({action:'add-classic',login:'example-org',token:value})).statusCode).toBe(200);
+    const proof=(await t.db.additionalCredentialProofs('example-org')).K;
+    expect(proof).toMatchObject({actorId:5001,accountId:1001,
+      verification:'identity-and-capability-readback',
+      operation:'GET /notifications',resource:'user/5001',scopes:['notifications']});
+    expect(JSON.stringify(proof)).not.toContain(value);
+    expect((await t.post({action:'remove-classic',login:'example-org'})).statusCode).toBe(200);
+    expect(await t.db.additionalCredentialProofs('example-org')).toEqual({});
+  });
+  it('uses existing protected form controls for K/F removal without clearing sibling kinds',async()=>{
+    const t=await build();
+    const res=await t.open();
+    expect(res.body).toContain('Remove stored notifications token');
+    expect(res.body).toContain('Remove stored fine-grained token');
+    await t.db.upsertAccount({login:'fixture-user',accountId:7001,
+      accountType:'User',label:'Fixture',credentialKind:'fine_grained'});
+    await t.db.setClassicToken('fixture-user',{enc:'sealed-classic-value',scopes:['notifications'],last4:'last'});
+    await t.db.setFineGrainedToken('fixture-user',{enc:'sealed-fg-value',last4:'last'});
+    const k={action:'remove-classic',login:'fixture-user'};
+    expect((await t.post(k,{origin:'https://evil.invalid'})).statusCode).toBe(403);
+    expect((await t.post(k,{csrf:'invalid'})).statusCode).toBe(403);
+    expect((await t.post({...k,passphrase:'wrong'})).statusCode).toBe(401);
+    expect((await t.post(k)).statusCode).toBe(200);
+    expect((await t.db.getAccount('fixture-user')).classic_enc).toBeNull();
+    expect((await t.db.getAccount('fixture-user')).fine_grained_enc).toBe('sealed-fg-value');
+    expect((await t.post(k)).statusCode).toBe(404);
+    const f={action:'remove-fine-grained',login:'fixture-user'};
+    expect((await t.post(f)).statusCode).toBe(200);
+    expect((await t.db.getAccount('fixture-user')).fine_grained_enc).toBeNull();
+    noSecrets(await t.post(f));
+  });
   it('says plainly when the encryption key is missing and stores nothing', async () => {
     const t = await build({ env: { ...PROD, TOKEN_ENCRYPTION_KEY: '' } });
     await t.open();

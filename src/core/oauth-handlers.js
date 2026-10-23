@@ -13,7 +13,7 @@ const bad = (res, status, code, description) => send(res, status, { error: code,
 const html = (res, status, page) => send(res, status, page, 'text/html; charset=utf-8');
 const str = (x) => (typeof x === 'string' ? x : '');
 
-export function createOAuthHandlers({ db, env = process.env, policy, issueTokens = () => ({ accessToken: randomToken(32), refreshToken: randomToken(32) }) }) {
+export function createOAuthHandlers({ db, env = process.env, policy, scopesSupported, issueTokens = () => ({ accessToken: randomToken(32), refreshToken: randomToken(32) }) }) {
   if (!policy || ['choices', 'page', 'validate', 'tokenSettings'].some((name) => typeof policy[name] !== 'function')) {
     throw new TypeError('createOAuthHandlers needs a policy with choices, page, validate and tokenSettings.');
   }
@@ -123,14 +123,16 @@ export function createOAuthHandlers({ db, env = process.env, policy, issueTokens
       registration_endpoint: origin + '/api/oauth/register', response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'], code_challenge_methods_supported: ['S256'],
       authorization_response_iss_parameter_supported: true,
-      token_endpoint_auth_methods_supported: ['client_secret_post']
+      token_endpoint_auth_methods_supported: ['client_secret_post'],
+      ...(scopesSupported?{scopes_supported:scopesSupported}:{})
     });
   }
 
   function resourceMetadata(req, res) {
     if (!only(res, req, ['GET'])) return;
     const { origin, resource } = urls();
-    return send(res, 200, { resource, authorization_servers: [origin] });
+    return send(res, 200, { resource, authorization_servers: [origin],
+      ...(scopesSupported?{scopes_supported:scopesSupported}:{}) });
   }
 
   return { register, authorize, token, metadata, resourceMetadata };

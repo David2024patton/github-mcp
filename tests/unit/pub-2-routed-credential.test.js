@@ -20,6 +20,8 @@ describe('PUB-2 signed private tenant credentials',()=>{
       expect(verifyTenantCredential(token,kind,on)).toEqual({tenantId:A,identityId:B,...revisions});
       expect(verifyTenantCredential(token,kind==='tac'?'trf':'tac',on)).toBeNull();
       expect(isPrivateTenantBearer('Bearer '+token)).toBe(true);
+      for(const scheme of ['bearer ','BEARER\t','bEaReR  '])
+        expect(isPrivateTenantBearer(scheme+token)).toBe(true);
       // Alter the signed nonce, tenant bytes, kind and digest independently.
       const other=token.replace(/.$/,token.endsWith('a')?'b':'a');
       expect(verifyTenantCredential(other,kind,on)).toBeNull();
@@ -37,6 +39,7 @@ describe('PUB-2 signed private tenant credentials',()=>{
     expect(verifyTenantCredential('tac_bad','tac',{})).toBeNull();
     expect(verifyTenantCredential('Bearer irrelevant','tac',on)).toBeNull();
     expect(isPrivateTenantBearer('Bearer tac_bad')).toBe(true);
+    expect(isPrivateTenantBearer('bEaReR\ttac_bad')).toBe(true);
     expect(isPrivateTenantBearer('Bearer ordinary_owner_credential')).toBe(false);
   });
   it('refuses invalid routed token BEFORE querying the root or tenant database',async()=>{

@@ -3,6 +3,7 @@
 // (`ctx.callTool`), so every check - arguments, profile, production switch, protected list, people, spend, change log - still applies.
 import { areaOf, describeTool, kindOf, marksOf, searchTools } from '../core/meta.js';
 import { listedDescription, toolsForProfile } from '../core/registry.js';
+import {OptionalConsentRequired} from '../tenancy/optional-challenge.js';
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 const visible = (ctx) => toolsForProfile(ctx.registry, ctx.connection.profile);
@@ -40,6 +41,7 @@ async function batchHandler(args, ctx) {
   const results = [];
   for (const call of calls) {
     const r = await ctx.callTool(call.name, call.args ?? {});
+    if(r._meta?.['mcp/www_authenticate'])throw new OptionalConsentRequired(r);
     results.push(r.isError ? { name: call.name, ok: false, error: r.content?.[0]?.text ?? 'The call failed.' } : { name: call.name, ok: true, result: r.structuredContent ?? null });
   }
   return { count: results.length, results };

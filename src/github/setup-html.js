@@ -122,11 +122,13 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
     form('set-own-people', '<label>Extra names<input name="logins" maxlength="1000" autocomplete="off"></label>', 'Save own people') +
     '<h2>Alternative: use a fine-grained token instead of a GitHub App</h2><p>Simpler, but no per-connection read-only tokens and no check runs. Classic tokens are refused.</p>' +
     form('add-fine-grained', login + '<label>Fine-grained personal access token<input type="password" name="token" required autocomplete="off"></label>', 'Verify and save encrypted token') +
+    form('remove-fine-grained', login, 'Remove stored fine-grained token') +
     '<h2>Optional: package token</h2><p>GitHub Packages requires a classic token. Use read:packages to list, add delete:packages to delete, and write:packages to restore. Only repository-scoped registries need repo. It must belong to the personal account or the person signed in for this organization. This token can only be used for this account’s package operations. Repository-limited passes cannot use it. GitHub package access and SSO rules still apply.</p>' +
     form('add-package', login + '<label>Classic package token<input type="password" name="token" required autocomplete="off"></label>', 'Verify and save encrypted package token') +
     form('remove-package', login, 'Remove stored package token') +
     '<h2>Optional: notifications token</h2><p>GitHub only lets a classic token read notifications. It must have only the <em>notifications</em> scope; anything else is refused.</p>' +
     form('add-classic', login + '<label>Classic token (notifications scope only)<input type="password" name="token" required autocomplete="off"></label>', 'Verify and save encrypted token') +
+    form('remove-classic', login, 'Remove stored notifications token') +
     (show ? `<h2>Reveal a one-time secret</h2>${form('reveal', '', 'Reveal this one-time secret', hidden('id', show))}` : '') +
     '</body></html>';
 }

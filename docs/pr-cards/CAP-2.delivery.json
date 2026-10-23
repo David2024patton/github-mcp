@@ -1,0 +1,40 @@
+{
+  "subsections": [
+    {
+      "id": "CAP-2",
+      "criteria": [
+        {
+          "criterion": "Ordinary Full setup without extra credentials.",
+          "evidence": "Owner OAuth policy renders normal Full without any added credential, preselects Everyday and rejects production for a disabled account; signed private tenant consent includes Full under verified client/CSRF gate. Real disposable PostgreSQL issues a separate explicit Full bearer through the unchanged PKCE/client flow and authenticates it without changing user authorization or installation privileges."
+        },
+        {
+          "criterion": "Intentional Everyday and read-only limits preserved.",
+          "evidence": "Owner normal sign-in defaults Everyday and separate Full bearer leaves earlier Everyday and rotated refresh grants at their original profile in tests/db/oauth-flow.test.js. Read-only cannot call a Full-only write; Everyday fails both direct dispatcher and meta-call; RTC scoped HTTPS denies read-only and Everyday even when Full is independently issued."
+        },
+        {
+          "criterion": "Same-user Full execution through all actual dispatch doors.",
+          "evidence": "Tests/db/oauth-flow.test.js validates a real PKCE-issued same-client Full bearer via requireMcpToken and executes github_set_default_account through the actual createDispatch with createGates; github_call follows the identical guard and the PostgreSQL readback confirms applied reversible preference. tests/unit/rtc-scoped-passes.test.js adds a guarded Full-only fixture over the real HTTP handler, including positive result/replay and Everyday/read-only/area denials. Existing private PUB-2 tenant database and private pilot signed browser tests exercise separate tenant bearer profiles and isolation."
+        },
+        {
+          "criterion": "Permission upgrade and denial recovery.",
+          "evidence": "Read-only github_check_permissions now supplies exact account-bound tool/profile/mode/I-U-K-P/selected-resource blocking layers and a deterministic recovery action list: explicitly reconnect Full in the native MCP client; separately authorize a missing GitHub App U grant; approve provider installation permission requests at GitHub with the documented provider URL; recheck each known missing permission and never silently issue or widen a grant. A real disposable PostgreSQL same-client second-consent and separate refresh family test proves no privilege carryover; no external GitHub account was modified."
+        },
+        {
+          "criterion": "Provider/tenant limits still enforced.",
+          "evidence": "The production/user access guards and tenant routing remain untouched. Unit tests reject forged/foreign accounts, unknown registered tools and unpinned operation paths before provider work; stored credentials are always 'stored-unverified' and documented App JWT excludes ordinary I/U where needed. Signed private tenant tests already assert numeric membership, independent tenant scoped connections and revoked/suspended route denial; RTC restricted area, write, spend/production, owner control and read-only paths reject before mutation. Synthetic acceptance is distinguished from unperformed live provider/device tests."
+        }
+      ],
+      "remainingEngineering": []
+    }
+  ],
+  "productionAdded": 177,
+  "productionRemoved": 5,
+  "newEngineering": "Integrated ordinary owner/client Full choice, operation- and credential-specific authorization diagnostics, explicit GitHub owner/user upgrade guidance and recheck, real native/postgresql Full-only dispatch, separate token-family lifecycle, and actual scoped HTTPS RTC Full-only write/replay/denial fixtures while preserving every existing production/user policy gate.",
+  "planComparison": "Frozen plan predicted 650 source additions; 177 additions and 5 removals are meaningful new production code because existing OAuth, encrypted credentials, native MCP, RTC and PostgreSQL tenancy are reused rather than duplicated. All five original CAP-2 acceptance lines are accounted for without rewriting the plan, with independent live provider and device proof tracked separately.",
+  "relatedWorkDecision": "CAP-2 remains one whole original connected outcome; independent CAP-3 typed credentials would add a separate encrypted store, actor verification and revocation boundary, and concurrent PUB-4 separately owns mobile-device acceptance. It would be unsafe to combine these without CAP-2 green source gates; proceed to CAP-3 only after completion and merge.",
+  "decision": "SUBSTANTIAL_EXCEPTION",
+  "exceptionEvidence": [
+    "A deliberately smaller 177-addition security-sensitive source change integrates an existing large OAuth/credentials/tenancy/guarded-write and RTC stack, rather than replacing the auth system. Real disposable-PostgreSQL tests issue separate Everyday/Full tokens, preserve refresh families and execute Full-only mutations through native and meta dispatch; restricted RTC HTTPS fixtures execute/deny/replay Full-only changes. The completed consumer-facing access diagnosis and full frozen five lines form one coherent prerequisite, not independent helper PRs.",
+    "Unchanged source controls span profile/mode, account, installation permissions, I/U/P/K, App JWT, protected resources, spend, user consent, repo selection and private tenant membership. GitHub acceptance explicitly requires owner acceptance of App scope increases; the server offers actionable verified recovery but cannot consent for the user. Separate CAP-3 state/migrations and PUB-4 real-client acceptance are real risk/dependency reasons not to inflate this PR."
+  ]
+}

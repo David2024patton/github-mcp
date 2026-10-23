@@ -211,7 +211,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     }
     if (action === 'set-own-people') return await setOwnPeople(p, page);
     if (action === 'save-protected' || action === 'remove-protected') return await editProtected(action, p, page);
-    if (!['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'add-package', 'remove-package'].includes(action)) return page(400, { result: 'Unknown action.' });
+    if (!['start-app', 'start-user-auth', 'add-fine-grained', 'add-classic', 'add-package', 'remove-package', 'remove-classic', 'remove-fine-grained'].includes(action)) return page(400, { result: 'Unknown action.' });
     if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
     if (!isValidLogin(p.login)) return page(400, { result: 'Enter a valid GitHub account name.' });
     const account = p.login;
@@ -222,6 +222,14 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
         : 'That account is not set up on the server.' });
     }
 
+    if (action==='remove-classic' || action==='remove-fine-grained') {
+      const removed=action==='remove-classic'
+        ?await db.clearClassicToken(account)
+        :await db.clearFineGrainedToken(account);
+      return page(removed?200:404,{result:removed
+        ? 'The stored credential and its recorded identity proof were cleared. Revoke the credential on GitHub separately if needed.'
+        : 'No corresponding stored credential for that account.'});
+    }
     if (!credentials.keyConfigured()) return page(503, { keyHelp: 'The server has no encryption key, so it will not store anything. Set TOKEN_ENCRYPTION_KEY (see docs/DEPLOY.md) and reload.' });
 
     if (action === 'start-app') {
@@ -639,7 +647,17 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       const expiry = Date.parse(probe.headers['github-authentication-token-expiration'] || '');
       if (Number.isFinite(expiry) && expiry <= Date.now())
         return page(400, { result: 'The package token has expired. Nothing was saved.' });
+      let listReadback=false;
+      if(row.account_type==='Organization') {
+        try {
+          const items=(await bareOctokit({token,fetch}).request(
+            'GET /orgs/{org}/packages',{org:row.login,package_type:'container',per_page:1})).data;
+          listReadback=Array.isArray(items);
+        }catch{/* Provider could deny this endpoint; keep identity-only. */}
+      }
       const saved = await credentials.storePackage(row.login, token, { scopes: list, actor: actor.login,
+        listReadback,
+        actorId: actor.id, accountId: row.account_id,
         expiresAt: Number.isFinite(expiry) ? new Date(expiry) : null });
       return page(saved ? 200 : 409, { result: saved
         ? `Saved the encrypted package token for ${row.login}. Package-level access and organization SSO/token policy still apply.`
@@ -655,7 +673,19 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       if (existing && existing.credential_kind !== 'fine_grained') return page(409, { result: `${owner.login} already uses a GitHub App. Remove it before switching to a fine-grained token. Nothing was saved.` });
       await db.upsertAccount({ login: owner.login, accountId: owner.id, accountType: owner.type, label: p.label ? String(p.label).slice(0, 100) : owner.login, credentialKind: 'fine_grained' });
       const expires = Date.parse(probe.headers['github-authentication-token-expiration'] || '');
-      await credentials.storeFineGrained(owner.login, token, { expiresAt: Number.isFinite(expires) ? new Date(expires) : null });
+      // Only the same numeric personal-account actor earns identity metadata.
+      // Existing organization-associated fine-grained tokens keep their old
+      // behavior but do not inherit private-tenant or proof authority.
+      let numericActor=null;
+      try{
+        const who=(await bareOctokit({token,fetch}).request('GET /user')).data;
+        if(owner.type==='User' && who?.id===owner.id && who?.type==='User')
+          numericActor=who.id;
+      }catch{/* No identity proof: legacy credential stays unverified. */}
+      await credentials.storeFineGrained(owner.login, token, {
+        expiresAt: Number.isFinite(expires)?new Date(expires):null,
+        actorId:numericActor,accountId:numericActor?owner.id:null
+      });
       return page(200, { result: `Saved the encrypted fine-grained token for ${owner.login} (ends in ${token.slice(-4)}).` });
     }
     const list = String(scopes ?? '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -664,7 +694,26 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     }
     const row = await db.getAccount(account);
     if (!row) return page(404, { result: 'Set that account up first (create its GitHub App or add a fine-grained token).' });
-    await credentials.storeClassic(row.login, token, list);
+    let numericActor=null;
+    try{
+      const who=(await bareOctokit({token,fetch}).request('GET /user')).data;
+      if(who?.type==='User' && Number.isSafeInteger(who.id) && who.id>0 &&
+          (row.account_type==='User'?who.id===row.account_id:
+            row.user_login?.toLowerCase()===who.login?.toLowerCase()))
+        numericActor=who.id;
+    }catch{/* Scope-compatible tokens may not prove ownership; keep unverified. */}
+    let listReadback=false;
+    if(numericActor){
+      try{
+        const items=(await bareOctokit({token,fetch}).request(
+          'GET /notifications',{per_page:1})).data;
+        listReadback=Array.isArray(items);
+      }catch{/* Token identity does not prove notification access. */}
+    }
+    await credentials.storeClassic(row.login,token,list,{
+      actorId:numericActor,accountId:numericActor?row.account_id:null,
+      listReadback
+    });
     return page(200, { result: `Saved the encrypted notifications token for ${row.login} (ends in ${token.slice(-4)}).` });
   }
 

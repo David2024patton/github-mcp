@@ -268,19 +268,62 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
       return signAppJwt({ appId: app.id, privateKey: open(app.private_key_enc, contexts.privateKey(app.id)), now });
     },
     storeUserAuthorization,
-    async storeFineGrained(login, token, { expiresAt = null } = {}) {
+    async storeFineGrained(login, token, { expiresAt = null, actorId = null, accountId = null } = {}) {
       if (typeof token !== 'string' || token.length < 20) throw new TypeError('That does not look like a GitHub token.');
-      return await db.setFineGrainedToken(login, { enc: seal(token, contexts.fineGrained(login)), last4: token.slice(-4), expiresAt });
+      const enc=seal(token,contexts.fineGrained(login));
+      const saved=await db.setFineGrainedToken(login,{enc,last4:token.slice(-4),expiresAt});
+      if(saved && Number.isSafeInteger(actorId)&&actorId>0 &&
+          Number.isSafeInteger(accountId)&&accountId>0 &&
+          typeof db.bindAdditionalCredentialProof==='function') {
+        await db.bindAdditionalCredentialProof({login,kind:'F',expectedCipher:enc,
+          proof:{version:1,kind:'F',host:'github.com',actorId,accountId,
+            scope:'legacy-owner',
+            fingerprint:crypto.createHash('sha256').update(enc).digest('hex'),
+            verification:'identity-only',expiresAt:expiresAt?.toISOString()??null}});
+      }
+      return saved;
     },
-    async storePackage(login, token, { scopes, actor, expiresAt = null }) {
+    async storePackage(login, token, { scopes, actor, actorId = null, accountId = null, expiresAt = null, listReadback = false }) {
       if (typeof token !== 'string' || token.length < 20) throw new TypeError('That does not look like a GitHub token.');
       if (!Array.isArray(scopes) || !scopes.includes('read:packages') || scopes.some(s => !['read:packages', 'write:packages', 'delete:packages', 'repo'].includes(s)) || typeof actor !== 'string' || !actor)
         throw new TypeError('Package credentials require a verified actor and package scopes.');
-      return await db.setPackageToken(login, { enc: seal(token, contexts.packages(login)), scopes: [...scopes], actor, expiresAt });
+      const enc=seal(token,contexts.packages(login));
+      const saved=await db.setPackageToken(login,{enc,scopes:[...scopes],actor,expiresAt});
+      // Legacy calls without verified numeric identity remain valid but
+      // unverified. A simultaneous replacement cannot inherit evidence.
+      if(saved && Number.isSafeInteger(actorId)&&actorId>0 &&
+          Number.isSafeInteger(accountId)&&accountId>0 &&
+          typeof db.bindAdditionalCredentialProof==='function') {
+        await db.bindAdditionalCredentialProof({login,kind:'P',expectedCipher:enc,
+          proof:{version:1,kind:'P',host:'github.com',actorId,accountId,
+            scope:'legacy-owner',
+            fingerprint:crypto.createHash('sha256').update(enc).digest('hex'),
+            verification:listReadback?'identity-and-capability-readback':'identity-only',
+            operation:listReadback?'GET /orgs/{org}/packages':null,
+            resource:listReadback?'org/'+accountId:null,
+            scopes:listReadback?['read:packages']:[],
+            expiresAt:expiresAt?.toISOString()??null}});
+      }
+      return saved;
     },
-    async storeClassic(login, token, scopes) {
+    async storeClassic(login, token, scopes, { actorId = null, accountId = null, listReadback = false } = {}) {
       if (typeof token !== 'string' || token.length < 20) throw new TypeError('That does not look like a GitHub token.');
-      return await db.setClassicToken(login, { enc: seal(token, contexts.classic(login)), scopes: [...scopes], last4: token.slice(-4) });
+      const enc=seal(token,contexts.classic(login));
+      const saved=await db.setClassicToken(login,{enc,scopes:[...scopes],last4:token.slice(-4)});
+      if(saved && Number.isSafeInteger(actorId)&&actorId>0 &&
+          Number.isSafeInteger(accountId)&&accountId>0 &&
+          typeof db.bindAdditionalCredentialProof==='function') {
+        await db.bindAdditionalCredentialProof({login,kind:'K',expectedCipher:enc,
+          proof:{version:1,kind:'K',host:'github.com',actorId,accountId,
+            scope:'legacy-owner',
+            fingerprint:crypto.createHash('sha256').update(enc).digest('hex'),
+            verification:listReadback?'identity-and-capability-readback':'identity-only',
+            operation:listReadback?'GET /notifications':null,
+            resource:listReadback?'user/'+actorId:null,
+            scopes:listReadback?['notifications']:[],
+            expiresAt:null}});
+      }
+      return saved;
     },
     /** For a user-token 401: forget the authorization so the setup page asks for it again (A5). */
     async forgetUserAuthorization(login) { await db.clearUserAuthorization(login); },

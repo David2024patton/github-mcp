@@ -6,6 +6,10 @@ import { formatDenver } from '../github/errors.js';
 import { AREAS, LEVELS } from '../data/permission-needs.js';
 import { MAP_STATUS, SETTINGS, findSettings, fill } from '../data/dashboard-map.js';
 import { enrolledGuideUser, restrictUnknownUserLink } from './guide-personal.js';
+import {effectiveToolAccess,documentedOperationAccess,accessRecovery,additionalCredentialHandoff} from '../github/effective-access.js';
+import { publicOrigin } from '../core/http.js';
+import {optionalCredentialIdentityStatus} from '../github/optional-identity-status.js';
+import {restOperation} from '../github/openapi-index.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
 const when = (value) => (value ? formatDenver(value) : null);
@@ -33,9 +37,34 @@ export function compareArea(area, granted) {
 }
 
 async function checkPermissions(args, ctx) {
+  // The canonical static registry is read at call time to avoid granting meta
+  // tools the dynamic registry-injection privilege reserved for dispatcher runners.
+  // Import only inside the requested read handler: the registration graph
+  // imports this module while constructing the registry, so a top-level
+  // import here would create a cyclic, partially initialized registry.
+  const registeredTools = args.tool===undefined ? null : (await import('./index.js')).registry;
+  const chosen=args.tool===undefined?null:registeredTools.tools.find(t=>t.name===args.tool);
+  if(args.tool!==undefined&&!chosen)throw new TypeError('That GitHub tool is not registered. Search with github_search_tools.');
   if (args.area && !AREAS.some((a) => a.id === args.area)) throw new TypeError(`Unknown area "${args.area}". Areas: ${AREAS.map((a) => a.id).join(', ')}.`);
+  if(args.operation && (!args.account || (!args.area && !chosen)))
+    throw new TypeError('For operation evidence select one connection account and a tool or area.');
+  let pinned=null;
+  if(args.operation){
+    try{pinned=restOperation(args.operation);}
+    catch{throw new TypeError('That exact REST operation is absent from pinned GitHub 2026-03-10.');}
+  }
   const rows = await accountsFor(ctx, args.account);
-  const areas = AREAS.filter((a) => !args.area || a.id === args.area);
+  // A named tool should not add a 24-area report to the existing size-bounded
+  // MCP result. Narrow to its known capability area, or explicitly say the
+  // exact tool-to-area mapping is unknown. A caller can still select any area
+  // separately, and an omitted tool retains the original whole audit.
+  const areaForTool = {
+    pr:'pull-requests',repo:'repositories',content:'content',branch:'branches',
+    issue:'issues',actions:'actions',release:'releases',security:'security',
+    webhook:'webhooks',org:'organization',billing:'billing',package:'packages'
+  };
+  const inferredArea = chosen ? (areaForTool[chosen.area] ?? null) : null;
+  const areas = AREAS.filter(a => args.area ? a.id === args.area : !chosen || a.id === inferredArea);
   const accounts = rows.map((row) => {
     const base = { login: row.login };
     if (row.credential_kind === 'fine_grained') {
@@ -61,6 +90,96 @@ async function checkPermissions(args, ctx) {
         : results.filter((r) => r.missing.length || r.capability)
     };
   });
+  if(pinned) for(const entry of accounts){
+    const account=rows.find(x=>sameLogin(x.login,entry.login));
+    entry.operation_evidence=documentedOperationAccess({account,route:pinned.route});
+    const ownerContext=ctx.connection?.pass!==true &&
+      typeof ctx.credentials?.operationAuthority!=='function';
+    let origin=null;
+    if(ownerContext)try{origin=publicOrigin(ctx.env);}catch{/* No safe link without configured server origin. */}
+    const proposed=additionalCredentialHandoff({
+      operation:pinned.route,account,origin,ownerContext
+    });
+    if(ownerContext && proposed.status==='protected-setup' &&
+       typeof ctx.db.additionalCredentialProofs==='function'){
+      // listAccounts intentionally redacts encrypted values; inspect an exact
+      // allowed account row only inside this owner-only diagnostic. Never
+      // include ciphertext or a token-derived hash in returned output.
+      const privateAccount=await ctx.db.getAccount(account.login);
+      const existing=optionalCredentialIdentityStatus({
+        account:privateAccount,proofs:await ctx.db.additionalCredentialProofs(account.login)
+      });
+      entry.optional_credentials=existing;
+      const previous=existing[proposed.kind];
+      entry.additional_setup=previous?.documentedRead===pinned.route &&
+        previous.operationPermission==='observed-for-read-at-enrollment'
+        ?{status:'read-observed-at-enrollment',kind:proposed.kind,
+          account:account.login,operation:pinned.route,
+          note:'This exact read succeeded during prior protected enrollment. Current GitHub permission has NOT been rechecked; do not replay a refused write.'}
+        :proposed;
+    }else entry.additional_setup=proposed;
+    entry.operation_note='Area-level permission needs include writes and do not prove an individual read operation.';
+    if(typeof ctx.credentials?.operationAuthority==='function')
+      entry.operation_authority=await ctx.credentials.operationAuthority({
+        account:account.login,operation:pinned.route});
+    // Private tenant optional authority has a different protected form from
+    // the operator's global setup. Never route a member or pass to owner setup.
+    // A single registered callback is required to return to the exact client;
+    // no caller-supplied arbitrary redirect can ever reach the browser.
+    if(pinned.route==='GET /notifications' &&
+       typeof ctx.credentials?.operationAuthority==='function' &&
+       ctx.connection?.pass!==true &&
+       typeof ctx.connection?.client_id==='string' &&
+       ctx.connection.client_id.startsWith('tcl_') &&
+       typeof ctx.db?.getOAuthClient==='function'){
+      try{
+        const {verifyTenantCredential}=await import('../tenancy/routed-credential.js');
+        const claim=verifyTenantCredential(ctx.connection.client_id,'tcl',ctx.env);
+        const client=claim?await ctx.db.getOAuthClient(ctx.connection.client_id):null;
+        const redirects=client?.redirect_uris;
+        if(ctx.env?.VERCEL_ENV==='production' &&
+           Array.isArray(redirects) && redirects.length===1){
+          const {validRedirectUri}=await import('../core/oauth.js');
+          if(validRedirectUri(redirects[0])){
+            const url=new URL('/api/tenant/optional',publicOrigin(ctx.env));
+            url.searchParams.set('client_id',ctx.connection.client_id);
+            url.searchParams.set('account',account.login.toLowerCase());
+            url.searchParams.set('kind','K');
+            url.searchParams.set('redirect_uri',redirects[0]);
+            const observed=entry.operation_authority?.status==='verified-for-scope';
+            entry.additional_setup={
+              status:observed?'renew-or-revoke':'protected-tenant-setup',
+              kind:'classic_pat',operation:pinned.route,
+              url:url.toString(),
+              note:observed
+                ?'An exact notification read was observed at enrollment; current rights are not rechecked. Use this protected page to renew or revoke.'
+                :'GitHub requires a classic personal token with notifications scope. Calling github_notify_list starts client OAuth reauthorization and returns through its pending PKCE transaction. This standalone management page requires returning to chat yourself; never paste the token into chat.'
+            };
+          }
+        }
+      }catch{/* Missing origin/client/signed scope never becomes a setup link. */}
+    }
+  }
+  if(chosen) for(const entry of accounts){
+    const account=rows.find(row=>sameLogin(row.login,entry.login));
+    entry.effective_access=effectiveToolAccess({connection:ctx.connection,account,tool:chosen});
+    if(!entry.optional_credentials && ctx.connection?.pass!==true &&
+        !ctx.credentials?.operationAuthority &&
+        typeof ctx.db.additionalCredentialProofs==='function') {
+      const privateAccount=await ctx.db.getAccount(account.login);
+      const proofs=await ctx.db.additionalCredentialProofs(account.login);
+      entry.optional_credentials=optionalCredentialIdentityStatus({
+        account:privateAccount,proofs
+      });
+    }
+    entry.recovery=accessRecovery({
+      connection:ctx.connection,account,tool:chosen,
+      missingPermissions:(entry.areas??[]).flatMap(a=>a.missing??[]),
+      operation:entry.operation_evidence??null
+    });
+    if(!areas.length && entry.status==='all good') entry.status='area unverified';
+    if(!areas.length) entry.area_note='No audited permission family is mapped to this registered tool. Select an area explicitly; do not assume GitHub grants.';
+  }
   return { checked_areas: areas.length, accounts };
 }
 
@@ -118,8 +237,8 @@ export const tools = [
   {
     name: 'github_check_permissions',
     area: 'server', audience: ['O', 'B'],
-    description: 'Compare what each GitHub App installation may do with what every tool area needs; names the exact permission to add.',
-    inputSchema: { type: 'object', properties: { account: { type: 'string', maxLength: 39 }, area: { type: 'string', maxLength: 40, description: 'One area, e.g. pull-requests' }, detail: DETAIL }, additionalProperties: false },
+    description: 'Check App grants and a named tool\'s profile, mode, stored credential and unverified guard layers.',
+    inputSchema: { type: 'object', properties: { account: { type: 'string', maxLength: 39 }, area: { type: 'string', maxLength: 40, description: 'One area, e.g. pull-requests' }, tool: { type: 'string', maxLength: 80, description: 'Registered tool to diagnose for each scoped account' }, operation: { type: 'string', maxLength: 240, description: 'Pinned REST METHOD /path documentation; requires account and tool or area' }, detail: DETAIL }, additionalProperties: false },
     annotations: readOnly
   },
   {

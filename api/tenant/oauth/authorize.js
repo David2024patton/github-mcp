@@ -12,7 +12,7 @@ const formCookie=req => /(?:^|;\s*)gh_tenant_pilot_form=([A-Za-z0-9_-]{43})(?:;|
   .exec(String(req.headers?.cookie||''))?.[1]||null;
 const fresh=()=>randomBytes(32).toString('base64url');
 const hidden=['client_id','redirect_uri','response_type','code_challenge',
-  'code_challenge_method','state','resource'];
+  'code_challenge_method','state','resource','scope'];
 const refuse=(res)=>send(res,403,{error:'authorization_unavailable',
   error_description:'This GitHub tenant authorization is not available.'});
 const clear='gh_tenant_pilot_form=; Max-Age=0; Path=/api/tenant/oauth; HttpOnly; Secure; SameSite=Strict';
@@ -43,7 +43,7 @@ export default async function privateTenantAuthorize(req,res,{env=process.env,
         '; Max-Age=600; Path=/api/tenant/oauth; HttpOnly; Secure; SameSite=Strict');
       res.setHeader('Content-Type','text/html; charset=utf-8');
       res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
-      res.setHeader('Referrer-Policy','no-referrer');
+      res.setHeader('Referrer-Policy','same-origin');
       const fields=hidden.map(k=>'<input type="hidden" name="'+k+'" value="'+escapeHtml(p[k]??'')+'">').join('');
       const modes=env.VERCEL_ENV==='production' && inspected.productionAllowed?['preview','production']:['preview'];
       const html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
@@ -65,7 +65,7 @@ export default async function privateTenantAuthorize(req,res,{env=process.env,
     const {url,csrfState}=await consentFactory({env}).start(p);
     res.setHeader('Set-Cookie',[clear,
       'gh_tenant_pilot_state='+csrfState+
-        '; Max-Age=600; Path=/api/tenant/oauth; HttpOnly; Secure; SameSite=Lax']);
+        '; Max-Age=600; Path=/api/github/user-callback; HttpOnly; Secure; SameSite=Lax']);
     res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('Location',url);
     return res.status(302).end();

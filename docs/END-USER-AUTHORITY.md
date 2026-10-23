@@ -44,3 +44,23 @@ The official GitHub code-security API accepts cursor pagination even when more t
 ## October 17 — privilege versus subscription diagnostic correction
 
 The H-4 dependency-review read and Y-9 organization network-configuration read/write paths previously labeled provider HTTP 403/404 as paid-plan ineligibility without proof, masking missing GitHub App permissions or inaccessible exact resources. The focused correction keeps GitHub's original refusal and accepted-permission data through the existing sanitized translator, while preserving PREVIEW/production/confirmation guards, source-verified completeness across paginated network inventories, and changed-network-ID readback. Original H-4/Y-9 implementation was merged earlier, and this maintenance does not re-credit those subsections. No real paid acceptance, credential upgrade, production write or deployed-source acceptance is claimed. See `docs/pr-cards/END-USER-AUTHORITY-REFUSAL-TRUTH-OCT17.md`.
+
+## Maximum authorization expansion — owner 2026-10-21
+
+[MAXIMUM-AUTHORITY](designs/MAXIMUM-AUTHORITY.md) governs CAP-1..CAP-5. Standard includes optional Full App/user authorization; God Mode is guided enrollment of genuinely additional credentials, not exclusive tools or a guard bypass. The 411-tool credential classification does not establish GitHub functional coverage. Robinson AI Systems developer/operator and product-customer contexts must be explicit and separately authorized. This approved plan does not itself implement or accept the new capabilities.
+
+## Organizational identity and explicit authority contexts — owner 2026-10-21
+
+Robinson AI Systems can act as developer/operator, explicitly scoped product administrator,
+or ordinary production customer. Every operation must bind environment, authenticated principal,
+tenant/workspace membership, active role, owned provider connection and operation. Company
+email/domain or organization membership alone creates neither global administration nor a
+permanent developer-only product profile. Secure context switching must reauthorize each role;
+operator credentials never substitute for another user's missing provider grant. Preserve valid
+existing accounts and credentials through a reviewed migration and scoped refresh/revocation.
+
+Existing maximum-authority/identity units retain this requirement. Source tests and incremental
+protocol fixes do not certify complete multi-user business onboarding, role switching, tenant
+isolation or supported live-client/provider acceptance. Builder safety, CI and release policies,
+provider grants, explicit user policies and genuine transaction protections remain independently
+enforced. Robinson's own production tenant has normal delegated authority and no cross-tenant access.

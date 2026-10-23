@@ -11,7 +11,7 @@ import { withTenantStorageLimits, withTenantProviderMetrics } from './runtime-li
 
 export const isPrivateTenantBearer = (authorization) =>
   typeof authorization === 'string' &&
-  /^Bearer (?:tac|trf|tcl)_/.test(authorization);
+  /^[Bb][Ee][Aa][Rr][Ee][Rr][ \t]+(?:tac|trf|tcl)_/.test(authorization);
 
 /** Dependency overrides are for private tests only; no user-visible route
  * accepts an arbitrary tenant identifier, identity or tenant SQL handle. */
@@ -19,7 +19,7 @@ export async function resolvePrivateTenantMcpBearer({
   authorization, env = process.env, fetchImpl = fetch, rootSqlFactory = neon,
   tenantSqlFactory = neon
 }) {
-  const value = /^Bearer ([A-Za-z0-9_-]{30,256})$/.exec(String(authorization || ''))?.[1];
+  const value = /^[Bb][Ee][Aa][Rr][Ee][Rr][ \t]+([A-Za-z0-9_-]{30,256})$/.exec(String(authorization || ''))?.[1];
   if (!value || !isTenantRoutedCredential(value)) return null;
   const claim = verifyTenantCredential(value, 'tac', env);
   if (!claim || !env.DATABASE_URL) return null;

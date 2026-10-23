@@ -1,7 +1,7 @@
 // PUB-1: PRIVATE, unexposed tenant isolation foundation. No request route may call this
 // until PUB-2 binds a verified GitHub numeric subject to the session. Existing owner
 // data in the legacy (public) schema is never migrated, copied or modified here.
-import { randomUUID } from 'node:crypto';
+import { randomUUID,createHash } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { createDb, SCHEMA_TABLES } from '../db.js';
 import { initTenantRuntimeSchema } from './runtime-limits.js';
@@ -33,10 +33,29 @@ export function tenantConnectionString(connectionString, tenantId) {
       url.searchParams.has('service') || url.searchParams.has('sslpassword')) {
     throw new TypeError('Tenant DB URL requires a direct, unmodified PostgreSQL connection configuration.');
   }
-  // Neon HTTP supports PostgreSQL's options=-c search_path=... connection parameter.
-  // An absent namespace makes current_schema() null, and is always refused below.
+  // For session-based PostgreSQL adapters. HTTP queries use transaction-local
+  // configuration below; pooled startup options are not portable.
   url.searchParams.set('options', '-c search_path=' + schema);
   return url.toString();
+}
+
+/** Production HTTP requests have no persistent session. Configure the path in
+ * the SAME transaction as every query, without public fallback or pooled SET
+ * leakage. Injected session adapters retain the connection-options contract. */
+export function createTenantSql(connectionString, tenantId, sqlFactory = neon) {
+  const scoped = tenantConnectionString(connectionString, tenantId);
+  if (sqlFactory !== neon) return sqlFactory(scoped);
+  const url = new URL(scoped);
+  url.searchParams.delete('options');
+  const raw = neon(url.toString());
+  const schema = tenantSchemaName(tenantId);
+  return async (strings, ...values) => {
+    const [, rows] = await raw.transaction([
+      raw`SELECT set_config('search_path', ${schema}, true)`,
+      raw(strings, ...values)
+    ]);
+    return rows;
+  };
 }
 
 /** A connection must prove the exact tenant namespace before *any* read or
@@ -58,6 +77,34 @@ export async function assertTenantSearchPath(sql, tenantId) {
  */
 export function createTenantDirectory(sql) {
   if (typeof sql !== 'function') throw new TypeError('Tenant directory requires a parameterized SQL adapter.');
+  let bindingSchemaReady=null;
+  function ensureUserBindingSchema() {
+    if (!bindingSchemaReady) {
+      bindingSchemaReady=sql`ALTER TABLE gh_tenant_user_authorizations
+        ADD COLUMN IF NOT EXISTS authority_binding JSONB`;
+      bindingSchemaReady.catch(()=>{bindingSchemaReady=null;});
+    }
+    return bindingSchemaReady;
+  }
+  async function ensureOptionalSetupSchema(){
+      await sql`CREATE TABLE IF NOT EXISTS gh_tenant_optional_setup_states (
+        state_hash TEXT PRIMARY KEY,
+        tenant_id UUID NOT NULL REFERENCES gh_tenants(id),
+        identity_id UUID NOT NULL REFERENCES gh_tenant_identities(id),
+        client_id TEXT NOT NULL,
+        account_login TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('K','P')),
+        redirect_uri TEXT NOT NULL,
+        membership_revision BIGINT NOT NULL,
+        pilot_revision BIGINT NOT NULL,
+        expected_fingerprint TEXT,
+        expires_at TIMESTAMPTZ NOT NULL DEFAULT (now()+interval '10 minutes')
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS gh_tenant_optional_setup_expires
+        ON gh_tenant_optional_setup_states (expires_at)`;
+      await sql`ALTER TABLE gh_tenant_optional_setup_states
+        ADD COLUMN IF NOT EXISTS oauth_context JSONB`;
+  }
   return {
     async initSchema() {
       await sql`CREATE TABLE IF NOT EXISTS gh_tenant_identities (
@@ -146,6 +193,32 @@ export function createTenantDirectory(sql) {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         PRIMARY KEY (tenant_id,identity_id,account_login)
       )`;
+      // CAP-3 adds no bearer store. Legacy grants retain their ciphertext and
+      // remain unverified until consent supplies fresh scoped readback.
+      await ensureUserBindingSchema();
+      // CAP-3 private-member optional authority: encrypted only, bounded type,
+      // versioned actor/tenant epoch and no legacy owner-token fallback.
+      await sql`CREATE TABLE IF NOT EXISTS gh_tenant_optional_credentials (
+        tenant_id UUID NOT NULL REFERENCES gh_tenants(id),
+        identity_id UUID NOT NULL REFERENCES gh_tenant_identities(id),
+        account_login TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('K','P')),
+        provider_host TEXT NOT NULL DEFAULT 'github.com',
+        actor_id BIGINT NOT NULL,
+        account_id BIGINT NOT NULL,
+        membership_revision BIGINT NOT NULL,
+        pilot_revision BIGINT NOT NULL,
+        access_enc TEXT NOT NULL,
+        cipher_fingerprint TEXT NOT NULL,
+        verified_operation TEXT NOT NULL,
+        verified_resource TEXT NOT NULL,
+        scopes TEXT[] NOT NULL,
+        expires_at TIMESTAMPTZ,
+        revoked_at TIMESTAMPTZ,
+        revision BIGINT NOT NULL DEFAULT 1,
+        PRIMARY KEY (tenant_id,identity_id,account_login,kind)
+      )`;
+      await ensureOptionalSetupSchema();
       // GitHub redirect state lives in the private registry only long enough
       // to finish one GitHub authorization. Store a hash of the browser secret.
       await sql`CREATE TABLE IF NOT EXISTS gh_tenant_oauth_flows (
@@ -164,6 +237,8 @@ export function createTenantDirectory(sql) {
         expires_at TIMESTAMPTZ NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
+      await sql`ALTER TABLE gh_tenant_oauth_flows
+        ADD COLUMN IF NOT EXISTS optional_kind TEXT`;
       // This function only accepts server-generated opaque namespaces. Unlike
       // concatenating raw SQL in JS, %I quotes the identifier within PostgreSQL.
       // It is SECURITY INVOKER (no privilege elevation) and has no public HTTP route.
@@ -331,9 +406,112 @@ export function createTenantDirectory(sql) {
     /** Save only encrypted provider tokens after verified GitHub /user +
      * installation proof. Atomic eligibility check prevents stale pilot
      * approvals from writing a shared credential or another tenant's row. */
+
+    /** The protected enrollment handler must verify GitHub /user identity and
+     * one harmless exact K/P endpoint before passing encrypted bytes here.
+     * SQL checks active signed membership, current pilot epoch and numeric
+     * GitHub principal again; insert and CAS replacement are single statement.
+     */
+    async putPilotOptionalCredential({tenantId,identityId,accountLogin,kind,
+      actorId,accountId,membershipRevision,pilotRevision,accessEnc,
+      operation,resource,scopes,expiresAt=null,expectedFingerprint=null}) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      const permitted=(kind==='K'&&operation==='GET /notifications'&&
+        resource==='user/'+actorId&&Array.isArray(scopes)&&
+        scopes.length===1&&scopes[0]==='notifications')||
+        (kind==='P'&&operation==='GET /orgs/{org}/packages'&&
+          resource==='org/'+accountId&&Array.isArray(scopes)&&
+          scopes.includes('read:packages')&&scopes.length<=4&&
+          scopes.every(x=>['read:packages','write:packages','delete:packages','repo'].includes(x)));
+      if(!permitted||typeof accountLogin!=='string'||!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||
+        !Number.isSafeInteger(actorId)||actorId<1||!Number.isSafeInteger(accountId)||accountId<1||
+        !Number.isSafeInteger(membershipRevision)||membershipRevision<1||
+        !Number.isSafeInteger(pilotRevision)||pilotRevision<1||
+        typeof accessEnc!=='string'||!accessEnc.startsWith('v1.')||
+        (expectedFingerprint!==null && (typeof expectedFingerprint!=='string'||
+          !/^[a-f0-9]{64}$/.test(expectedFingerprint)))||
+        (expiresAt!==null && (!(expiresAt instanceof Date)||
+          !Number.isFinite(expiresAt.valueOf())||expiresAt<=new Date())))
+        throw new TypeError('Invalid private optional credential proof.');
+      const fingerprint=createHash('sha256').update(accessEnc).digest('hex');
+      const rows=await sql`INSERT INTO gh_tenant_optional_credentials(
+        tenant_id,identity_id,account_login,kind,provider_host,
+        actor_id,account_id,membership_revision,pilot_revision,access_enc,
+        cipher_fingerprint,verified_operation,verified_resource,scopes,expires_at)
+        SELECT ${t}::uuid,${i}::uuid,${accountLogin},${kind},'github.com',
+          ${actorId},${accountId},${membershipRevision},${pilotRevision},
+          ${accessEnc},${fingerprint},${operation},${resource},${scopes}::text[],${expiresAt}
+        WHERE EXISTS (SELECT 1 FROM gh_tenants ten
+          JOIN gh_tenant_memberships m ON m.tenant_id=ten.id
+          JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=ten.id AND p.identity_id=m.identity_id
+          JOIN gh_tenant_identities ident ON ident.id=m.identity_id
+          JOIN gh_tenant_pilot_bootstraps b ON b.tenant_id=ten.id
+          WHERE ten.id=${t}::uuid AND ten.status='active' AND m.identity_id=${i}::uuid
+            AND m.active=TRUE AND p.active=TRUE AND
+            m.revision=${membershipRevision} AND p.revision=${pilotRevision} AND
+            ident.provider='github' AND ident.provider_subject=${String(actorId)} AND
+            b.account_login=${accountLogin})
+        ON CONFLICT (tenant_id,identity_id,account_login,kind)
+        DO UPDATE SET actor_id=EXCLUDED.actor_id,account_id=EXCLUDED.account_id,
+          membership_revision=EXCLUDED.membership_revision,pilot_revision=EXCLUDED.pilot_revision,
+          access_enc=EXCLUDED.access_enc,cipher_fingerprint=EXCLUDED.cipher_fingerprint,
+          verified_operation=EXCLUDED.verified_operation,verified_resource=EXCLUDED.verified_resource,
+          scopes=EXCLUDED.scopes,expires_at=EXCLUDED.expires_at,revoked_at=NULL,
+          revision=gh_tenant_optional_credentials.revision+1
+        WHERE ${expectedFingerprint}::text IS NOT NULL AND
+          gh_tenant_optional_credentials.cipher_fingerprint=${expectedFingerprint}
+        RETURNING revision`;
+      return rows.length===1;
+    },
+    /** Encrypted grant retrieval for trusted runtime only; never MCP output. */
+    async getPilotOptionalCredential({tenantId,identityId,accountLogin,kind}) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      if(!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||!['K','P'].includes(kind))return null;
+      const rows=await sql`SELECT g.access_enc,g.cipher_fingerprint,g.kind,g.actor_id,
+        g.account_id,g.verified_operation,g.verified_resource,g.scopes,
+        g.expires_at,g.revision,g.provider_host
+        FROM gh_tenant_optional_credentials g
+        JOIN gh_tenants ten ON ten.id=g.tenant_id
+        JOIN gh_tenant_memberships m ON m.tenant_id=g.tenant_id AND m.identity_id=g.identity_id
+        JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=g.tenant_id AND p.identity_id=g.identity_id
+        JOIN gh_tenant_identities ident ON ident.id=g.identity_id
+        JOIN gh_tenant_pilot_bootstraps b ON b.tenant_id=g.tenant_id
+        WHERE g.tenant_id=${t}::uuid AND g.identity_id=${i}::uuid
+          AND g.account_login=${accountLogin} AND g.kind=${kind}
+          AND g.revoked_at IS NULL AND ten.status='active' AND m.active=TRUE AND p.active=TRUE
+          AND g.membership_revision=m.revision AND g.pilot_revision=p.revision
+          AND ident.provider='github' AND ident.provider_subject=g.actor_id::text
+          AND b.account_login=g.account_login AND
+          (g.expires_at IS NULL OR g.expires_at>now())`;
+      return rows.length===1?rows[0]:null;
+    },
+    async revokePilotOptionalCredential({tenantId,identityId,accountLogin,kind,expectedFingerprint=null}) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      if(!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||!['K','P'].includes(kind)||
+        (expectedFingerprint!==null&&!/^[a-f0-9]{64}$/.test(expectedFingerprint)))return false;
+      const rows=await sql`UPDATE gh_tenant_optional_credentials g
+        SET revoked_at=now(),revision=g.revision+1,
+          access_enc='v1.revoked',cipher_fingerprint=repeat('0',64)
+        FROM gh_tenants ten,gh_tenant_memberships m,gh_tenant_pilot_allowlist p,
+          gh_tenant_identities ident,gh_tenant_pilot_bootstraps b
+        WHERE g.tenant_id=${t}::uuid AND g.identity_id=${i}::uuid
+          AND g.account_login=${accountLogin} AND g.kind=${kind}
+          AND g.revoked_at IS NULL
+          AND (${expectedFingerprint}::text IS NULL OR
+               g.cipher_fingerprint=${expectedFingerprint})
+          AND ten.id=g.tenant_id AND ten.status='active'
+          AND m.tenant_id=ten.id AND m.identity_id=g.identity_id AND m.active
+          AND p.tenant_id=ten.id AND p.identity_id=g.identity_id AND p.active
+          AND ident.id=g.identity_id AND ident.provider='github'
+          AND ident.provider_subject=g.actor_id::text
+          AND b.tenant_id=g.tenant_id AND b.account_login=g.account_login
+        RETURNING g.kind`;
+      return rows.length===1;
+    },
+
     async storePilotUserAuthorization({ tenantId, identityId, accountLogin,
       userLogin, accessEnc, accessExpiresAt, refreshEnc = null,
-      refreshExpiresAt = null }) {
+      refreshExpiresAt = null, authorityBinding = null }) {
       const t=validUuid(tenantId), i=validUuid(identityId);
       if (typeof accountLogin!=='string' ||
           !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin) ||
@@ -345,21 +523,30 @@ export function createTenantDirectory(sql) {
             !Number.isFinite(refreshExpiresAt.valueOf())))) {
         throw new TypeError('A verified, encrypted tenant user authorization is required.');
       }
+      await ensureUserBindingSchema();
       const rows=await sql`INSERT INTO gh_tenant_user_authorizations (
         tenant_id,identity_id,account_login,user_login,access_enc,access_expires_at,
-        refresh_enc,refresh_expires_at)
+        refresh_enc,refresh_expires_at,authority_binding)
         SELECT ${t}::uuid,${i}::uuid,${accountLogin},${userLogin},
-          ${accessEnc},${accessExpiresAt},${refreshEnc},${refreshExpiresAt}
+          ${accessEnc},${accessExpiresAt},${refreshEnc},${refreshExpiresAt},
+          ${authorityBinding===null?null:JSON.stringify(authorityBinding)}::jsonb
         WHERE EXISTS (SELECT 1 FROM gh_tenants t
           JOIN gh_tenant_memberships m ON m.tenant_id=t.id
           JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=t.id AND p.identity_id=m.identity_id
           WHERE t.id=${t}::uuid AND t.status='active'
-            AND m.identity_id=${i}::uuid AND m.active=TRUE AND p.active=TRUE)
+            AND m.identity_id=${i}::uuid AND m.active=TRUE AND p.active=TRUE
+            AND (${authorityBinding===null} OR (
+              m.revision=${authorityBinding?.membershipRevision??0}
+              AND p.revision=${authorityBinding?.pilotRevision??0}
+              AND EXISTS (SELECT 1 FROM gh_tenant_identities ident
+                WHERE ident.id=${i}::uuid AND ident.provider='github'
+                  AND ident.provider_subject=${String(authorityBinding?.githubUserId??'')}))))
         ON CONFLICT (tenant_id,identity_id,account_login) DO UPDATE SET
           user_login=EXCLUDED.user_login,access_enc=EXCLUDED.access_enc,
           access_expires_at=EXCLUDED.access_expires_at,
           refresh_enc=EXCLUDED.refresh_enc,
           refresh_expires_at=EXCLUDED.refresh_expires_at,
+          authority_binding=EXCLUDED.authority_binding,
           refresh_claim_id=NULL,refresh_claim_expires_at=NULL,
           revision=gh_tenant_user_authorizations.revision+1,updated_at=now()
         RETURNING revision`;
@@ -374,7 +561,7 @@ export function createTenantDirectory(sql) {
           !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)) return null;
       const rows=await sql`SELECT u.user_login,u.access_enc,u.access_expires_at,
           u.refresh_enc,u.refresh_expires_at,u.refresh_claim_id,
-          u.refresh_claim_expires_at,u.revision
+          u.refresh_claim_expires_at,u.revision,to_jsonb(u)->'authority_binding' AS authority_binding
         FROM gh_tenant_user_authorizations u
         JOIN gh_tenants t ON t.id=u.tenant_id
         JOIN gh_tenant_memberships m ON m.tenant_id=t.id AND m.identity_id=u.identity_id
@@ -414,11 +601,13 @@ export function createTenantDirectory(sql) {
 
     async finishPilotUserRefresh({tenantId,identityId,accountLogin,
       expectedAccessEnc,claimId,accessEnc,accessExpiresAt,
-      refreshEnc,refreshExpiresAt}) {
+      refreshEnc,refreshExpiresAt,authorityBinding=null}) {
       const t=validUuid(tenantId),i=validUuid(identityId);
+      await ensureUserBindingSchema();
       const rows=await sql`UPDATE gh_tenant_user_authorizations u
         SET access_enc=${accessEnc},access_expires_at=${accessExpiresAt},
           refresh_enc=${refreshEnc},refresh_expires_at=${refreshExpiresAt},
+          authority_binding=${authorityBinding===null?null:JSON.stringify(authorityBinding)}::jsonb,
           refresh_claim_id=NULL,refresh_claim_expires_at=NULL,
           revision=u.revision+1,updated_at=now()
         WHERE u.tenant_id=${t}::uuid AND u.identity_id=${i}::uuid
@@ -428,7 +617,10 @@ export function createTenantDirectory(sql) {
             JOIN gh_tenants ten ON ten.id=m.tenant_id
             JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=m.tenant_id AND p.identity_id=m.identity_id
             WHERE m.tenant_id=${t}::uuid AND m.identity_id=${i}::uuid
-              AND m.active=TRUE AND ten.status='active' AND p.active=TRUE)
+              AND m.active=TRUE AND ten.status='active' AND p.active=TRUE
+              AND (${authorityBinding===null} OR (
+                m.revision=${authorityBinding?.membershipRevision??0}
+                AND p.revision=${authorityBinding?.pilotRevision??0})))
         RETURNING u.revision`;
       return rows.length===1;
     },
@@ -480,9 +672,78 @@ export function createTenantDirectory(sql) {
 
     /** One-use GitHub callback state; all OAuth settings are saved by the
      * server during a gated request rather than trusted from callback query. */
+
+    /** Fresh, server-issued state proves context and is consumed before any
+     * provider call. A stale browser/tab cannot renew or revoke a later grant. */
+    async createPilotOptionalSetupState({stateHash,tenantId,identityId,clientId,
+      accountLogin,kind,redirectUri,membershipRevision,pilotRevision,
+      expectedFingerprint=null,oauthContext=null}) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      if(!/^[a-f0-9]{64}$/.test(stateHash)||typeof clientId!=='string'||
+        !clientId.startsWith('tcl_')||
+        !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||
+        !['K','P'].includes(kind)||typeof redirectUri!=='string'||
+        redirectUri.length>2048||
+        !Number.isSafeInteger(membershipRevision)||membershipRevision<1||
+        !Number.isSafeInteger(pilotRevision)||pilotRevision<1||
+        (expectedFingerprint!==null&&!/^[a-f0-9]{64}$/.test(expectedFingerprint)))
+        throw new TypeError('Invalid optional credential setup.');
+      // Provisioning owns DDL: user GET cannot silently migrate the registry.
+      await sql`DELETE FROM gh_tenant_optional_setup_states WHERE expires_at<now()`;
+      const rows=await sql`INSERT INTO gh_tenant_optional_setup_states (
+        state_hash,tenant_id,identity_id,client_id,account_login,kind,
+        redirect_uri,membership_revision,pilot_revision,expected_fingerprint,oauth_context)
+        SELECT ${stateHash},${t}::uuid,${i}::uuid,${clientId},${accountLogin},
+          ${kind},${redirectUri},${membershipRevision},${pilotRevision},${expectedFingerprint},
+          ${oauthContext===null?null:JSON.stringify(oauthContext)}::jsonb
+        WHERE EXISTS (SELECT 1 FROM gh_tenants ten
+          JOIN gh_tenant_memberships m ON m.tenant_id=ten.id
+          JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=ten.id AND p.identity_id=m.identity_id
+          JOIN gh_tenant_pilot_bootstraps b ON b.tenant_id=ten.id
+          WHERE ten.id=${t}::uuid AND ten.status='active' AND
+            m.identity_id=${i}::uuid AND m.active AND p.active AND
+            b.account_login=${accountLogin} AND
+            m.revision=${membershipRevision} AND p.revision=${pilotRevision})
+        RETURNING state_hash`;
+      return rows.length===1;
+    },
+    async consumePilotOptionalSetupState(stateHash) {
+      if(typeof stateHash!=='string'||!/^[a-f0-9]{64}$/.test(stateHash))return null;
+      const rows=await sql`DELETE FROM gh_tenant_optional_setup_states
+        WHERE state_hash=${stateHash} AND expires_at>now()
+        RETURNING tenant_id,identity_id,client_id,account_login,kind,
+          redirect_uri,membership_revision,pilot_revision,expected_fingerprint,oauth_context`;
+      const row=rows[0];
+      return row?{tenantId:String(row.tenant_id),identityId:String(row.identity_id),
+        clientId:row.client_id,accountLogin:row.account_login,
+        kind:row.kind,redirectUri:row.redirect_uri,
+        membershipRevision:Number(row.membership_revision),
+        pilotRevision:Number(row.pilot_revision),
+        expectedFingerprint:row.expected_fingerprint,oauthContext:row.oauth_context}:null;
+    },
+    /** Read the CAS of the previously sealed token even if its local proof
+     * has expired. Revoked rows cannot be renewed without fresh consent. */
+    async pilotOptionalFingerprint({tenantId,identityId,accountLogin,kind}) {
+      const t=validUuid(tenantId),i=validUuid(identityId);
+      if(!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||
+        !['K','P'].includes(kind))return null;
+      const rows=await sql`SELECT g.cipher_fingerprint FROM gh_tenant_optional_credentials g
+        JOIN gh_tenants ten ON ten.id=g.tenant_id
+        JOIN gh_tenant_memberships m ON m.tenant_id=g.tenant_id AND m.identity_id=g.identity_id
+        JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=g.tenant_id AND p.identity_id=g.identity_id
+        JOIN gh_tenant_identities ident ON ident.id=g.identity_id
+        JOIN gh_tenant_pilot_bootstraps b ON b.tenant_id=g.tenant_id
+        WHERE g.tenant_id=${t}::uuid AND g.identity_id=${i}::uuid
+          AND g.account_login=${accountLogin} AND g.kind=${kind}
+          AND ten.status='active' AND m.active AND p.active
+          AND ident.provider='github' AND ident.provider_subject=g.actor_id::text
+          AND b.account_login=g.account_login`;
+      return rows.length===1?{cipher_fingerprint:rows[0].cipher_fingerprint}:null;
+    },
+
     async createPilotOAuthFlow({ stateHash, tenantId, identityId, clientId,
       redirectUri, clientState, codeChallenge, accountLogin, mode, profile,
-      listing, providerVerifier }) {
+      listing, providerVerifier,optionalKind=null }) {
       const t=validUuid(tenantId), i=validUuid(identityId);
       if (!/^[a-f0-9]{64}$/.test(stateHash) || typeof clientId!=='string' ||
           clientId.length<32 || typeof redirectUri!=='string' ||
@@ -492,14 +753,15 @@ export function createTenantDirectory(sql) {
           !['preview','production'].includes(mode) ||
           !['read_only','everyday','full'].includes(profile) ||
           !['compact','catalog'].includes(listing) ||
+          (optionalKind!==null && optionalKind!=='K') ||
           (clientState!==null && (typeof clientState!=='string' || clientState.length>256)))
         throw new TypeError('Invalid private pilot GitHub authorization state.');
       const rows=await sql`INSERT INTO gh_tenant_oauth_flows (
         state_hash,tenant_id,identity_id,client_id,redirect_uri,client_state,
-        code_challenge,account_login,mode,profile,listing,provider_verifier,expires_at)
+        code_challenge,account_login,mode,profile,listing,provider_verifier,optional_kind,expires_at)
         SELECT ${stateHash},${t}::uuid,${i}::uuid,${clientId},${redirectUri},
           ${clientState},${codeChallenge},${accountLogin},${mode},${profile},
-          ${listing},${providerVerifier},now()+interval '10 minutes'
+          ${listing},${providerVerifier},${optionalKind},now()+interval '10 minutes'
         WHERE EXISTS (SELECT 1 FROM gh_tenant_memberships m
           JOIN gh_tenants t ON t.id=m.tenant_id
           JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=m.tenant_id AND p.identity_id=m.identity_id
@@ -514,13 +776,13 @@ export function createTenantDirectory(sql) {
       const rows=await sql`DELETE FROM gh_tenant_oauth_flows f
         WHERE f.state_hash=${stateHash} AND f.expires_at>now()
         RETURNING tenant_id,identity_id,client_id,redirect_uri,client_state,
-          code_challenge,account_login,mode,profile,listing,provider_verifier`;
+          code_challenge,account_login,mode,profile,listing,provider_verifier,optional_kind`;
       const row=rows[0];
       return row ? { tenantId:String(row.tenant_id),identityId:String(row.identity_id),
         clientId:row.client_id,redirectUri:row.redirect_uri,clientState:row.client_state,
         codeChallenge:row.code_challenge,accountLogin:row.account_login,
         mode:row.mode,profile:row.profile,listing:row.listing,
-        providerVerifier:row.provider_verifier } : null;
+        providerVerifier:row.provider_verifier,optionalKind:row.optional_kind } : null;
     },
 
     /** Privileged owner setup only: list the trusted server-bootstrap tenants
@@ -542,20 +804,33 @@ export function createTenantDirectory(sql) {
       if(typeof accountLogin!=='string' ||
           !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin))
         throw new TypeError('Invalid private pilot account.');
-      const rows=await sql`WITH auth AS (
+      await ensureOptionalSetupSchema();
+      const rows=await sql`WITH extras AS (
+        DELETE FROM gh_tenant_optional_credentials g
+        WHERE EXISTS (SELECT 1 FROM gh_tenant_pilot_bootstraps b
+          WHERE b.tenant_id=g.tenant_id AND b.account_login=${accountLogin})
+        RETURNING kind
+      ), auth AS (
         DELETE FROM gh_tenant_user_authorizations a
         WHERE EXISTS (SELECT 1 FROM gh_tenant_pilot_bootstraps p
           WHERE p.tenant_id=a.tenant_id AND p.account_login=${accountLogin})
         RETURNING identity_id
+      ), optional_states AS (
+        DELETE FROM gh_tenant_optional_setup_states f
+        WHERE EXISTS (SELECT 1 FROM gh_tenant_pilot_bootstraps p
+          WHERE p.tenant_id=f.tenant_id AND p.account_login=${accountLogin})
+        RETURNING state_hash
       ), states AS (
         DELETE FROM gh_tenant_oauth_flows f
         WHERE EXISTS (SELECT 1 FROM gh_tenant_pilot_bootstraps p
           WHERE p.tenant_id=f.tenant_id AND p.account_login=${accountLogin})
         RETURNING state_hash
       ) SELECT (SELECT count(*)::integer FROM auth) AS user_grants,
-        (SELECT count(*)::integer FROM states) AS pending_states`;
+        (SELECT count(*)::integer FROM states) + (SELECT count(*)::integer FROM optional_states) AS pending_states,
+        (SELECT count(*)::integer FROM extras) AS optional_grants`;
       return rows.length===1?{userGrants:Number(rows[0].user_grants),
-        pendingStates:Number(rows[0].pending_states)}:null;
+        pendingStates:Number(rows[0].pending_states),
+        optionalGrants:Number(rows[0].optional_grants)}:null;
     },
 
     /** Owner emergency stop. The calling setup route must have already
@@ -609,8 +884,8 @@ export function createTenantDirectory(sql) {
 
 /** Never takes tenant from an HTTP parameter or cookie. PUB-2 must first verify
  * identity with GitHub and resolve membership through the service-owned registry.
- * Private tests may inject an isolated SQL factory; production uses Neon URL
- * options. Both must pass the exact current_schema and search_path assertions. */
+ * Private tests may inject an isolated session SQL factory; production pins
+ * every HTTP transaction. Both must pass exact namespace assertions. */
 export async function openAuthorizedTenantDb({ directory, tenantId, verifiedIdentityId,
   connectionString = process.env.DATABASE_URL, sqlFactory = neon }) {
   if (!directory || typeof directory.authorized !== 'function')
@@ -618,7 +893,7 @@ export async function openAuthorizedTenantDb({ directory, tenantId, verifiedIden
   const bound = await directory.authorized(tenantId, verifiedIdentityId);
   if (!bound || bound.namespace !== tenantSchemaName(tenantId))
     throw new Error('Tenant membership is not authorized.');
-  const sql = sqlFactory(tenantConnectionString(connectionString, tenantId));
+  const sql = createTenantSql(connectionString, tenantId, sqlFactory);
   await assertTenantSearchPath(sql, tenantId);
   return { tenant: Object.freeze(bound), db: createDb(sql), sql };
 }
@@ -627,7 +902,7 @@ export async function openAuthorizedTenantDb({ directory, tenantId, verifiedIden
  * code; never expose this to an MCP tool, arbitrary OAuth client or public URL. */
 export async function initializeProvisionedTenant({ tenantId, connectionString = process.env.DATABASE_URL,
   sqlFactory = neon }) {
-  const sql = sqlFactory(tenantConnectionString(connectionString, tenantId));
+  const sql = createTenantSql(connectionString, tenantId, sqlFactory);
   const namespace = await assertTenantSearchPath(sql, tenantId);
   const db = createDb(sql);
   await db.initSchema();

@@ -85,6 +85,10 @@ function resolveAccount(connection, owner) {
  */
 export async function credentialFor(ctx, { owner, cred = 'I', scope } = {}) {
   if (!CREDENTIAL_KINDS.includes(cred)) throw new TypeError(`Unknown credential kind "${cred}".`);
+  if ((cred==='K'||cred==='P') && ctx.connection?.pass===true &&
+      typeof ctx.credentials?.authorizeOptionalRequest==='function')
+    throw new GithubClientError('outside_scope',
+      'Private optional credentials cannot be delegated to a service pass.');
   const account = resolveAccount(ctx.connection, owner);
   // A pass limited to repositories gets installation tokens limited to them, whatever the tool asked for.
   const passRepos = Array.isArray(ctx.connection?.repos) ? ctx.connection.repos.map((slug) => slug.split('/')[1]) : null;
@@ -128,7 +132,10 @@ export async function githubFor(ctx, { owner, cred = 'I', scope } = {}) {
     const write = isWrite(method, { ...options, url });
     // Classic package credentials never authorize arbitrary REST, GraphQL or foreign accounts.
     // Validate the expanded URL BEFORE any request or rate/write side effect.
-    if (cred === 'P') await assertPackageRequest(ctx, account, method, url);
+    if ((cred==='K'||cred==='P') &&
+        typeof ctx.credentials?.authorizeOptionalRequest==='function')
+      await ctx.credentials.authorizeOptionalRequest({account,kind:cred,method,url});
+    else if (cred === 'P') await assertPackageRequest(ctx, account, method, url);
     const resource = resourceFor(method, url);
     options.headers = { ...options.headers, 'x-github-api-version': GITHUB_API_VERSION };
     await assertNotBlocked(ctx.db, account, resource);
