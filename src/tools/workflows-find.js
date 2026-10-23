@@ -181,10 +181,11 @@ export async function newRepo(a,c){
   if(typeof alerts?.enabled!=='boolean')return receipt({done:false,status:'not_readable',reason:'Dependabot alert enabled state could not be verified.'});
   if(!alerts.enabled)return execute('github_repo_set_vulnerability_alerts',{...base,enabled:true},'dependabot-alerts');
   const actions=safe(await c.callTool('github_actions_get_settings',base));
-  if(!actions?.workflow?.default_workflow_permissions||!actions.fork?.approval_policy)return receipt({done:false,status:'not_readable',reason:'Actions/fork policy is unreadable; no values were guessed.'});
+  const forkNA=Boolean(actions?.fork?.not_applicable);
+  if(!actions?.workflow?.default_workflow_permissions||(!actions.fork?.approval_policy&&!forkNA))return receipt({done:false,status:'not_readable',reason:'Actions/fork policy is unreadable; no values were guessed.'});
   if(actions.workflow.default_workflow_permissions!=='read'||actions.workflow.can_approve_pull_request_reviews!==false)
     return execute('github_actions_set_settings',{...base,section:'workflow',changes:{default_workflow_permissions:'read',can_approve_pull_request_reviews:false}},'actions-token');
-  if(actions.fork.approval_policy!=='all_external_contributors')return execute('github_actions_set_settings',{...base,section:'fork',changes:{approval_policy:'all_external_contributors'}},'fork-approval');
+  if(!forkNA&&actions.fork.approval_policy!=='all_external_contributors')return execute('github_actions_set_settings',{...base,section:'fork',changes:{approval_policy:'all_external_contributors'}},'fork-approval');
   if(c.now()-start>=46000)return receipt({done:false,status:'pending',reason:'Resume to verify the completed setup after the workflow deadline.'});
   return receipt({done:!plan.conditional_feature,status:plan.conditional_feature?'partially_configured':'configured',owner,repo:a.repo,project,
     ...plan.conditional_feature?{conditional_security:{status:'owner_review_required',feature:plan.conditional_feature,reason:'Private security activation needs verified pricing/eligibility and independent owner authority; no plan entitlement was guessed.'}}:{},
