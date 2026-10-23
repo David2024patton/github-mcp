@@ -21,6 +21,16 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
       connection on your phone and on your computer, sign in, and ask each for "who am I on GitHub" plus one
       read. Tell the agent the result. (Row appears when PUB-4 is ready; not yet.)
 
+## B2. Give the agent a working connection to your deployed server (lets agents run the real-account tests for you)
+
+- [ ] **Only if the agent says it has no saved connection:** it will tell you exactly which sign-in screen to open.
+      You click "Allow" once; after that agents re-use the saved connection and never ask again. (`docs/pr-cards/DEVELOPER-CONNECTION.md`)
+
+## B3. Things that cannot be tested until you have them
+
+- [ ] **A GitHub Enterprise account or enterprise admin sign-in:** needed only to test enterprise-wide audit logs and
+      enterprise SAML/SCIM. Without it those stay untested; nothing else depends on them. Buying one is your call.
+
 ## C. Decisions only you can make
 
 - [ ] **Release approval:** an agent will ask in chat only when everything else is done and a release would unlock
