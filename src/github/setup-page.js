@@ -634,8 +634,13 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     if (action === 'add-package') {
       const list = String(scopes ?? '').split(',').map(s => s.trim()).filter(Boolean);
       const allowed = ['read:packages', 'write:packages', 'delete:packages', 'repo'];
-      if (scopes === undefined || !list.includes('read:packages') || list.some(s => !allowed.includes(s)))
-        return page(400, { result: 'Use a classic token with read:packages and optional write:packages, delete:packages. Only repository-scoped registries need the additional repo scope. Nothing was saved.' });
+      if (scopes === undefined)
+        return page(400, { result: 'GitHub did not report any permissions for this token, which means it is not a "classic" token (it is probably a fine-grained one). On GitHub open Settings, Developer settings, Personal access tokens, Tokens (classic) and create a classic token with read:packages ticked. Nothing was saved.' });
+      if (!list.includes('read:packages'))
+        return page(400, { result: `This token does not have the read:packages permission. GitHub reports: ${list.length ? list.join(', ') : 'no permissions'}. Create a classic token with read:packages ticked (write:packages and delete:packages are optional). Nothing was saved.` });
+      const extra = list.filter(s => !allowed.includes(s));
+      if (extra.length)
+        return page(400, { result: `This token has extra permissions that are not allowed here: ${extra.join(', ')}. Create a new classic token with only read:packages (optionally write:packages and delete:packages) ticked. The repo permission is only for a rare case you can ignore. Nothing was saved.` });
       const row = await db.getAccount(account);
       if (!row) return page(404, { result: 'Set that account up first. Nothing was saved.' });
       let actor;
