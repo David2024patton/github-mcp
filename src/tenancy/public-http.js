@@ -14,7 +14,7 @@ const fresh = () => randomBytes(32).toString('base64url');
 const cookieOf = (req, name) => new RegExp(`(?:^|;\\s*)${name}=([A-Za-z0-9._-]{32,300})(?:;|$)`).exec(String(req.headers?.cookie || ''))?.[1] || null;
 const setCookie = (name, value, path, same) => `${name}=${value}; Max-Age=600; Path=${path}; HttpOnly; Secure; SameSite=${same}`;
 const clearCookie = (name, path) => `${name}=; Max-Age=0; Path=${path}; HttpOnly; Secure; SameSite=Lax`;
-const STYLE = BRAND_CSS;
+const STYLE = BRAND_CSS + 'details{margin-top:1.25rem}summary{cursor:pointer;color:#9aa;font-size:.9rem}details[open] summary{margin-bottom:.75rem}';
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
 function page(res, status, title, body, { cookies = [] } = {}) {
@@ -66,16 +66,18 @@ export async function publicAuthorize(req, res, { env = process.env, ...deps } =
       const fields = HIDDEN.map((k) => `<input type="hidden" name="${k}" value="${h(p[k] ?? '')}">`).join('');
       const who = info.clientName ? h(info.clientName) : 'your app';
       const host = h(new URL(p.redirect_uri).host);
-      return page(res, 200, 'Connect GitHub', `<p>Sign in with GitHub to let ${who} use your GitHub through Robinson GitHub MCP. You will not be asked for any password or token here.</p>` +
-        `<p><strong>Only continue if you started this from an app you trust.</strong> After GitHub, you will be sent back to <code>${host}</code>.</p>` +
+      return page(res, 200, 'Connect GitHub', `<p>${who} wants to use your GitHub through Robinson GitHub MCP. Next, GitHub will ask you to sign in and approve. You never type a password or token here.</p>` +
+        `<p><small>Only continue if you started this from an app you trust. After GitHub, you will be sent back to <code>${host}</code>.</small></p>` +
         `<form method="post" action="/api/oauth/authorize">${fields}<input type="hidden" name="form_csrf" value="${csrf}">` +
+        '<button type="submit">Sign in with GitHub</button>' +
+        '<details><summary>Options (most people skip this)</summary>' +
         '<label>Your time zone<select name="time_zone">' + COMMON_ZONES.map((z) => `<option value="${h(z)}"${z === 'UTC' ? ' selected' : ''}>${h(z === 'UTC' ? 'UTC (default)' : z.replace('_', ' '))}</option>`).join('') + '</select></label><small>Times your assistant shows you use this zone. Leave it on UTC if you are unsure.</small>' +
-        '<label>Accounts to connect (optional)<input name="account" maxlength="400" autocomplete="off" placeholder="leave blank for all"></label>' +
-        '<small>Leave blank to connect every account where the GitHub App is installed and you have access: your own, a client\'s, a test account. Or type account names separated by commas.</small>' +
-        '<div class="choice"><input type="radio" id="t1" name="tier" value="standard" checked><label for="t1"><strong>Standard</strong><small>Everything that signing in with GitHub alone can unlock. Nothing else to enter.</small></label></div>' +
-        '<div class="choice"><input type="radio" id="t2" name="tier" value="god"><label for="t2"><strong>God mode</strong><small>Also lets you add extra keys (package and notifications tokens) on the next page to unlock the remaining tools. You can skip any of them.</small></label></div>' +
-        '<div class="choice"><input type="checkbox" id="c1" name="read_only" value="yes"><label for="c1"><strong>Read-only (optional)</strong><small>Your assistant can look and preview but cannot change anything. Leave this unticked for the full toolset: on accounts you own it can create, edit and merge things, and it asks you to confirm each change first.</small></label></div>' +
-        '<button type="submit">Continue to GitHub</button></form><p><small>Connected before and want your data removed? <a href="/api/oauth/authorize?forget=1">Delete my data</a>.</small></p>',
+        '<label>Only connect these accounts<input name="account" maxlength="400" autocomplete="off" placeholder="leave blank for all"></label>' +
+        '<small>Blank connects every account where the GitHub App is installed and you have access. Or type account names separated by commas.</small>' +
+        '<div class="choice"><input type="radio" id="t1" name="tier" value="standard" checked><label for="t1"><strong>Standard</strong><small>Everything that signing in with GitHub alone can unlock.</small></label></div>' +
+        '<div class="choice"><input type="radio" id="t2" name="tier" value="god"><label for="t2"><strong>God mode</strong><small>Also lets you add extra keys (package and notifications tokens) on the next page. You can skip any of them.</small></label></div>' +
+        '<div class="choice"><input type="checkbox" id="c1" name="read_only" value="yes"><label for="c1"><strong>Read-only</strong><small>Your assistant can look and preview but cannot change anything. Leave unticked for the full toolset; it asks you to confirm each change first.</small></label></div>' +
+        '</details></form><p><small>Connected before and want your data removed? <a href="/api/oauth/authorize?forget=1">Delete my data</a>.</small></p>',
         { cookies: [setCookie(FORM, csrf, FORM_PATH, 'Strict')] });
     }
     if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return send(res, 405, { error: 'method_not_allowed' }); }
