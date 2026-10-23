@@ -1,3 +1,7 @@
+## 2026-10-22 — device checks separated
+
+Real-device checks (PUB-4 phone/desktop) moved to docs/OWNER-CHECKLIST.md; they no longer block implementation or merges. Docs only.
+
 ## 2026-10-22 — CAP-4 signed App owner installation governance source and tests assembled
 
 Pre-source slice plan `94e080f977e36441212d80867a7bfc361c4a1486` preceded exact JWT-only permission / installation-request implementation. Candidate `cfd4ff097fdf4e9b03bfd6b74fb6d6b3e9f1faad` adds two App-owner tools with six source authorizations/cross-tenant boundaries: account-bound existing signer, fresh provider App owner ID check, exact active stored installation ID, stable account/app/target IDs, bounded grant/event/suspension projections, and only account-matching pending installation requests from the App-global feed. Seven synthetic unit tests and a real PostgreSQL sealed signer/tenant test are committed and require new exact-head CI before success may be claimed. GitHub compare vs main `473aa9b` counts 1012 production additions/two removals; original CAP-4 delivery is still CONTINUE. No real GitHub grants, provider writes, production tenant changes, public distribution or merge.
