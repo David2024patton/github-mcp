@@ -34,6 +34,9 @@ The goal is a **finished, merged, usable product**, not activity, not counts and
   than one PR is split into independently useful, independently safe PRs (each with its own tests); a PR is never held
   as a long-lived draft just because a sibling piece is unfinished. Unfinished pieces stay on the card as named
   remaining items.
+- **Real-device checks are separate.** Checks that need Chris's phone, desktop or other device are listed in
+  `docs/OWNER-DEVICE-CHECKS.md`. They are never a blocker for implementation, review or merge, and agents do not
+  stop or ask for them mid-work.
 - **New scope needs Chris.** Work not already on `docs/MASTER-ROADMAP.md` / `docs/pr-cards/work-index.json` goes in
   `docs/ROADMAP.md` and the report. Do not create new phases, cards or inventory-driven obligations to keep going.
 - **Operations without a dedicated tool are backlog, not a gate.** The capability inventory

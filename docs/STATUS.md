@@ -1,3 +1,7 @@
+## 2026-10-22 — device checks separated
+
+Real-device checks (PUB-4 phone/desktop) moved to docs/OWNER-DEVICE-CHECKS.md; they no longer block implementation or merges. Docs only.
+
 ## 2026-10-22 — instructions simplified (owner request)
 
 AGENTS.md (534 → ~200 lines) and the bundle section of SESSION-START replaced with a finish-line policy: development never waits for acceptance, finished pieces merge, new scope needs Chris, un-curated inventory rows are backlog, counts are diagnostics. All hard limits/owner decisions kept; old text archived under docs/archive/. No code or CI change. Open work unchanged: CAP-4 #277 (green draft, split into mergeable pieces next), PUB-4 #268 (needs real device acceptance), CAP-5 not started.

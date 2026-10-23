@@ -393,3 +393,7 @@ with an explicit finish line (development never waits for acceptance; merge fini
 inventory rows without a dedicated tool are backlog; counts are diagnostics). All hard limits and owner decisions were
 carried over unchanged. Old text: `docs/archive/AGENTS-2026-10-22-before-simplification.md` and
 `docs/archive/SESSION-START-2026-10-22-before-simplification.md`. No code, script, CI or release-policy change.
+
+## 2026-10-22 — Real-device checks separated from development (owner request, Chris)
+
+Device checks (e.g. PUB-4 on phone and desktop) live in `docs/OWNER-DEVICE-CHECKS.md` and never block implementation or merges.
