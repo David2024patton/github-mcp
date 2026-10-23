@@ -267,6 +267,37 @@ export function createTenantDirectory(sql) {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
       await sql`ALTER TABLE gh_public_flows ADD COLUMN IF NOT EXISTS time_zone TEXT`;
+      // PUB-6: owner-requested deletion of ONE public person's data. Only a tenant created by the public sign-in
+      // (bootstrap key 'public-connect') with a single member can go. It removes every root row that points at the tenant,
+      // then drops that tenant's own database namespace, so nothing of theirs survives and nobody else's data is touched.
+      await sql`CREATE OR REPLACE FUNCTION gh_forget_public_tenant(target UUID)
+        RETURNS BOOLEAN LANGUAGE plpgsql SECURITY INVOKER AS $body$
+      DECLARE ns TEXT; ident UUID; others INTEGER;
+      BEGIN
+        SELECT namespace INTO ns FROM gh_tenants WHERE id = target FOR UPDATE;
+        IF NOT FOUND THEN RETURN FALSE; END IF;
+        SELECT identity_id INTO ident FROM gh_tenant_pilot_bootstraps
+          WHERE tenant_id = target AND account_login = 'public-connect';
+        IF ident IS NULL THEN RAISE EXCEPTION 'Not a public sign-in tenant'; END IF;
+        SELECT count(*) INTO others FROM gh_tenant_memberships
+          WHERE tenant_id = target AND identity_id <> ident;
+        IF others > 0 THEN RAISE EXCEPTION 'Tenant has other members'; END IF;
+        DELETE FROM gh_tenant_optional_setup_states WHERE tenant_id = target;
+        DELETE FROM gh_tenant_optional_credentials WHERE tenant_id = target;
+        DELETE FROM gh_tenant_user_authorizations WHERE tenant_id = target;
+        DELETE FROM gh_tenant_oauth_flows WHERE tenant_id = target;
+        DELETE FROM gh_public_flows WHERE tenant_id = target;
+        DELETE FROM gh_tenant_pilot_allowlist WHERE tenant_id = target;
+        DELETE FROM gh_tenant_pilot_bootstraps WHERE tenant_id = target;
+        DELETE FROM gh_tenant_memberships WHERE tenant_id = target;
+        DELETE FROM gh_tenants WHERE id = target;
+        EXECUTE format('DROP SCHEMA IF EXISTS %I CASCADE', ns);
+        IF NOT EXISTS (SELECT 1 FROM gh_tenant_memberships WHERE identity_id = ident)
+          AND NOT EXISTS (SELECT 1 FROM gh_tenant_pilot_bootstraps WHERE identity_id = ident) THEN
+          DELETE FROM gh_tenant_identities WHERE id = ident;
+        END IF;
+        RETURN TRUE;
+      END $body$`;
       await sql`CREATE INDEX IF NOT EXISTS gh_public_flows_expires
         ON gh_public_flows (expires_at)`;
       // This function only accepts server-generated opaque namespaces. Unlike
@@ -884,6 +915,12 @@ export function createTenantDirectory(sql) {
         allowChanges: r.allow_changes, afterInstall: r.after_install, providerVerifier: r.provider_verifier, timeZone: r.time_zone ?? null,
         tenantId: r.tenant_id ? String(r.tenant_id) : null,
         identityId: r.identity_id ? String(r.identity_id) : null } : null;
+    },
+    /** Deletes one public person's tenant completely (see gh_forget_public_tenant). False when it does not exist. */
+    async forgetPublicTenant(tenantId) {
+      const t = validUuid(tenantId);
+      const rows = await sql`SELECT gh_forget_public_tenant(${t}::uuid) AS done`;
+      return rows[0]?.done === true;
     },
     /** Self-serve tenants created so far (one per verified identity and account). */
     async countPilotTenants() {

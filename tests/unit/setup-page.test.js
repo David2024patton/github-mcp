@@ -766,6 +766,13 @@ describe('spend limit and own people on the setup page (B-4)', () => {
     expect(some).toContain('Assistant calls in the last day: 12 (2 refused, 1 slowed down, 0 errors)');
     expect(some).toContain('1 could not be read');
   });
+  it('refuses to delete a person\'s data unless the name is typed twice and confirmed', async () => {
+    const t = await build();
+    await t.open();
+    expect((await t.post({ action: 'forget-person', login: 'alice-dev', confirmLogin: 'someone-else', confirmDelete: 'yes' })).statusCode).toBe(400);
+    expect((await t.post({ action: 'forget-person', login: 'alice-dev', confirmLogin: 'alice-dev' })).statusCode).toBe(400);
+    expect((await t.post({ action: 'forget-person', login: 'bad name!', confirmLogin: 'bad name!', confirmDelete: 'yes' })).statusCode).toBe(400);
+  });
   it('saves a display time zone (blank means UTC) and rejects a name that is not a real zone', async () => {
     const t = await build();
     await t.open();

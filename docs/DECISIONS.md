@@ -1,3 +1,7 @@
+## 2026-10-23 — owner can delete one public person's data (no stranger's data is kept against their wish)
+
+The protected owner setup page can remove everything stored for one person who connected through the public sign-in, found by their personal GitHub account name typed twice with a tick-box. The database function `gh_forget_public_tenant` deletes every shared row pointing at that person's private area (sign-in, grants, optional keys, open flows, membership), then drops the whole area (their settings, tokens, saved results), and deletes the person's identity row if nothing else uses it. It refuses private-pilot tenants and any area with other members, and an organization name never identifies a person. Their tokens stop working at once. They can connect again later as a new person. A self-serve "delete my data" page for the person themselves is still to build (ROADMAP).
+
 ## 2026-10-23 — owner sees public usage as counts only; no charging yet
 
 The server already counted assistant calls per person per hour (result and speed only). The owner setup page now shows a read-only "Public usage" line: people connected, calls in the last day and week, and how many were refused, slowed down or errored. Counts only, never names, tokens, client ids or repository text, and the page reads at most 100 people. Nothing is metered against a plan or charged; pricing waits for the owner.
