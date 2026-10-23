@@ -1,6 +1,6 @@
 // Adapted from Robinson-AI-Systems/stripe-mcp scripts/check-docs-updated.mjs @ e2f90e8.
 // DRIFT-PROTOCOL checklist B, minimum enforced by CI: a PR that changes api/, src/ or packages/ must also change
-// docs/STATUS.md and a PR card or work-index.json, and docs/TOOL-CATALOG.md when src/tools/ changes — unless the PR
+// docs/STATUS.md (or a docs/status/ note) and a PR card or work-index.json, and docs/TOOL-CATALOG.md when src/tools/ changes — unless the PR
 // body says "Docs-update: not needed — <reason>". Runs only when BASE_SHA is set (CI pull_request runs).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,7 +15,7 @@ export function missingDocs(changed, prBody = '') {
   const tools = changed.some((p) => p.startsWith('src/tools/'));
   if (!code || EXCEPTION.test(prBody || '')) return [];
   const missing = [];
-  if (!has('docs/STATUS.md')) missing.push('docs/STATUS.md');
+  if (!has('docs/STATUS.md') && !changed.some((p) => /^docs\/status\/(?!README\.md$).+\.md$/.test(p))) missing.push('docs/STATUS.md or a docs/status/ note');
   if (!changed.some((p) => /^docs\/pr-cards\/(?!README\.md$|validate-index\.py$)/.test(p))) missing.push('a PR card or docs/pr-cards/work-index.json');
   if (tools && !has('docs/TOOL-CATALOG.md')) missing.push('docs/TOOL-CATALOG.md');
   return missing;

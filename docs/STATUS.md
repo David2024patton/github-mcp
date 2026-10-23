@@ -1,3 +1,7 @@
+## 2026-10-22 — CAP-4 closed, CAP-5 planned, owner checklist extended
+
+CAP-3 and CAP-4 marked MERGED in the index (#274, #277, #281). CAP-4 closeout with dispositions in its card; backlog in ROADMAP. CAP-5 card written (capability report + scratch-org acceptance through the saved connection). Owner checklist gains connection and enterprise rows. AGENTS.md now tells agents to run `BASE_SHA=... npm run check` as CI does. Docs only.
+
 ## 2026-10-22 — CAP-4 review fixes (follow-up to merged #277)
 
 Two review findings on #277 fixed with tests: App JWT webhook writes now record a provider secondary-limit cooldown on error (next mutation is blocked), and SCIM deprovision's `removed` result comes from the independent readback instead of being assumed. Remaining CAP-4 items stay on docs/pr-cards/CAP-4.md.

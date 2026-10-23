@@ -8,9 +8,13 @@ describe('docs check (DRIFT-PROTOCOL B)', () => {
     expect(missingDocs(['docs/PLAN.md', 'scripts/x.mjs'])).toEqual([]);
   });
   it('requires STATUS and a card when code changes', () => {
-    expect(missingDocs(['src/github/client.js'])).toEqual(['docs/STATUS.md', 'a PR card or docs/pr-cards/work-index.json']);
+    expect(missingDocs(['src/github/client.js'])).toEqual(['docs/STATUS.md or a docs/status/ note', 'a PR card or docs/pr-cards/work-index.json']);
     expect(missingDocs(['src/github/client.js', 'docs/STATUS.md', 'docs/pr-cards/README.md'])).toEqual(['a PR card or docs/pr-cards/work-index.json']);
     expect(missingDocs(['api/mcp.js', 'docs/STATUS.md', 'docs/pr-cards/work-index.json'])).toEqual([]);
+  });
+  it('accepts a docs/status note in place of STATUS.md, but not the README', () => {
+    expect(missingDocs(['src/github/client.js', 'docs/status/2026-10-22-x.md', 'docs/pr-cards/B-1.md'])).toEqual([]);
+    expect(missingDocs(['src/github/client.js', 'docs/status/README.md', 'docs/pr-cards/B-1.md'])).toEqual(['docs/STATUS.md or a docs/status/ note']);
   });
   it('requires TOOL-CATALOG when src/tools changes', () => {
     expect(missingDocs(['src/tools/repo.js', 'docs/STATUS.md', 'docs/pr-cards/B-1.md'])).toEqual(['docs/TOOL-CATALOG.md']);
