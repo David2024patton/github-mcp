@@ -196,7 +196,7 @@ describe('App JWT owner isolation and sealed signing on real PostgreSQL',()=>{
     expect(pending.structuredContent.requests).toEqual([
       {id:833,requester_login:'owner-member',
         created_at:'2026-10-22T13:05:00Z',
-        created_at_local:'Oct 22, 2026, 7:05 AM MDT'}]);
+        created_at_local:'Oct 22, 2026, 1:05 PM UTC'}]);
     expect(JSON.stringify({grant:grant.structuredContent,
       pending:pending.structuredContent}))
       .not.toMatch(/NEVER-REVEAL|PROVIDER-CONFIDENTIAL|NOT-OURS|foreign-requester/);
