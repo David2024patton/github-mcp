@@ -104,6 +104,18 @@ export async function credentialFor(ctx, { owner, cred = 'I', scope } = {}) {
   return { account, token };
 }
 
+/** Replaces every BigInt in a parsed GitHub response by its exact decimal string; everything else is untouched. */
+export function exactIntegers(value) {
+  if (typeof value === 'bigint') return value.toString();
+  if (Array.isArray(value)) return value.map(exactIntegers);
+  if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = exactIntegers(v);
+    return out;
+  }
+  return value;
+}
+
 export async function githubFor(ctx, { owner, cred = 'I', scope } = {}) {
   const { account, token } = await credentialFor(ctx, { owner, cred, scope });
   const now = ctx.now ?? Date.now;
@@ -159,6 +171,9 @@ export async function githubFor(ctx, { owner, cred = 'I', scope } = {}) {
       }
       throw await asRateLimited(ctx, account, resource, error);
     }
+    // Octokit returns integers beyond 2^53 as BigInt (webhook delivery IDs are now that large). A BigInt cannot be saved to the
+    // change journal or sent as JSON, so every one becomes its exact decimal text here, before anything else sees it.
+    response.data = exactIntegers(response.data);
     try {
       await recordRate(ctx.db, account, response.headers, { status: response.status, fallbackResource: resource, now });
       const etag = response.headers?.etag;
