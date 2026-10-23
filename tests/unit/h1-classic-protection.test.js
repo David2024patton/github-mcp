@@ -106,7 +106,10 @@ describe('H-1 classic protection complete-object safety',()=>{
   const requests=w.gh.calls.filter(c=>c.route===routes.put);
   expect(requests).toHaveLength(1);
   const b=requests[0].body;
-  expect(b.required_status_checks).toEqual({strict:true,contexts:['ci'],checks:[{context:'ci',app_id:24}]});
+  // Real GitHub (private fixture, 2026-10-23) answers HTTP 422 "More than one subschema in oneOf matched" when both
+  // `contexts` and `checks` are sent, so only the app-bound `checks` list goes out.
+  expect(b.required_status_checks).toEqual({strict:true,checks:[{context:'ci',app_id:24}]});
+  expect(b.required_status_checks).not.toHaveProperty('contexts');
   expect(b.required_pull_request_reviews).toMatchObject({
    required_approving_review_count:2,require_code_owner_reviews:true,
    dismissal_restrictions:{users:['reviewer'],teams:['security'],apps:[]}});

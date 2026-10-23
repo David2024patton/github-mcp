@@ -3,6 +3,7 @@ import {listAll} from '../github/client.js';
 import {defineRead} from './define-read.js';
 import {plain,readerFor} from './github-read.js';
 import {missing} from './github-write.js';
+import {isPlanLimit} from '../github/plan-limit.js';
 const OWNER={type:'string',maxLength:39},REPO={type:'string',minLength:1,maxLength:100};
 const BRANCH={type:'string',minLength:1,maxLength:255},ID={type:'integer',minimum:1};
 const MAX={type:'integer',minimum:1,maximum:100};
@@ -45,8 +46,15 @@ export const protectionGet=defineRead({
     const {owner,octokit:gh}=await readerFor(a,ctx),p={owner,repo:a.repo,branch:a.branch};
     const b=(await gh.request('GET /repos/{owner}/{repo}/branches/{branch}',p)).data;
     if(!b?.name||b.name!==a.branch)throw new TypeError('Could not verify the exact branch.');
+    let planLimited=false;
     const d=await missing(async()=>(await gh.request(
-      'GET /repos/{owner}/{repo}/branches/{branch}/protection',p)).data);
+      'GET /repos/{owner}/{repo}/branches/{branch}/protection',p)).data).catch(error=>{
+      // A private repository on a free plan has no branch protection feature at all; say so plainly instead of a raw refusal.
+      if(isPlanLimit(error)){planLimited=true;return null;}
+      throw error;
+    });
+    if(planLimited)return {owner,repo:a.repo,branch:b.name,sha:b.commit?.sha??null,protected:b.protected===true,
+      classic_protection_readable:false,plan_limits:['Branch protection is not available for this repository on its GitHub plan (private repositories need a paid plan), so none can be set or read.']};
     return {owner,repo:a.repo,branch:b.name,sha:b.commit?.sha??null,
       protected:b.protected===true,
       // GitHub answers 404 "Branch not protected" when no classic protection exists; with the branch itself reporting protected:false that is a readable absence.

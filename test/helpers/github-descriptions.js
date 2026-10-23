@@ -123,7 +123,17 @@ export function validateRestRequest(route, request) {
   const queryValue = structuredClone(request.query || {});
   const checkQuery = validator(`q:${route}`, querySchema, { coerce: true });
   if (!checkQuery(queryValue)) problems.push(...asErrors('query', checkQuery.errors));
-  const body = request.body;
+  let body = request.body;
+  // Known divergence, observed on the real API (2026-10-23): the pinned description marks the deprecated `contexts` list as
+  // required for branch protection, yet GitHub answers 422 ("More than one subschema in oneOf matched") when `contexts` and
+  // `checks` are both sent, even if both are empty. The app-bound `checks` list alone is what must go out.
+  if (route === 'PUT /repos/{owner}/{repo}/branches/{branch}/protection' && body?.required_status_checks &&
+      Array.isArray(body.required_status_checks.checks) && !('contexts' in body.required_status_checks)) {
+    body = { ...body, required_status_checks: { ...body.required_status_checks, contexts: [] } };
+  } else if (route === 'PUT /repos/{owner}/{repo}/branches/{branch}/protection' && body?.required_status_checks &&
+      'contexts' in body.required_status_checks && 'checks' in body.required_status_checks) {
+    problems.push('required_status_checks must not send both contexts and checks (GitHub answers 422)');
+  }
   const content = resolveRef(op.operation.requestBody)?.content;
   const required = resolveRef(op.operation.requestBody)?.required === true;
   if (content) {

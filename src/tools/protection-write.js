@@ -174,8 +174,13 @@ export const protectionSet=defineGithubWrite({
   apply:({args:a,ctx,target:t,before:b})=>{
     if(isDeepStrictEqual(b.current,b.next))
       throw refusal('Protection already has the requested values; no PUT was sent.');
+    // GitHub accepts the check list as `checks` OR as the older `contexts`, never both (HTTP 422 "oneOf matched more than one").
+    // The snapshot keeps both for comparison; the request sends only the app-bound `checks`.
+    const body={...b.next};
+    if(body.required_status_checks)body.required_status_checks={strict:body.required_status_checks.strict,
+      checks:body.required_status_checks.checks.map(q=>({...q}))};
     return octo(ctx,t.owner).then(gh=>gh.request('PUT '+route,
-      {...params(a,t),...b.next}));
+      {...params(a,t),...body}));
   },
   readAfter:({args:a,ctx,target:t})=>read(a,ctx,t),
   verify:({before:b,after:x})=>x?.classic&&x.sha===b.sha&&
