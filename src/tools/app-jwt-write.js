@@ -23,7 +23,19 @@ async function appWrite(ctx,app,route,params){
   const rateKey='github-app-jwt:'+app.appId;
   await assertNotBlocked(ctx.db,rateKey,'core');
   await takeWriteSlot(ctx.db,rateKey,{sleep:ctx.sleep});
-  const response=await app.gh.request(route,params);
+  let response;
+  try{response=await app.gh.request(route,params);}
+  catch(error){
+    // A secondary-limit 403/429 throws here; persist its Retry-After/rate
+    // headers under the same App key so the next mutation honors the cooldown.
+    const headers=error?.response?.headers;
+    if(headers){
+      try{await recordRate(ctx.db,rateKey,headers,
+        {status:error.status,now:ctx.now??Date.now});}
+      catch{/* bookkeeping must not mask the provider error */}
+    }
+    throw error;
+  }
   await recordRate(ctx.db,rateKey,response.headers,
     {status:response.status,now:ctx.now??Date.now});
   return response;

@@ -41,4 +41,4 @@ for hand-building something is repeated `github_api_*` / `github_graphql_*` call
 
 Not scheduled; each is built as a whole outcome only when an owner workflow asks: packages/registry streaming; credential
 administration beyond SAML revocation; remaining GitHub App lifecycle routes (suspend/unsuspend, installation listing);
-curated tools for individual GraphQL mutations; enterprise audit/SCIM/IP policy once an enterprise principal exists.
+curated tools with write specifications for the 234 GraphQL mutations the inventory marks `blocked-missing-write-spec` (the universal tool does not cover them); enterprise audit/SCIM/IP policy once an enterprise principal exists.

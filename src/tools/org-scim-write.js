@@ -189,8 +189,10 @@ export const orgScimDeprovision=defineGithubWrite({
   verify:({after:d})=>d?.identityStillReadable===false&&
     d?.nameStillProvisioned===false,
   inverse:()=>null,
-  present:({args:a,target:t})=>({org:t.owner,scimUserId:a.scimUserId,
-    removed:true,note:'Identity deletion is not reversible by replay or undo.'})
+  present:({args:a,target:t,after:d})=>({org:t.owner,scimUserId:a.scimUserId,
+    // Derived from the independent readback, never assumed from the DELETE.
+    removed:d?.identityStillReadable===false&&d?.nameStillProvisioned===false,
+    note:'Identity deletion is not reversible by replay or undo.'})
 });
 export const tools=[orgScimProvision.tool,orgScimSetDisplayName.tool,
   orgScimDeprovision.tool];

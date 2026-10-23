@@ -109,11 +109,16 @@ inventory.
 Dispositions for the rest of the original wording (acceptance item 1 permits an explicit disposition):
 - **Rest of the REST inventory (about 1,176 rows):** reachable through the universal REST tools under their existing
   policy and guards; not individually curated. Backlog, not a gate (AGENTS.md finish line).
-- **234 GraphQL mutations marked missing:** reachable through the universal GraphQL tool under its policy; individual
-  curation is backlog, to be done on request or when an owner workflow needs one.
+- **234 GraphQL mutations marked missing:** NOT covered. The inventory marks them `blocked-missing-write-spec`: the
+  universal GraphQL tool refuses a mutation without a guarded write specification unless it passes its narrow
+  independently verifiable readback fallback. They are unimplemented backlog (see ROADMAP), to be curated one whole
+  outcome at a time when an owner workflow needs one. They do not block merging delivered work.
 - **Enterprise-level audit, SAML/SCIM and IP policy:** needs a distinct enterprise principal that does not exist (and
   the audit-log credential documentation is contradictory). Listed on `docs/OWNER-CHECKLIST.md`; not buildable or
   testable until it exists.
 - **Packages/registry streaming, credential administration, remaining App lifecycle:** carried as named backlog
   items in `docs/ROADMAP.md`; each ships as its own whole outcome when an owner workflow asks for it.
 Real provider/device acceptance for everything above stays independently open (acceptance queue and checklist).
+## 2026-10-22 — review fixes after merge of #277
+
+PR #281 closes two review findings on the merged piece: a failed App JWT mutation now records the provider's rate headers under the App rate key (secondary-limit cooldown honored by the next write), and the SCIM deprovision `removed` result is derived from independent readback. No new tools or routes; remaining CAP-4 items are unchanged.
