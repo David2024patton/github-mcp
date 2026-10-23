@@ -193,7 +193,7 @@ const readTools = [
     area: 'server', audience: ['B', 'O', 'Op'],
     description: 'Get a private one-use link (10 minutes) to add or remove your optional master token, no reconnecting. Opens a plain-steps page; never paste the token in chat.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    annotations: readOnly, // only makes a short-lived private link; changes nothing on GitHub
     keepsResult: false
   },
   {
