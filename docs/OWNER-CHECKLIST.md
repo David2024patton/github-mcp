@@ -24,6 +24,10 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 - [x] **PUB-4 scope decided:** covers Claude and ChatGPT both; code part merged.
 - [ ] **Later, whenever convenient (blocks nothing): desktop app test.** Open the connector in the desktop Claude or ChatGPT app and ask
       "which GitHub account am I connected to?" Also optionally disconnect and reconnect once on a phone. Tell the agent the answer.
+- [ ] **Later (blocks nothing): disconnect and reconnect test.** In Claude or ChatGPT, remove the custom GitHub connector, add it back, and ask
+      "which GitHub account am I connected to?" Tell the agent the result. (Closes the "revocation then recovery" line of the final acceptance.)
+- [ ] **Much later, only if you ever want it public: PUB-5 publication.** Needs a third-party directory's approval of an unofficial connector,
+      which may not be possible. The product works privately without it; nothing waits on it.
 
 ## B2. Give the agent a working connection to your deployed server (lets agents run the real-account tests for you)
 
