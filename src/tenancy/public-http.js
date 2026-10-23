@@ -84,7 +84,7 @@ export async function publicAuthorize(req, res, { env = process.env, ...deps } =
     const cookie = cookieOf(req, FORM);
     if (!cookie && !req.headers?.cookie && String(req.headers?.origin || '') === origin) {
       failure(res, null, 'form-check cookies-blocked');
-      return page(res, 403, 'Your browser blocked a cookie', '<p>To keep sign-in safe we use one small, short-lived cookie, and your browser did not keep it. Please allow cookies for this site (or leave private or incognito mode, or open the link in your normal browser) and start again from your app.</p>');
+      return page(res, 403, 'This page was already used', '<p>Each sign-in page works once. If you already pressed the button, you are probably connected: go back to your app and check. If not, start again from your app. (If it keeps happening, make sure cookies are allowed for this site and you are not in a private tab.)</p>');
     }
     if (String(req.headers?.origin || '') !== origin || !cookie || !same(cookie, p.form_csrf))
       return failure(res, null, `form-check origin=${req.headers?.origin ? (String(req.headers.origin) === origin ? 'ok' : 'different') : 'missing'} cookie=${cookie ? 'present' : 'missing'} anyCookies=${req.headers?.cookie ? 'yes' : 'none'} fetch=${[req.headers?.['sec-fetch-site'], req.headers?.['sec-fetch-mode'], req.headers?.['sec-fetch-dest']].map((v) => String(v ?? '-').slice(0, 20)).join('/')} agent=${String(req.headers?.['user-agent'] ?? '-').replace(/[^\x20-\x7e]/g, '').slice(0, 160)}`);
