@@ -73,6 +73,27 @@ async function call(w,name,args){
  // Dispatch refusals for unavailable profile/foreign scope use unstructured error text.
  return x.structuredContent??(x.isError?{done:false,error:x.content?.[0]?.text}:parse(x));
 }
+describe('H-1 ruleset read-back tolerates provider defaults',()=>{
+ const sent=[{type:'required_status_checks',parameters:{strict_required_status_checks_policy:true,
+  required_status_checks:[{context:'ci'}]}}];
+ const stored=(extra,strict=true)=>({...base,rules:[{type:'required_status_checks',
+  parameters:{strict_required_status_checks_policy:strict,...extra,required_status_checks:[{context:'ci'}]}}]});
+ const run=async(readBack)=>{
+  const w=await makeWorld({mode:'production',profile:'full'});
+  let applied=false;
+  w.gh.when(routes.list).reply(200,[]);
+  w.gh.when(routes.post).reply(201,()=>{applied=true;return base});
+  w.gh.when(routes.get).reply(200,()=>applied?readBack:base);
+  return call(w,'github_ruleset_save',{repo:'hello',name:'Guard main',target:'branch',
+   enforcement:'active',conditions:base.conditions,rules:sent,confirm:true});
+ };
+ it('confirms when GitHub adds do_not_enforce_on_create:false (seen live 2026-10-23)',async()=>{
+  expect(await run(stored({do_not_enforce_on_create:false}))).toMatchObject({done:true,status:'applied'});
+ });
+ it('still refuses when a value we sent reads back different',async()=>{
+  expect(await run(stored({do_not_enforce_on_create:false},false))).toMatchObject({done:false});
+ });
+});
 describe('H-1 governance mutations fail closed',()=>{
  it('refuses everyday-profile governance writes without provider requests',async()=>{
   const w=await makeWorld({mode:'production',profile:'everyday'});
