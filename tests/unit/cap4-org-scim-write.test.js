@@ -160,12 +160,20 @@ describe('CAP-4 SCIM official request shape and negative authority',()=>{
     arrangeDelete(w.gh,'ok');
     const {body}=await run(w,'github_org_scim_deprovision',{
       ...removeArgs,confirm:true});
-    expect(body).toMatchObject({status:'applied',confirmed:true});
+    expect(body).toMatchObject({status:'applied',confirmed:true,result:{removed:true}});
     const writes=readWrites(w);
     expect(writes.map(x=>x.route)).toEqual([R.remove]);
     expect(w.gh.calls.filter(x=>x.route===R.list)[0].query.filter)
       .toBe('userName eq "'+USER+'"');
     expect(w.gh.invalid).toEqual([]);
+  });
+  it('never reports removed:true when readback still finds the identity',async()=>{
+    const w=await makeWorld({profile:'full',mode:'production',externalRoutes});
+    arrangeDelete(w.gh,'still-present');
+    const {body}=await run(w,'github_org_scim_deprovision',{
+      ...removeArgs,confirm:true});
+    expect(body.confirmed).not.toBe(true);
+    expect(body.result?.removed).not.toBe(true);
   });
   it('rejects foreign organization before provider I/O and stale identity usernames without mutation',async()=>{
     const w=await makeWorld({profile:'full',mode:'production',externalRoutes});

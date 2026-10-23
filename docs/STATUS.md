@@ -1,3 +1,6 @@
+## 2026-10-22 — CAP-4 review fixes (follow-up to merged #277)
+
+Two review findings on #277 fixed with tests: App JWT webhook writes now record a provider secondary-limit cooldown on error (next mutation is blocked), and SCIM deprovision's `removed` result comes from the independent readback instead of being assumed. Remaining CAP-4 items stay on docs/pr-cards/CAP-4.md.
 ## 2026-10-22 — device checks separated
 
 Real-device checks (PUB-4 phone/desktop) moved to docs/OWNER-CHECKLIST.md; they no longer block implementation or merges. Docs only.
