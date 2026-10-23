@@ -26,7 +26,7 @@ GitHub (the source of your data and your authorization), our hosting provider (V
 Sign-in grants until they expire or you disconnect; settings and the change record until you ask us to delete them; short-lived results 24 hours; usage counts in aggregate. When you ask to be deleted, we remove your sign-in, grants, settings, change record and saved results for good, and your tokens stop working immediately.
 
 ## Your choices
-Disconnect any time from your AI app or by revoking the GitHub App's access in your GitHub settings. Ask us to delete everything at [support email]. Choose a read-only connection when you sign in if you want your assistant to only look and preview.
+Disconnect any time from your AI app or by revoking the GitHub App's access in your GitHub settings. Delete everything yourself, any time, at the "Delete my data" link on the sign-in page (you sign in with GitHub, confirm once, and it is removed for good), or ask us at [support email]. Choose a read-only connection when you sign in if you want your assistant to only look and preview.
 
 ## Children
 The service is not for anyone under the age GitHub allows for an account.

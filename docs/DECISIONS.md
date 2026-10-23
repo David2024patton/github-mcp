@@ -1,3 +1,7 @@
+## 2026-10-23 — people can delete their own data
+
+`/api/oauth/authorize?forget=1` (linked from the sign-in page, same off-switch as the rest of public sign-in) lets a person delete everything stored about them: sign in with GitHub to prove it is them, then confirm once. Nobody is enrolled by asking (look-up only), a confirm handle is single-use and tied to the same browser, it cannot be used as a God-mode handle, and the built-in page client can never take part in a normal connection or receive tokens. Deletion uses the same `gh_forget_public_tenant` function as the owner version.
+
 ## 2026-10-23 — launch safety: key change without sign-out, and legal drafts
 
 `TOKEN_ENCRYPTION_KEY_PREVIOUS` (up to two older keys) lets the encryption key be changed without making people reconnect: it is used only for reading, authenticated per value with the same context, and new values are always sealed with the current key. The routing key stays single-key on purpose: changing it signs everyone out, which is the emergency lever. Procedure is in `docs/GO-LIVE-CHECKLIST.md`. Draft terms of use and privacy notice are in `docs/legal/` (unpublished, for the owner and a lawyer to approve; nothing serves them yet).
