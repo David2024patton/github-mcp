@@ -146,7 +146,7 @@ export function defineWrite(spec) {
 
     // 1. The connection's mode. A preview connection never carries a production change; a production connection always confirms one.
     if (classification.production && connection.mode !== 'production') {
-      return refuse('mode', `This is a production change because ${classification.production}, and this connection is in preview mode. Connect in production mode (turned on per account) to make it.`);
+      return refuse('mode', `This is a production change because ${classification.production}, and this connection is in preview mode. To make it, connect again without "Read-only" ticked on the sign-in page (the owner can also turn production on for the account on the setup page).`);
     }
 
     // 2. The guard gates, in order. A gate that throws refuses: the layer fails closed.

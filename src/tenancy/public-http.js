@@ -72,7 +72,7 @@ export async function publicAuthorize(req, res, { env = process.env, ...deps } =
         '<small>Leave blank to connect every account where the GitHub App is installed and you have access: your own, a client\'s, a test account. Or type account names separated by commas.</small>' +
         '<div class="choice"><input type="radio" id="t1" name="tier" value="standard" checked><label for="t1"><strong>Standard</strong><small>Everything that signing in with GitHub alone can unlock. Nothing else to enter.</small></label></div>' +
         '<div class="choice"><input type="radio" id="t2" name="tier" value="god"><label for="t2"><strong>God mode</strong><small>Also lets you add extra keys (package and notifications tokens) on the next page to unlock the remaining tools. You can skip any of them.</small></label></div>' +
-        '<div class="choice"><input type="checkbox" id="c1" name="allow_changes" value="yes" checked><label for="c1"><strong>Let my assistant make changes</strong><small>On by default. Your assistant can create, edit and merge things on the accounts you own, and it asks you to confirm each change first. Untick for a read-and-preview-only connection.</small></label></div>' +
+        '<div class="choice"><input type="checkbox" id="c1" name="read_only" value="yes"><label for="c1"><strong>Read-only (optional)</strong><small>Your assistant can look and preview but cannot change anything. Leave this unticked for the full toolset: on accounts you own it can create, edit and merge things, and it asks you to confirm each change first.</small></label></div>' +
         '<button type="submit">Continue to GitHub</button></form>',
         { cookies: [setCookie(FORM, csrf, FORM_PATH, 'Strict')] });
     }
