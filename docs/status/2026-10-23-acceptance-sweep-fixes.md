@@ -10,3 +10,4 @@ Added later the same day (all found live, all with a test that fails without the
 3. Deploy keys: GitHub stores `<type> <base64>` and drops the trailing comment, so the add read back as "unconfirmed". The fingerprint now ignores the comment (read and write).
 4. Organization settings: a profile text field GitHub reports as null (not set) was treated as "unreadable", so an empty description could never be set. Null is now a known value for profile text fields only; policy fields (permission, booleans) still refuse null.
 5. Team membership: GitHub makes organization owners team maintainers, so asking for "member" read back as a mismatch. Accepted only for an organization owner.
+6. Team delete: GitHub kept returning the deleted team for a moment, so the delete read back as "unconfirmed". The absence check now looks again up to three times (about five seconds).

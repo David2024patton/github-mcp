@@ -144,6 +144,14 @@ describe('O-3 team/role catalog and provider-regression cases',()=>{
     expect(result.done).toBe(false);
     expect(w.gh.calls.filter(c=>c.method!=='GET')).toHaveLength(0);
   });
+  it('confirms a team delete that GitHub still shows for a moment',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    w.gh.when(R.team).replySequence([{status:200,body:team()},{status:200,body:team()},
+      {status:404,body:{message:'Not Found'}}]);
+    w.gh.when(R.delete).reply(204,null);
+    const r=await call(w,'github_team_delete',{teamSlug:'maintainers',confirm:true});
+    expect(r).toMatchObject({done:true,status:'applied'});
+  });
   describe('org owners are always team maintainers (seen live 2026-10-23)',()=>{
     const run=async(orgRole,readBackRole)=>{
       const w=await makeWorld({mode:'production',profile:'full'});

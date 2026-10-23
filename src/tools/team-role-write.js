@@ -135,7 +135,13 @@ export const teamDelete=defineGithubWrite({
     return (await context(ctx,t)).request('DELETE /orgs/{org}/teams/{team_slug}',
       teamParams(t,a.teamSlug));
   },
-  readAfter:({args:a,ctx,target:t})=>getTeam(ctx,t,a.teamSlug),
+  // A deleted team can still be readable for a moment (seen live 2026-10-23); look again a few times, about five seconds at most.
+  readAfter:async({args:a,ctx,target:t})=>{
+    const wait=ctx.sleep??(ms=>new Promise(r=>setTimeout(r,ms)));
+    let x=await getTeam(ctx,t,a.teamSlug);
+    for(let i=0;i<3&&x!==null;i++){await wait(1500);x=await getTeam(ctx,t,a.teamSlug);}
+    return x;
+  },
   verify:({after:x})=>x===null,
   inverse:()=>null,present:({args:a})=>({team:a.teamSlug,deleted:true})
 });
