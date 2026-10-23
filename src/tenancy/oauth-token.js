@@ -24,6 +24,12 @@ export async function privateTenantToken(req, res, {
   // PUB-6: a public (pcl_) client carries no tenant. Its code or refresh token selects the tenant; the tenant's own
   // mirrored client row (secret hash, redirect list), single-use code and live membership still decide.
   const publicClient = isPublicClientId(params.client_id);
+  // Internal log only (no secrets, no codes): what kind of token request arrived and how it ended.
+  const note = (stage) => { try { console.error('[oauth-token]', stage, 'grant=' + String(params.grant_type ?? '-').slice(0, 24),
+    'client=' + (publicClient ? 'pcl' : 'other'), 'secret=' + (typeof params.client_secret === 'string' && params.client_secret ? 'yes' : 'no'),
+    'basic=' + (/^basic /i.test(String(req.headers?.authorization ?? '')) ? 'yes' : 'no'),
+    'resource=' + (params.resource ? 'yes' : 'no'), 'verifier=' + (params.code_verifier ? 'yes' : 'no'), 'status=' + res.statusCode); } catch { /* logging must never break a request */ } };
+  note('request');
   let claim = publicClient ? null : verifyTenantCredential(params.client_id, 'tcl', env);
   if ((!claim && !publicClient) || !env.DATABASE_URL || env.GITHUB_PRIVATE_TENANT_PILOT !== 'enabled') return send(res, 401, { error: 'invalid_client' });
   let tenantSql=null;
@@ -43,7 +49,7 @@ export async function privateTenantToken(req, res, {
           claim = verifyTenantCredential(params.refresh_token, 'trf', env);
         }
       }
-      if (!claim) return send(res, 401, { error: 'invalid_client' });
+      if (!claim) { note('no-claim'); return send(res, 401, { error: 'invalid_client' }); }
     }
     const pilot = await directory.authorizedPilotIdentity(claim.tenantId, claim.identityId);
     if (!pilot || pilot.tenantId !== claim.tenantId || pilot.identityId !== claim.identityId ||
@@ -68,6 +74,7 @@ export async function privateTenantToken(req, res, {
     });
     const result=await handlers.token(req, res);
     outcome=res.statusCode>=400?'refused':'ok';
+    note('done');
     return result;
   } catch (error) {
     if (error instanceof TenantCapacityError) {
