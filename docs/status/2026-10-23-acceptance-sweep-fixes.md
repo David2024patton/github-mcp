@@ -13,3 +13,4 @@ Added later the same day (all found live, all with a test that fails without the
 6. Team delete: GitHub kept returning the deleted team for a moment, so the delete read back as "unconfirmed". The absence check now looks again up to three times (about five seconds).
 7. Universal REST write, create: the read-back looked for the sent fields at the top of a list response and could never find them (runner-group create showed "unconfirmed" though created). A create is now confirmed when the created item (same id GitHub answered with) is in the re-read collection with every field sent.
 8. Universal REST write, delete: a delete had no confirmation at all ("could not be read back"). It is now confirmed by the same object no longer being readable (404); still readable is not confirmed.
+9. App-readiness (review finding on #306): a private repository's missing fork-approval setting is now G16 "done, not applicable" so no impossible repair is offered.

@@ -931,8 +931,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/H-1.md",
     "gates": "Owner approved a separate public disposable scratch; never alter existing private repository; capture exact name/run ownership, approval, profile and source SHA; production writes remain OFF until independently authorized and connected. Public evidence does not prove private acceptance.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Public fixture read succeeded; protection wrapper could not read classic protection and warned against inferring absence; rulesets empty and complete. Next: Production-enabled exact test operation and independent confirmation. Keep separate public fixture; await explicit operation authority and then perform write/readback.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 08:50-09:05 MDT on live 66741a46 (Vercel READY), custom service-issued MCP, PRODUCTION/full, scratch org on Enterprise trial. Public robinson-ai-scratch/rtc-ghaccept-h1-public-oct14: github_protection_set applied (1 approving review, no force push/deletion) with exact readback; repeating the identical request was refused (422 'already has the requested values; no PUT was sent'); github_ruleset_save created an active ruleset on a non-matching ref and github_ruleset_delete removed it; github_protection_remove applied. Fixture kept for webhook/settings tests.",
     "nextAction": "Exact production-enabled scratch protection/ruleset mutation and per-operation disposal authority; current connection remains PREVIEW and production OFF."
   },
   {
@@ -1145,8 +1145,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
       "GITHUB-W1-PR-STATUS",
       "GITHUB-W2-EXACT-MERGE"
     ],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Source absent from independently observed READY revision; restored adapter is working. Next: Reviewed workflow source included in normal checked daily release plus exact approved scratch fixture. Recheck deployment after scheduled release and execute eligible read/denial scenarios; mutations retain independent authority.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 08:50-09:05 MDT on live 66741a46 (Vercel READY), custom service-issued MCP, PRODUCTION/full, scratch org on Enterprise trial. rtc-accept-ci-oct23 stack PR #7 (stk-1 into main) and PR #8 (stk-2 into stk-1): github_workflow_merge_stack dryRun returned preview; confirmed run merged #7 at its exact head (merged_one); next invocation retargeted #8 to main (retargeted); the following call refused (not_ready, 'required CI checks not proven green') until fresh CI ran at the unchanged head; then merged #8 (merged_one); github_workflow_cleanup_branches deleted both branches with absence_confirmed. Both PRs read back closed/merged into main.",
     "nextAction": "Existing isolated three-PR stack available, but exact retarget/notification, one-at-a-time production merge and cleanup authorization remain separate prerequisites."
   },
   {

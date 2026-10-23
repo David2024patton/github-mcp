@@ -87,6 +87,15 @@ describe('P-2 project G1–G20 readiness and safe fix routing',()=>{
     expect(x.all_done).toBe(false);
     expect(w.gh.calls.filter(call=>!['GET','HEAD'].includes(call.method))).toEqual([]);
   });
+  it('treats a private repository without a fork-approval setting (GitHub 422) as done, with no repair offered',async()=>{
+    const w=await makeWorld({profile:'full'});
+    arrange(w.gh);
+    w.gh.when(FORK).reply(422,{message:'Validation Failed'});
+    const x=parse(await invoke(w,{spec}));
+    const g16=x.rows.find(row=>row.id==='G16');
+    expect(g16.status).toBe('done');
+    expect(JSON.stringify(x)).not.toContain('"section":"fork"');
+  });
   it('uses the identical evaluator for a persisted project and validated inline spec',async()=>{
     const w=await makeWorld({profile:'full'});
     arrange(w.gh);
