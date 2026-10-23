@@ -755,6 +755,17 @@ describe('spend limit and own people on the setup page (B-4)', () => {
     await preview.open();
     expect((await preview.post({ action: 'set-spend-limit', login: 'example-org', dollars: '5' })).statusCode).toBe(403);
   });
+  it('shows public usage as counts only, and nothing when nobody has connected', async () => {
+    const { renderSetup } = await import('../../src/github/setup-html.js');
+    const none = renderSetup({ csrf: 'c', publicUsage: { peopleConnected: 0, moreThanShown: false, unreadable: 0, lastDay: { calls: 0 }, lastWeek: { calls: 0 } } });
+    expect(none).not.toContain('Public usage');
+    const some = renderSetup({ csrf: 'c', publicUsage: { peopleConnected: 3, moreThanShown: false, unreadable: 1,
+      lastDay: { calls: 12, refused: 2, throttled: 1, errors: 0 }, lastWeek: { calls: 80 } } });
+    expect(some).toContain('Public usage');
+    expect(some).toContain('People connected through the public sign-in: 3');
+    expect(some).toContain('Assistant calls in the last day: 12 (2 refused, 1 slowed down, 0 errors)');
+    expect(some).toContain('1 could not be read');
+  });
   it('saves a display time zone (blank means UTC) and rejects a name that is not a real zone', async () => {
     const t = await build();
     await t.open();

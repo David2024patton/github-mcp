@@ -1,3 +1,9 @@
+## 2026-10-23 — owner sees public usage as counts only; no charging yet
+
+The server already counted assistant calls per person per hour (result and speed only). The owner setup page now shows a read-only "Public usage" line: people connected, calls in the last day and week, and how many were refused, slowed down or errored. Counts only, never names, tokens, client ids or repository text, and the page reads at most 100 people. Nothing is metered against a plan or charged; pricing waits for the owner.
+
+Same change: every API function now states a 60-second time limit in `vercel.json` (valid on every Vercel plan), so slow GitHub work is not cut off by an old shorter default. Long results still go through handles and pages; waits for GitHub's rate limit stay inside the 20-second request budget.
+
 ## 2026-10-23 — public sign-in: changes on by default, read-only is the optional choice
 
 Owner decision (Chris): nobody should have to ask for the ability to make changes, so the sign-in page no longer has a "make changes" box. A person who signs in can make changes on accounts they own and organizations they administer; each change is still previewed and confirmed. An optional **Read-only** tick gives a preview-only connection. Safety is unchanged: production is switched on only for accounts the signed-in person was verified to own or administer, and only on the production deployment. This supersedes the "tick-box, ticked by default" wording of the 2026-10-23 end-user-authority exception.
