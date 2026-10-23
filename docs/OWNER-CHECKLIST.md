@@ -76,6 +76,11 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 - [ ] **Decide pricing, if any,** once the cost numbers from the load test exist.
 - [x] **Package token saved and fully tested (done 2026-10-23).** Agents published a throwaway package themselves with a GitHub workflow; read, delete and restore all passed. Nothing more needed from you.
 
-## Added 2026-10-23 (simple connect and the github.robinsonaisystems.com address; blocks nothing now)
-- [ ] **When you are ready to move the connector to `github.robinsonaisystems.com`:** add one DNS record for `github` at Spaceship (your registrar; the value comes from the Vercel project's Domains page, the agent will tell you the exact record). Agents then move the sign-in callbacks and test it before anything is advertised. Until then the current address keeps working.
-- [ ] **Say go** before `GITHUB_PUBLIC_CONNECT` is switched on in production (the simple connect flow is built but off).
+## Public sign-in: where it stands (updated 2026-10-23)
+Built, tested and merged, but switched OFF. Done by you: the DNS record for `github.robinsonaisystems.com` is live over HTTPS, and the GitHub App is installable by any account. What remains is yours, plain and short:
+- [ ] **Say "go"** when you want public sign-in turned on. The agent then flips the production switch, moves the connector address to `github.robinsonaisystems.com`, and runs a real sign-in end to end first. Moving the address means you reconnect your OWN ChatGPT/Claude connector once afterwards (one click per app); everyone else starts fresh on the new address.
+- [ ] **Approve the legal text** in `docs/legal/` (privacy notice and terms), ideally after a lawyer reads them, and **choose a support email** that goes on them and on the App.
+- [ ] **Decide pricing, if any,** once real usage numbers exist (the setup page shows them once people connect).
+- [ ] **Try the new sign-in on your phone and computer** after "go" (honest device check; the agent cannot do this for you).
+- Handled by the agent, nothing for you: time zones, read-only option, usage view, deleting a person's data (yours and theirs), key change procedure, and the domain's HTTPS certificate.
+- **When your registrar moves the nameservers to Vercel,** the DNS records must exist on the Vercel side too (including `github` and any email or website records). Tell the agent when the cutover is close and it will compare and add the missing records so nothing breaks.
