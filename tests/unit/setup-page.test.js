@@ -1042,3 +1042,16 @@ describe('package token removal when encryption is unavailable',()=>{
     expect((await t.db.getAccount('example-user')).package_enc).toBeNull();
   });
 });
+
+describe('guided Unlock more tools section', () => {
+  const html = renderSetup({ csrf: 'x'.repeat(43) });
+  it('explains each extra token and opens GitHub with the right boxes ticked', () => {
+    expect(html).toContain('Unlock more tools');
+    expect(html).toContain('scopes=read:packages,write:packages,delete:packages');
+    expect(html).toContain('scopes=notifications');
+  });
+  it('still offers every save and remove action, only on protected forms', () => {
+    for (const a of ['add-package', 'remove-package', 'add-classic', 'remove-classic', 'add-fine-grained', 'remove-fine-grained']) expect(html).toContain(`value="${a}"`);
+    expect(html).not.toMatch(/<form[^>]*method="get"/);
+  });
+});

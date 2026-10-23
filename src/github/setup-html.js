@@ -2,6 +2,7 @@
 // runs on the page; the only inputs that accept a secret are the token boxes and the passphrase boxes.
 import { escapeHtml as h } from '../core/http.js';
 import { installUrl } from './app-manifest.js';
+import { unlockSection } from './unlock-html.js';
 
 const STYLE = 'body{font:16px system-ui,sans-serif;max-width:640px;margin:4vh auto;padding:16px;line-height:1.5}form,.card{display:grid;gap:10px;margin:18px 0;padding:14px;border:1px solid #ccc;border-radius:10px}.card{display:block}input,select,button{font:inherit;padding:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f4f4;padding:10px;border-radius:6px}button{cursor:pointer}.ok{color:#116611}.todo{color:#8a5200}small{color:#555}';
 
@@ -120,15 +121,7 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
     '<h2>Your own people</h2><p>Comments, reviews and assignments that only reach your own people need no confirmation. These always count: your connected accounts, their organization members, github-actions[bot] and this server\'s own App bots. Add other GitHub names here, separated by commas. Saving replaces this extra list.</p>' +
     (ownPeopleExtra ? `<p><small>Extra names: ${h(ownPeopleExtra.join(', ') || 'none')}</small></p>` : '') +
     form('set-own-people', '<label>Extra names<input name="logins" maxlength="1000" autocomplete="off"></label>', 'Save own people') +
-    '<h2>Alternative: use a fine-grained token instead of a GitHub App</h2><p>Simpler, but no per-connection read-only tokens and no check runs. Classic tokens are refused.</p>' +
-    form('add-fine-grained', login + '<label>Fine-grained personal access token<input type="password" name="token" required autocomplete="off"></label>', 'Verify and save encrypted token') +
-    form('remove-fine-grained', login, 'Remove stored fine-grained token') +
-    '<h2>Optional: package token</h2><p>GitHub Packages requires a classic token. Use read:packages to list, add delete:packages to delete, and write:packages to restore. Only repository-scoped registries need repo. It must belong to the personal account or the person signed in for this organization. This token can only be used for this account’s package operations. Repository-limited passes cannot use it. GitHub package access and SSO rules still apply.</p>' +
-    form('add-package', login + '<label>Classic package token<input type="password" name="token" required autocomplete="off"></label>', 'Verify and save encrypted package token') +
-    form('remove-package', login, 'Remove stored package token') +
-    '<h2>Optional: notifications token</h2><p>GitHub only lets a classic token read notifications. It must have only the <em>notifications</em> scope; anything else is refused.</p>' +
-    form('add-classic', login + '<label>Classic token (notifications scope only)<input type="password" name="token" required autocomplete="off"></label>', 'Verify and save encrypted token') +
-    form('remove-classic', login, 'Remove stored notifications token') +
+    unlockSection({ form, login }) +
     (show ? `<h2>Reveal a one-time secret</h2>${form('reveal', '', 'Reveal this one-time secret', hidden('id', show))}` : '') +
     '</body></html>';
 }
