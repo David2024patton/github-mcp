@@ -35,6 +35,15 @@ describe('H-1 governance read-only provider routes',()=>{
   expect(x).toMatchObject({protected:true,classic_protection_readable:false});
   expect(x.warning).toMatch(/do not infer/i);
  });
+ it('reports a readable absence when the branch is not protected and GitHub answers "Branch not protected"',async()=>{
+  const w=await makeWorld();w.gh.when('GET /repos/{owner}/{repo}/branches/{branch}')
+    .reply(200,{name:'main',protected:false});
+  w.gh.when('GET /repos/{owner}/{repo}/branches/{branch}/protection')
+    .reply(404,{message:'Branch not protected'});
+  const x=await call(w,'github_protection_get',{repo:'hello',branch:'main'});
+  expect(x).toMatchObject({protected:false,classic_protection_readable:true,classic:null});
+  expect(x.note).toMatch(/ruleset/i);expect(x.warning).toBeUndefined();
+ });
  it('lists repository rulesets with clear named rules and enforcement',async()=>{
   const w=await makeWorld();
   w.gh.when('GET /repos/{owner}/{repo}/rulesets').reply(200,[rs]);

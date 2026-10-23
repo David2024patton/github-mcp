@@ -49,7 +49,8 @@ export const protectionGet=defineRead({
       'GET /repos/{owner}/{repo}/branches/{branch}/protection',p)).data);
     return {owner,repo:a.repo,branch:b.name,sha:b.commit?.sha??null,
       protected:b.protected===true,
-      classic_protection_readable:!!d,
+      // GitHub answers 404 "Branch not protected" when no classic protection exists; with the branch itself reporting protected:false that is a readable absence.
+      classic_protection_readable:!!d||b.protected===false,
       ...(d?{classic:{
         required_status_checks:d.required_status_checks?{
           strict:d.required_status_checks.strict,
@@ -61,7 +62,8 @@ export const protectionGet=defineRead({
         required_conversation_resolution:d.required_conversation_resolution?.enabled??null,
         allow_force_pushes:d.allow_force_pushes?.enabled??null,
         allow_deletions:d.allow_deletions?.enabled??null
-      }}:{warning:'Classic protection was not readable; do not infer absence of effective repository/organization rulesets.'})};
+      }}:b.protected===false?{classic:null,note:'No classic branch protection is set. Repository and organization rulesets are separate; read them with github_ruleset_list.'}
+        :{warning:'Classic protection was not readable; do not infer absence of effective repository/organization rulesets.'})};
   })
 });
 const base={owner:OWNER,repo:REPO,scope:{type:'string',enum:['repo','org']}};
