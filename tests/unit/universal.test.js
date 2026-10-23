@@ -126,6 +126,22 @@ describe('U-1 a delete is confirmed by absence',()=>{
     expect(await run(200)).toMatchObject({done:false});
   });
 });
+describe('U-1 a delete of a single setting is confirmed when it reads back empty',()=>{
+  const one='/orgs/{org}/interaction-limits';
+  const run=async(beforeBody)=>{
+    const w=await makeWorld({profile:'full',mode:'production'});
+    w.gh.when('GET '+one).replySequence([{status:200,body:beforeBody},{status:200,body:{}}]);
+    w.gh.when('DELETE '+one).reply(204,null);
+    return parse(await dispatch(w,'github_api_write',{...api('DELETE '+one,{org:'example-org'}),confirm:true}));
+  };
+  it('confirms when a configured limit now reads back as an empty object (seen live 2026-10-23)',async()=>{
+    expect(await run({limit:'existing_users',origin:'organization',expires_at:'2026-10-24T17:40:40Z'}))
+      .toMatchObject({done:true,status:'applied'});
+  });
+  it('does not claim a removal when nothing was configured before',async()=>{
+    expect(await run({})).toMatchObject({done:false});
+  });
+});
 describe('U-1 refusal and effect uncertainty',()=>{
   it('does not write on preview or when confirmation is absent',async()=>{
     const w=await makeWorld({profile:'full',mode:'preview'});
