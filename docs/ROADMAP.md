@@ -50,6 +50,11 @@ Order: finish the remaining acceptance testing first, then this, then PUB-5. Bui
 - **Simple connect flow for anyone:** Connect, Sign in with GitHub, pick the account, Approve. Mode, profile and tool listing default to safe
   choices and move to a settings page. No administrator passphrase for ordinary users. Today's owner form stays for the owner.
   Open question for Chris: replace the owner form or sit beside it (asked 2026-10-23; he has not answered).
+- **GitHub App install inside the connect flow:** after "Sign in with GitHub", the server checks which accounts the person has already installed
+  the App on; for an account without it, it sends them straight to GitHub's install screen (with "request user authorization during
+  installation" so sign-in and install are one step) and returns them to finish connecting. Organizations whose owner must approve the install
+  show a plain "waiting for your organization owner" state. Needs the App to be publicly installable (a GitHub App setting), which is a
+  distribution step that needs Chris's explicit approval before it is switched on. Today's one-by-one "Create the GitHub App" step stays for the owner and self-hosting.
 - **Easy place to add the extra tokens and secrets** that the standard GitHub sign-in cannot reach (for example the package token,
   notifications token, fine-grained tokens): a guided "Unlock more tools" page that says, in plain words, which tools each one opens, how to
   create it on GitHub step by step, accepts it on the protected page only (never through chat or a tool argument), shows what it unlocked,
