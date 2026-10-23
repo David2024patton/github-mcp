@@ -201,6 +201,9 @@ describe('CAP-5 capability report', () => {
     expect(text).toContain('Denominator: ' + inv.summary.totalOperations + ' operations');
     expect(text).toContain('Verified against a real account: ' + inv.summary.verifiedOperations + ' of ' + inv.summary.totalOperations);
     expect(text).not.toMatch(/\d\s?%/);
+    const noDedicated = inv.operations.filter((o) => o.implementation.universalCandidate && o.state !== 'implemented-unverified').length;
+    expect(text).toContain('universal tool where its policy allows: ' + noDedicated + ' of');
+    expect(inv.operations.some((o) => o.implementation.universalCandidate && o.state === 'implemented-unverified')).toBe(true);
     const changed = structuredClone(inv);
     changed.summary.verifiedOperations = 7;
     expect(printReport(changed)).toContain('Verified against a real account: 7 of');

@@ -28,7 +28,8 @@ export function printSummary(catalog, {maxFamilies = 80} = {}) {
 export function printReport(catalog) {
   const s = catalog.summary;
   const n = s.totalOperations;
-  const universal = Object.values(s.families).reduce((a, f) => a + f.universalCandidates, 0);
+  // Only rows WITHOUT a dedicated tool: a universal candidate that is also curated is counted as dedicated.
+  const universal = catalog.operations.filter((o) => o.implementation.universalCandidate && o.state !== 'implemented-unverified').length;
   const of = (x) => x + ' of ' + n;
   return [
     'GitHub MCP capability report (source-pinned; NOT live acceptance)',
