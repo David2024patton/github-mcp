@@ -120,7 +120,7 @@ describe('CAP-4 App owner JWT installation grants and requests',()=>{
       org:'example-org',app_id:901,page:2,shown:1,complete:true,
       requests:[{id:89,requester_login:'someone',
         created_at:'2026-10-22T10:00:00Z'}]});
-    expect(JSON.stringify(out.data)).not.toMatch(/88|90|foreign-org|DO-NOT-RETURN|PRIVATE@EXAMPLE|a-private-request-token/);
+    expect(JSON.stringify(out.data)).not.toMatch(/"id":(88|90)\b|foreign-org|DO-NOT-RETURN|PRIVATE@EXAMPLE|a-private-request-token/);
     expect(w.gh.calls.map(x=>x.route)).toEqual([R.app,R.requests]);
     expect(w.gh.calls[1].query).toMatchObject({per_page:'4',page:'2'});
     expect(w.gh.invalid).toEqual([]);
