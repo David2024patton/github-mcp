@@ -23,13 +23,15 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 
 ## B2. Give the agent a working connection to your deployed server (lets agents run the real-account tests for you)
 
-- [ ] **Let an agent use the saved connection (one-time permission).** On 2026-10-22 you told the agent to use it, but the
-      environment's automatic safety check refused the step (looking up the saved sign-in in your Hub project's Vercel
-      settings) and the agent correctly did not work around it. Pick ONE of: (a) in Claude Code, approve that single
-      action when it is offered or add an allow rule for reading the Hub variable `RTOOL_BUILDER_SESSION`; or (b) skip
-      it and do the one-click "Allow" sign-in described in `docs/pr-cards/DEVELOPER-CONNECTION.md` (the agent will say
-      which screen). Either way it is a one-time step. Until then the 56 real-account checks wait; development is not
-      blocked.
+- [ ] **Unlock real-account testing (one-time, then hands-off).** The agent's cloud workspace cannot reach your deployed server
+      (its network only allows package downloads and GitHub), and the environment's safety check refused reading the saved
+      sign-in from the Hub's Vercel settings. Pick ONE:
+      (a) **Recommended:** tell the agent "create the tester repo". It makes a small private GitHub repo whose daily
+      workflow runs the acceptance checks from GitHub's own machines and posts results back; you click "Allow" once on a
+      sign-in screen it points you to.
+      (b) In the Claude desktop app choose "Link to this computer" for the task; the agent runs the sign-in and checks
+      from your computer and you click "Allow" once.
+      Until then the 56 real-account checks wait; development is not blocked.
 
 ## B3. Things that cannot be tested until you have them
 
