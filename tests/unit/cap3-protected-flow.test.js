@@ -143,7 +143,7 @@ describe('CAP-3 protected private member handoff',()=>{
     const result=await f.enrollment.finish({state:flow.state,action:'save',value:token});
     const callback=new URL(result.destination);
     expect(callback.origin).toBe('https://client.example');
-    expect([...callback.searchParams.keys()]).toEqual(['code','state']);
+    expect([...callback.searchParams.keys()]).toEqual(['code','state','iss']);
     expect(callback.searchParams.get('state')).toBe('original-client-nonce');
     expect(f.db.createAuthCode).toHaveBeenCalledWith({
       code:callback.searchParams.get('code'),clientId:f.client,redirectUri:returnUri,
