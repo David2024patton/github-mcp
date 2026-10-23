@@ -9,4 +9,10 @@ only already-deployed behavior was exercised.
 - repo_list: five scratch fixture repositories listed.
 - issue_create dryRun: returned a preview, no write, logged as change 82.
 - issue_list with owner Robinson-AI-Systems: refused before reaching GitHub (client:outside_scope).
-Not run: any real write (needs scratch PRODUCTION mode, owner decision), anything depending on code newer than the live deployment.
+Later the same evening the connector was switched (by the owner) to PRODUCTION mode for the scratch organization only, compact menu:
+- github_call(github_issue_create, requestKey) on a disposable scratch fixture: status applied, issue #1 created, result read back
+  from GitHub; the same request repeated returned status replayed with the same issue and no duplicate (issue_list showed exactly one).
+- github_call(github_issue_update, state closed): applied, cleanup complete (issue closed, nothing else touched).
+Ordinary scratch writes do not need production mode (the issue tools are classified production: never); production mode is only
+needed for production-classified operations.
+Not run: anything depending on code newer than the live deployment; read-only-profile denial (needs a read-only connection).

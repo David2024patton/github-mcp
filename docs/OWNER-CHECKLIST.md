@@ -23,11 +23,12 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 
 ## B2. Give the agent a working connection to your deployed server (lets agents run the real-account tests for you)
 
-- [x] **Add the server as a connector in Claude** — done 2026-10-22 (preview mode, scratch organization). Agents can now use the
-      GitHub tools directly in a new session. Real create-and-clean-up tests on scratch resources need PRODUCTION mode on
-      the scratch organization only; see the next row.
-- [ ] **Optional — allow scratch-only write tests:** in the server's setup page, switch the connector to production mode for
-      `robinson-ai-scratch` only (never your real accounts). Without it, agents test reads, dry runs and denials only.
+- [x] **Add the server as a connector in Claude** — done 2026-10-22 (scratch organization). Agents can use the GitHub tools
+      directly in a new session. Ordinary scratch writes (create/close an issue, branches, PRs on disposable fixtures) work in
+      preview mode; only operations the server classifies as production need production mode.
+- [x] **Connector switched to production mode for the scratch organization only** — done by Chris 2026-10-22 (compact tool menu).
+      Never for his real accounts without his say-so. This lets agents test production-classified operations on scratch
+      fixtures, each still behind its own guards and confirmation.
 
 ## B3. Things that cannot be tested until you have them
 
