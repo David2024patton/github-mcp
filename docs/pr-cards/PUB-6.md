@@ -30,3 +30,8 @@ Making the GitHub App publicly installable (needs Chris's go-ahead); fine-graine
 ## Dangers
 
 A typed account name is only a request: access always comes from the installations the person's own GitHub token can see. The routing marker on a code or client is a selector, never authority. Never log or return a GitHub bearer.
+
+## 2026-10-23 addition — GOD-1 master token (owner request)
+God mode on the public connector is one optional master token (kind `M`) instead of separate K/P pages, with a plain-steps page
+and `github_master_token_link` to add or remove it later without reconnecting. See `docs/designs/GOD-TOKEN.md`,
+`docs/status/2026-10-23-god-1-master-token.md`. Remaining: GOD-2 (tools only M can reach), GOD-3 (expiry reminders, summary).

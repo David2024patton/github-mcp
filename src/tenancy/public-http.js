@@ -171,15 +171,12 @@ export function renderPublicStep(res, chosen) {
 }
 
 function godPage(res, god, cookieValue) {
-  const accounts = god.accounts;
-  const options = accounts.map((a) => `<option value="${h(a.login)}">${h(a.login)}</option>`).join('');
-  const pick = accounts.length > 1 ? `<label>For which account?<select name="account">${options}</select></label>` : '';
-  const form = (choice, text, note) => `<form method="post" action="${GOD_PATH}"><input type="hidden" name="connect_god" value="1"><input type="hidden" name="csrf" value="${h(cookieValue)}"><input type="hidden" name="choice" value="${choice}">${choice === 'finish' ? '' : pick}<p><small>${note}</small></p><button type="submit">${text}</button></form>`;
-  const org = accounts.some((a) => a.organization);
-  return page(res, 200, 'God mode', '<p>You are signed in. Each button below uses up this page, so choose what to do first. You can run Connect again later to add another key.</p>' +
-    form('notifications', 'Add a notifications token', 'Opens the notification tools. You create the token on GitHub (only the notifications box) and paste it on the next page, never into a chat.') +
-    (org ? form('package', 'Add a package token', 'Opens the package tools for an organization account. Needs read, write and delete package access.') : '') +
-    form('finish', 'Finish without adding keys', 'Return to your app now with the standard tools.'),
+  // GOD-1: God mode is ONE optional master token (a classic GitHub token with every permission ticked). It is not a menu of keys.
+  const form = (choice, text, note) => `<form method="post" action="${GOD_PATH}"><input type="hidden" name="connect_god" value="1"><input type="hidden" name="csrf" value="${h(cookieValue)}"><input type="hidden" name="choice" value="${choice}"><p><small>${note}</small></p><button type="submit">${text}</button></form>`;
+  return page(res, 200, 'God mode', '<p>You are signed in. God mode adds <strong>one master token</strong> that unlocks everything your normal sign-in cannot: notifications, packages, gists, organization settings and more. It is optional.</p>' +
+    '<p><small>How it works: the next page shows four short steps. You create the token on GitHub (every permission is already ticked), copy it, then paste it on that page. It has the power of your whole GitHub login, so only add it if you want that. You can remove it any time.</small></p>' +
+    form('master', 'Add my master token', 'Takes about a minute. You will not need to disconnect or sign in again.') +
+    form('finish', 'Skip it for now', 'Return to your app now. You can add the master token any time later by asking your assistant for the master token link.'),
   { cookies: [clearCookie(STATE, STATE_PATH), setCookie(GOD, cookieValue, GOD_PATH, 'Lax')] });
 }
 

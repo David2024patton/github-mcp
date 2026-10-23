@@ -4,13 +4,37 @@ import {timingSafeEqual} from 'node:crypto';
 import {createPrivateOptionalEnrollment} from '../../src/tenancy/optional-setup.js';
 import {TenantCapacityError} from '../../src/tenancy/runtime-limits.js';
 import {escapeHtml,paramsOf,publicOrigin,send} from '../../src/core/http.js';
+import {masterTokenLink} from '../../src/tenancy/master-credential.js';
 import {publicGodPost,clearGodCookie,publicFailure,renderPublicStep,handoff as publicHandoff} from '../../src/tenancy/public-http.js';
 
 const NAME='gh_tenant_optional_state';
 const CLEAR=NAME+'=; Max-Age=0; Path=/api/tenant/optional; HttpOnly; Secure; SameSite=Strict';
 const cookie=req=>/(?:^|;\s*)gh_tenant_optional_state=([A-Za-z0-9_-]{43})(?:;|$)/
   .exec(String(req.headers?.cookie||''))?.[1]||null;
-const markup=details=>'<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+const masterMarkup=details=>'<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+  '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+  '<title>Master token</title><style>body{font:16px system-ui,sans-serif;max-width:450px;margin:5vh auto;padding:20px}'+
+  'form{display:grid;gap:14px}input,button,select{font:inherit;padding:12px}p,li{line-height:1.5}'+
+  'a.big{display:block;text-align:center;padding:12px;border:1px solid #888;border-radius:8px}</style></head><body>'+
+  '<h1>Add your master token</h1>'+
+  '<p>This is optional. It lets your assistant do things the normal sign-in cannot, such as notifications, packages, gists and organization settings. '+
+  'It has the power of your whole GitHub login, so only add it if you want that. You can remove it any time.</p>'+
+  '<ol><li>Tap the button below. GitHub opens a page with every permission already ticked. Sign in to GitHub if it asks.</li>'+
+  '<li>Scroll down and tap <strong>Generate token</strong>.</li>'+
+  '<li>Copy the long code GitHub shows you. GitHub only shows it once.</li>'+
+  '<li>Come back to this page, paste the code in the box and tap Continue.</li></ol>'+
+  '<p><a class="big" href="'+escapeHtml(masterTokenLink())+'" target="_blank" rel="noopener noreferrer">Create my master token on GitHub</a></p>'+
+  '<form method="post" action="/api/tenant/optional">'+
+  '<input type="hidden" name="csrf" value="'+escapeHtml(details.state)+'">'+
+  '<label>Paste the token here<input type="password" name="value" required minlength="8" maxlength="4096" autocomplete="off"></label>'+
+  '<label>Action<select name="action"><option value="save">Verify and save my master token</option>'+
+  (details.oauth?'':'<option value="revoke">Remove my stored master token (paste the token to prove it is you)</option>')+
+  '</select></label><button type="submit">Continue</button></form>'+
+  '<p>Paste it here only, never into a chat. We check it belongs to your own GitHub login and store it encrypted. '+
+  'It is never shown again. It expires in 90 days or sooner if GitHub says so. '+
+  'Removing it here does not delete it at GitHub; do that in your GitHub settings too.</p></body></html>';
+const markup=details=>details.kind==='M'?masterMarkup(details):standardMarkup(details);
+const standardMarkup=details=>'<!doctype html><html lang="en"><head><meta charset="utf-8">'+
   '<meta name="viewport" content="width=device-width,initial-scale=1">'+
   '<title>Additional GitHub authority</title><style>body{font:16px system-ui,sans-serif;'+
   'max-width:450px;margin:5vh auto;padding:20px}form{display:grid;gap:14px}'+
@@ -58,6 +82,9 @@ export function makePrivateOptionalPage({
       if(req.method==='GET'){
         if(['read-observed-at-enrollment','revoked-on-this-service'].includes(req.query?.github_mcp_optional))
           return send(res,200,'<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GitHub setup</title><p>Return to your connected client and run github_check_permissions to verify the current credential status. This page alone is not proof of completion.</p></html>','text/html; charset=utf-8');
+        // GOD-1: a one-use link from github_master_token_link (add the master token any time, no reconnecting).
+        if(typeof req.query?.master_link==='string')
+          return renderOptionalForm(res,await enrollment.startMasterLink(req.query.master_link));
         const result=await enrollment.start(paramsOf(req));
         return renderOptionalForm(res,result);
       }

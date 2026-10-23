@@ -60,10 +60,14 @@ async function whoami(args, ctx) {
     if (args.detail === 'full') Object.assign(entry, { setup: installationLabel(row), repository_selection: row.repository_selection ?? null, user_login: row.user_login ?? null, plan: row.plan_name ?? null });
     accounts.push(entry);
   }
+  // GOD-1: the master token, if this person added one. Only whether it is there, its permission names and when it
+  // expires. Never the token itself.
+  const master = typeof ctx.credentials?.masterStatus === 'function' ? await ctx.credentials.masterStatus().catch(() => ({ enrolled: false })) : null;
   return {
     mode: ctx.connection.mode.toUpperCase(), profile: ctx.connection.profile, listing: ctx.connection.listing,
     default_account: ctx.connection.default_account, api_version: GITHUB_API_VERSION,
-    credential_types: { I: 'installation token (or fine-grained token)', U: 'your sign-in for personal settings', K: 'notifications-only classic token', P: 'package-only classic token' },
+    credential_types: { I: 'installation token (or fine-grained token)', U: 'your sign-in for personal settings', K: 'notifications-only classic token', P: 'package-only classic token', ...(master ? { M: 'your master token (everything your GitHub login can do, used only when the App cannot)' } : {}) },
+    ...(master ? { master_token: master.enrolled ? { added: true, permissions: master.scopes, expires_at: when(master.expires_at) } : { added: false, how_to_add: 'Ask the assistant to run github_master_token_link; it gives you a private link.' } } : {}),
     accounts: pick(accounts, args.fields)
   };
 }
@@ -185,6 +189,14 @@ const readTools = [
     annotations: readOnly
   },
   {
+    name: 'github_master_token_link',
+    area: 'server', audience: ['B', 'O', 'Op'],
+    description: 'Get a private one-use link (10 minutes) to add or remove your optional master token, no reconnecting. Opens a plain-steps page; never paste the token in chat.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    keepsResult: false
+  },
+  {
     name: 'github_list_accounts',
     area: 'server', audience: ['O'],
     description: 'Connected GitHub accounts this connection may use: App installation, repository selection, your sign-in, notifications token, production on/off.',
@@ -238,7 +250,21 @@ const readTools = [
     keepsResult: false
   }
 ];
-const readHandlers = { github_whoami: whoami, github_list_accounts: listAccounts, github_list_protected_resources: listProtectedResources, github_list_connections: listConnections, github_recent_changes: recentChanges, github_get_result: getResult };
+async function masterTokenLink(args, ctx) {
+  if (typeof ctx.credentials?.masterLink !== 'function' || ctx.connection?.pass === true)
+    return { available: false, why: 'The master token can be added on a signed-in personal connection only.' };
+  const clientId = ctx.connection?.client_id ?? ctx.clientId;
+  const client = typeof ctx.db?.getOAuthClient === 'function' ? await ctx.db.getOAuthClient(clientId) : null;
+  const redirectUri = client?.redirect_uris?.[0];
+  if (!redirectUri) return { available: false, why: 'This connection cannot open the master token page.' };
+  const made = await ctx.credentials.masterLink({ clientId, redirectUri });
+  return {
+    available: true, open_this_link: made.url, expires_in_minutes: made.expiresInMinutes, one_use: true,
+    tell_the_person: 'Open the link in your browser. It shows four short steps: create the token on GitHub (every permission is pre-ticked), copy it, paste it on that page, tap Continue. Never paste the token into this chat.',
+    note: ctx.connection?.profile === 'read_only' ? 'This connection is read-only, so the master token will not be used here until you reconnect with changes allowed.' : undefined
+  };
+}
+const readHandlers = { github_master_token_link: masterTokenLink, github_whoami: whoami, github_list_accounts: listAccounts, github_list_protected_resources: listProtectedResources, github_list_connections: listConnections, github_recent_changes: recentChanges, github_get_result: getResult };
 
 // ---- Production switch (B-2): ask here, confirm on the setup page; turning it off needs no passphrase. ----
 const PENDING_MINUTES = 10;

@@ -13,7 +13,7 @@ const OP={type:'string',minLength:2,maxLength:240,description:'Pinned operationI
 const PARAMS={type:'object',additionalProperties:true,maxProperties:60,description:'Only OpenAPI-defined path and query parameters'};
 const BODY={type:'object',additionalProperties:true,description:'JSON request body, validated against the pinned GitHub schema'};
 const OWNER={type:'string',minLength:1,maxLength:39};
-const CRED={type:'string',enum:['I','U','P'],description:'I installation; U user; P enrolled package-only classic token'};
+const CRED={type:'string',enum:['I','U','P','M'],description:'I installation; U user; P enrolled package-only classic token; M your enrolled master token (only when the App cannot do it)'};
 const queryProperties={operation:OP,params:PARAMS,body:BODY,owner:OWNER,cred:CRED};
 
 function ownerFor(a,c,p) {
@@ -36,14 +36,15 @@ function scopeFor(a,c,p,op) {
     kind:repo?'universal-repo':'universal-account'};
 }
 function credentials(a,op) {
-  if(typeof a.cred!=='undefined' && !['I','U','P'].includes(a.cred))
-    throw new TypeError('Only enrolled I, U and package-only P credentials are supported.');
+  if(typeof a.cred!=='undefined' && !['I','U','P','M'].includes(a.cred))
+    throw new TypeError('Only enrolled I, U, M and package-only P credentials are supported.');
   const packages=/^\/(?:orgs\/\{org\}|users\/\{username\}|user)\/packages(?:\/|$)/.test(op.path);
-  if ((packages && a.cred !== 'P') || (a.cred === 'P' && !packages))
-    throw new TypeError('Package routes require explicitly enrolled P authorization; P cannot be used for other operations.');
+  // M (master token) may reach package routes too; P stays package-only.
+  if ((packages && a.cred !== 'P' && a.cred !== 'M') || (a.cred === 'P' && !packages))
+    throw new TypeError('Package routes require explicitly enrolled P or M authorization; P cannot be used for other operations.');
   const userOnly=/^\/user(?:\/|$)/.test(op.path);
-  if(userOnly && !packages && a.cred!=='U')
-    throw new TypeError('This operation requires explicitly selected U authorization.');
+  if(userOnly && !packages && a.cred!=='U' && a.cred!=='M')
+    throw new TypeError('This operation requires explicitly selected U or M authorization.');
   return a.cred??'I';
 }
 function resolve(a,c,methods,writing=false) {

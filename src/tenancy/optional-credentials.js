@@ -11,6 +11,8 @@ const SUBJECT=/^[1-9][0-9]{0,18}$/;
 const DENIED='Optional GitHub authority was not verified for this private member.';
 const denied=()=>new Error(DENIED);
 const spec=Object.freeze({
+  // GOD-1: 'M' (master token) has no per-account probe; see master-credential.js. Present so its AAD context is valid.
+  M:{operation:'GET /user',scope:null,endpoint:()=>'https://api.github.com/user',resource:(account,subject)=>'user/'+subject},
   K:{operation:'GET /notifications',scope:'notifications',
     endpoint:()=>'https://api.github.com/notifications?per_page=1',
     resource:(account,subject)=>'user/'+subject},

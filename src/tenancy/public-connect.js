@@ -366,7 +366,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
    * `account` says which of the connected accounts a token is for. */
   async function godChoose({ handle, browserCsrf, choice, account, offerIndex }) {
     active();
-    if (!STATE.test(String(handle ?? '')) || !sameState(handle, browserCsrf) || !['finish', 'notifications', 'package', 'continue', 'add'].includes(choice)) throw refused('r25');
+    if (!STATE.test(String(handle ?? '')) || !sameState(handle, browserCsrf) || !['finish', 'master', 'notifications', 'package', 'continue', 'add'].includes(choice)) throw refused('r25');
     const flow = await directory().consumePublicFlow(sha(handle), 'god');
     if (!flow || flow.purpose || !flow.tenantId || !flow.identityId || !flow.accountLogin) throw refused('r26');
     const logins = flow.accountLogin.split(',');
@@ -404,6 +404,15 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     if (choice === 'finish') {
       return { redirect: await mintCode({ db, tenantId: flow.tenantId, identityId: flow.identityId, logins,
         flow: { clientId: flow.clientId, redirectUri: flow.redirectUri, codeChallenge: flow.codeChallenge, clientState: flow.clientState }, mode }) };
+    }
+    if (choice === 'master') {
+      const enrollment = createPrivateOptionalEnrollment({ env, fetchImpl, directoryFactory: directory,
+        tenantAccess: (dir, claim) => openAuthorizedTenantDb({ directory: dir, tenantId: claim.tenantId, verifiedIdentityId: claim.identityId,
+          connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory }) });
+      const details = await enrollment.start({ client_id: flow.clientId, account: 'master', kind: 'M', redirect_uri: flow.redirectUri },
+        { clientState: flow.clientState, codeChallenge: flow.codeChallenge, mode, profile: 'full', listing: 'compact', accounts: logins },
+        { tenantId: flow.tenantId, identityId: flow.identityId });
+      return { optional: { ...details, oauth: true } };
     }
     const target = typeof account === 'string' && logins.includes(account.toLowerCase()) ? account.toLowerCase() : logins[0];
     const row = await db.getAccount(target);

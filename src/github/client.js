@@ -12,7 +12,7 @@ import { assertNotBlocked, rateLimited, recordRate, resourceFor, takeWriteSlot }
 export const GITHUB_API_VERSION = '2026-03-10';
 /** How long one request may spend waiting on GitHub's `retry-after` / reset times before it gives up (A9). */
 export const DEFAULT_BUDGET_MS = 20_000;
-export const CREDENTIAL_KINDS = Object.freeze(['I', 'U', 'K', 'P']);
+export const CREDENTIAL_KINDS = Object.freeze(['I', 'U', 'K', 'P', 'M']);
 const USER_AGENT = 'robinson-github-mcp';
 const KEY_EXCLUDED_ARGS = Object.freeze(['dryRun', 'confirm', 'fields', 'detail', 'requestKey']);
 const BUCKET_MS = 10 * 60 * 1000;
@@ -85,10 +85,14 @@ function resolveAccount(connection, owner) {
  */
 export async function credentialFor(ctx, { owner, cred = 'I', scope } = {}) {
   if (!CREDENTIAL_KINDS.includes(cred)) throw new TypeError(`Unknown credential kind "${cred}".`);
-  if ((cred==='K'||cred==='P') && ctx.connection?.pass===true &&
+  if ((cred==='K'||cred==='P'||cred==='M') && ctx.connection?.pass===true &&
       typeof ctx.credentials?.authorizeOptionalRequest==='function')
     throw new GithubClientError('outside_scope',
       'Private optional credentials cannot be delegated to a service pass.');
+  // The master token never works for a read-only connection, and never for a pass or a narrowed scope.
+  if (cred==='M' && (ctx.connection?.profile==='read_only' || ctx.connection?.pass===true || scope?.repositories?.length || scope?.permissions))
+    throw new GithubClientError('outside_scope',
+      'The master token is not available to read-only connections or narrowed scopes.');
   const account = resolveAccount(ctx.connection, owner);
   // A pass limited to repositories gets installation tokens limited to them, whatever the tool asked for.
   const passRepos = Array.isArray(ctx.connection?.repos) ? ctx.connection.repos.map((slug) => slug.split('/')[1]) : null;
@@ -144,7 +148,7 @@ export async function githubFor(ctx, { owner, cred = 'I', scope } = {}) {
     const write = isWrite(method, { ...options, url });
     // Classic package credentials never authorize arbitrary REST, GraphQL or foreign accounts.
     // Validate the expanded URL BEFORE any request or rate/write side effect.
-    if ((cred==='K'||cred==='P') &&
+    if ((cred==='K'||cred==='P'||cred==='M') &&
         typeof ctx.credentials?.authorizeOptionalRequest==='function')
       await ctx.credentials.authorizeOptionalRequest({account,kind:cred,method,url});
     else if (cred === 'P') await assertPackageRequest(ctx, account, method, url);

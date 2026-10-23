@@ -8,6 +8,7 @@ import {verifyTenantCredential} from './routed-credential.js';
 import {verifyGithubBearerIdentity} from './github-identity.js';
 import {enrollVerifiedPilotOptionalCredential,currentPilotOptionalReadback}
   from './optional-credentials.js';
+import {enrollMasterCredential,currentMasterReadback,MASTER_HANDLE} from './master-credential.js';
 import {publicOrigin} from '../core/http.js';
 import {validRedirectUri} from '../core/oauth.js';
 import {admitTenantOAuth} from './runtime-limits.js';
@@ -17,7 +18,7 @@ const digest=s=>createHash('sha256').update(s).digest('hex');
 const randomState=()=>randomBytes(32).toString('base64url');
 const LOGIN=/^[a-z0-9][a-z0-9-]{0,38}$/;
 const OPERATIONS=Object.freeze({
-  K:'GET /notifications',P:'GET /orgs/{org}/packages'
+  K:'GET /notifications',P:'GET /orgs/{org}/packages',M:'GET /user'
 });
 const denied=()=>new Error('Additional GitHub credential setup was not verified. Restart from your connected client.');
 const isAccount=(row,login,env)=>row?.login?.toLowerCase()===login &&
@@ -70,8 +71,9 @@ export function createPrivateOptionalEnrollment({
       throw denied();
     const scope=await scoped(client_id,hint);
     if(!scope.client.redirect_uris.includes(redirect_uri))throw denied();
-    const row=await scope.db.getAccount(account);
-    if(!isAccount(row,account,env))throw denied();
+    // The master token (M) belongs to the person, not to one account; only the fixed handle is accepted for it.
+    if(kind==='M'){ if(account!==MASTER_HANDLE)throw denied(); }
+    else{ const row=await scope.db.getAccount(account); if(!isAccount(row,account,env))throw denied(); }
     const subject=await scope.directory.getPilotVerifiedSubject(
       scope.claim.tenantId,scope.claim.identityId);
     if(!/^[1-9][0-9]{0,18}$/.test(String(subject)) ||
@@ -121,33 +123,44 @@ export function createPrivateOptionalEnrollment({
       flow.membershipRevision!==scope.tenant.membershipRevision||
       flow.pilotRevision!==scope.tenant.pilotRevision||
       !scope.client.redirect_uris.includes(flow.redirectUri))throw denied();
-    const row=await scope.db.getAccount(flow.accountLogin);
-    if(!isAccount(row,flow.accountLogin,env) ||
-      !Object.hasOwn(OPERATIONS,flow.kind))throw denied();
+    const isMaster=flow.kind==='M';
+    if(isMaster&&flow.accountLogin!==MASTER_HANDLE)throw denied();
+    // M belongs to the person, not to one account. (Every connected account is re-checked below when a connection
+    // is being completed.)
+    const row=isMaster ? null : await scope.db.getAccount(flow.accountLogin);
+    if(!Object.hasOwn(OPERATIONS,flow.kind) || (!isMaster&&!isAccount(row,flow.accountLogin,env)))throw denied();
     const o=flow.oauthContext;
     if(o && (action!=='save'||!/^[A-Za-z0-9_-]{43}$/.test(o.codeChallenge)||
       (o.clientState!==null && (typeof o.clientState!=='string'||o.clientState.length>256))||
       !['preview','production'].includes(o.mode)||
       !['read_only','everyday','full'].includes(o.profile)||
       !['compact','catalog'].includes(o.listing)||
-      (o.mode==='production' && row.production_enabled!==true)))throw denied();
+      (!isMaster && o.mode==='production' && row.production_enabled!==true)))throw denied();
     const subject=await scope.directory.getPilotVerifiedSubject(
       flow.tenantId,flow.identityId);
     if(!/^[1-9][0-9]{0,18}$/.test(String(subject)) ||
       !Number.isSafeInteger(Number(subject)))throw denied();
     let status;
     if(action==='save'){
-      await enrollVerifiedPilotOptionalCredential({
-        directory:scope.directory,db:scope.db,tenant:scope.tenant,
-        accountLogin:flow.accountLogin,kind:flow.kind,bearer:value,
-        expectedFingerprint:flow.expectedFingerprint,env,fetchImpl});
-      const saved=await scope.directory.getPilotOptionalCredential({
-        tenantId:flow.tenantId,identityId:flow.identityId,
-        accountLogin:flow.accountLogin,kind:flow.kind});
-      const resource=flow.kind==='K'?'user/'+subject:'org/'+row.account_id;
-      if(!currentPilotOptionalReadback({
-        row:saved,tenant:scope.tenant,account:row,subject,kind:flow.kind,
-        operation:OPERATIONS[flow.kind],resource}))throw denied();
+      if(isMaster){
+        await enrollMasterCredential({directory:scope.directory,tenant:scope.tenant,bearer:value,
+          expectedFingerprint:flow.expectedFingerprint,env,fetchImpl});
+        const savedMaster=await scope.directory.getPilotOptionalCredential({
+          tenantId:flow.tenantId,identityId:flow.identityId,accountLogin:MASTER_HANDLE,kind:'M'});
+        if(!currentMasterReadback({row:savedMaster,subject}))throw denied();
+      }else{
+        await enrollVerifiedPilotOptionalCredential({
+          directory:scope.directory,db:scope.db,tenant:scope.tenant,
+          accountLogin:flow.accountLogin,kind:flow.kind,bearer:value,
+          expectedFingerprint:flow.expectedFingerprint,env,fetchImpl});
+        const saved=await scope.directory.getPilotOptionalCredential({
+          tenantId:flow.tenantId,identityId:flow.identityId,
+          accountLogin:flow.accountLogin,kind:flow.kind});
+        const resource=flow.kind==='K'?'user/'+subject:'org/'+row.account_id;
+        if(!currentPilotOptionalReadback({
+          row:saved,tenant:scope.tenant,account:row,subject,kind:flow.kind,
+          operation:OPERATIONS[flow.kind],resource}))throw denied();
+      }
       status='read-observed-at-enrollment';
     }else{
       // A stolen client selector is never enough to erase another person's
@@ -172,7 +185,7 @@ export function createPrivateOptionalEnrollment({
       let accounts=[flow.accountLogin];
       if(String(flow.clientId).startsWith('pcl_') && Array.isArray(o.accounts)){
         accounts=[...new Set(o.accounts)];
-        if(accounts.length<1||accounts.length>10||!accounts.includes(flow.accountLogin)||
+        if(accounts.length<1||accounts.length>10||(!isMaster&&!accounts.includes(flow.accountLogin))||
           !accounts.every(x=>typeof x==='string'&&LOGIN.test(x)))throw denied();
         for(const login of accounts){
           const other=await scope.db.getAccount(login);
@@ -194,5 +207,16 @@ export function createPrivateOptionalEnrollment({
     return Object.freeze({status,kind:flow.kind,
       operation:OPERATIONS[flow.kind],destination:destination.toString()});
   }
-  return {start,startOAuth,finish};
+  // GOD-1: "add the master token any time". The one-use link made by github_master_token_link arrives here. The link
+  // itself proves nothing; the token pasted next must belong to the same GitHub person who is connected.
+  async function startMasterLink(handle){
+    origin();
+    if(typeof handle!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(handle))throw denied();
+    const directory=directoryFactory();
+    const flow=await directory.consumePublicFlow(digest(handle),'god');
+    if(!flow||flow.purpose!=='master'||!flow.tenantId||!flow.identityId)throw denied();
+    return await begin({client_id:flow.clientId,account:MASTER_HANDLE,kind:'M',redirect_uri:flow.redirectUri},
+      null,{tenantId:flow.tenantId,identityId:flow.identityId});
+  }
+  return {start,startOAuth,startMasterLink,finish};
 }
