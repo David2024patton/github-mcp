@@ -16,7 +16,9 @@ const appId=911201,org='example-org',accountId=901101;
 const routes=['GET /app','GET /app/hook/config','PATCH /app/hook/config',
   'GET /app/hook/deliveries/{delivery_id}',
   'GET /app/hook/deliveries',
-  'POST /app/hook/deliveries/{delivery_id}/attempts'];
+  'POST /app/hook/deliveries/{delivery_id}/attempts',
+  'GET /app/installations/{installation_id}',
+  'GET /app/installation-requests'];
 const owner={client_id:'real-db-jwt-owner',accounts:[org],
   default_account:org,profile:'read_only',mode:'preview',listing:'catalog'};
 let db,gh,credentials,publicKey;
@@ -159,6 +161,51 @@ describe('App JWT owner isolation and sealed signing on real PostgreSQL',()=>{
     const repeat=await run(conn,'github_app_webhook_redeliver',args);
     expect(repeat.structuredContent.status).toBe('replayed');
     expect(gh.calls.filter(c=>c.method==='POST')).toHaveLength(1);
+  });
+  it('verifies JWT-only enrolled installation permissions and filters other App request tenants with real PostgreSQL',async()=>{
+    const start=gh.calls.length;
+    gh.when(routes[0]).reply(200,{id:appId,slug:'owner-app',
+      name:'Owner App',owner:{login:org,id:accountId}});
+    gh.when(routes[6]).reply(200,{
+      id:911202,app_id:appId,
+      account:{id:accountId,login:org,
+        private:{access_token:'PROVIDER-CONFIDENTIAL'}},
+      target_id:accountId,target_type:'Organization',
+      permissions:{metadata:'read',issues:'write'},
+      events:['issues'],repository_selection:'selected',
+      suspended_at:null,credentials:{jwt:'PROVIDER-CONFIDENTIAL'}});
+    gh.when(routes[7]).reply(200,[
+      {id:832,account:{id:999,login:'another-org'},
+        requester:{id:812,login:'foreign-requester'},
+        created_at:'2026-10-22T13:00:00Z',secret:'NOT-OURS'},
+      {id:833,account:{id:accountId,login:org},
+        requester:{id:913,login:'owner-member',
+          secret:'NEVER-REVEAL'},
+        created_at:'2026-10-22T13:05:00Z',
+        secret:'NEVER-REVEAL'}
+    ]);
+    const grant=await run(owner,'github_app_owner_installation_grants');
+    expect(grant.isError).not.toBe(true);
+    expect(grant.structuredContent).toMatchObject({
+      app_id:appId,installation_id:911202,org,
+      permissions:{metadata:'read',issues:'write'},
+      events:['issues'],cached_permissions_match:false});
+    const pending=await run(owner,'github_app_owner_installation_requests',
+      {max:8,page:1});
+    expect(pending.isError).not.toBe(true);
+    expect(pending.structuredContent.requests).toEqual([
+      {id:833,requester_login:'owner-member',
+        created_at:'2026-10-22T13:05:00Z'}]);
+    expect(JSON.stringify({grant:grant.structuredContent,
+      pending:pending.structuredContent}))
+      .not.toMatch(/NEVER-REVEAL|PROVIDER-CONFIDENTIAL|NOT-OURS|foreign-requester/);
+    const calls=gh.calls.slice(start);
+    expect(calls.map(c=>c.route)).toEqual([
+      routes[0],routes[6],routes[0],routes[7]]);
+    expect(calls.every(c=>c.method==='GET'&&
+      (c.path==='/app'||c.path.startsWith('/app/')))).toBe(true);
+    expect(gh.invalid).toEqual([]);
+    expect(gh.unmatched).toEqual([]);
   });
   it('refuses an unrelated connection or delegated pass before JWT issuance or provider call',async()=>{
     gh.calls.length=0;
