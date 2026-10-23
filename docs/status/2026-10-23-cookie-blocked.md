@@ -1,0 +1,3 @@
+# 2026-10-23 — Sign-in button: the phone browser returned no cookies at all
+
+Live log: "form-check origin=ok cookie=missing anyCookies=none". The server sends the page's safety cookie correctly (checked its real response headers); the browser did not send anything back. Added: the refusal log line now records the browser's fetch hints and a short user-agent, and a person whose browser returns no cookie sees a plain "Your browser blocked a cookie" page instead of "Could not connect". Next: release, Chris retries, read the log to learn which browser/app it is, then fix properly (possibly a cookie-free form step).

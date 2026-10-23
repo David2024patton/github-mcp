@@ -530,6 +530,12 @@ describe('PUB-6 a person deletes their own data', () => {
     const refused = await call((req, res) => publicForget(req, res, { env, connect }),
       request('POST', { forget: '1', action: 'start', form_csrf: 'x'.repeat(43) }, { origin: ORIGIN }));
     expect(refused.statusCode).toBe(403);
+    // A browser that returns no cookie at all gets a plain explanation, not the generic refusal.
+    const client = await make().registerClient({ redirect_uris: [CB] });
+    const blocked = await call((req, res) => publicAuthorize(req, res, { env, connect: make() }),
+      request('POST', { ...authorizeParams(client), form_csrf: 'x'.repeat(43) }, { origin: ORIGIN }));
+    expect(blocked.statusCode).toBe(403);
+    expect(blocked.body).toContain('blocked a cookie');
     const off = await call((req, res) => publicForget(req, res, { env: { ...env, GITHUB_PUBLIC_CONNECT: undefined }, connect }), request('GET', { forget: '1' }));
     expect(off.statusCode).toBe(404);
   });
