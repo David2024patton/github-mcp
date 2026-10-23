@@ -108,7 +108,7 @@ describe('X-1 undo of a finished change', () => {
     await w.db.recordChange(row());
     const out = await run(w, 'github_undo_change', { changeId: 1, confirm: true });
     expect(out).toMatchObject({ status: 'refused' });
-    expect(out.reason).toContain('production mode');
+    expect(out.reason).toContain('Read-only');
     expect(w.gh.calls.filter((c) => c.method !== 'GET')).toEqual([]);
   });
 

@@ -59,7 +59,7 @@ async function undoChange(args, ctx) {
     return refuse(`The opposite needs ${inverse.tool}, which this connection's profile cannot use.`, about);
   }
   if (row.production === true && connection.mode !== 'production') {
-    return refuse('That was a production change, and this connection is in preview mode. Connect in production mode to undo it.', about);
+    return refuse('That was a production change, and this connection is in preview mode. To undo it, connect again without "Read-only" ticked.', about);
   }
   const { later, unprovable } = await overtakenBy(ctx, row, inverse.tool);
   if (later.length) {

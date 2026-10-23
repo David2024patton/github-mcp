@@ -134,13 +134,13 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     return names.join(',');
   };
 
-  /** The consent page was submitted: tier, optional account names, optional "allow changes". */
+  /** The consent page was submitted: tier, optional account names, optional "read-only". */
   async function start(p) {
     active(); await ensureSchema(); checkAuthorizeRequest(p);
     const client = await loadClient(p.client_id, p.redirect_uri);
     const tier = p.tier === 'god' ? 'god' : 'standard';
     return await openSignIn({ client, flow: { redirectUri: p.redirect_uri, clientState: p.state, codeChallenge: p.code_challenge,
-      tier, accountLogin: parseAccounts(p.account), allowChanges: p.allow_changes === 'yes',
+      tier, accountLogin: parseAccounts(p.account), allowChanges: p.read_only !== 'yes',
       timeZone: p.time_zone ? (validZone(String(p.time_zone)) ?? (() => { throw refused(); })()) : null } });
   }
 
@@ -182,7 +182,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       if (!await db.setInstallation(login, { installationId: installation.installationId,
         repositorySelection: installation.repositorySelection, permissions: installation.permissions, status: 'active' })) throw refused();
       // The person was verified as the owner of this account (own account, or organization admin) before we got here, and
-      // ticked "let my assistant make changes" on a page that says what that means. That is their own confirmation.
+      // used a page that says plainly that their assistant can make changes (each one still confirmed) unless they tick Read-only. That is their own confirmation.
       if (allowChanges === true && env.VERCEL_ENV === 'production') await db.setProductionEnabled(login, true);
       logins.push(login);
     }
