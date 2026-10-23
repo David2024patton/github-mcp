@@ -1,0 +1,3 @@
+Real-account acceptance (CAP-5 item 2 and the 56-row queue): owner approved using the saved developer connection, but the
+tool environment's safety classifier denied reading the Hub's Vercel project variables (credential exploration). Not worked
+around. Owner checklist row B2 now says exactly what to approve. Development, merges and the capability report are unaffected.

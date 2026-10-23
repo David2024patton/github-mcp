@@ -23,8 +23,13 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 
 ## B2. Give the agent a working connection to your deployed server (lets agents run the real-account tests for you)
 
-- [ ] **Only if the agent says it has no saved connection:** it will tell you exactly which sign-in screen to open.
-      You click "Allow" once; after that agents re-use the saved connection and never ask again. (`docs/pr-cards/DEVELOPER-CONNECTION.md`)
+- [ ] **Let an agent use the saved connection (one-time permission).** On 2026-10-22 you told the agent to use it, but the
+      environment's automatic safety check refused the step (looking up the saved sign-in in your Hub project's Vercel
+      settings) and the agent correctly did not work around it. Pick ONE of: (a) in Claude Code, approve that single
+      action when it is offered or add an allow rule for reading the Hub variable `RTOOL_BUILDER_SESSION`; or (b) skip
+      it and do the one-click "Allow" sign-in described in `docs/pr-cards/DEVELOPER-CONNECTION.md` (the agent will say
+      which screen). Either way it is a one-time step. Until then the 56 real-account checks wait; development is not
+      blocked.
 
 ## B3. Things that cannot be tested until you have them
 
