@@ -24,7 +24,9 @@ function page(res, status, title, body, { cookies = [] } = {}) {
   if (cookies.length) res.setHeader('Set-Cookie', cookies);
   return send(res, status, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${h(title)}</title><style>${STYLE}</style></head><body><main>${brandHeader()}<h1>${h(title)}</h1>${body}${brandFooter()}</main></body></html>`, 'text/html; charset=utf-8');
 }
-function failure(res, error) {
+// Internal reason only (never shown to the person, never a secret): lets the owner see why a sign-in was refused.
+function failure(res, error, where = '') {
+  try { console.error('[public-connect] refused', where, error?.name ?? 'none', error?.code ?? '', String(error?.message ?? '').slice(0, 160)); } catch { /* logging must never break the page */ }
   if (error instanceof TenantCapacityError) {
     res.setHeader('Retry-After', String(error.retryAfterSeconds));
     return page(res, 429, 'Busy right now', '<p>This connection is temporarily busy. Please try again in a minute.</p>');
@@ -78,13 +80,14 @@ export async function publicAuthorize(req, res, { env = process.env, ...deps } =
     }
     if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return send(res, 405, { error: 'method_not_allowed' }); }
     const cookie = cookieOf(req, FORM);
-    if (String(req.headers?.origin || '') !== origin || !cookie || !same(cookie, p.form_csrf)) return failure(res, null);
+    if (String(req.headers?.origin || '') !== origin || !cookie || !same(cookie, p.form_csrf))
+      return failure(res, null, `form-check origin=${req.headers?.origin ? (String(req.headers.origin) === origin ? 'ok' : 'different') : 'missing'} cookie=${cookie ? 'present' : 'missing'}`);
     const { url, csrfState } = await connect.start(p);
     res.setHeader('Set-Cookie', [clearCookie(FORM, FORM_PATH), setCookie(STATE, csrfState, STATE_PATH, 'Lax')]);
     res.setHeader('Referrer-Policy', 'no-referrer');
     res.setHeader('Location', url);
     return res.status(302).end();
-  } catch (error) { return failure(res, error); }
+  } catch (error) { return failure(res, error, 'authorize'); }
 }
 
 /** "Delete my data", by the person themselves. GET shows what will happen; POST starts a GitHub sign-in (proof it is them),
