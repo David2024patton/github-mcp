@@ -1219,7 +1219,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "BLOCKED",
     "completionGate": false,
-    "lastEvidence": "2026-10-15 restored adapter: Adapter recovery does not configure optional Hub federation or grant its denied namespaces. Prior actual Hub evidence remains foundation-only. Next: Configured authorized service grant/relay and compatible Hub route. Hub owner configures explicit grant before route acceptance; no provider-specific workaround.",
+    "lastEvidence": "2026-10-23 owner decision (Chris): the Hub is responsible for discovering and connecting to this product; relay/sandbox routes are Hub-owned and are not tracked here. This server only has to keep following the Hub's published spec (docs/HUB-COMPATIBILITY.md).",
     "nextAction": "Optional Hub must be explicitly configured with upstream RTC pass and connection permission; observed federation not_configured/provider calls disabled. Standalone native MCP stays independent."
   },
   {
@@ -1232,7 +1232,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "BLOCKED",
     "completionGate": false,
-    "lastEvidence": "2026-10-15 restored adapter: Adapter recovery supplies neither scoped RTC pass nor authorized Sandbox route/project. Next: Approved compatible Sandbox runner, scoped service pass and zero-spend cleanup authority. Owner supplies authorized runner/grant; do not provision paid resources.",
+    "lastEvidence": "2026-10-23 owner decision (Chris): the Hub is responsible for discovering and connecting to this product; relay/sandbox routes are Hub-owned and are not tracked here. This server only has to keep following the Hub's published spec (docs/HUB-COMPATIBILITY.md).",
     "nextAction": "Authorized compatible Sandbox project/runner plus direct scoped RTC pass and zero-spend enforcement/cleanup authority; no new paid Sandbox is provisioned."
   },
   {

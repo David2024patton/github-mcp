@@ -22,10 +22,9 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 - [x] **Phone check, ChatGPT** — done 2026-10-22: ChatGPT reached the custom server as robinson-ai-scratch (read-only preview, by your
       choice of permissions at sign-in).
 - [x] **PUB-4 scope decided:** covers Claude and ChatGPT both; code part merged.
-- [ ] **Later, whenever convenient (blocks nothing): desktop app test.** Open the connector in the desktop Claude or ChatGPT app and ask
-      "which GitHub account am I connected to?" Also optionally disconnect and reconnect once on a phone. Tell the agent the answer.
-- [ ] **Later (blocks nothing): disconnect and reconnect test.** In Claude or ChatGPT, remove the custom GitHub connector, add it back, and ask
-      "which GitHub account am I connected to?" Tell the agent the result. (Closes the "revocation then recovery" line of the final acceptance.)
+- [x] **Phone check, ChatGPT on Android** — done: it works (Chris, 2026-10-23).
+- [ ] **Optional, only if the chance comes up: ChatGPT on iPhone, and the desktop app.** Ask "which GitHub account am I connected to?" and tell the agent. Blocks nothing; Android already proves the sign-in.
+- [x] **Disconnect and reconnect test — done (Chris, 2026-10-23):** disconnecting and reconnecting has worked many times (adding accounts, switching between preview and production).
 - [ ] **Two-minute tidy-up (optional):** delete the old, finished branches on the repository page (Branches; GitHub's "delete branch after merge" setting would stop new ones piling up): ai/o2-org-members-20261014,
       ai/o2-owner-org-members-20261014, docs/authority-corrections-acceptance-handoff, docs/hub-contract-reference-20261019 (all merged), and
       scratch/status-fragments (its content is redundant), plus the merged ai/claude/* working branches. The agent's environment is not allowed to delete branches.
@@ -48,10 +47,7 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 
 ## C. Decisions only you can make
 
-- [ ] **Release approval:** an agent will ask in chat only when everything else is done and a release would unlock
-      a concrete next task. Otherwise the daily automatic release handles it.
-- [ ] **Optional paid GitHub plan:** some protections on private repositories need a paid GitHub plan. The agent
-      will never buy it. Decide whether you want it; until then those checks stay on hold.
+- [x] **Releases are pre-authorized (Chris, 2026-10-23):** agents release when needed and say so afterwards.
 - [ ] **Turning on production** for each real account, when you want the server to make real changes there
       (`docs/GO-LIVE-CHECKLIST.md` section 3).
 
@@ -66,4 +62,9 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 - [x] **(done 2026-10-23)** Sign in as yourself on the setup page ("Authorize as me") for `Robinson-AI-Systems` and `christcr2012`.** This lets the agent read your personal settings and plan. Your new GitHub Pro covers only personal repositories; `Robinson-AI-Systems` is on GitHub's free organization plan, so organization budgets, Codespaces access and private-repo branch protection stay blocked until you upgrade that organization (your money decision).
 - [ ] **Optional, 2 minutes: prove webhook signatures.** The agent created and removed a test webhook but cannot see its signing secret (it is shown only behind your passphrase). To prove the signature check, create a test webhook through the agent, open the one-time link it returns, and compare against a receiver you control.
 - [x] **Enterprise trial started on `robinson-ai-scratch` (done 2026-10-23).** It is free for 30 days and ends on its own; do not add a card. Budgets can now be read, rulesets accept "evaluate" mode, and private-repo branch protection works there. Still not working there, and not a plan problem: creating a new budget and the Codespaces access setting both answer "not found". You decided on 2026-10-23 that this is sufficient; no further budget testing.
-- [ ] **Decide later:** whether `Robinson-AI-Systems` should move to a paid organization plan (only needed if you want private-repo protection or budgets on that organization).
+- [x] **Paid plan for `Robinson-AI-Systems` — not needed now (Chris, 2026-10-23).** Private-repo protection and budgets on that organization stay untested there; they are covered on the scratch organization. Revisit only if you want them.
+
+## Updated 2026-10-23 after Chris's answers
+- [ ] **Optional, only if really needed: a second GitHub account** (a throwaway you control) to finish the collaborator-invitation test (H3). Agents will say if it is the last thing blocking a result.
+- [ ] **Package token — needs a walk-through.** When you are ready, tell the agent "walk me through the package token" and it will guide you one small step at a time. Blocks nothing.
+- The Hub is not a checklist item. The Hub finds and connects to this server; our only job is to keep following the Hub's published spec (`docs/HUB-COMPATIBILITY.md`). No Hub-run tests are tracked here.
