@@ -190,3 +190,19 @@ describe('CAP-1 source inventory: no fabricated functional coverage', () => {
     expect(validateCapabilityInventory(inventory, options).verifiedOperations).toBe(0);
   });
 });
+
+describe('CAP-5 capability report', () => {
+  it('states every figure with its denominator and never a bare percentage', async () => {
+    const {printReport} = await import('../../scripts/capability-inventory.mjs');
+    const {registry} = await import('../../src/tools/index.js');
+    const {buildCapabilityInventory} = await import('../../src/github/capability-inventory.js');
+    const inv = buildCapabilityInventory({registryTools: registry.tools});
+    const text = printReport(inv);
+    expect(text).toContain('Denominator: ' + inv.summary.totalOperations + ' operations');
+    expect(text).toContain('Verified against a real account: ' + inv.summary.verifiedOperations + ' of ' + inv.summary.totalOperations);
+    expect(text).not.toMatch(/\d\s?%/);
+    const changed = structuredClone(inv);
+    changed.summary.verifiedOperations = 7;
+    expect(printReport(changed)).toContain('Verified against a real account: 7 of');
+  });
+});

@@ -24,9 +24,30 @@ export function printSummary(catalog, {maxFamilies = 80} = {}) {
   return lines.join('\n') + '\n';
 }
 
+/** CAP-5: plain-English report. Every figure is "X of N" with its denominator; no bare percentage is ever printed. */
+export function printReport(catalog) {
+  const s = catalog.summary;
+  const n = s.totalOperations;
+  const universal = Object.values(s.families).reduce((a, f) => a + f.universalCandidates, 0);
+  const of = (x) => x + ' of ' + n;
+  return [
+    'GitHub MCP capability report (source-pinned; NOT live acceptance)',
+    'Denominator: ' + n + ' operations in the pinned GitHub REST 2026-03-10 and GraphQL schema 2026-10-09 sources.',
+    '- Verified against a real account: ' + of(s.verifiedOperations),
+    '- Dedicated tool exists, not yet verified live: ' + of(s.byState['implemented-unverified']),
+    '- No dedicated tool; may be reachable through a universal tool where its policy allows: ' + of(universal) + ' (candidates, not proof)',
+    '- GraphQL mutations with no write specification (not covered): ' + of(s.byState.missing),
+    '- Not yet classified: ' + of(s.byState.unresolved),
+    '- Provider-retired: ' + of(s.byState['provider-retired']) + '; provider-UI-only: ' + of(s.byState['provider-UI-only']),
+    '- Rows with unresolved official-source conflicts: ' + of(s.unresolvedConflictRows),
+    'Categories overlap (a row can be unclassified and a universal candidate), so they do not sum to the denominator.',
+    'Coverage percentage: not stated; no proven numerator exists until live verification records rows as verified.'
+  ].join('\n') + '\n';
+}
+
 function main(args) {
-  if (args.length !== 1 || !['--summary','--validate','--json'].includes(args[0])) {
-    console.error('Usage: node scripts/capability-inventory.mjs --summary|--validate|--json');
+  if (args.length !== 1 || !['--summary','--validate','--json','--report'].includes(args[0])) {
+    console.error('Usage: node scripts/capability-inventory.mjs --summary|--validate|--json|--report');
     process.exitCode = 2;
     return;
   }
@@ -34,6 +55,8 @@ function main(args) {
   const result = validateCapabilityInventory(inventory);
   if (args[0] === '--json') {
     process.stdout.write(JSON.stringify(inventory) + '\n');
+  } else if (args[0] === '--report') {
+    process.stdout.write(printReport(inventory));
   } else if (args[0] === '--summary') {
     process.stdout.write(printSummary(inventory));
   } else {
