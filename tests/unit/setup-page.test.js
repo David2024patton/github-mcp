@@ -948,6 +948,21 @@ describe('dedicated package credential enrollment', () => {
     expect((await t.db.getAccount('example-org')).package_enc).toBeNull();
     expect(t.gh.calls.some(c => c.route === 'GET /user')).toBe(false);
   });
+  it.each([
+    ['', /not a "classic" token|does not have the read:packages/],
+    ['notifications', /does not have the read:packages permission\. GitHub reports: notifications/],
+    ['read:packages, admin:org', /extra permissions.*admin:org/]
+  ])('tells the owner exactly what is wrong with the token scopes: %s', async (scopes, message) => {
+    const t = await prepare(scopes);
+    const r = await t.post({ action: 'add-package', login: 'example-org', token });
+    expect(r.statusCode).toBe(400);
+    expect(JSON.stringify(r)).toMatch(message);
+  });
+  it('accepts the scope list GitHub really reports when write and delete are ticked (read is implied)', async () => {
+    const t = await prepare('delete:packages, write:packages');
+    expect((await t.post({ action: 'add-package', login: 'example-org', token })).statusCode).toBe(200);
+    expect(await t.credentials.token({ account: 'example-org', cred: 'P' })).toBe(token);
+  });
   it('rejects another user and preserves an existing credential', async () => {
     const t = await prepare('read:packages', 'outsider');
     await t.credentials.storePackage('example-org', token, { scopes: ['read:packages'], actor: 'example-user' });
