@@ -8,7 +8,7 @@ import { COMMON_ZONES } from '../core/time-zone.js';
 import { BRAND_CSS, brandHeader, brandFooter } from '../brand/brand.js';
 
 const CSP = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self' https://github.com; base-uri 'none'; frame-ancestors 'none'";
-const FORM = 'gh_public_form', STATE = 'gh_public_state', GOD = 'gh_public_god';
+const FORM = 'gh_public_form', STATE = 'gh_public_state', GOD = 'gh_public_god', FORGET = 'gh_public_forget';
 const FORM_PATH = '/api/oauth', STATE_PATH = '/api/github', GOD_PATH = '/api/tenant/optional';
 const fresh = () => randomBytes(32).toString('base64url');
 const cookieOf = (req, name) => new RegExp(`(?:^|;\\s*)${name}=([A-Za-z0-9._-]{32,300})(?:;|$)`).exec(String(req.headers?.cookie || ''))?.[1] || null;
@@ -73,7 +73,7 @@ export async function publicAuthorize(req, res, { env = process.env, ...deps } =
         '<div class="choice"><input type="radio" id="t1" name="tier" value="standard" checked><label for="t1"><strong>Standard</strong><small>Everything that signing in with GitHub alone can unlock. Nothing else to enter.</small></label></div>' +
         '<div class="choice"><input type="radio" id="t2" name="tier" value="god"><label for="t2"><strong>God mode</strong><small>Also lets you add extra keys (package and notifications tokens) on the next page to unlock the remaining tools. You can skip any of them.</small></label></div>' +
         '<div class="choice"><input type="checkbox" id="c1" name="read_only" value="yes"><label for="c1"><strong>Read-only (optional)</strong><small>Your assistant can look and preview but cannot change anything. Leave this unticked for the full toolset: on accounts you own it can create, edit and merge things, and it asks you to confirm each change first.</small></label></div>' +
-        '<button type="submit">Continue to GitHub</button></form>',
+        '<button type="submit">Continue to GitHub</button></form><p><small>Connected before and want your data removed? <a href="/api/oauth/authorize?forget=1">Delete my data</a>.</small></p>',
         { cookies: [setCookie(FORM, csrf, FORM_PATH, 'Strict')] });
     }
     if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return send(res, 405, { error: 'method_not_allowed' }); }
@@ -85,6 +85,47 @@ export async function publicAuthorize(req, res, { env = process.env, ...deps } =
     res.setHeader('Location', url);
     return res.status(302).end();
   } catch (error) { return failure(res, error); }
+}
+
+/** "Delete my data", by the person themselves. GET shows what will happen; POST starts a GitHub sign-in (proof it is them),
+ * and a second POST, only after that sign-in, deletes. Reached at /api/oauth/authorize?forget=1 so it needs no extra route. */
+export async function publicForget(req, res, { env = process.env, ...deps } = {}) {
+  res.setHeader('Cache-Control', 'no-store');
+  if (!publicConnectEnabled(env)) return off(res);
+  try {
+    const origin = publicOrigin(env), p = paramsOf(req), connect = make(env, deps);
+    if (req.method === 'GET') {
+      const csrf = fresh();
+      return page(res, 200, 'Delete my data', '<p>This removes everything Robinson GitHub MCP stores about you: your sign-in, saved GitHub access, settings, change record and saved results. Your assistant stops working with your accounts straight away. Nothing on GitHub itself is changed or deleted.</p>' +
+        '<p>First you will sign in with GitHub so we know it is you. Then you confirm. This cannot be undone, but you can connect again later as a new person.</p>' +
+        `<form method="post" action="/api/oauth/authorize"><input type="hidden" name="forget" value="1"><input type="hidden" name="action" value="start"><input type="hidden" name="form_csrf" value="${csrf}"><button type="submit">Sign in with GitHub to continue</button></form>`,
+      { cookies: [setCookie(FORM, csrf, FORM_PATH, 'Strict')] });
+    }
+    if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return send(res, 405, { error: 'method_not_allowed' }); }
+    if (String(req.headers?.origin || '') !== origin) return failure(res, null);
+    if (p.action === 'confirm') {
+      const cookie = cookieOf(req, FORGET);
+      if (!cookie || !same(cookie, p.csrf)) return failure(res, null);
+      const deleted = await connect.forgetConfirm({ handle: cookie, browserCsrf: p.csrf });
+      return page(res, 200, deleted ? 'Your data is deleted' : 'Nothing to delete', deleted
+        ? '<p>Done. Your sign-in, saved access, settings, change record and saved results are removed for good. You can close this page.</p>'
+        : '<p>We no longer hold any data for you. You can close this page.</p>', { cookies: [clearCookie(FORGET, FORM_PATH)] });
+    }
+    const cookie = cookieOf(req, FORM);
+    if (!cookie || !same(cookie, p.form_csrf)) return failure(res, null);
+    const { url, csrfState } = await connect.startForget();
+    res.setHeader('Set-Cookie', [clearCookie(FORM, FORM_PATH), setCookie(STATE, csrfState, STATE_PATH, 'Lax')]);
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Location', url);
+    return res.status(302).end();
+  } catch (error) { return failure(res, error); }
+}
+
+function forgetPage(res, forget) {
+  if (forget.none) return page(res, 200, 'Nothing to delete', '<p>We found no data stored for this GitHub account. You can close this page.</p>', { cookies: [clearCookie(STATE, STATE_PATH)] });
+  return page(res, 200, 'Confirm deletion', '<p>You are signed in. Press the button to delete everything stored about you for good. This cannot be undone.</p>' +
+    `<form method="post" action="/api/oauth/authorize"><input type="hidden" name="forget" value="1"><input type="hidden" name="action" value="confirm"><input type="hidden" name="csrf" value="${h(forget.handle)}"><button type="submit">Yes, delete my data</button></form>`,
+  { cookies: [clearCookie(STATE, STATE_PATH), setCookie(FORGET, forget.handle, FORM_PATH, 'Strict')] });
 }
 
 function godPage(res, god, cookieValue) {
@@ -107,6 +148,7 @@ export async function publicCallback(req, res, { env = process.env, ...deps } = 
   try {
     const browserCsrf = cookieOf(req, STATE);
     const result = await make(env, deps).finish({ state: req.query?.state, code: req.query?.code, browserCsrf });
+    if (result.forget) return forgetPage(res, result.forget);
     if (result.god) return godPage(res, result.god, result.god.handle);
     res.setHeader('Set-Cookie', clearCookie(STATE, STATE_PATH));
     res.setHeader('Referrer-Policy', 'no-referrer');

@@ -267,6 +267,7 @@ export function createTenantDirectory(sql) {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
       await sql`ALTER TABLE gh_public_flows ADD COLUMN IF NOT EXISTS time_zone TEXT`;
+      await sql`ALTER TABLE gh_public_flows ADD COLUMN IF NOT EXISTS purpose TEXT`;
       // PUB-6: owner-requested deletion of ONE public person's data. Only a tenant created by the public sign-in
       // (bootstrap key 'public-connect') with a single member can go. It removes every root row that points at the tenant,
       // then drops that tenant's own database namespace, so nothing of theirs survives and nobody else's data is touched.
@@ -875,7 +876,7 @@ export function createTenantDirectory(sql) {
     },
     /** Returns false when too many sign-ins are already open (capacity guard). */
     async createPublicFlow({ stateHash, stage, clientId, redirectUri, clientState = null,
-      codeChallenge, tier, accountLogin = null, allowChanges = false, timeZone = null,
+      codeChallenge, tier, accountLogin = null, allowChanges = false, timeZone = null, purpose = null,
       providerVerifier = null, afterInstall = false, tenantId = null, identityId = null, ttlSeconds = 600, maxOpen }) {
       if (!/^[a-f0-9]{64}$/.test(String(stateHash)) ||
           !['signin', 'install', 'god'].includes(stage) ||
@@ -885,6 +886,7 @@ export function createTenantDirectory(sql) {
           (clientState !== null && (typeof clientState !== 'string' || clientState.length > 256)) ||
           (accountLogin !== null && !/^[a-z0-9][a-z0-9-]{0,38}(,[a-z0-9][a-z0-9-]{0,38}){0,9}$/.test(String(accountLogin))) ||
           (timeZone !== null && !validZone(timeZone)) ||
+          (purpose !== null && purpose !== 'forget') ||
           !Number.isSafeInteger(ttlSeconds) || ttlSeconds < 60 || ttlSeconds > 1800 ||
           !Number.isSafeInteger(maxOpen) || maxOpen < 1)
         throw new TypeError('Invalid public connection state.');
@@ -893,10 +895,10 @@ export function createTenantDirectory(sql) {
       await sql`DELETE FROM gh_public_flows WHERE expires_at < now() - interval '1 hour'`;
       const rows = await sql`INSERT INTO gh_public_flows (state_hash,stage,client_id,redirect_uri,
           client_state,code_challenge,tier,account_login,allow_changes,after_install,provider_verifier,
-          tenant_id,identity_id,expires_at,time_zone)
+          tenant_id,identity_id,expires_at,time_zone,purpose)
         SELECT ${stateHash},${stage},${clientId},${redirectUri},${clientState},${codeChallenge},
           ${tier},${accountLogin},${allowChanges === true},${afterInstall === true},${providerVerifier},
-          ${t}::uuid,${i}::uuid,now() + (${ttlSeconds} * interval '1 second'),${timeZone}
+          ${t}::uuid,${i}::uuid,now() + (${ttlSeconds} * interval '1 second'),${timeZone},${purpose}
         WHERE (SELECT count(*) FROM gh_public_flows WHERE expires_at > now()) < ${maxOpen}
         RETURNING state_hash`;
       return rows.length === 1;
@@ -908,13 +910,28 @@ export function createTenantDirectory(sql) {
       const rows = await sql`DELETE FROM gh_public_flows
         WHERE state_hash=${stateHash} AND stage=${stage} AND expires_at > now()
         RETURNING client_id,redirect_uri,client_state,code_challenge,tier,account_login,
-          allow_changes,after_install,provider_verifier,tenant_id,identity_id,time_zone`;
+          allow_changes,after_install,provider_verifier,tenant_id,identity_id,time_zone,purpose`;
       const r = rows[0];
       return r ? { clientId: r.client_id, redirectUri: r.redirect_uri, clientState: r.client_state,
         codeChallenge: r.code_challenge, tier: r.tier, accountLogin: r.account_login,
-        allowChanges: r.allow_changes, afterInstall: r.after_install, providerVerifier: r.provider_verifier, timeZone: r.time_zone ?? null,
+        allowChanges: r.allow_changes, afterInstall: r.after_install, providerVerifier: r.provider_verifier, timeZone: r.time_zone ?? null, purpose: r.purpose ?? null,
         tenantId: r.tenant_id ? String(r.tenant_id) : null,
         identityId: r.identity_id ? String(r.identity_id) : null } : null;
+    },
+    /** The public tenant of an already-known GitHub person, or null. Look-up only: it never enrolls anyone. */
+    async findPublicTenantBySubject(subject) {
+      if (!/^[1-9][0-9]{0,18}$/.test(String(subject))) return null;
+      const rows = await sql`SELECT b.tenant_id FROM gh_tenant_identities i
+        JOIN gh_tenant_pilot_bootstraps b ON b.identity_id = i.id
+        WHERE i.provider = 'github' AND i.provider_subject = ${String(subject)} AND b.account_login = 'public-connect'`;
+      return rows[0] ? String(rows[0].tenant_id) : null;
+    },
+    /** Makes sure the built-in "delete my data" page has a client row to hang its sign-in on. It can never receive tokens:
+     * its secret hash is random and unknown, and the authorize page refuses its id. */
+    async ensureForgetClient(clientId, redirectUri, secretHash) {
+      await sql`INSERT INTO gh_public_clients (client_id, secret_hash, redirect_uris, client_name)
+        VALUES (${clientId}, ${secretHash}, ${[redirectUri]}::text[], 'Delete my data')
+        ON CONFLICT (client_id) DO UPDATE SET redirect_uris = EXCLUDED.redirect_uris`;
     },
     /** Deletes one public person's tenant completely (see gh_forget_public_tenant). False when it does not exist. */
     async forgetPublicTenant(tenantId) {
