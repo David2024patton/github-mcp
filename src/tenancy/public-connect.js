@@ -234,7 +234,11 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       const chosen = [];
       for (const installation of candidates)
         if (await verifyAccountAuthority(data.access_token, { installation, subject: principal.subject, fetchImpl })) chosen.push(installation);
-      if (chosen.length === 0) {
+      // The App is offered on the person's own personal account too, once, when they did not name accounts themselves and it is
+      // not there yet. After they return from installing we never loop: whatever is connectable is connected.
+      const mine = principal.login.toLowerCase();
+      const offerPersonal = !flow.afterInstall && !asked && chosen.length > 0 && !chosen.some((i) => i.login.toLowerCase() === mine);
+      if (chosen.length === 0 || offerPersonal) {
         if (flow.afterInstall) throw new PublicConnectError('no_installation',
           'The GitHub App is not installed on that account yet, or you are not an owner of it. Ask an owner of the account to install it (or connect it themselves), then connect again.');
         const root = createDb(rootSql());
