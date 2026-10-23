@@ -17,16 +17,19 @@ const clearCookie = (name, path) => `${name}=; Max-Age=0; Path=${path}; HttpOnly
 const STYLE = BRAND_CSS + 'details{margin-top:1.25rem}summary{cursor:pointer;color:#9aa;font-size:.9rem}details[open] summary{margin-bottom:.75rem}';
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
-function page(res, status, title, body, { cookies = [] } = {}) {
+function page(res, status, title, body, { cookies = [], head = '' } = {}) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Content-Security-Policy', CSP);
   res.setHeader('Referrer-Policy', 'same-origin');
   if (cookies.length) res.setHeader('Set-Cookie', cookies);
-  return send(res, status, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${h(title)}</title><style>${STYLE}</style></head><body><main>${brandHeader()}<h1>${h(title)}</h1>${body}${brandFooter()}</main></body></html>`, 'text/html; charset=utf-8');
+  return send(res, status, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${h(title)}</title>${head}<style>${STYLE}</style></head><body><main>${brandHeader()}<h1>${h(title)}</h1>${body}${brandFooter()}</main></body></html>`, 'text/html; charset=utf-8');
 }
 // Internal reason only (never shown to the person, never a secret): lets the owner see why a sign-in was refused.
-function failure(res, error, where = '') {
+function logRefusal(error, where = '') {
   try { console.error('[public-connect] refused', where, error?.name ?? 'none', error?.code ?? '', error?.why ?? '', String(error?.message ?? '').slice(0, 160)); } catch { /* logging must never break the page */ }
+}
+function failure(res, error, where = '') {
+  logRefusal(error, where);
   if (error instanceof TenantCapacityError) {
     res.setHeader('Retry-After', String(error.retryAfterSeconds));
     return page(res, 429, 'Busy right now', '<p>This connection is temporarily busy. Please try again in a minute.</p>');
@@ -34,6 +37,15 @@ function failure(res, error, where = '') {
   if (error instanceof PublicConnectError && error.code !== 'refused')
     return page(res, error.code === 'capacity' ? 503 : 403, error.code === 'capacity' ? 'Not available right now' : 'Could not connect', `<p>${h(error.message)}</p>`);
   return page(res, 403, 'Could not connect', '<p>GitHub could not verify this sign-in. Close this page and start again from your app.</p>');
+}
+/** The last step back to the person's app. A plain 302 here would be one long redirect chain that began at our form, and Chrome
+ * refuses to follow that chain to another site because the page's rules (form-action) only name us and GitHub; the person just sees
+ * a loading bar and nothing happens. A small page ends the chain, then sends them on as a fresh navigation. */
+export function handoff(res, url, cookies = []) {
+  let host = 'your app';
+  try { host = new URL(url).host || host; } catch { /* keep the generic name */ }
+  return page(res, 200, 'You are connected', `<p>Returning you to <code>${h(host)}</code>…</p><p><a href="${h(url)}">Continue</a> if nothing happens.</p>`,
+    { cookies, head: `<meta http-equiv="refresh" content="0;url=${h(url)}">` });
 }
 const off = (res) => send(res, 404, { error: 'not_found' });
 const make = (env, deps) => deps.connect ?? createPublicConnect({ env, ...deps });
@@ -83,7 +95,7 @@ export async function publicAuthorize(req, res, { env = process.env, ...deps } =
     if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return send(res, 405, { error: 'method_not_allowed' }); }
     const cookie = cookieOf(req, FORM);
     if (!cookie && !req.headers?.cookie && String(req.headers?.origin || '') === origin) {
-      failure(res, null, 'form-check cookies-blocked');
+      logRefusal(null, 'form-check cookies-blocked');
       return page(res, 403, 'This page was already used', '<p>Each sign-in page works once. If you already pressed the button, you are probably connected: go back to your app and check. If not, start again from your app. (If it keeps happening, make sure cookies are allowed for this site and you are not in a private tab.)</p>');
     }
     if (String(req.headers?.origin || '') !== origin || !cookie || !same(cookie, p.form_csrf))
@@ -188,8 +200,7 @@ export async function publicCallback(req, res, { env = process.env, ...deps } = 
       res.setHeader('Location', result.install.url);
       return res.status(302).end();
     }
-    res.setHeader('Location', result.redirect);
-    return res.status(302).end();
+    return handoff(res, result.redirect, [clearCookie(STATE, STATE_PATH)]);
   } catch (error) {
     res.setHeader('Set-Cookie', clearCookie(STATE, STATE_PATH));
     return failure(res, error, 'h2');
