@@ -958,6 +958,11 @@ describe('dedicated package credential enrollment', () => {
     expect(r.statusCode).toBe(400);
     expect(JSON.stringify(r)).toMatch(message);
   });
+  it('accepts the scope list GitHub really reports when write and delete are ticked (read is implied)', async () => {
+    const t = await prepare('delete:packages, write:packages');
+    expect((await t.post({ action: 'add-package', login: 'example-org', token })).statusCode).toBe(200);
+    expect(await t.credentials.token({ account: 'example-org', cred: 'P' })).toBe(token);
+  });
   it('rejects another user and preserves an existing credential', async () => {
     const t = await prepare('read:packages', 'outsider');
     await t.credentials.storePackage('example-org', token, { scopes: ['read:packages'], actor: 'example-user' });

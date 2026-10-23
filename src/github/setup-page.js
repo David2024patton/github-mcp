@@ -633,6 +633,8 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     const scopes = probe.headers['x-oauth-scopes'];
     if (action === 'add-package') {
       const list = String(scopes ?? '').split(',').map(s => s.trim()).filter(Boolean);
+      // GitHub lists only the boxes that were ticked; read:packages is included automatically under write:packages (seen live 2026-10-23).
+      if (list.includes('write:packages') && !list.includes('read:packages')) list.push('read:packages');
       const allowed = ['read:packages', 'write:packages', 'delete:packages', 'repo'];
       if (scopes === undefined)
         return page(400, { result: 'GitHub did not report any permissions for this token, which means it is not a "classic" token (it is probably a fine-grained one). On GitHub open Settings, Developer settings, Personal access tokens, Tokens (classic) and create a classic token with read:packages ticked. Nothing was saved.' });
