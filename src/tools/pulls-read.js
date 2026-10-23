@@ -55,7 +55,7 @@ export const prGet = defineRead({
     } catch { out.review_decision = null; out.threads = { unknown: 'The review threads could not be read.' }; }
     if (pr.state === 'open') {
       const ci = await ciState(octokit, { owner, repo: args.repo, baseBranch: pr.base.ref, headSha: pr.head.sha });
-      out.checks = { green: ci.green, basis: ci.basis, items: ci.checks, ...(ci.problems.length ? { problems: ci.problems } : {}), ...(ci.errors.length ? { could_not_check: ci.errors } : {}) };
+      out.checks = { green: ci.green, basis: ci.basis, items: ci.checks, ...(ci.problems.length ? { problems: ci.problems } : {}), ...(ci.errors.length ? { could_not_check: ci.errors } : {}), ...(ci.notes?.length ? { plan_limits: ci.notes } : {}) };
     }
     return out;
   })

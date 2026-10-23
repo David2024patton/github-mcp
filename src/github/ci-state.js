@@ -18,27 +18,38 @@ async function allCheckRuns(octokit, params) {
 const PASSING = new Set(['success', 'neutral', 'skipped']);
 const FAILING = new Set(['failure', 'timed_out', 'cancelled', 'action_required', 'startup_failure', 'stale']);
 
+// GitHub answers 403 "Upgrade to GitHub Pro or make this repository public to enable this feature." for rule and protection reads on a private
+// repository whose plan has neither. Such a repository cannot hold required checks, so this one exact answer means "none configured by
+// plan" (and is disclosed as a note). Any other 403, or any other failure, is still an unreadable answer, never green.
+const PLAN_LIMIT = /^Upgrade to GitHub (Pro|Team)\b.*to enable this feature\.?$/i;
 async function tryRead(fn) {
-  try { return { ok: true, data: await fn() }; } catch (error) { return { ok: false, status: error?.status ?? null }; }
+  try { return { ok: true, data: await fn() }; } catch (error) {
+    const status = error?.status ?? null;
+    const message = String(error?.response?.data?.message ?? '').trim();
+    return { ok: false, status, planLimited: status === 403 && PLAN_LIMIT.test(message) };
+  }
 }
 
 /** Required checks as `[{ context, appId }]` from rulesets and classic protection; `errors` lists reads that failed for a reason other than "none". */
 export async function requiredChecks(octokit, { owner, repo, branch }) {
   const found = new Map();
   const errors = [];
+  const notes = [];
   const add = (context, appId) => { const key = `${context}\n${appId ?? ''}`; if (!found.has(key)) found.set(key, { context, appId: appId ?? null }); };
   const rules = await tryRead(async () => (await octokit.request('GET /repos/{owner}/{repo}/rules/branches/{branch}', { owner, repo, branch })).data);
   if (rules.ok) {
     for (const rule of Array.isArray(rules.data) ? rules.data : []) {
       if (rule.type === 'required_status_checks') for (const c of rule.parameters?.required_status_checks ?? []) add(c.context, c.integration_id);
     }
-  } else errors.push(`rules for ${branch} could not be read${rules.status ? ` (HTTP ${rules.status})` : ''}`);
+  } else if (rules.planLimited) notes.push(`rules are not available for this repository on its GitHub plan, so none can require checks on ${branch}`);
+  else errors.push(`rules for ${branch} could not be read${rules.status ? ` (HTTP ${rules.status})` : ''}`);
   const classic = await tryRead(async () => (await octokit.request('GET /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks', { owner, repo, branch })).data);
   if (classic.ok) {
     if (Array.isArray(classic.data.checks) && classic.data.checks.length) for (const c of classic.data.checks) add(c.context, c.app_id);
     else for (const context of classic.data.contexts ?? []) add(context, null);
-  } else if (classic.status !== 404) errors.push(`classic protection for ${branch} could not be read${classic.status ? ` (HTTP ${classic.status})` : ''}`);
-  return { required: [...found.values()], errors };
+  } else if (classic.planLimited) notes.push(`branch protection is not available for this repository on its GitHub plan, so none can require checks on ${branch}`);
+  else if (classic.status !== 404) errors.push(`classic protection for ${branch} could not be read${classic.status ? ` (HTTP ${classic.status})` : ''}`);
+  return { required: [...found.values()], errors, notes };
 }
 
 const latestRun = (runs) => runs.reduce((best, r) => (!best || new Date(r.started_at ?? 0) > new Date(best.started_at ?? 0) || (r.started_at === best.started_at && r.id > best.id) ? r : best), null);
@@ -51,16 +62,16 @@ function runState(run) {
 const statusState = (s) => ({ success: 'success', failure: 'failure', error: 'failure', pending: 'pending' }[s] ?? 'pending');
 
 /**
- * @returns {Promise<{ green: boolean|null, known: boolean, basis: 'required'|'all-checks', checks: Array<{ context: string, state: string, source: string }>, problems: string[], errors: string[] }>}
+ * @returns {Promise<{ notes: string[], green: boolean|null, known: boolean, basis: 'required'|'all-checks', checks: Array<{ context: string, state: string, source: string }>, problems: string[], errors: string[] }>}
  *   `green` is true only when everything counted is `success`; null when it could not be worked out.
  */
 export async function ciState(octokit, { owner, repo, baseBranch, headSha }) {
   const p = { owner, repo };
-  const { required, errors } = await requiredChecks(octokit, { owner, repo, branch: baseBranch });
+  const { required, errors, notes } = await requiredChecks(octokit, { owner, repo, branch: baseBranch });
   let runs; let statuses;
   try {
     runs = await allCheckRuns(octokit, { ...p, ref: headSha });
-  } catch { return { green: null, known: false, basis: 'required', checks: [], problems: [], errors: [...errors, 'the check runs at this commit could not be read'] }; }
+  } catch { return { green: null, known: false, basis: 'required', checks: [], problems: [], notes, errors: [...errors, 'the check runs at this commit could not be read'] }; }
   try { statuses = (await octokit.request('GET /repos/{owner}/{repo}/commits/{ref}/status', { ...p, ref: headSha })).data.statuses ?? []; } catch { statuses = null; errors.push('the commit statuses could not be read'); }
 
   const evaluate = ({ context, appId }) => {
@@ -81,5 +92,5 @@ export async function ciState(octokit, { owner, repo, baseBranch, headSha }) {
   const problems = checks.filter((c) => c.state !== 'success').map((c) => `${c.context}: ${c.state}`);
   if (!checks.length) problems.push('no checks have reported on this commit yet (CI may not have started)');
   // Any read that failed means the answer is unknown, never green.
-  return { green: errors.length ? null : problems.length === 0, known: errors.length === 0, basis, checks, problems, errors };
+  return { green: errors.length ? null : problems.length === 0, known: errors.length === 0, basis, checks, problems, notes, errors };
 }
