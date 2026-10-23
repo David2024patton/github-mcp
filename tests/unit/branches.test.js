@@ -190,6 +190,20 @@ describe('branches and tags: extra checks (BATCH-D §4 D-3)', () => {
       w.gh.when('GET /repos/{owner}/{repo}/rules/branches/{branch}').reply(200, [{ type: 'pull_request', ruleset_id: 3 }]);
       expect(await run(w, 'github_branch_get', { ...R, branch: 'main' })).toMatchObject({ is_default: true, protected: true, head: A, message: 'Top', rules: [{ type: 'pull_request' }] });
     });
+    it('branch_get treats GitHub\'s exact plan-limit answer as no rules, and any other failure as unknown', async () => {
+      const w = await makeWorld({ profile: 'read_only' });
+      w.gh.when('GET /repos/{owner}/{repo}/branches/{branch}').reply(200, { name: 'feat', protected: false, commit: { sha: A, commit: { message: 'x', author: { date: '2026-10-10T10:00:00Z' } } } });
+      defaultIs(w.gh, 'main');
+      w.gh.when('GET /repos/{owner}/{repo}/rules/branches/{branch}').reply(403, { message: 'Upgrade to GitHub Pro or make this repository public to enable this feature.' });
+      expect(await run(w, 'github_branch_get', { ...R, branch: 'feat' })).toMatchObject({ rules: [], rules_note: expect.stringContaining('GitHub plan') });
+      const w2 = await makeWorld({ profile: 'read_only' });
+      w2.gh.when('GET /repos/{owner}/{repo}/branches/{branch}').reply(200, { name: 'feat', protected: false, commit: { sha: A, commit: { message: 'x', author: { date: '2026-10-10T10:00:00Z' } } } });
+      defaultIs(w2.gh, 'main');
+      w2.gh.when('GET /repos/{owner}/{repo}/rules/branches/{branch}').reply(403, { message: 'Resource not accessible by integration' });
+      const other = await run(w2, 'github_branch_get', { ...R, branch: 'feat' });
+      expect(other.rules).toEqual({ unknown: 'The rules for this branch could not be read.' });
+      expect(other).not.toHaveProperty('rules_note');
+    });
     it('tag_list returns each tag with its commit', async () => {
       const w = await makeWorld({ profile: 'read_only' });
       w.gh.when('GET /repos/{owner}/{repo}/tags').reply(200, [{ name: 'v1', commit: { sha: A } }]);

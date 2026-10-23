@@ -209,6 +209,19 @@ describe('writer boundary request-shape and race regressions',()=>{
     expect((await low(branches,'github_branch_delete',w,{repo,branch:'feature',expectedHeadSha:A,cleanupPrNumber:4,confirm:true})).status).not.toBe('applied');
     expect(w.gh.calls.some(x=>x.method==='DELETE')).toBe(false);expect(w.gh.invalid).toEqual([]);
   });
+  it('guarded delete on a free-plan private repo (GitHub plan-limit answer for rules) still deletes the proven branch; any other rules failure still refuses',async()=>{
+    const w=await makeWorld({mode:'production'});cleanupProvider(w);
+    w.gh.when('GET /repos/{owner}/{repo}/rules/branches/{branch}').reply(403,{message:'Upgrade to GitHub Pro or make this repository public to enable this feature.'});
+    w.gh.when('GET /repos/{owner}/{repo}/git/ref/{ref}').replySequence([
+      ...[1,2,3].map(()=>({status:200,body:{object:{sha:A}}})),{status:404,body:{message:'Not Found'}}]);
+    w.gh.when('DELETE /repos/{owner}/{repo}/git/refs/{ref}').reply(204,null);
+    const ok=await low(branches,'github_branch_delete',w,{repo,branch:'feature',expectedHeadSha:A,cleanupPrNumber:4,confirm:true});
+    expect(ok.status).toBe('applied');expect(w.gh.calls.filter(x=>x.method==='DELETE')).toHaveLength(1);
+    const w2=await makeWorld({mode:'production'});cleanupProvider(w2);
+    w2.gh.when('GET /repos/{owner}/{repo}/rules/branches/{branch}').reply(403,{message:'Resource not accessible by integration'});
+    expect((await low(branches,'github_branch_delete',w2,{repo,branch:'feature',expectedHeadSha:A,cleanupPrNumber:4,confirm:true})).status).not.toBe('applied');
+    expect(w2.gh.calls.some(x=>x.method==='DELETE')).toBe(false);
+  });
   it('refuses tag drift at guarded publication boundary',async()=>{
     const w=await makeWorld({mode:'production',profile:'full'});
     w.gh.when('GET /repos/{owner}/{repo}/releases/{release_id}').reply(200,{id:42,tag_name:'different',draft:true});

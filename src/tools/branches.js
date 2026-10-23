@@ -2,6 +2,7 @@
 // from GitHub, never assumed; deleting it is always refused; tags are always production. A branch or tag is the write's target, so
 // production names, protected branches, project-owned refs and the protected-resource list all see it.
 import { listAll } from '../github/client.js';
+import { isPlanLimit } from '../github/plan-limit.js';
 import { defineRead } from './define-read.js';
 import { defineGithubWrite } from './define-github-write.js';
 import { OUTSIDE_PROJECT } from './protect-guard.js';
@@ -50,12 +51,12 @@ export const branchGet = defineRead({
     const p = { owner, repo: args.repo };
     const b = (await octokit.request('GET /repos/{owner}/{repo}/branches/{branch}', { ...p, branch: args.branch })).data;
     const repo = (await octokit.request('GET /repos/{owner}/{repo}', p)).data;
-    let rules;
+    let rules; let planNote = null;
     try {
       const found = (await octokit.request('GET /repos/{owner}/{repo}/rules/branches/{branch}', { ...p, branch: args.branch })).data;
       rules = (Array.isArray(found) ? found : []).map((r) => ({ type: r.type, ruleset: r.ruleset_source ?? r.ruleset_id }));
-    } catch { rules = null; }
-    return { name: b.name, is_default: b.name === repo.default_branch, protected: b.protected, head: b.commit?.sha, message: b.commit?.commit?.message?.split('\n')[0], author: b.commit?.author?.login ?? b.commit?.commit?.author?.name,
+    } catch (error) { rules = isPlanLimit(error) ? [] : null; if (rules) planNote = 'Rules are not available for this repository on its GitHub plan, so none apply.'; }
+    return { ...(planNote ? { rules_note: planNote } : {}), name: b.name, is_default: b.name === repo.default_branch, protected: b.protected, head: b.commit?.sha, message: b.commit?.commit?.message?.split('\n')[0], author: b.commit?.author?.login ?? b.commit?.commit?.author?.name,
       date: b.commit?.commit?.author?.date, rules: rules ?? { unknown: 'The rules for this branch could not be read.' }, html_url: b._links?.html };
   })
 });
