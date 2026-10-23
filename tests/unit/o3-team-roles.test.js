@@ -144,6 +144,24 @@ describe('O-3 team/role catalog and provider-regression cases',()=>{
     expect(result.done).toBe(false);
     expect(w.gh.calls.filter(c=>c.method!=='GET')).toHaveLength(0);
   });
+  describe('org owners are always team maintainers (seen live 2026-10-23)',()=>{
+    const run=async(orgRole,readBackRole)=>{
+      const w=await makeWorld({mode:'production',profile:'full'});
+      w.gh.when(R.team).reply(200,team());
+      w.gh.when(R.member).replySequence([{status:404,body:{message:'Not Found'}},
+        {status:200,body:{role:readBackRole,state:'active'}}]);
+      w.gh.when(R.orgMember).reply(200,{state:'active',role:orgRole});
+      w.gh.when(R.memberSet).reply(200,{role:readBackRole,state:'active'});
+      return call(w,'github_team_set_member',{teamSlug:'maintainers',username:'alice',
+        action:'set',role:'member',confirm:true});
+    };
+    it('accepts maintainer read-back for an organization owner asked to be a member',async()=>{
+      expect(await run('admin','maintainer')).toMatchObject({done:true,status:'applied'});
+    });
+    it('does not accept it for an ordinary member',async()=>{
+      expect(await run('member','maintainer')).toMatchObject({done:false});
+    });
+  });
   it('does not invite a non-member via team membership operations',async()=>{
     const w=await makeWorld({mode:'preview',profile:'full'});
     w.gh.when(R.team).reply(200,team());

@@ -5,3 +5,8 @@ Found while running the acceptance rows against the live server:
 2. Ruleset create/update read back as "unconfirmed" although GitHub had applied it, because GitHub adds `do_not_enforce_on_create:false` to required-status-check rules. Read-back now accepts provider-added defaults inside what we sent and still refuses any sent value that differs.
 
 Both have tests that fail without the fix. Needs a release to be seen live; then the new-repo run on robinson-ai-scratch/rtc-newrepo-accept-oct23 continues from where it stopped (same request key).
+
+Added later the same day (all found live, all with a test that fails without the fix):
+3. Deploy keys: GitHub stores `<type> <base64>` and drops the trailing comment, so the add read back as "unconfirmed". The fingerprint now ignores the comment (read and write).
+4. Organization settings: a profile text field GitHub reports as null (not set) was treated as "unreadable", so an empty description could never be set. Null is now a known value for profile text fields only; policy fields (permission, booleans) still refuse null.
+5. Team membership: GitHub makes organization owners team maintainers, so asking for "member" read back as a mismatch. Accepted only for an organization owner.

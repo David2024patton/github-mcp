@@ -33,6 +33,7 @@ const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const orgFields=['name','description','company','blog','location','email',
   'default_repository_permission','members_can_create_repositories',
   'members_can_fork_private_repositories'];
+const PROFILE_TEXT=['name','description','company','blog','location','email'];
 const orgSchemas={name:STR,description:{type:'string',maxLength:1024},
   company:STR,blog:STR,location:STR,email:{type:'string',maxLength:254},
   default_repository_permission:{type:'string',enum:['none','read','write','admin']},
@@ -43,7 +44,9 @@ const checkedChanges=(a,b)=>{
   const keys=Object.keys(a.changes??{});
   if(!keys.length||keys.some(k=>!orgFields.includes(k)))
     throw refusal('Only specified supported organization settings may be updated.');
-  if(keys.some(k=>b[k]===undefined||b[k]===null))
+  // GitHub returns null for a profile text field that is simply not set (seen live 2026-10-23), so null is a known
+  // value there; for policy fields (permission/boolean) null or absent still means unreadable.
+  if(keys.some(k=>b[k]===undefined||(b[k]===null&&!PROFILE_TEXT.includes(k))))
     throw refusal('A target setting is unreadable; refusing to overwrite its unknown value.');
   return keys;
 };
@@ -78,8 +81,8 @@ export const orgUpdate=defineGithubWrite({
   },
   readAfter:({ctx,target:t})=>policyBefore(ctx,t),
   verify:({args:a,before:b,after:x})=>!!x&&orgFields.every(k=>
-    b[k]===undefined||b[k]===null?true:
-    same(x[k],Object.hasOwn(a.changes,k)?a.changes[k]:b[k])),
+    Object.hasOwn(a.changes,k)?same(x[k],a.changes[k]):
+    b[k]===undefined||b[k]===null?true:same(x[k],b[k])),
   inverse:()=>null,present:({args:a,after:x})=>({
     org:x?.login,changed:Object.fromEntries(Object.keys(a.changes).map(k=>[k,x?.[k]])),
     other_readable_policy_preserved:true})

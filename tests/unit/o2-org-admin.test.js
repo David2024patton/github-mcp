@@ -122,6 +122,24 @@ async function call(w,name,args={}){
   return result.structuredContent??(result.isError?
     {done:false,error:result.content?.[0]?.text??'Unknown error'}:parse(result));
 }
+describe('O-2 unset profile text is a known value, unset policy is not',()=>{
+  const run=async(before,changes,after)=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    w.gh.when(R.org).replySequence([{status:200,body:before},{status:200,body:after}]);
+    w.gh.when(R.update).reply(200,after);
+    return call(w,'github_org_update_settings',{changes,confirm:true});
+  };
+  it('sets a description that GitHub reports as null (seen live 2026-10-23)',async()=>{
+    const b={...organization(),description:null};
+    const r=await run(b,{description:'New text'},{...b,description:'New text'});
+    expect(r).toMatchObject({done:true,status:'applied'});
+  });
+  it('still refuses an unreadable policy value (null boolean)',async()=>{
+    const b={...organization(),members_can_create_repositories:null};
+    const r=await run(b,{members_can_create_repositories:true},{...b,members_can_create_repositories:true});
+    expect(r.done).toBe(false);
+  });
+});
 describe('O-2 live-request contract and scope regressions',()=>{
   it('organization reads use exact enrolled identity and never write',async()=>{
     const w=await makeWorld({profile:'read_only'});
