@@ -214,6 +214,8 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
       const row = await db.getAccount(account);
       if (!row) throw missing(account, 'it is not one of the accounts set up on this server.');
       if (cred === 'U') return await userToken(row);
+      // The master token exists only for signed-in tenant connections; the legacy owner vault has none.
+      if (cred === 'M') throw missing(row.login, 'the master token is only available on a signed-in connection.');
       if (cred === 'P') {
         if (scope?.repositories?.length || scope?.permissions)
           throw missing(row.login, 'a classic package token cannot be narrowed to this pass scope.');

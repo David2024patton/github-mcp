@@ -94,7 +94,7 @@ export function createTenantDirectory(sql) {
         identity_id UUID NOT NULL REFERENCES gh_tenant_identities(id),
         client_id TEXT NOT NULL,
         account_login TEXT NOT NULL,
-        kind TEXT NOT NULL CHECK (kind IN ('K','P')),
+        kind TEXT NOT NULL CHECK (kind IN ('K','P','M')),
         redirect_uri TEXT NOT NULL,
         membership_revision BIGINT NOT NULL,
         pilot_revision BIGINT NOT NULL,
@@ -105,6 +105,24 @@ export function createTenantDirectory(sql) {
         ON gh_tenant_optional_setup_states (expires_at)`;
       await sql`ALTER TABLE gh_tenant_optional_setup_states
         ADD COLUMN IF NOT EXISTS oauth_context JSONB`;
+      await widenOptionalKinds();
+  }
+  // GOD-1: kind 'M' (the master token). Additive: older tables are re-checked once, new ones are created with it.
+  async function widenOptionalKinds(){
+    for(const table of ['gh_tenant_optional_credentials','gh_tenant_optional_setup_states']){
+      const name=table+'_kind_check';
+      const found=await sql`SELECT pg_get_constraintdef(c.oid) AS def FROM pg_constraint c
+        WHERE c.conname=${name} AND c.conrelid=to_regclass(${table})`;
+      if(found.length===1 && !String(found[0].def).includes("'M'")){
+        if(table==='gh_tenant_optional_credentials'){
+          await sql`ALTER TABLE gh_tenant_optional_credentials DROP CONSTRAINT IF EXISTS gh_tenant_optional_credentials_kind_check`;
+          await sql`ALTER TABLE gh_tenant_optional_credentials ADD CONSTRAINT gh_tenant_optional_credentials_kind_check CHECK (kind IN ('K','P','M'))`;
+        }else{
+          await sql`ALTER TABLE gh_tenant_optional_setup_states DROP CONSTRAINT IF EXISTS gh_tenant_optional_setup_states_kind_check`;
+          await sql`ALTER TABLE gh_tenant_optional_setup_states ADD CONSTRAINT gh_tenant_optional_setup_states_kind_check CHECK (kind IN ('K','P','M'))`;
+        }
+      }
+    }
   }
   return {
     async initSchema() {
@@ -203,7 +221,7 @@ export function createTenantDirectory(sql) {
         tenant_id UUID NOT NULL REFERENCES gh_tenants(id),
         identity_id UUID NOT NULL REFERENCES gh_tenant_identities(id),
         account_login TEXT NOT NULL,
-        kind TEXT NOT NULL CHECK (kind IN ('K','P')),
+        kind TEXT NOT NULL CHECK (kind IN ('K','P','M')),
         provider_host TEXT NOT NULL DEFAULT 'github.com',
         actor_id BIGINT NOT NULL,
         account_id BIGINT NOT NULL,
@@ -479,7 +497,11 @@ export function createTenantDirectory(sql) {
       actorId,accountId,membershipRevision,pilotRevision,accessEnc,
       operation,resource,scopes,expiresAt=null,expectedFingerprint=null}) {
       const t=validUuid(tenantId),i=validUuid(identityId);
-      const permitted=(kind==='K'&&operation==='GET /notifications'&&
+      const permitted=(kind==='M'&&operation==='GET /user'&&
+        resource==='user/'+actorId&&accountId===actorId&&accountLogin==='master'&&
+        Array.isArray(scopes)&&scopes.length>=1&&scopes.length<=60&&
+        scopes.every(x=>typeof x==='string'&&/^[a-z_]+(?::[a-z_]+)*$/.test(x)))||
+        (kind==='K'&&operation==='GET /notifications'&&
         resource==='user/'+actorId&&Array.isArray(scopes)&&
         scopes.length===1&&scopes[0]==='notifications')||
         (kind==='P'&&operation==='GET /orgs/{org}/packages'&&
@@ -529,7 +551,7 @@ export function createTenantDirectory(sql) {
     /** Encrypted grant retrieval for trusted runtime only; never MCP output. */
     async getPilotOptionalCredential({tenantId,identityId,accountLogin,kind}) {
       const t=validUuid(tenantId),i=validUuid(identityId);
-      if(!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||!['K','P'].includes(kind))return null;
+      if(!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||!['K','P','M'].includes(kind))return null;
       const rows=await sql`SELECT g.access_enc,g.cipher_fingerprint,g.kind,g.actor_id,
         g.account_id,g.verified_operation,g.verified_resource,g.scopes,
         g.expires_at,g.revision,g.provider_host
@@ -550,7 +572,7 @@ export function createTenantDirectory(sql) {
     },
     async revokePilotOptionalCredential({tenantId,identityId,accountLogin,kind,expectedFingerprint=null}) {
       const t=validUuid(tenantId),i=validUuid(identityId);
-      if(!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||!['K','P'].includes(kind)||
+      if(!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||!['K','P','M'].includes(kind)||
         (expectedFingerprint!==null&&!/^[a-f0-9]{64}$/.test(expectedFingerprint)))return false;
       const rows=await sql`UPDATE gh_tenant_optional_credentials g
         SET revoked_at=now(),revision=g.revision+1,
@@ -745,7 +767,7 @@ export function createTenantDirectory(sql) {
       if(!/^[a-f0-9]{64}$/.test(stateHash)||typeof clientId!=='string'||
         !(clientId.startsWith('tcl_')||clientId.startsWith('pcl_'))||
         !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||
-        !['K','P'].includes(kind)||typeof redirectUri!=='string'||
+        !['K','P','M'].includes(kind)||typeof redirectUri!=='string'||
         redirectUri.length>2048||
         !Number.isSafeInteger(membershipRevision)||membershipRevision<1||
         !Number.isSafeInteger(pilotRevision)||pilotRevision<1||
@@ -789,7 +811,7 @@ export function createTenantDirectory(sql) {
     async pilotOptionalFingerprint({tenantId,identityId,accountLogin,kind}) {
       const t=validUuid(tenantId),i=validUuid(identityId);
       if(!/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin)||
-        !['K','P'].includes(kind))return null;
+        !['K','P','M'].includes(kind))return null;
       const rows=await sql`SELECT g.cipher_fingerprint FROM gh_tenant_optional_credentials g
         JOIN gh_tenants ten ON ten.id=g.tenant_id
         JOIN gh_tenant_memberships m ON m.tenant_id=g.tenant_id AND m.identity_id=g.identity_id
@@ -887,7 +909,7 @@ export function createTenantDirectory(sql) {
           (clientState !== null && (typeof clientState !== 'string' || clientState.length > 256)) ||
           (accountLogin !== null && !/^[a-z0-9][a-z0-9-]{0,38}(,[a-z0-9][a-z0-9-]{0,38}){0,9}$/.test(String(accountLogin))) ||
           (timeZone !== null && !validZone(timeZone)) ||
-          (purpose !== null && purpose !== 'forget') ||
+          (purpose !== null && purpose !== 'forget' && purpose !== 'master') ||
           (offers !== null && !(Array.isArray(offers) && offers.length >= 1 && offers.length <= 8 && offers.every((o) =>
             /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(String(o?.login)) && Number.isSafeInteger(o?.id) && o.id > 0 && ['User', 'Organization'].includes(o?.type)))) ||
           !Number.isSafeInteger(ttlSeconds) || ttlSeconds < 60 || ttlSeconds > 1800 ||

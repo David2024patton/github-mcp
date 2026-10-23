@@ -3,9 +3,11 @@
 // another member's user bearer through the organization account name.
 import { encryptSecret, decryptSecret, readEncryptionKey } from '../core/crypto.js';
 import { GithubClientError } from '../github/errors.js';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomBytes, createHash } from 'node:crypto';
+import { publicOrigin } from '../core/http.js';
 import { verifyGithubBearerIdentity, verifyGithubUserInstallation } from './github-identity.js';
 import {pilotOptionalAad,currentPilotOptionalReadback} from './optional-credentials.js';
+import {masterAad,currentMasterReadback,MASTER_HANDLE} from './master-credential.js';
 import { userGrantBinding, currentUserGrantBinding } from './credential-binding.js';
 import { resolveDocumentedCredential } from '../github/credential-authority.js';
 import {pilotAppClient} from './pilot-app-client.js';
@@ -168,6 +170,29 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
       kind,operation,resource,now:now()}))throw optionalDenied();
     return {row,account};
   }
+  // GOD-1: the person's master token (M). Same checks as any optional grant: current member, same GitHub person,
+  // intact ciphertext, not expired. `needAny` lists scopes of which at least one must have been granted.
+  async function currentMaster(needAny=null){
+    if(typeof directory.getPilotOptionalCredential!=='function')throw optionalDenied();
+    const active=await directory.authorizedPilotIdentity(tenant.tenantId,tenant.identityId);
+    if(!active||active.tenantId!==tenant.tenantId||active.identityId!==tenant.identityId||
+      active.membershipRevision!==tenant.membershipRevision||
+      active.pilotRevision!==tenant.pilotRevision)throw optionalDenied();
+    const subject=await directory.getPilotVerifiedSubject(tenant.tenantId,tenant.identityId);
+    if(typeof subject!=='string'||!/^[1-9][0-9]{0,18}$/.test(subject))throw optionalDenied();
+    const row=await directory.getPilotOptionalCredential({tenantId:tenant.tenantId,
+      identityId:tenant.identityId,accountLogin:MASTER_HANDLE,kind:'M'});
+    const seen=currentMasterReadback({row,subject,now:now()});
+    if(!seen)throw optionalDenied();
+    if(needAny&&!needAny.some(s=>seen.scopes.includes(s)))throw optionalDenied();
+    return {row,scopes:seen.scopes,expiresAt:seen.expiresAt};
+  }
+  const FALLBACK_SCOPES={K:['notifications'],P:['read:packages','repo']};
+  const apiOnly=url=>{
+    let parsed;
+    try{parsed=new URL(url,'https://api.github.com');}catch{return false;}
+    return parsed.origin==='https://api.github.com'&&!parsed.username&&!parsed.password&&!parsed.hash;
+  };
   function exactOptionalRequest({kind,account,method,url}){
     if(method!=='GET' || typeof url!=='string')return false;
     let parsed;
@@ -231,19 +256,65 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
         now:now()});
     },
     async authorizeOptionalRequest({account,kind,method,url}={}){
-      const entry=await currentOptional(account,kind);
+      // M may use any GitHub API address; the tool lifecycle (classification, confirmation, spend and production
+      // gates) decides whether the operation itself is allowed. It can never go to another host.
+      if(kind==='M'){ await currentMaster(); return apiOnly(url)?true:(()=>{throw optionalDenied();})(); }
+      let entry;
+      try{ entry=await currentOptional(account,kind); }
+      catch(error){
+        // No K/P of its own: the master token may stand in for the same exact read, if it carries the scope.
+        await currentMaster(FALLBACK_SCOPES[kind]).catch(()=>{throw error;});
+        const own=await db.getAccount(account);
+        if(!exactOptionalRequest({kind,account:own?.login??account,method,url}))throw optionalDenied();
+        return true;
+      }
       if(!exactOptionalRequest({kind,account:entry.account.login,method,url}))
         throw optionalDenied();
       return true;
     },
+    /** A private, one-use, ten-minute link to the master-token page for THIS signed-in person, so the token can be added
+     * at any time without disconnecting or reconnecting. The link carries no secret of the person's. */
+    async masterLink({clientId,redirectUri}={}){
+      if(typeof clientId!=='string'||!clientId.startsWith('pcl_')||typeof redirectUri!=='string')throw optionalDenied();
+      if(typeof directory.createPublicFlow!=='function')throw optionalDenied();
+      const active=await directory.authorizedPilotIdentity(tenant.tenantId,tenant.identityId);
+      if(!active||active.membershipRevision!==tenant.membershipRevision||
+        active.pilotRevision!==tenant.pilotRevision)throw optionalDenied();
+      const handle=randomBytes(32).toString('base64url');
+      const ok=await directory.createPublicFlow({stateHash:createHash('sha256').update(handle).digest('hex'),
+        stage:'god',clientId,redirectUri,codeChallenge:randomBytes(32).toString('base64url'),tier:'standard',
+        purpose:'master',tenantId:tenant.tenantId,identityId:tenant.identityId,ttlSeconds:600,maxOpen:200});
+      if(!ok)throw optionalDenied();
+      const origin=publicOrigin(env);
+      return {url:origin+'/api/tenant/optional?master_link='+handle,expiresInMinutes:10};
+    },
+    /** Nonsecret summary for github_whoami. Never the token. */
+    async masterStatus(){
+      try{
+        const m=await currentMaster();
+        return {enrolled:true,scopes:m.scopes,expires_at:m.expiresAt};
+      }catch{ return {enrolled:false}; }
+    },
     async token(args={}) {
       const cred=args.cred??'I';
+      if(cred==='M'){
+        if(args.scope?.repositories?.length||args.scope?.repository_ids?.length||args.scope?.permissions)throw optionalDenied();
+        const {row}=await currentMaster();
+        try{ return decryptSecret(row.access_enc,{aad:masterAad(tenant),key:key()}); }
+        catch{throw optionalDenied();}
+      }
       if(cred==='K'||cred==='P'){
         if(args.scope?.repositories?.length||args.scope?.repository_ids?.length||
             args.scope?.permissions)throw optionalDenied();
-        const {row}=await currentOptional(args.account,cred);
+        let own;
+        try{ own=await currentOptional(args.account,cred); }
+        catch(error){
+          const m=await currentMaster(FALLBACK_SCOPES[cred]).catch(()=>{throw error;});
+          try{ return decryptSecret(m.row.access_enc,{aad:masterAad(tenant),key:key()}); }
+          catch{throw optionalDenied();}
+        }
         try{
-          return decryptSecret(row.access_enc,{
+          return decryptSecret(own.row.access_enc,{
             aad:pilotOptionalAad({tenantId:tenant.tenantId,
               identityId:tenant.identityId,accountLogin:args.account,kind:cred}),
             key:key()});

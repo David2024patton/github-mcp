@@ -14,7 +14,7 @@ const DOCUMENT={type:'string',minLength:5,maxLength:24000,description:'One valid
 const VARIABLES={type:'object',additionalProperties:true,maxProperties:48,description:'Typed GraphQL input variables; no credentials'};
 const OWNER={type:'string',minLength:1,maxLength:39,description:'Already-enrolled account; defaults to this connection'};
 const REPO={type:'string',minLength:1,maxLength:100,description:'Explicit repository for guarded GraphQL mutations'};
-const CRED={type:'string',enum:['I','U'],description:'I installation or explicitly enrolled U user credential'};
+const CRED={type:'string',enum:['I','U','M'],description:'I installation; U user credential; M your enrolled master token (only when the App cannot do it)'};
 const common={variables:VARIABLES,owner:OWNER,cred:CRED};
 
 export const SCOPE_QUERY='query UniversalResourceScope($id: ID!) { node(id: $id) { __typename id ... on Repository { nameWithOwner } ... on Issue { title repository { nameWithOwner } } ... on PullRequest { title repository { nameWithOwner } } ... on Discussion { title repository { nameWithOwner } } ... on Release { releaseName:name repository { nameWithOwner } } ... on Milestone { title repository { nameWithOwner } } ... on Label { labelName:name repository { nameWithOwner } } ... on Commit { repository { nameWithOwner } } ... on DiscussionComment { discussion { repository { nameWithOwner } } } ... on IssueComment { issue { repository { nameWithOwner } } } ... on ProjectV2 { title owner { ... on Organization { login } ... on User { login } } } ... on ProjectV2Item { project { id owner { ... on Organization { login } ... on User { login } } } content { ... on Issue { repository { nameWithOwner } } ... on PullRequest { repository { nameWithOwner } } } } ... on ProjectV2Field { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2SingleSelectField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2IterationField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2MultiSelectField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on Organization { login } ... on User { login } ... on Team { slug organization { login } } ... on DiscussionCategory { repository { nameWithOwner } } ... on PullRequestReviewComment { pullRequest { repository { nameWithOwner } } } ... on CommitComment { repository { nameWithOwner } } ... on LinkedBranch { ref { repository { nameWithOwner } } } } }';
@@ -30,7 +30,7 @@ function ownerFor(a,c){
 }
 function credFor(a){
   const cred=a.cred??'I';
-  if(!['I','U'].includes(cred))throw new TypeError('GraphQL credential must be an enrolled I or U credential.');
+  if(!['I','U','M'].includes(cred))throw new TypeError('GraphQL credential must be an enrolled I, U or M credential.');
   return cred;
 }
 async function accountGraphql(ctx,owner,cred,repo){
@@ -395,7 +395,7 @@ const gqlWrite=defineGithubWrite({
     if(!made)return null;
     return {tool:'github_graphql_write',args:{
       mutation:inverseDocument(made.mutation),variables:{input:made.input},owner:t.owner,
-      ...(t.repo?{repo:t.repo}:{}),...(t.cred==='U'?{cred:'U'}:{})}};
+      ...(t.repo?{repo:t.repo}:{}),...(t.cred==='U'||t.cred==='M'?{cred:t.cred}:{})}};
   }
 });
 export const tools=[gqlRead.tool,gqlWrite.tool];

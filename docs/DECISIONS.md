@@ -445,3 +445,10 @@ Device checks (e.g. PUB-4 on phone and desktop) live in `docs/OWNER-CHECKLIST.md
 ## 2026-10-23 — Offer the App on a person's own account (public sign-in)
 Decision: during public sign-in, when the person has not named accounts and their personal account lacks the App, send them once to install it; after returning, connect what is available (no loop). Reason: Chris's own sign-in connected only the scratch organization because the install step used to run only when nothing was connectable. One connection already holds several accounts at once (default: the person's own first). Not decided: a separate "add another account later" screen.
 Update (same day): the offer is a page shown after the connection exists (buttons: Add <account> / Continue), not an immediate redirect to GitHub, because cancelling GitHub's install page used to dead-end the sign-in. Organizations the person administers are offered too (best effort). Linking a second, separate GitHub login into one connection is NOT built: it needs proof of both logins and care for tenant isolation, and is listed in ROADMAP.
+
+## 2026-10-23 — God mode is ONE optional master token (GOD-1)
+Chris: God mode is one master token that unlocks everything the normal sign-in cannot, with tools built on top; it must be
+explainable in plain steps and addable at any time without disconnecting. Built as credential kind `M` (classic token, same
+GitHub person, 90-day cap, encrypted, revocable), a four-step page, and `github_master_token_link` (private one-use link).
+K/P fall back to it for their own exact reads; `cred:"M"` works in the universal REST/GraphQL tools under all existing guards,
+never for read-only connections, passes, narrowed scopes or any host except api.github.com.

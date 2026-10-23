@@ -596,3 +596,117 @@ describe('PUB-6 a person deletes their own data', () => {
     expect(off.statusCode).toBe(404);
   });
 });
+
+describe('GOD-1 the master token (one classic token, kind M)', () => {
+  const scopesHeader = (value) => ({ get: (name) => (String(name).toLowerCase() === 'x-oauth-scopes' ? value : null) });
+  const fetchMaster = (scopes) => async (url, opts) => {
+    const out = await fetchImpl(url, opts);
+    if (url === 'https://api.github.com/user' && scopes !== undefined) return { ...out, headers: scopesHeader(scopes) };
+    return out;
+  };
+  const enrollmentWith = async (fetchFn) => {
+    const { createPrivateOptionalEnrollment } = await import('../../src/tenancy/optional-setup.js');
+    const { openAuthorizedTenantDb } = await import('../../src/tenancy/directory.js');
+    return createPrivateOptionalEnrollment({ env, fetchImpl: fetchFn, directoryFactory: () => createTenantDirectory(rootSqlFactory()),
+      tenantAccess: (dir, claim) => openAuthorizedTenantDb({ directory: dir, tenantId: claim.tenantId, verifiedIdentityId: claim.identityId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory }) });
+  };
+  const route = async (client, code) => {
+    const bearer = json(await exchange(client, code)).access_token;
+    return resolvePrivateTenantMcpBearer({ authorization: 'Bearer ' + bearer, env, fetchImpl, rootSqlFactory, tenantSqlFactory });
+  };
+
+  it('is added from the God page, must be the same person and a classic token, and then K/P and any API call can use it', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const enrollment = await enrollmentWith(fetchMaster('repo, notifications, gist'));
+    const first = await (await signIn(c, client, 'alice', { tier: 'god' })).finished;
+    const picked = await c.godChoose({ handle: first.god.handle, browserCsrf: first.god.handle, choice: 'master' });
+    expect(picked.optional.kind).toBe('M');
+    // someone else's token is refused, and the state is spent
+    await expect(enrollment.finish({ state: picked.optional.state, action: 'save', value: people.bob.token })).rejects.toThrow();
+    // a token with no classic permission header (fine-grained) is refused
+    const second = await (await signIn(c, client, 'alice', { tier: 'god' })).finished;
+    const p2 = await c.godChoose({ handle: second.god.handle, browserCsrf: second.god.handle, choice: 'master' });
+    const plain = await enrollmentWith(fetchMaster(''));
+    await expect(plain.finish({ state: p2.optional.state, action: 'save', value: people.alice.token })).rejects.toThrow();
+    // the right person, a classic token: saved, and the connection finishes with a working code
+    const third = await (await signIn(c, client, 'alice', { tier: 'god' })).finished;
+    const p3 = await c.godChoose({ handle: third.god.handle, browserCsrf: third.god.handle, choice: 'master' });
+    const saved = await enrollment.finish({ state: p3.optional.state, action: 'save', value: people.alice.token });
+    expect(saved.status).toBe('read-observed-at-enrollment');
+    const routed = await route(client, new URL(saved.destination).searchParams.get('code'));
+    expect(routed).not.toBeNull();
+    const credentials = routed.credentials;
+    const status = await credentials.masterStatus();
+    expect(status.enrolled).toBe(true);
+    expect(status.scopes).toEqual(['repo', 'notifications', 'gist']);
+    expect(JSON.stringify(status)).not.toContain(people.alice.token);
+    // it opens any GitHub API address for the guarded tools, but never another host
+    expect(await credentials.authorizeOptionalRequest({ account: 'alice-dev', kind: 'M', method: 'POST', url: 'https://api.github.com/user/gists' })).toBe(true);
+    await expect(credentials.authorizeOptionalRequest({ account: 'alice-dev', kind: 'M', method: 'GET', url: 'https://evil.example/user' })).rejects.toThrow();
+    await expect(credentials.authorizeOptionalRequest({ account: 'alice-dev', kind: 'M', method: 'GET', url: 'https://user:pw@api.github.com/user' })).rejects.toThrow();
+    expect(await credentials.token({ account: 'alice-dev', cred: 'M' })).toBe(people.alice.token);
+    await expect(credentials.token({ account: 'alice-dev', cred: 'M', scope: { repositories: ['x'] } })).rejects.toThrow();
+    // notifications and packages fall back to it, but only for their own exact reads
+    expect(await credentials.token({ account: 'alice-dev', cred: 'K' })).toBe(people.alice.token);
+    expect(await credentials.authorizeOptionalRequest({ account: 'alice-dev', kind: 'K', method: 'GET', url: 'https://api.github.com/notifications?per_page=1' })).toBe(true);
+    await expect(credentials.authorizeOptionalRequest({ account: 'alice-dev', kind: 'K', method: 'POST', url: 'https://api.github.com/user/gists' })).rejects.toThrow();
+    expect(await credentials.authorizeOptionalRequest({ account: 'client-co', kind: 'P', method: 'GET', url: 'https://api.github.com/orgs/client-co/packages' })).toBe(true);
+    await expect(credentials.authorizeOptionalRequest({ account: 'client-co', kind: 'P', method: 'GET', url: 'https://api.github.com/orgs/other-org/packages' })).rejects.toThrow();
+    // another person's connection has none
+    const bobFlow = await (await signIn(c, client, 'bob', { tier: 'god' })).finished;
+    const bobCode = await c.godChoose({ handle: bobFlow.god.handle, browserCsrf: bobFlow.god.handle, choice: 'finish' });
+    const bobRouted = await route(client, new URL(bobCode.redirect).searchParams.get('code'));
+    expect((await bobRouted.credentials.masterStatus()).enrolled).toBe(false);
+    await expect(bobRouted.credentials.token({ account: 'bob-test', cred: 'M' })).rejects.toThrow();
+  });
+
+  it('never works for a read-only connection or a narrowed scope, and the legacy owner vault has no master token', async () => {
+    const { credentialFor, CREDENTIAL_KINDS } = await import('../../src/github/client.js');
+    expect(CREDENTIAL_KINDS).toContain('M');
+    const ctx = (profile) => ({ connection: { profile, accounts: ['alice-dev'], default_account: 'alice-dev' },
+      credentials: { token: async () => 'fake-token-value', authorizeOptionalRequest: async () => true } });
+    await expect(credentialFor(ctx('read_only'), { owner: 'alice-dev', cred: 'M' })).rejects.toThrow(/master token/);
+    await expect(credentialFor(ctx('full'), { owner: 'alice-dev', cred: 'M', scope: { repositories: ['x'] } })).rejects.toThrow(/master token/);
+    await expect(credentialFor({ ...ctx('full'), connection: { ...ctx('full').connection, pass: true } }, { owner: 'alice-dev', cred: 'M' })).rejects.toThrow();
+    expect((await credentialFor(ctx('full'), { owner: 'alice-dev', cred: 'M' })).token).toBe('fake-token-value');
+  });
+
+  it('can be added or removed at any time with a private one-use link, without reconnecting', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const enrollment = await enrollmentWith(fetchMaster('repo, admin:org'));
+    const finished = await (await signIn(c, client, 'dave', { tier: 'standard' })).finished;
+    const routed = await route(client, new URL(finished.redirect).searchParams.get('code'));
+    expect((await routed.credentials.masterStatus()).enrolled).toBe(false);
+    const made = await routed.credentials.masterLink({ clientId: client.client_id, redirectUri: CB });
+    expect(made.url.startsWith(ORIGIN + '/api/tenant/optional?master_link=')).toBe(true);
+    const handle = new URL(made.url).searchParams.get('master_link');
+    const form = await enrollment.startMasterLink(handle);
+    expect(form.kind).toBe('M');
+    await expect(enrollment.startMasterLink(handle)).rejects.toThrow();          // one use
+    await expect(enrollment.startMasterLink('x'.repeat(43))).rejects.toThrow();   // unknown
+    const saved = await enrollment.finish({ state: form.state, action: 'save', value: people.dave.token });
+    expect(saved.status).toBe('read-observed-at-enrollment');
+    expect(new URL(saved.destination).searchParams.get('code')).toBeNull();      // a plain return, not a new login
+    const now = await routed.credentials.masterStatus();
+    expect(now).toMatchObject({ enrolled: true, scopes: ['repo', 'admin:org'] });
+    // removal needs the same person's token
+    const again = await enrollment.startMasterLink(new URL((await routed.credentials.masterLink({ clientId: client.client_id, redirectUri: CB })).url).searchParams.get('master_link'));
+    await expect(enrollment.finish({ state: again.state, action: 'revoke', value: people.bob.token })).rejects.toThrow();
+    const again2 = await enrollment.startMasterLink(new URL((await routed.credentials.masterLink({ clientId: client.client_id, redirectUri: CB })).url).searchParams.get('master_link'));
+    const gone = await enrollment.finish({ state: again2.state, action: 'revoke', value: people.dave.token });
+    expect(gone.status).toBe('revoked-on-this-service');
+    expect((await routed.credentials.masterStatus()).enrolled).toBe(false);
+    await expect(routed.credentials.token({ account: 'alice-dev', cred: 'M' })).rejects.toThrow();
+  });
+
+  it('shows plain steps and the GitHub link with every permission ticked on the God page and the token page', async () => {
+    const { masterTokenLink, MASTER_SCOPES } = await import('../../src/tenancy/master-credential.js');
+    const link = new URL(masterTokenLink());
+    expect(link.origin + link.pathname).toBe('https://github.com/settings/tokens/new');
+    expect(link.searchParams.get('scopes').split(',')).toEqual([...MASTER_SCOPES]);
+    const { default: optional } = await import('../../api/tenant/optional.js');
+    expect(typeof optional).toBe('function');
+  });
+});
