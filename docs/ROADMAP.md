@@ -86,7 +86,7 @@ Approach: one public GitHub App, opened gradually. Every item below is part of "
 
 ## Remaining after PUB-6 (named, not built)
 - Make the GitHub App publicly installable and turn on `GITHUB_PUBLIC_CONNECT` (needs Chris's go-ahead; see the rollout plan above).
-- **Allow changes for signed-in people (production confirmation).** Public connections are preview-only (AI-PR-READ-FIRST item 9: production turns on only through a deliberate confirmed step, today the owner's passphrase page). Needs an equivalent for a person who signed in with GitHub (ask the assistant to enable it, then confirm after a fresh GitHub sign-in as an owner of the account). Until then people get every read and preview tool; writes are refused as in preview. Owner decision welcome on the exact confirmation wording.
+- Production confirmation as a separate follow-up step for people who connect WITHOUT ticking "let my assistant make changes" (they can reconnect with it ticked today).
 - Fine-grained-token tenants (God mode currently offers the notifications and package keys).
 - Revoke or delete a stranger's tenant and data by identity (today's revoke tools are keyed by account for the private pilot).
 - Self-host the brand fonts (pages currently use system fonts) and a favicon `.ico`.

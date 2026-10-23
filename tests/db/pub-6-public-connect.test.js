@@ -256,6 +256,7 @@ describe('PUB-6 public simple connect (dark) in REAL PostgreSQL', () => {
     expect(page.body).toContain('God mode');
     expect(page.body).toContain('Standard');
     expect(page.body).toContain('chat.example.test');
+    expect(page.body).toContain('Let my assistant make changes');
     expect(page.body).not.toContain('<script>alert');
     expect(String(page.headers['Set-Cookie'])).toMatch(/HttpOnly; Secure; SameSite=Strict/);
     expect(page.headers['Content-Security-Policy']).toContain("default-src 'none'");
@@ -357,5 +358,35 @@ describe('PUB-6 who may connect which account', () => {
     people.erin.installs = [spoof];
     const again = await (await signIn(c, client, 'erin', { account: 'someone-else' })).finished;
     expect(again.install).toBeDefined();
+  });
+});
+
+describe('PUB-6 letting the assistant make changes', () => {
+  it('ticked: changes are on for the accounts the person owns, still gated; unticked: preview only', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const on = await (await signIn(c, client, 'alice', { allow_changes: 'yes' })).finished;
+    const tokenOn = json(await exchange(client, new URL(on.redirect).searchParams.get('code')));
+    const routedOn = await resolvePrivateTenantMcpBearer({ authorization: 'Bearer ' + tokenOn.access_token, env, fetchImpl, rootSqlFactory, tenantSqlFactory });
+    expect(routedOn).not.toBeNull();
+    const grantOn = await routedOn.db.getAccessToken(tokenOn.access_token);
+    expect(grantOn.mode).toBe('production');
+    expect(grantOn.accounts).toEqual(['alice-dev', 'client-co']);
+    for (const login of grantOn.accounts) expect((await routedOn.db.getAccount(login)).production_enabled).toBe(true);
+    // a later connection without the tick is preview, and the gate still accepts it
+    const off = await (await signIn(c, client, 'alice')).finished;
+    const tokenOff = json(await exchange(client, new URL(off.redirect).searchParams.get('code')));
+    const routedOff = await resolvePrivateTenantMcpBearer({ authorization: 'Bearer ' + tokenOff.access_token, env, fetchImpl, rootSqlFactory, tenantSqlFactory });
+    expect((await routedOff.db.getAccessToken(tokenOff.access_token)).mode).toBe('preview');
+    // an organization the person does not administer is never switched on
+    people.erin.installs = [{ id: 41040, app_id: APP, account: { id: 51001, login: 'client-co', type: 'Organization' }, repository_selection: 'all', suspended_at: null }];
+    const denied = await (await signIn(c, client, 'erin', { allow_changes: 'yes' })).finished;
+    expect(denied.install).toBeDefined();
+    // God mode keeps the choice through the extra-keys page
+    const god = await (await signIn(c, client, 'alice', { tier: 'god', allow_changes: 'yes' })).finished;
+    const fin = await c.godChoose({ handle: god.god.handle, browserCsrf: god.god.handle, choice: 'finish' });
+    const tokenGod = json(await exchange(client, new URL(fin.redirect).searchParams.get('code')));
+    const routedGod = await resolvePrivateTenantMcpBearer({ authorization: 'Bearer ' + tokenGod.access_token, env, fetchImpl, rootSqlFactory, tenantSqlFactory });
+    expect((await routedGod.db.getAccessToken(tokenGod.access_token)).mode).toBe('production');
   });
 });

@@ -139,7 +139,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const client = await loadClient(p.client_id, p.redirect_uri);
     const tier = p.tier === 'god' ? 'god' : 'standard';
     return await openSignIn({ client, flow: { redirectUri: p.redirect_uri, clientState: p.state, codeChallenge: p.code_challenge,
-      tier, accountLogin: parseAccounts(p.account), allowChanges: false } });
+      tier, accountLogin: parseAccounts(p.account), allowChanges: p.allow_changes === 'yes' } });
   }
 
   const sameState = (state, browserCsrf) => typeof browserCsrf === 'string' && browserCsrf.length === state.length &&
@@ -156,7 +156,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   }
 
   /** One isolated tenant per verified GitHub person; every account that person connects lives inside it. */
-  async function ensureTenant({ principal, installations }) {
+  async function ensureTenant({ principal, installations, allowChanges }) {
     const dir = directory(), root = createDb(rootSql());
     const identityId = await dir.enrollVerifiedGithubSubject(principal.subject);
     const existing = await dir.findPilotTenant(identityId, TENANT_KEY);
@@ -179,6 +179,9 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
         credentialKind: 'app', appId });
       if (!await db.setInstallation(login, { installationId: installation.installationId,
         repositorySelection: installation.repositorySelection, permissions: installation.permissions, status: 'active' })) throw refused();
+      // The person was verified as the owner of this account (own account, or organization admin) before we got here, and
+      // ticked "let my assistant make changes" on a page that says what that means. That is their own confirmation.
+      if (allowChanges === true && env.VERCEL_ENV === 'production') await db.setProductionEnabled(login, true);
       logins.push(login);
     }
     return { dir, tenantId, identityId, logins };
@@ -235,7 +238,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       }
       // The signed-in person's own account first (if connected), so a developer's default is their own.
       chosen.sort((x, y) => Number(y.login.toLowerCase() === principal.login.toLowerCase()) - Number(x.login.toLowerCase() === principal.login.toLowerCase()));
-      const made = await ensureTenant({ principal, installations: chosen });
+      const made = await ensureTenant({ principal, installations: chosen, allowChanges: flow.allowChanges });
       const { db, sql } = await openAuthorizedTenantDb({ directory: made.dir, tenantId: made.tenantId,
         verifiedIdentityId: made.identityId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory });
       metricSql = sql;
@@ -259,15 +262,14 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       }
       await db.mirrorOAuthClient({ clientId: client.clientId, secretHash: client.secretHash, redirectUris: client.redirectUris,
         clientName: client.clientName, authorizedAccount: null });
-      // Public connections are always PREVIEW. Turning production on is a separate confirmed step (AI-PR-READ-FIRST item 9);
-      // an equivalent for signed-in people is a named remaining item, never a checkbox here.
-      const mode = 'preview';
+      // Changes only when asked for AND every connected account really has them on; otherwise safe preview.
+      const mode = flow.allowChanges && env.VERCEL_ENV === 'production' && rows.every((r) => r.production_enabled === true) ? 'production' : 'preview';
       outcome = 'ok';
       if (flow.tier === 'god') {
         const handle = 'pc.' + random(32);
         if (!await made.dir.createPublicFlow({ stateHash: sha(handle), stage: 'god', clientId: flow.clientId,
           redirectUri: flow.redirectUri, clientState: flow.clientState, codeChallenge: flow.codeChallenge, tier: 'god',
-          accountLogin: made.logins.join(','), allowChanges: false, tenantId: made.tenantId, identityId: made.identityId,
+          accountLogin: made.logins.join(','), allowChanges: mode === 'production', tenantId: made.tenantId, identityId: made.identityId,
           maxOpen: limits.maxOpenFlows })) throw new PublicConnectError('capacity', 'Too many people are connecting right now. Please try again in a few minutes.');
         return { god: { handle, accounts: rows.map((r) => ({ login: r.login, organization: r.account_type === 'Organization' })) } };
       }
@@ -296,7 +298,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     if (!flow || !flow.tenantId || !flow.identityId || !flow.accountLogin) throw refused();
     const logins = flow.accountLogin.split(',');
     const { db } = await godScope(flow);
-    const mode = 'preview'; // public connections are always preview (see finish)
+    const mode = flow.allowChanges ? 'production' : 'preview';
     for (const login of logins) {
       const row = await db.getAccount(login);
       if (!row || (mode === 'production' && row.production_enabled !== true)) throw refused();

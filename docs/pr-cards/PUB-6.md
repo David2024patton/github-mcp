@@ -9,7 +9,7 @@
 
 ## Outcome
 
-A person with only a GitHub login connects an MCP app: register (public client, hash-only secret) → branded consent page → GitHub sign-in → server finds the App installed on the account(s) they can see (or sends them to GitHub's one-click install and resumes) → their own isolated tenant is created on first sign-in → their sealed GitHub authorization is stored per account → the app receives an authorization code. **Normal** unlocks every tool GitHub sign-in alone can authorize; Connections are **preview-only** until a separate confirmed production step exists (named remaining item). **God mode** adds guided steps for the extra keys (notifications, package) on a protected page only. One sign-in can connect several of the person's own accounts (own, a client's organization, test accounts).
+A person with only a GitHub login connects an MCP app: register (public client, hash-only secret) → branded consent page → GitHub sign-in → server finds the App installed on the account(s) they can see (or sends them to GitHub's one-click install and resumes) → their own isolated tenant is created on first sign-in → their sealed GitHub authorization is stored per account → the app receives an authorization code. **Normal** unlocks every tool GitHub sign-in alone can authorize; Changes are on by default for accounts the person owns (own account, or an organization where GitHub says they are an admin), shown as a clear tick-box on the sign-in page; each change still needs the per-action confirm. Unticked means preview only. **God mode** adds guided steps for the extra keys (notifications, package) on a protected page only. One sign-in can connect several of the person's own accounts (own, a client's organization, test accounts).
 
 ## Acceptance criteria
 
@@ -25,7 +25,7 @@ A person with only a GitHub login connects an MCP app: register (public client, 
 
 ## Not in this piece (named remaining items, `docs/ROADMAP.md`)
 
-Production confirmation for signed-in people; making the GitHub App publicly installable (needs Chris's go-ahead); fine-grained-token tenants; revoking/deleting a stranger's data by identity; the 8-part gradual-opening plan; moving the connector to `github.robinsonaisystems.com` (DNS lives at Spaceship; `docs/OWNER-CHECKLIST.md`); real-device acceptance of the new flow.
+Making the GitHub App publicly installable (needs Chris's go-ahead); fine-grained-token tenants; revoking/deleting a stranger's data by identity; the 8-part gradual-opening plan; moving the connector to `github.robinsonaisystems.com` (DNS lives at Spaceship; `docs/OWNER-CHECKLIST.md`); real-device acceptance of the new flow.
 
 ## Dangers
 

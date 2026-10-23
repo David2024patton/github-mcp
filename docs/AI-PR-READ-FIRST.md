@@ -32,7 +32,7 @@ honored. A blocking item that is not honored is fixed in the same PR, never defe
    production environments, org and user scope (BATCH-B B2). A preview connection refuses production writes; a
    production connection always needs `confirm`.
 9. `production_enabled` turns on only through `github_enable_production` **plus** the passphrase on the setup page.
-   No tool, argument, pass or profile can turn it on alone.
+   No tool, argument, pass or profile can turn it on alone. (End users of the public sign-in, PUB-6: the verified owner of an account turns it on for that account with the sign-in page's explicit tick-box; see `docs/DECISIONS.md` 2026-10-23.)
 10. Merges happen only at an exact `expectedHeadSha` with every required check green at that SHA (`src/github/ci-state.js`);
     merge commits by default. `bypass_rules` is never sent by any tool, including `github_api_write` and
     `github_graphql_write` (a test greps the fake-GitHub request log).
