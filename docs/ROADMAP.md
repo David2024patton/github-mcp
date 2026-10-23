@@ -49,7 +49,8 @@ Order: finish the remaining acceptance testing first, then this, then PUB-5. Bui
 
 - **Simple connect flow for anyone:** Connect, Sign in with GitHub, pick the account, Approve. Mode, profile and tool listing default to safe
   choices and move to a settings page. No administrator passphrase for ordinary users. Today's owner form stays for the owner.
-  Open question for Chris: replace the owner form or sit beside it (asked 2026-10-23; he has not answered).
+  Decided by Chris 2026-10-23: the simple flow is the normal way to connect. Today's owner form (account, mode, profile, tool listing, passphrase)
+  becomes development-only: kept for building and testing, not shown to ordinary users, and out of the product's normal path.
 - **GitHub App install inside the connect flow:** after "Sign in with GitHub", the server checks which accounts the person has already installed
   the App on; for an account without it, it sends them straight to GitHub's install screen (with "request user authorization during
   installation" so sign-in and install are one step) and returns them to finish connecting. Organizations whose owner must approve the install
