@@ -127,6 +127,7 @@ describe('authorize page', () => {
     const client = await register(h);
     const page = await call(h.authorize, request('GET', form(client)));
     expect(page.body).toContain('No GitHub accounts are connected yet');
+    expect(page.body).toContain('href="/api/github/setup"');
     expect(page.body).toContain('<button type="submit" disabled>');
   });
 

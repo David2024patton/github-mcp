@@ -58,3 +58,8 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 ## Done
 
 (Nothing yet.)
+
+## Added 2026-10-23 (connecting more accounts, branch setting, webhook proof)
+- [ ] **Turn on "Automatically delete head branches"** for Robinson-AI-Systems/github-mcp: repository Settings, General, Pull Requests. (The agent's environment is not allowed to change repository settings.)
+- [ ] **Connect more of your accounts (christcr2012 personal, the Robinson-AI-Systems organization).** Today only `robinson-ai-scratch` is set up, so that is the only choice on the connect screen. For each extra account: open `/api/github/setup` on the live site, type the administrator passphrase, choose "Create the GitHub App" for that account, approve it on GitHub, then install it on that account. Then disconnect and reconnect the Claude connector; the connect screen will list every account that is set up (it now has an "add an account" link). One connection can use several accounts and has one default.
+- [ ] **Optional, 2 minutes: prove webhook signatures.** The agent created and removed a test webhook but cannot see its signing secret (it is shown only behind your passphrase). To prove the signature check, create a test webhook through the agent, open the one-time link it returns, and compare against a receiver you control.

@@ -34,9 +34,10 @@ export function createGithubPolicy({ env = process.env } = {}) {
         full:'Full — every operation allowed by your real GitHub grant and user policy'};
       const profiles = CONNECTION_PROFILES.map(v=>option(v,(params.profile||'everyday')===v,names[v]||v)).join('');
       const listings = CONNECTION_LISTINGS.map((v) => option(v, listing === v)).join('');
-      const intro = accounts.length
+      const addAccount = '<p><small>Not seeing an account you own? Add it on the <a href="/api/github/setup">setup page</a> (it installs the GitHub App on that account), then come back and reconnect.</small></p>';
+      const intro = (accounts.length
         ? '<p>Choose which GitHub accounts this AI connection may use, its default account, and its permissions.</p>'
-        : '<p>No GitHub accounts are connected yet. Add an account securely through the setup page first.</p>';
+        : '<p>No GitHub accounts are connected yet. Add an account securely through the setup page first.</p>') + addAccount;
       const profileNote='<small>Full is included in normal GitHub connection setup; no God Mode or extra token is required. Full never changes your provider grant, installed repositories, production permissions or chosen safety limits.</small>';
       const modeNote = isProductionDeployment(env)
         ? '<small>Production works only for accounts where it has been turned on.</small>'

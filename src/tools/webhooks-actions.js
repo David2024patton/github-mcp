@@ -8,6 +8,8 @@ import {productionReason} from './production-guard.js';
 
 const OWNER={type:'string',maxLength:39},REPO={type:'string',minLength:1,maxLength:100};
 const ID={type:'integer',minimum:1};
+// Delivery IDs can exceed 2^53, so they are accepted as an exact digit string as well as a number and always compared as text.
+const DID={type:['integer','string'],minimum:1,maxLength:25,pattern:'^[1-9][0-9]{0,24}$'};
 const props={owner:OWNER,repo:REPO,scope:{type:'string',enum:['repo','org']},hookId:ID};
 const target=(a,c)=>{
   if(a.scope==='org'&&a.repo)throw new TypeError('Organization webhook cannot target a repository.');
@@ -74,14 +76,14 @@ export const webhookDelete=defineGithubWrite({
 export const webhookRedeliver=defineGithubWrite({
   name:'github_webhook_redeliver',area:'webhook',audience:['B','Op'],
   description:'Request one exact webhook delivery retry and verify a new GitHub delivery receipt.',
-  properties:{...props,deliveryId:ID},required:['hookId','deliveryId'],
+  properties:{...props,deliveryId:DID},required:['hookId','deliveryId'],
   declarations:{production:'when-target',confirm:'always',profiles:['everyday','full']},target,
   read:async(a,ctx,t)=>{
     const snapshot=await inspect(a,ctx,t);
     const d=(await (await octo(ctx,t.owner)).request(
       'GET '+route(t,'/{hook_id}/deliveries/{delivery_id}'),
-      {...args(t),hook_id:a.hookId,delivery_id:a.deliveryId})).data;
-    if(d?.id!==a.deliveryId||!d.guid)throw refusal('Original delivery ID and GUID cannot be verified.');
+      {...args(t),hook_id:a.hookId,delivery_id:String(a.deliveryId)})).data;
+    if(String(d?.id)!==String(a.deliveryId)||!d.guid)throw refusal('Original delivery ID and GUID cannot be verified.');
     const inventory=await deliveries(ctx,t,a.hookId);
     return {...snapshot,delivery:{id:d.id,guid:d.guid,event:d.event??null},known:inventory.map(v=>v.id)};
   },
@@ -91,15 +93,15 @@ export const webhookRedeliver=defineGithubWrite({
     summarizeTarget(t,a)+' to '+b.target_host+'; original delivery #'+a.deliveryId,
   apply:({args:a,ctx,target:t})=>octo(ctx,t.owner).then(gh=>gh.request(
     'POST '+route(t,'/{hook_id}/deliveries/{delivery_id}/attempts'),
-    {...args(t),hook_id:a.hookId,delivery_id:a.deliveryId})),
+    {...args(t),hook_id:a.hookId,delivery_id:String(a.deliveryId)})),
   readAfter:({args:a,ctx,target:t})=>deliveries(ctx,t,a.hookId),
   verify:({before:b,after:items})=>items?.some(d=>d.guid===b.delivery.guid&&
-    d.id!==b.delivery.id&&!b.known.includes(d.id)&&d.redelivery===true),
+    String(d.id)!==String(b.delivery.id)&&!b.known.includes(d.id)&&d.redelivery===true),
   inverse:()=>null,
   present:({args:a,after:items,before:b})=>({webhook_id:a.hookId,
-    original_delivery_id:a.deliveryId,
+    original_delivery_id:String(a.deliveryId),
     verified_new_delivery_id:items?.find(d=>d.guid===b.delivery.guid&&
-      d.id!==a.deliveryId&&!b.known.includes(d.id)&&d.redelivery===true)?.id??null})
+      String(d.id)!==String(a.deliveryId)&&!b.known.includes(d.id)&&d.redelivery===true)?.id??null})
 });
 
 export const webhookPing=defineGithubWrite({

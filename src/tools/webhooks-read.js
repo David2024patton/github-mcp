@@ -5,7 +5,7 @@ import {defineRead} from './define-read.js';
 import {plain,readerFor} from './github-read.js';
 
 const OWNER={type:'string',maxLength:39},REPO={type:'string',minLength:1,maxLength:100};
-const ID={type:'integer',minimum:1},MAX={type:'integer',minimum:1,maximum:100};
+const ID={type:'integer',minimum:1},DID={type:['integer','string'],minimum:1,maxLength:25,pattern:'^[1-9][0-9]{0,24}$'},MAX={type:'integer',minimum:1,maximum:100};
 const common={owner:OWNER,repo:REPO,scope:{type:'string',enum:['repo','org']}};
 const target=a=>{
   if(a.scope==='org'&&a.repo)throw new TypeError('Organization webhooks have no repository.');
@@ -61,15 +61,15 @@ export const webhookGet=defineRead({
 export const webhookListDeliveries=defineRead({
   name:'github_webhook_list_deliveries',area:'webhook',audience:['B','Op'],
   description:'Inspect bounded webhook delivery outcomes and one exact delivery without leaking request or response credentials.',
-  properties:{...common,hookId:ID,deliveryId:ID,max:MAX},required:['hookId'],
+  properties:{...common,hookId:ID,deliveryId:DID,max:MAX},required:['hookId'],
   handler:(a,ctx)=>plain(async()=>{
     const {owner,octokit:gh}=await readerFor(a,ctx),p={...a,owner};target(p);
     await getHook(gh,p,a,a.hookId);
     const base={...loc(p),hook_id:a.hookId};
     if(a.deliveryId){
       const d=(await gh.request(endpoint(p,'/{hook_id}/deliveries/{delivery_id}'),
-        {...base,delivery_id:a.deliveryId})).data;
-      if(!d||d.id!==a.deliveryId)throw new TypeError('Webhook delivery identity mismatch.');
+        {...base,delivery_id:String(a.deliveryId)})).data;
+      if(!d||String(d.id)!==String(a.deliveryId))throw new TypeError('Webhook delivery identity mismatch.');
       return {owner,hook_id:a.hookId,item:delivery(d),
         note:'Request/response bodies and headers are intentionally omitted to prevent credential disclosure.'};
     }
