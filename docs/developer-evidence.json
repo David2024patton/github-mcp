@@ -23,13 +23,12 @@
       "source": "deployment_provider",
       "service": "robinson-github-mcp",
       "origin": "https://github-mcp-chris-projects-de6cd1bf.vercel.app",
-      "commit": "ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904",
+      "commit": "610394fa283a8cae7467eba4cc23ccd94689a063",
       "transport": "deployment_api",
       "observations": [
         "vercel_ready",
-        "production_alias_and_live_receipt_match_2026_10_15",
-        "independent_provider_metadata",
-        "source_newer_than_live_acceptance_per_check"
+        "production_deployment_dpl_matches_live_sha_2026_10_23",
+        "independent_provider_metadata"
       ]
     },
     {
@@ -38,28 +37,35 @@
       "source": "custom_service",
       "service": "robinson-github-mcp",
       "origin": "https://github-mcp-chris-projects-de6cd1bf.vercel.app",
-      "commit": "ecf190d7f38b7b62f88b1ae6df830f9dcaaf7904",
+      "commit": "610394fa283a8cae7467eba4cc23ccd94689a063",
       "transport": "native_mcp",
       "observations": [
         "authenticated_initialize",
         "tools_list",
         "github_whoami",
-        "mobile_cloud_connection_callable_2026_10_13",
-        "2026_10_15_reconnected_actual_custom_whoami_preview_full_scratch_only"
+        "2026_10_23_github_call_and_github_get_result_used_throughout_acceptance_on_this_commit"
       ]
     },
     {
       "layer": "provider",
-      "status": "unverified",
+      "status": "verified",
       "observations": [
-        "partial:2026_10_15_real_custom_repo_hook_collaborator_deploykey_security_org_team_role_billing_reads",
-        "partial:foreign_account_refused_before_provider",
-        "partial:retained_result_second_page_retrieved",
-        "private_governance_provider_plan_403",
-        "old_run_ownership_refused_for_new_connection_identity",
-        "personal_reads_require_optional_user_authorization",
-        "permitted_write_and_cleanup_not_accepted"
-      ]
+        "permitted_read",
+        "permitted_write",
+        "denied_resource_access",
+        "denied_identity_access",
+        "provider_readback",
+        "scope:robinson-ai-scratch only; PRODUCTION mode; writes exact-confirmed with absence/readback and restored",
+        "2026_10_23_pr_open_merge_stack_ci_release_branch_protection_ruleset_security_feature_universal_rest_verified",
+        "denied_resource: foreign owner refused client:outside_scope before GitHub",
+        "denied_identity: personal key reads refused because the user grant lacks the permission",
+        "not_run:webhook_receiver_signing,package_credential,spend_and_access_widening_owner_approved_writes,second_account_review_thread_replies"
+      ],
+      "source": "custom_service",
+      "service": "robinson-github-mcp",
+      "origin": "https://github-mcp-chris-projects-de6cd1bf.vercel.app",
+      "commit": "610394fa283a8cae7467eba4cc23ccd94689a063",
+      "transport": "native_mcp"
     },
     {
       "layer": "hub",
@@ -82,7 +88,16 @@
     },
     {
       "layer": "cleanup",
-      "status": "unverified"
+      "status": "verified",
+      "source": "custom_service",
+      "service": "robinson-github-mcp",
+      "origin": "https://github-mcp-chris-projects-de6cd1bf.vercel.app",
+      "commit": "610394fa283a8cae7467eba4cc23ccd94689a063",
+      "transport": "native_mcp",
+      "observations": [
+        "run-owned scratch protection, ruleset, release draft, test branches and topics removed or restored with independent readback",
+        "old merged working branches in the product repository remain (agent environment cannot delete them); on owner checklist"
+      ]
     }
   ]
 }
