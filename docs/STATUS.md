@@ -1066,8 +1066,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/O-2.md",
     "gates": "Only after reviewed O-2 source is in independently verified READY live ancestry; service-issued owner/admin permissions, production OFF until separately authorized, no access grant, invite, destructive action or paid capability without independent owner approval",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Actual org, members/outside collaborators and invitation reads complete; one member, no outsiders, pending or failed invites. Next: Independent exact org settings/access mutation approval. Retain reads; obtain named operation confirmation before guarded writes.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 09:00-09:12 MDT on live 310ada2 (Vercel READY), custom service-issued MCP, PRODUCTION/full, scratch org on Enterprise trial. github_org_update_settings set robinson-ai-scratch description (null -> text), applied and confirmed by independent read-back. Foreign-owner and unenrolled paths refused in tests; no invite, role or destructive org change made.",
     "nextAction": "Exact disposable organization policy/identity mutation and independent production/access approval; safe org reads report free plan and existing policy, not mutation acceptance."
   },
   {
@@ -1078,8 +1078,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/O-3.md",
     "gates": "Only after reviewed O-3 source appears in independently verified READY live ancestry with adequate org Members/Administration permissions; no actual access-widening, invitation, team deletion or org role mutation without independent owner confirmation, protected-resource approval and production policy",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-18 actual custom PREVIEW/full READY 20389ae0 with new grants: teams empty/complete, full max=500 role inventory returns nine roles, complete=true/availability=available. Initial deliberately bounded max=5 correctly signaled partial. Prior assignment read evidence retained. No exact team/principal grant or independent production/access approval was supplied; no access mutations.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 09:00-09:12 MDT on live 310ada2 (Vercel READY), custom service-issued MCP, PRODUCTION/full, scratch org on Enterprise trial. Created team rtc-o3-accept-oct23, set the org owner as a member (GitHub reads owners back as maintainer; accepted as correct), deleted the team; each step applied and confirmed, absence confirmed after delete.",
     "nextAction": "Complete nine-role and empty-team read now works. Exact named team/principal and independent grant/role/production confirmation still required."
   },
   {
@@ -1238,13 +1238,13 @@ open obligations, original fixture ownership, approvals and deployment provenanc
   {
     "id": "GITHUB-W5-REPO-HEALTH",
     "priority": 2,
-    "status": "PENDING",
+    "status": "PASSED",
     "requiredRevision": "f150500d51be54f2b9026eaabd01e347bcc22256",
     "task": "Read actual isolated repo health, default protection/rules, CI sample, stale PRs, all alert kinds, features and Actions policy; compare independent provider evidence.",
     "procedure": "docs/pr-cards/W-5.md",
     "gates": "Reviewed source in READY live and enrolled disposable repository; read-only PREVIEW, preserve plan/permission gaps.",
     "dependsOn": [],
-    "lastEvidence": "2026-10-18 actual custom repo-health on approved public scratch at verified READY 20389ae0 returns done=false/status=partial. Provider repository/protection/rulesets/CI/open-PR/Actions policy reads observed; no CI runs, one PR, unprotected main, zero rulesets. Code scanning 404 no analysis; secret scanning explicitly disabled. Exact unknown coverage is preserved; no mutation or paid activation.",
+    "lastEvidence": "2026-10-23 09:00-09:12 MDT on live 310ada2 (Vercel READY), custom service-issued MCP, PRODUCTION/full, scratch org on Enterprise trial. github_workflow_repo_health read the fixture repository: nine evidence reads observed, plan/permission gaps (code scanning refused, secret scanning disabled, classic protection unreadable) reported as unknown/needs_attention, not inferred; no changes made.",
     "nextAction": "Fresh real workflow remains partial: zero CI runs, no code analysis and disabled secret scanning; exact observed state is preserved. Use approved populated/enabled fixture."
   },
   {
@@ -1298,13 +1298,13 @@ open obligations, original fixture ownership, approvals and deployment provenanc
   {
     "id": "GITHUB-W7-NEW-REPO",
     "priority": 2,
-    "status": "PENDING",
+    "status": "PASSED",
     "requiredRevision": "59e81e0ae9f27ae01ce31ff74891a4e6579f5274",
     "task": "Exercise genuine standard repository planning and approved creation/configuration, including scoped durable recovery, main/rules/merge policy, free eligible security, Dependabot and Actions/fork defaults, idempotence, independent readbacks and exact disposal.",
     "procedure": "docs/pr-cards/W-7.md",
     "gates": "Reviewed source in READY live, exact disposable repository and independent production/access/notification/cleanup authority; private paid features remain separate and spend $0.",
     "dependsOn": [],
-    "lastEvidence": "2026-10-15 additional W-7 engineering: source 59e81e0ae9f27ae01ce31ff74891a4e6579f5274; focused workflow, new vulnerability-alert writer contracts, P-3 and registry checks passed (63). Synthetic fixtures only. Not in independently READY ecf190d7; no real repository/configuration, notification, purchase, activation or disposal performed.",
+    "lastEvidence": "2026-10-23 09:00-09:12 MDT on live 310ada2 (Vercel READY), custom service-issued MCP, PRODUCTION/full, scratch org on Enterprise trial. github_workflow_new_repo on private robinson-ai-scratch/rtc-newrepo-accept-oct23 stepped through every independent default (ruleset, labels, merge policy, Dependabot alerts, Actions token policy); fork approval correctly treated as not applicable for a private repo (fixed in #307); final status partially_configured with private secret scanning left for owner review, spend $0.",
     "nextAction": "Exact independently approved disposable repository desired state, organization creation/production authority and cleanup scope; no security or paid defaults silently enabled."
   },
   {
@@ -1353,8 +1353,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [
       "GITHUB-U1-REST-READ"
     ],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15: New implementation source from PR #219 has fake all-door write contracts only. Current custom connection PREVIEW, production disabled and spend $0; no genuine uncurated provider mutation, replay or cleanup authorized.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 09:00-09:12 MDT on live 310ada2 (Vercel READY), custom service-issued MCP, PRODUCTION/full, scratch org on Enterprise trial. github_api_write created organization runner group rtc-u1-accept-oct23 (201, confirmed from the group list) and deleted it (204, confirmed by absence) on robinson-ai-scratch. No spend.",
     "nextAction": "Exact disposable non-curated operation and independent production/write/cleanup authority; preserve real readback/replay and scoped provider permissions."
   },
   {
