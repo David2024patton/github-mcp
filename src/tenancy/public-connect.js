@@ -204,6 +204,28 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     return url.toString();
   }
 
+  /** Accounts this person administers (personal account first) where the App is not installed. Anything unexpected → none. */
+  async function findOffers({ token, principal, installs }) {
+    try {
+      const have = new Set(installs.map((i) => i.login.toLowerCase()));
+      const out = [];
+      const subject = Number(principal.subject);
+      if (!have.has(principal.login.toLowerCase()) && Number.isSafeInteger(subject) && subject > 0 && LOGIN.test(principal.login.toLowerCase()))
+        out.push({ login: principal.login, id: subject, type: 'User' });
+      const res = await fetchImpl('https://api.github.com/user/memberships/orgs?state=active&per_page=100', { signal: AbortSignal.timeout(8000),
+        headers: { accept: 'application/vnd.github+json', authorization: 'Bearer ' + token, 'x-github-api-version': '2026-03-10' } });
+      if (res.ok) {
+        for (const m of (await res.json()) ?? []) {
+          const org = m?.organization;
+          if (m?.state === 'active' && m?.role === 'admin' && org && Number.isSafeInteger(org.id) && org.id > 0 &&
+              LOGIN.test(String(org.login).toLowerCase()) && !have.has(String(org.login).toLowerCase())) out.push({ login: org.login, id: org.id, type: 'Organization' });
+          if (out.length >= 8) break;
+        }
+      }
+      return out;
+    } catch { return []; }
+  }
+
   /** The browser came back from GitHub sign-in. Returns {redirect} to the client, {god} for the extra-keys page, or
    * {install} to send the person to GitHub to install the App. Anything unexpected is a generic refusal. */
   async function finish({ state, code, browserCsrf }) {
@@ -234,11 +256,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       const chosen = [];
       for (const installation of candidates)
         if (await verifyAccountAuthority(data.access_token, { installation, subject: principal.subject, fetchImpl })) chosen.push(installation);
-      // The App is offered on the person's own personal account too, once, when they did not name accounts themselves and it is
-      // not there yet. After they return from installing we never loop: whatever is connectable is connected.
-      const mine = principal.login.toLowerCase();
-      const offerPersonal = !flow.afterInstall && !asked && chosen.length > 0 && !chosen.some((i) => i.login.toLowerCase() === mine);
-      if (chosen.length === 0 || offerPersonal) {
+      if (chosen.length === 0) {
         if (flow.afterInstall) throw new PublicConnectError('no_installation',
           'The GitHub App is not installed on that account yet, or you are not an owner of it. Ask an owner of the account to install it (or connect it themselves), then connect again.');
         const root = createDb(rootSql());
@@ -247,6 +265,9 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
         const next = await openSignIn({ client, flow, stage: 'install' });
         return { install: { url: `https://github.com/apps/${app.slug}/installations/new?state=${next.state}`, csrfState: next.state } };
       }
+      // Accounts the person could add (their own personal account, organizations they administer) that do not have the App yet.
+      // Offered AFTER the connection is safely made, so cancelling GitHub's install page never loses it. Best effort only.
+      const offers = asked ? [] : await findOffers({ token: data.access_token, principal, installs });
       // The signed-in person's own account first (if connected), so a developer's default is their own.
       chosen.sort((x, y) => Number(y.login.toLowerCase() === principal.login.toLowerCase()) - Number(x.login.toLowerCase() === principal.login.toLowerCase()));
       const made = await ensureTenant({ principal, installations: chosen, allowChanges: flow.allowChanges });
@@ -278,6 +299,15 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       // Changes only when asked for AND every connected account really has them on; otherwise safe preview.
       const mode = flow.allowChanges && env.VERCEL_ENV === 'production' && rows.every((r) => r.production_enabled === true) ? 'production' : 'preview';
       outcome = 'ok';
+      const after = { clientId: flow.clientId, redirectUri: flow.redirectUri, clientState: flow.clientState, codeChallenge: flow.codeChallenge,
+        tier: flow.tier, accountLogin: made.logins.join(','), allowChanges: mode === 'production', tenantId: made.tenantId,
+        identityId: made.identityId, maxOpen: limits.maxOpenFlows };
+      if (offers.length > 0) {
+        const handle = 'pc.' + random(32);
+        if (!await made.dir.createPublicFlow({ ...after, stateHash: sha(handle), stage: 'god', offers })) throw new PublicConnectError('capacity',
+          'Too many people are connecting right now. Please try again in a few minutes.');
+        return { accounts: { handle, connected: rows.map((r) => r.login), offers } };
+      }
       if (flow.tier === 'god') {
         const handle = 'pc.' + random(32);
         if (!await made.dir.createPublicFlow({ stateHash: sha(handle), stage: 'god', clientId: flow.clientId,
@@ -334,9 +364,9 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
 
   /** The "God mode" page: choose what to add. One use per handle. `choice` is 'finish', 'notifications' or 'package';
    * `account` says which of the connected accounts a token is for. */
-  async function godChoose({ handle, browserCsrf, choice, account }) {
+  async function godChoose({ handle, browserCsrf, choice, account, offerIndex }) {
     active();
-    if (!STATE.test(String(handle ?? '')) || !sameState(handle, browserCsrf) || !['finish', 'notifications', 'package'].includes(choice)) throw refused('r25');
+    if (!STATE.test(String(handle ?? '')) || !sameState(handle, browserCsrf) || !['finish', 'notifications', 'package', 'continue', 'add'].includes(choice)) throw refused('r25');
     const flow = await directory().consumePublicFlow(sha(handle), 'god');
     if (!flow || flow.purpose || !flow.tenantId || !flow.identityId || !flow.accountLogin) throw refused('r26');
     const logins = flow.accountLogin.split(',');
@@ -346,6 +376,31 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       const row = await db.getAccount(login);
       if (!row || (mode === 'production' && row.production_enabled !== true)) throw refused('r27');
     }
+    if (flow.offers && (choice === 'continue' || choice === 'add')) {
+      const rest = { clientId: flow.clientId, redirectUri: flow.redirectUri, clientState: flow.clientState, codeChallenge: flow.codeChallenge };
+      if (choice === 'add') {
+        const offer = flow.offers[Number(offerIndex)];
+        if (!offer) throw refused('r29');
+        const root = createDb(rootSql());
+        const app = await root.getApp(appId);
+        if (!app?.slug || !/^[a-z0-9-]{1,100}$/.test(app.slug)) throw refused('r30');
+        const client = await loadClient(flow.clientId, flow.redirectUri);
+        const next = await openSignIn({ client, flow: { redirectUri: flow.redirectUri, clientState: flow.clientState, codeChallenge: flow.codeChallenge,
+          tier: flow.tier, accountLogin: null, allowChanges: flow.allowChanges }, stage: 'install' });
+        return { install: { url: `https://github.com/apps/${app.slug}/installations/new?state=${next.state}&suggested_target_id=${offer.id}`, csrfState: next.state } };
+      }
+      if (flow.tier === 'god') {
+        const handle = 'pc.' + random(32);
+        if (!await directory().createPublicFlow({ ...rest, stateHash: sha(handle), stage: 'god', tier: 'god', accountLogin: flow.accountLogin,
+          allowChanges: flow.allowChanges, tenantId: flow.tenantId, identityId: flow.identityId, maxOpen: limits.maxOpenFlows }))
+          throw new PublicConnectError('capacity', 'Too many people are connecting right now. Please try again in a few minutes.');
+        const rowsNow = [];
+        for (const login of logins) rowsNow.push(await db.getAccount(login));
+        return { god: { handle, accounts: rowsNow.map((r) => ({ login: r.login, organization: r.account_type === 'Organization' })) } };
+      }
+      return { redirect: await mintCode({ db, tenantId: flow.tenantId, identityId: flow.identityId, logins, flow: rest, mode }) };
+    }
+    if (choice === 'continue' || choice === 'add') throw refused('r31');
     if (choice === 'finish') {
       return { redirect: await mintCode({ db, tenantId: flow.tenantId, identityId: flow.identityId, logins,
         flow: { clientId: flow.clientId, redirectUri: flow.redirectUri, codeChallenge: flow.codeChallenge, clientState: flow.clientState }, mode }) };

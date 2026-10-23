@@ -53,6 +53,8 @@ const fetchImpl = async (url, opts = {}) => {
     const role = who.roles?.[org];
     return role ? { ok: true, status: 200, json: async () => ({ state: 'active', role, organization: { id: org === 'client-co' ? 51001 : 0 } }) } : { ok: false, status: 404, json: async () => ({}) };
   }
+  if (url === 'https://api.github.com/user/memberships/orgs?state=active&per_page=100')
+    return { ok: true, status: 200, json: async () => Object.entries(who.roles ?? {}).map(([login, role]) => ({ state: 'active', role, organization: { id: login === 'client-co' ? 51001 : 0, login } })) };
   if (url === 'https://api.github.com/user/installations?per_page=100') return { ok: true, status: 200, json: async () => ({ total_count: who.installs.length, installations: who.installs }) };
   throw new Error('unrecognized fixture route ' + url);
 };
@@ -204,20 +206,39 @@ describe('PUB-6 public simple connect (dark) in REAL PostgreSQL', () => {
     expect(done.redirect).toContain(CB);
   });
 
-  it('offers the App on the person\'s own personal account once, then connects what is available without looping', async () => {
+  it('connects what is available first, then offers accounts without the App; adding is optional and one-use', async () => {
     const c = make();
     const client = await c.registerClient({ redirect_uris: [CB] });
-    // dave administers an installed organization but his own account has no App yet: he is offered the install first.
+    // dave administers an installed organization; his own personal account has no App yet.
     const first = await (await signIn(c, client, 'dave')).finished;
     expect(first.redirect).toBeUndefined();
-    expect(first.install.url).toMatch(/^https:\/\/github\.com\/apps\/public-connect-app\/installations\/new\?state=pc\./);
-    const installState = new URL(first.install.url).searchParams.get('state');
-    const resumed = await c.resumeInstall({ state: installState, browserCsrf: installState });
-    // back from GitHub without installing on himself: the organization is connected, no second offer.
+    expect(first.accounts.connected).toEqual(['client-co']);
+    expect(first.accounts.offers).toEqual([{ login: 'dave-solo', id: 31006, type: 'User' }]);
+    // the connection already exists, so skipping loses nothing
+    const skipped = await c.godChoose({ handle: first.accounts.handle, browserCsrf: first.accounts.handle, choice: 'continue' });
+    expect(skipped.redirect).toContain(CB);
+    expect(new URL(skipped.redirect).searchParams.get('code')).toBeTruthy();
+    await expect(c.godChoose({ handle: first.accounts.handle, browserCsrf: first.accounts.handle, choice: 'continue' })).rejects.toThrow();
+    // God mode still gets its extra-keys page after the accounts step
+    const again = await (await signIn(c, client, 'dave', { tier: 'god' })).finished;
+    const toGod = await c.godChoose({ handle: again.accounts.handle, browserCsrf: again.accounts.handle, choice: 'continue' });
+    expect(toGod.god.accounts.map((a) => a.login)).toEqual(['client-co']);
+    // adding sends the person to GitHub's install page aimed at that account, and a bad choice is refused
+    const third = await (await signIn(c, client, 'dave')).finished;
+    await expect(c.godChoose({ handle: third.accounts.handle, browserCsrf: third.accounts.handle, choice: 'add', offerIndex: '5' })).rejects.toThrow();
+    const fourth = await (await signIn(c, client, 'dave')).finished;
+    const added = await c.godChoose({ handle: fourth.accounts.handle, browserCsrf: fourth.accounts.handle, choice: 'add', offerIndex: '0' });
+    const addUrl = new URL(added.install.url);
+    expect(addUrl.href).toMatch(/^https:\/\/github\.com\/apps\/public-connect-app\/installations\/new\?state=pc\./);
+    expect(addUrl.searchParams.get('suggested_target_id')).toBe('31006');
+    // back from installing: both accounts are connected and nothing more is offered
+    people.dave.installs.push({ id: 41051, app_id: APP, account: { id: 31006, login: 'dave-solo', type: 'User' }, repository_selection: 'all', suspended_at: null });
+    const resumed = await c.resumeInstall({ state: addUrl.searchParams.get('state'), browserCsrf: addUrl.searchParams.get('state') });
     const done = await c.finish({ state: resumed.csrfState, code: 'dave-fixture-code-1', browserCsrf: resumed.csrfState });
-    expect(done.install).toBeUndefined();
+    expect(done.accounts).toBeUndefined();
     expect(done.redirect).toContain(CB);
-    // someone who names accounts is never pushed to install their personal one
+    people.dave.installs.pop();
+    // someone who names accounts is never offered more
     const named = await (await signIn(c, client, 'dave', { account: 'client-co' })).finished;
     expect(named.redirect).toContain(CB);
   });

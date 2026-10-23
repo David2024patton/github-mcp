@@ -137,6 +137,27 @@ function forgetPage(res, forget) {
   { cookies: [clearCookie(STATE, STATE_PATH), setCookie(FORGET, forget.handle, FORM_PATH, 'Strict')] });
 }
 
+function accountsPage(res, accounts) {
+  const form = (choice, text, note, offer) => `<form method="post" action="${GOD_PATH}"><input type="hidden" name="connect_god" value="1"><input type="hidden" name="csrf" value="${h(accounts.handle)}"><input type="hidden" name="choice" value="${choice}">${offer === undefined ? '' : `<input type="hidden" name="offer" value="${offer}">`}<p><small>${note}</small></p><button type="submit">${text}</button></form>`;
+  const kind = (o) => o.type === 'User' ? 'your personal account' : 'an organization you manage';
+  return page(res, 200, 'You are connected', `<p>Connected now: <strong>${accounts.connected.map(h).join(', ')}</strong>.</p>` +
+    '<p>You can also add these. The App is not installed on them yet, so your assistant cannot use them until you add them:</p>' +
+    accounts.offers.map((o, i) => form('add', `Add ${h(o.login)}`, `${h(o.login)} is ${kind(o)}. GitHub will ask you to install the App there, then bring you back here.`, i)).join('') +
+    form('continue', 'Continue with what is connected', 'Return to your app now. You can add more later by connecting again.'),
+  { cookies: [clearCookie(STATE, STATE_PATH), setCookie(GOD, accounts.handle, GOD_PATH, 'Lax')] });
+}
+
+/** Renders what the extra step on /api/tenant/optional produced when it is not a plain redirect: another page, or GitHub's install page. */
+export function renderPublicStep(res, chosen) {
+  if (chosen.install) {
+    res.setHeader('Set-Cookie', [clearCookie(GOD, GOD_PATH), setCookie(STATE, chosen.install.csrfState, STATE_PATH, 'Lax')]);
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Location', chosen.install.url);
+    return res.status(303).end();
+  }
+  return godPage(res, chosen.god, chosen.god.handle);
+}
+
 function godPage(res, god, cookieValue) {
   const accounts = god.accounts;
   const options = accounts.map((a) => `<option value="${h(a.login)}">${h(a.login)}</option>`).join('');
@@ -147,7 +168,7 @@ function godPage(res, god, cookieValue) {
     form('notifications', 'Add a notifications token', 'Opens the notification tools. You create the token on GitHub (only the notifications box) and paste it on the next page, never into a chat.') +
     (org ? form('package', 'Add a package token', 'Opens the package tools for an organization account. Needs read, write and delete package access.') : '') +
     form('finish', 'Finish without adding keys', 'Return to your app now with the standard tools.'),
-  { cookies: [clearCookie(STATE, STATE_PATH), setCookie(GOD, cookieValue, GOD_PATH, 'Strict')] });
+  { cookies: [clearCookie(STATE, STATE_PATH), setCookie(GOD, cookieValue, GOD_PATH, 'Lax')] });
 }
 
 /** GET /api/github/user-callback when the state starts with pc. */
@@ -158,6 +179,7 @@ export async function publicCallback(req, res, { env = process.env, ...deps } = 
     const browserCsrf = cookieOf(req, STATE);
     const result = await make(env, deps).finish({ state: req.query?.state, code: req.query?.code, browserCsrf });
     if (result.forget) return forgetPage(res, result.forget);
+    if (result.accounts) return accountsPage(res, result.accounts);
     if (result.god) return godPage(res, result.god, result.god.handle);
     res.setHeader('Set-Cookie', clearCookie(STATE, STATE_PATH));
     res.setHeader('Referrer-Policy', 'no-referrer');
@@ -195,7 +217,7 @@ export async function publicGodPost(req, { env = process.env, ...deps } = {}) {
   if (!publicConnectEnabled(env)) throw new PublicConnectError('refused', '');
   const p = paramsOf(req), cookie = cookieOf(req, GOD);
   if (String(req.headers?.origin || '') !== publicOrigin(env) || !cookie || !same(cookie, p.csrf)) throw new PublicConnectError('refused', '');
-  return await make(env, deps).godChoose({ handle: cookie, browserCsrf: p.csrf, choice: p.choice, account: p.account });
+  return await make(env, deps).godChoose({ handle: cookie, browserCsrf: p.csrf, choice: p.choice, account: p.account, offerIndex: p.offer });
 }
 export const clearGodCookie = () => clearCookie(GOD, GOD_PATH);
 export const publicFailure = failure;

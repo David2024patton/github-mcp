@@ -1,0 +1,5 @@
+# 2026-10-23 — Accounts step after sign-in (add your personal account and organizations)
+
+After a person is safely connected, if there are accounts they administer (their own personal account, organizations) where the App is not installed, they see one short page: "Connected now: …; you can also add: …" with an Add button per account and "Continue with what is connected". Add sends them to GitHub's install page aimed at that account (`suggested_target_id`), then back; the sign-in re-runs silently and shows any accounts still missing. Continue finishes the connection; because the connection is made first, cancelling GitHub's install page loses nothing. People who type account names are never offered more. God mode still gets its extra-keys page after this step.
+
+This replaces the earlier "send to install first" rule for the personal account (PR 332), which could trap someone who cancelled. Also: the God/accounts cookie is now Lax like the other sign-in cookies. Not built: linking a second separate GitHub login into one connection (a different person today), and the redesigned God mode (one master token), recorded in docs/ROADMAP.md.
