@@ -11,6 +11,19 @@ const exact = new Map([
   // dedicated exact-login/credential journal and independent readback.
   ['GET /orgs/{org}/credential-authorizations', 'github_org_saml_authorizations'],
   ['DELETE /orgs/{org}/credential-authorizations/{credential_id}', 'github_org_saml_revoke_authorization'],
+  // CAP-4: App-owner JWT-only routes. Each is served by a native tool bound to
+  // the enrolled App owner (never a tool-supplied JWT). The universal policy
+  // already refuses every /app path; these entries record the exact native
+  // dispatch for the capability inventory and API describe. `GET /app` is
+  // deliberately NOT mapped: github_app_owner_identity returns a bounded
+  // identity projection, not an equivalent of the raw route.
+  ['GET /app/hook/config', 'github_app_webhook_configuration'],
+  ['PATCH /app/hook/config', 'github_app_webhook_configuration_set'],
+  ['GET /app/hook/deliveries', 'github_app_webhook_deliveries'],
+  ['GET /app/hook/deliveries/{delivery_id}', 'github_app_webhook_deliveries'],
+  ['POST /app/hook/deliveries/{delivery_id}/attempts', 'github_app_webhook_redeliver'],
+  ['GET /app/installations/{installation_id}', 'github_app_owner_installation_grants'],
+  ['GET /app/installation-requests', 'github_app_owner_installation_requests'],
   // O-4: budgets and Codespaces are separate guarded writes.
   ['POST /organizations/{org}/settings/billing/budgets', 'github_billing_save_budget'],
   ['PATCH /organizations/{org}/settings/billing/budgets/{budget_id}', 'github_billing_save_budget'],
