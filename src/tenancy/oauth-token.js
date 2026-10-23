@@ -10,6 +10,7 @@ import { createOAuthHandlers } from '../core/oauth-handlers.js';
 import { createGithubPolicy } from '../oauth/policy.js';
 import { paramsOf, send } from '../core/http.js';
 import { admitTenantOAuth, TenantCapacityError, recordTenantMetric } from './runtime-limits.js';
+import { isPublicClientId, parsePublicCode } from './public-code.js';
 
 export async function privateTenantToken(req, res, {
   env = process.env, rootSqlFactory = neon, tenantSqlFactory = neon
@@ -20,13 +21,30 @@ export async function privateTenantToken(req, res, {
   }
   let params;
   try { params = paramsOf(req); } catch { return send(res, 400, { error: 'invalid_request' }); }
-  const claim = verifyTenantCredential(params.client_id, 'tcl', env);
-  if (!claim || !env.DATABASE_URL) return send(res, 401, { error: 'invalid_client' });
+  // PUB-6: a public (pcl_) client carries no tenant. Its code or refresh token selects the tenant; the tenant's own
+  // mirrored client row (secret hash, redirect list), single-use code and live membership still decide.
+  const publicClient = isPublicClientId(params.client_id);
+  let claim = publicClient ? null : verifyTenantCredential(params.client_id, 'tcl', env);
+  if ((!claim && !publicClient) || !env.DATABASE_URL || env.GITHUB_PRIVATE_TENANT_PILOT !== 'enabled') return send(res, 401, { error: 'invalid_client' });
   let tenantSql=null;
   const started=Date.now();
   let outcome='error';
   try {
     const directory = createTenantDirectory(rootSqlFactory(env.DATABASE_URL));
+    if (publicClient) {
+      claim = null;
+      if (await directory.getPublicClient(params.client_id)) {
+        if (params.grant_type === 'authorization_code') {
+          const selector = parsePublicCode(params.code);
+          const live = selector && await directory.authorizedPilotIdentity(selector.tenantId, selector.identityId);
+          if (live) claim = { tenantId: live.tenantId, identityId: live.identityId,
+            membershipRevision: live.membershipRevision, pilotRevision: live.pilotRevision };
+        } else if (params.grant_type === 'refresh_token') {
+          claim = verifyTenantCredential(params.refresh_token, 'trf', env);
+        }
+      }
+      if (!claim) return send(res, 401, { error: 'invalid_client' });
+    }
     const pilot = await directory.authorizedPilotIdentity(claim.tenantId, claim.identityId);
     if (!pilot || pilot.tenantId !== claim.tenantId || pilot.identityId !== claim.identityId ||
         pilot.membershipRevision !== claim.membershipRevision ||

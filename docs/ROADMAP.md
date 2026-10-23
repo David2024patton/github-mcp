@@ -83,3 +83,12 @@ Approach: one public GitHub App, opened gradually. Every item below is part of "
 7. **Gradual opening:** invite-only first (a handful of people), watch errors, cost and support questions, then widen. Each step needs Chris's go-ahead.
 8. **Honest acceptance:** a first-time user on a phone connects, installs the App, adds an extra token and sees tools unlock, checked on real
    devices, plus the load test result, before the setting is switched on.
+
+## Remaining after PUB-6 (named, not built)
+- Make the GitHub App publicly installable and turn on `GITHUB_PUBLIC_CONNECT` (needs Chris's go-ahead; see the rollout plan above).
+- **Allow changes for signed-in people (production confirmation).** Public connections are preview-only (AI-PR-READ-FIRST item 9: production turns on only through a deliberate confirmed step, today the owner's passphrase page). Needs an equivalent for a person who signed in with GitHub (ask the assistant to enable it, then confirm after a fresh GitHub sign-in as an owner of the account). Until then people get every read and preview tool; writes are refused as in preview. Owner decision welcome on the exact confirmation wording.
+- Fine-grained-token tenants (God mode currently offers the notifications and package keys).
+- Revoke or delete a stranger's tenant and data by identity (today's revoke tools are keyed by account for the private pilot).
+- Self-host the brand fonts (pages currently use system fonts) and a favicon `.ico`.
+- Move the connector to `github.robinsonaisystems.com` (OAuth callbacks, App settings, existing clients; DNS row on the owner checklist).
+- Real-device acceptance of the new flow (owner checklist, optional).

@@ -13,6 +13,18 @@
       "destination": "/api/well-known/oauth-protected-resource"
     },
     {
+      "source": "/brand/icon-256.png",
+      "destination": "/api/index?brand_icon=256"
+    },
+    {
+      "source": "/brand/icon-64.png",
+      "destination": "/api/index?brand_icon=64"
+    },
+    {
+      "source": "/favicon.png",
+      "destination": "/api/index?brand_icon=64"
+    },
+    {
       "source": "/api/openapi.json",
       "destination": "/api/openapi"
     }
