@@ -258,7 +258,8 @@ describe('PUB-6 public simple connect (dark) in REAL PostgreSQL', () => {
     expect(page.body).toContain('God mode');
     expect(page.body).toContain('Standard');
     expect(page.body).toContain('chat.example.test');
-    expect(page.body).toContain('Read-only (optional)');
+    expect(page.body).toContain('Read-only');
+    expect(page.body).toContain('Sign in with GitHub');
     expect(page.body).not.toContain('<script>alert');
     expect(String(page.headers['Set-Cookie'])).toMatch(/HttpOnly; Secure; SameSite=Strict/);
     expect(page.headers['Content-Security-Policy']).toContain("default-src 'none'");
