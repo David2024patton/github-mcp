@@ -187,18 +187,36 @@ const apiWrite=defineGithubWrite({
     const same=readRouteFor(chosen.op);
     if(!same)return {independentlyRead:false,receipt:{status:response?.status,
       identifier:response?.data?.id??response?.data?.node_id??response?.data?.number??null}};
+    if(chosen.op.method==='DELETE'){
+      // A delete is confirmed by the same object no longer being readable (HTTP 404); anything still readable is not confirmed.
+      try{
+        const still=await requestFor(c,{...chosen,op:same,request:chosen.params});
+        return {independentlyRead:true,deleted:false,data:still.data};
+      }catch(error){
+        if(error?.status===404)return {independentlyRead:true,deleted:true,data:null};
+        throw error;
+      }
+    }
     const after=await requestFor(c,{...chosen,op:same,request:chosen.params});
     return {independentlyRead:true,data:after.data};
   },
-  verify:({args:a,before,after})=>{
+  verify:({args:a,before,after,response})=>{
     if(!after?.independentlyRead)return false;
+    if(after.deleted!==undefined)return after.deleted===true&&before?.kind==='exact';
     if(before?.kind==='exact' && beforeFingerprint(before.state)===beforeFingerprint(after.data))
       return false;
     const changes=Object.entries(a.body??{});
+    const holds=(item)=>item!==null&&typeof item==='object'&&changes.every(([key,value])=>
+      Object.prototype.hasOwnProperty.call(item,key)&&beforeFingerprint(item[key])===beforeFingerprint(value));
     // An accepted write without a matching independent read is NEVER claimed as confirmed.
-    return changes.length>0 && changes.every(([key,value])=>
-      Object.prototype.hasOwnProperty.call(after.data??{},key)&&
-      beforeFingerprint(after.data[key])===beforeFingerprint(value));
+    if(changes.length===0)return false;
+    if(holds(after.data))return true;
+    // A create is read back from its collection (for example {total_count, runner_groups:[...]}); the created item
+    // must be in that list with every field we sent, and it must be the very item GitHub answered with when it gave an id.
+    const id=response?.data?.id;
+    const lists=Object.values(after.data??{}).filter(Array.isArray);
+    if(Array.isArray(after.data))lists.push(after.data);
+    return lists.some(list=>list.some(item=>holds(item)&&(id===undefined||id===null||item.id===id)));
   },
   present:({after,response})=>({status:response?.status??null,
     independentRead:after?.independentlyRead===true,
