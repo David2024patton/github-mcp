@@ -62,3 +62,24 @@ Order: finish the remaining acceptance testing first, then this, then PUB-5. Bui
   and lets the user remove it. Builds on the existing encrypted token vault and CAP-3 enrollment; the no-secret-through-a-tool rule stays.
 - Acceptance: a first-time user on a phone connects without help, sees which tools are available and which need an extra token,
   adds one token, and sees those tools unlock; verified on real devices.
+
+### Public App rollout plan (Chris approved the approach 2026-10-23; built after testing, before PUB-5)
+
+Approach: one public GitHub App, opened gradually. Every item below is part of "done"; agents do all of it except the rows that only Chris can do
+(listed in `docs/OWNER-CHECKLIST.md`).
+
+1. **Connect flow and token page** (the two items above), with the owner form kept development-only.
+2. **App settings completed for public use:** name, description, logo, homepage, support contact, setup and callback addresses, webhook address and
+   secret, the smallest permission set that still works (extra permissions requested only when a person asks for those tools), "request user
+   authorization during installation", and "installable by any account" switched on only at launch, with Chris's say-so.
+3. **Key and secret safety:** the App private key, client secret and webhook secret held only in server settings, never logged; a documented,
+   rehearsed way to replace each one fast; webhook signatures always checked.
+4. **Capacity and cost:** load test with many simulated users; per-user limits and caps confirmed; a monthly hosting-cost view with an alert
+   threshold; clear plain-words limits shown to users. Pricing is a later decision for Chris.
+5. **Safety for strangers' accounts:** every action stays inside the person's own installation and the permissions they approved; a one-click
+   "disconnect and delete my data" for users; removal of stored tokens when an App is uninstalled.
+6. **Legal and trust pages:** terms of service, privacy policy, a security contact and a status/support page. Agents draft them; Chris decides and
+   a lawyer should review (agents are not lawyers).
+7. **Gradual opening:** invite-only first (a handful of people), watch errors, cost and support questions, then widen. Each step needs Chris's go-ahead.
+8. **Honest acceptance:** a first-time user on a phone connects, installs the App, adds an extra token and sees tools unlock, checked on real
+   devices, plus the load test result, before the setting is switched on.
