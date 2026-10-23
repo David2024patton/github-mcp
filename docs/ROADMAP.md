@@ -42,3 +42,17 @@ for hand-building something is repeated `github_api_*` / `github_graphql_*` call
 Not scheduled; each is built as a whole outcome only when an owner workflow asks: packages/registry streaming; credential
 administration beyond SAML revocation; remaining GitHub App lifecycle routes (suspend/unsuspend, installation listing);
 curated tools with write specifications for the 234 GraphQL mutations the inventory marks `blocked-missing-write-spec` (the universal tool does not cover them); enterprise audit/SCIM/IP policy once an enterprise principal exists.
+
+## Approved by Chris 2026-10-23: public-friendly connection (scheduled before PUB-5, after testing is finished)
+
+Order: finish the remaining acceptance testing first, then this, then PUB-5. Build it as one whole outcome, not slivers.
+
+- **Simple connect flow for anyone:** Connect, Sign in with GitHub, pick the account, Approve. Mode, profile and tool listing default to safe
+  choices and move to a settings page. No administrator passphrase for ordinary users. Today's owner form stays for the owner.
+  Open question for Chris: replace the owner form or sit beside it (asked 2026-10-23; he has not answered).
+- **Easy place to add the extra tokens and secrets** that the standard GitHub sign-in cannot reach (for example the package token,
+  notifications token, fine-grained tokens): a guided "Unlock more tools" page that says, in plain words, which tools each one opens, how to
+  create it on GitHub step by step, accepts it on the protected page only (never through chat or a tool argument), shows what it unlocked,
+  and lets the user remove it. Builds on the existing encrypted token vault and CAP-3 enrollment; the no-secret-through-a-tool rule stays.
+- Acceptance: a first-time user on a phone connects without help, sees which tools are available and which need an extra token,
+  adds one token, and sees those tools unlock; verified on real devices.
