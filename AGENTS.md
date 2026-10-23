@@ -40,6 +40,14 @@ The goal is a **finished, merged, usable product**, not activity, not counts and
   (`scripts/capability-inventory.mjs`) is a coverage map. Rows not yet given a dedicated tool stay reachable through
   the universal tools wherever the universal policy allows, and otherwise are listed backlog items. They never block
   a merge of finished work and are never "completed" by relabeling.
+- **No slivers: size a piece by outcome, not by fear.** Every PR pays a fixed cost (full CI, database and shape suites,
+  self-review, merge, handoff), so one PR delivers one complete, usable outcome — a whole workflow with its callers,
+  guards, tests and docs — not one helper, tool or test. Before coding, write the outcome and its acceptance in one or
+  two sentences and build all of it. Run focused tests while working; run the full checks once on the assembled tree.
+  Related changes (including related migrations) share a PR. Split only for a concrete reason — a migration order, a
+  safety boundary, or a diff too large to review — and write that reason in the PR. Never split just to get something
+  merged faster, and never hold finished work back just to make a PR bigger. If an outcome would be a sliver, fold it
+  into the next related outcome instead of opening its own PR.
 - **Counts are diagnostics, not goals.** Do not pad code, split or relabel work to hit line, subsection or bundle
   numbers. `npm run session:bundle` and the 400–800-line / 2–5-subsection figures in older docs are advisory
   planning aids only. A partial piece that is honestly described and merged safely is better than an unmerged
