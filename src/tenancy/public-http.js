@@ -26,7 +26,7 @@ function page(res, status, title, body, { cookies = [] } = {}) {
 }
 // Internal reason only (never shown to the person, never a secret): lets the owner see why a sign-in was refused.
 function failure(res, error, where = '') {
-  try { console.error('[public-connect] refused', where, error?.name ?? 'none', error?.code ?? '', String(error?.message ?? '').slice(0, 160)); } catch { /* logging must never break the page */ }
+  try { console.error('[public-connect] refused', where, error?.name ?? 'none', error?.code ?? '', error?.why ?? '', String(error?.message ?? '').slice(0, 160)); } catch { /* logging must never break the page */ }
   if (error instanceof TenantCapacityError) {
     res.setHeader('Retry-After', String(error.retryAfterSeconds));
     return page(res, 429, 'Busy right now', '<p>This connection is temporarily busy. Please try again in a minute.</p>');
@@ -123,7 +123,7 @@ export async function publicForget(req, res, { env = process.env, ...deps } = {}
     res.setHeader('Referrer-Policy', 'no-referrer');
     res.setHeader('Location', url);
     return res.status(302).end();
-  } catch (error) { return failure(res, error); }
+  } catch (error) { return failure(res, error, 'h1'); }
 }
 
 function forgetPage(res, forget) {
@@ -166,7 +166,7 @@ export async function publicCallback(req, res, { env = process.env, ...deps } = 
     return res.status(302).end();
   } catch (error) {
     res.setHeader('Set-Cookie', clearCookie(STATE, STATE_PATH));
-    return failure(res, error);
+    return failure(res, error, 'h2');
   }
 }
 
@@ -182,7 +182,7 @@ export async function publicInstallReturn(req, res, { env = process.env, ...deps
     return res.status(302).end();
   } catch (error) {
     res.setHeader('Set-Cookie', clearCookie(STATE, STATE_PATH));
-    return failure(res, error);
+    return failure(res, error, 'h3');
   }
 }
 
