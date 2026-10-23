@@ -2,6 +2,10 @@ import {describe,it,expect} from 'vitest';
 import {registry} from '../../src/tools/index.js';
 import {handlers as prWorkflows} from '../../src/tools/workflows-pr.js';
 import {handlers as mergeWorkflows} from '../../src/tools/workflows-merge.js';
+import {tools as issueReadTools} from '../../src/tools/issues-read.js';
+
+// The real tool schema bounds the arguments a workflow may pass (a mocked call must not hide an out-of-range one).
+const timelineMax=issueReadTools.find(t=>t.name==='github_issue_list_timeline').inputSchema.properties.max.maximum;
 
 const A='a'.repeat(40),B='b'.repeat(40),C='c'.repeat(40);
 const ready=(number=4,more={})=>({
@@ -180,6 +184,7 @@ describe('W-2 exact-head and one-step stack conveyor',()=>{
         baseChangedAt:'2026-10-15T02:59:00Z'};
       return {status:'applied'};
     },github_issue_list_timeline:(a,prs)=>{
+      expect(a.max).toBeLessThanOrEqual(timelineMax);
       const changed=prs[a.number].baseChangedAt;
       const items=changed?[{event:'base_ref_changed',created_at:changed}]:[];
       return {items,count:items.length};

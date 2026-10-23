@@ -38,7 +38,7 @@ async function freshAfterRetarget(p,ctx,s){
   // Review comments can change PR.updated_at without changing its base, so
   // compare CI to the last real base_ref_changed event instead.
   // The timeline is a registry read; an inaccessible/capped history fails closed.
-  const timeline=await invoke(ctx,'github_issue_list_timeline',{...s,number:p.number,max:300});
+  const timeline=await invoke(ctx,'github_issue_list_timeline',{...s,number:p.number,max:100});
   if(!timeline||timeline.more_exist||timeline.kept_result||!Array.isArray(timeline.items))
     return {ready:false,reason:'PR base-change history is unreadable or incomplete.'};
   const changed=timeline.items.filter(x=>x.event==='base_ref_changed');
