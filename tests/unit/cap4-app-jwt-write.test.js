@@ -103,6 +103,20 @@ describe('CAP-4 exact App webhook change safety',()=>{
     expect(patch.body).toEqual({content_type:'json'});
     expect(JSON.stringify(out.body)).not.toContain('private/path');
   });
+  it('records a secondary-limit cooldown from a failed JWT mutation and sends nothing more',async()=>{
+    const w=await makeWorld({profile:'full',mode:'production',...opts});
+    await prepare(w);
+    arrange(w.gh);
+    w.gh.when(R.patch).reply(403,{message:'You have exceeded a secondary rate limit'},
+      {'retry-after':'120'});
+    const first=await run(w,'github_app_webhook_configuration_set',{...args,confirm:true});
+    expect(first.r.isError||first.body.status!=='applied').toBe(true);
+    const patches=()=>w.gh.calls.filter(c=>c.route===R.patch).length;
+    expect(patches()).toBe(1);
+    const second=await run(w,'github_app_webhook_configuration_set',{...args,confirm:true});
+    expect(second.body.status).not.toBe('applied');
+    expect(patches()).toBe(1);
+  });
   it('rejects wrong App owner before JWT webhook mutation',async()=>{
     const w=await makeWorld({mode:'production',profile:'full',...opts});
     arrange(w.gh);await prepare(w);
