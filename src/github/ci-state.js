@@ -18,15 +18,11 @@ async function allCheckRuns(octokit, params) {
 const PASSING = new Set(['success', 'neutral', 'skipped']);
 const FAILING = new Set(['failure', 'timed_out', 'cancelled', 'action_required', 'startup_failure', 'stale']);
 
-// GitHub answers 403 "Upgrade to GitHub Pro or make this repository public to enable this feature." for rule and protection reads on a private
-// repository whose plan has neither. Such a repository cannot hold required checks, so this one exact answer means "none configured by
-// plan" (and is disclosed as a note). Any other 403, or any other failure, is still an unreadable answer, never green.
-const PLAN_LIMIT = /^Upgrade to GitHub (Pro|Team)\b.*to enable this feature\.?$/i;
+import { isPlanLimit } from './plan-limit.js';
+
 async function tryRead(fn) {
   try { return { ok: true, data: await fn() }; } catch (error) {
-    const status = error?.status ?? null;
-    const message = String(error?.response?.data?.message ?? '').trim();
-    return { ok: false, status, planLimited: status === 403 && PLAN_LIMIT.test(message) };
+    return { ok: false, status: error?.status ?? null, planLimited: isPlanLimit(error) };
   }
 }
 
