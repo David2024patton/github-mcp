@@ -26,9 +26,9 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
       "which GitHub account am I connected to?" Also optionally disconnect and reconnect once on a phone. Tell the agent the answer.
 - [ ] **Later (blocks nothing): disconnect and reconnect test.** In Claude or ChatGPT, remove the custom GitHub connector, add it back, and ask
       "which GitHub account am I connected to?" Tell the agent the result. (Closes the "revocation then recovery" line of the final acceptance.)
-- [ ] **Two-minute tidy-up (optional):** delete five old, finished branches on the repository page (Branches): ai/o2-org-members-20261014,
+- [ ] **Two-minute tidy-up (optional):** delete the old, finished branches on the repository page (Branches; GitHub's "delete branch after merge" setting would stop new ones piling up): ai/o2-org-members-20261014,
       ai/o2-owner-org-members-20261014, docs/authority-corrections-acceptance-handoff, docs/hub-contract-reference-20261019 (all merged), and
-      scratch/status-fragments (its content is redundant). The agent's environment is not allowed to delete branches.
+      scratch/status-fragments (its content is redundant), plus the merged ai/claude/* working branches. The agent's environment is not allowed to delete branches.
 - [ ] **Much later, only if you ever want it public: PUB-5 publication.** Needs a third-party directory's approval of an unofficial connector,
       which may not be possible. The product works privately without it; nothing waits on it.
 
