@@ -70,7 +70,7 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 - The Hub is not a checklist item. The Hub finds and connects to this server; our only job is to keep following the Hub's published spec (`docs/HUB-COMPATIBILITY.md`). No Hub-run tests are tracked here.
 
 ## Later, for the public launch (approved 2026-10-23; blocks nothing now)
-- [ ] **Read and approve the terms of service and privacy policy** the agent drafts, and have a lawyer look at them before launch.
+- [ ] **Read and approve the terms of service and privacy policy** the agent drafts, and have a lawyer look at them before launch. Drafts are in `docs/legal/` (PRIVACY-DRAFT.md, TERMS-DRAFT.md); nothing serves them yet.
 - [ ] **Say go** before the GitHub App is switched to "installable by any account", and before each widening of the invite list.
 - [ ] **Choose the support contact** (an email address) that appears on the App and the legal pages.
 - [ ] **Decide pricing, if any,** once the cost numbers from the load test exist.
