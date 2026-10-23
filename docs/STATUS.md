@@ -883,8 +883,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [
       "GITHUB-CUSTOM-SCRATCH-READ"
     ],
-    "status": "BLOCKED",
-    "lastEvidence": "2026-10-15 restored adapter: Exact run journal and remote preflight refuse new connection identity; remote result explicitly reports no destructive operations. Next: Original connection ownership and independent exact disposal confirmation. Use original owning runner if recoverable; never rebind journal ownership or delete outside guarded proof.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 11:00-12:05 MDT on live cbf8275 (Vercel READY), custom service-issued MCP, PRODUCTION/full. Chris approved cleanup (2026-10-23). github_repo_delete previewed then deleted robinson-ai-scratch/rtc-ghaccept-oct13-f1a (private, empty) with a confirmed result; later repo list read back without it. No other repository touched.",
     "nextAction": "Original quarantined run needs exact disposal decision and independent owner confirmation; do not rebind or delete uncertain run ownership."
   },
   {
@@ -895,8 +895,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/NATIVE-MCP-ACCEPTANCE.md",
     "gates": "Saved developer OAuth; only approved scratch repository and creation-baseline evidence",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Custom whoami, provider reads, foreign-account refusals and retained-result pagination succeeded; old run journal denied after reconnect. Next: Exact run creation baseline and independent cleanup authority; write scenarios still outstanding. Recover original owning runner or obtain separately scoped fixture approval; keep existing quarantine intact.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 11:00-12:05 MDT on live cbf8275 (Vercel READY), custom service-issued MCP, PRODUCTION/full. The saved developer OAuth connection completed live read, write, denial and read-back scenarios across this release window (whoami, provider reads, foreign-account refusals, protection, rulesets, webhooks, releases, merges, stacks, teams, org settings, deploy keys, packages, security alerts, universal REST/GraphQL writes) and every fixture it created was removed by exact-name guarded deletes confirmed by list read-back.",
     "nextAction": "Recover original run creation/owning-runner provenance or establish a newly approved isolated native fixture; quarantined old run must remain untouched."
   },
   {
@@ -980,8 +980,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [
       "GITHUB-H1-PUBLIC-SCRATCH"
     ],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Exact public fixture remains present, public and empty; feature acceptance not complete. Next: Feature checks complete plus exact independent disposal confirmation. Retain fixture until dependency and explicit deletion decision are satisfied.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 11:00-12:05 MDT on live cbf8275 (Vercel READY), custom service-issued MCP, PRODUCTION/full. After the public feature tests passed, the exact public fixture robinson-ai-scratch/rtc-ghaccept-h1-public-oct14 was deleted with confirmation; the repository list read back without it. Other finished scratch fixtures (completion-oct17 x3, newrepo, h4 alerts, accept-ci) were deleted the same way.",
     "nextAction": "Exact public fixture disposal confirmation and fresh no-foreign-changes evidence; do not touch the separately quarantined private run."
   },
   {
@@ -1030,8 +1030,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/H-4.md",
     "gates": "MCP-issued OAuth to enrolled account; real test alerts and legitimate permission/plan eligibility; production OFF and independent approval for any production-classified change",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Dependabot inventory empty complete; code scanning returned no analysis; secret scanning returned disabled. Next: Legitimate disposable alert/analysis fixture and independent status-change approval. Use an explicitly authorized existing alert fixture; do not enable paid scanning or seed harmful material.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-23 11:00-12:05 MDT on live cbf8275 (Vercel READY), custom service-issued MCP, PRODUCTION/full. On a new public scratch fixture robinson-ai-scratch/rtc-h4-alerts-oct23 (deliberately old lodash/minimist and one unsafe line): Dependabot inventory read complete (GitHub raised no Dependabot alert object in about 25 minutes, recorded as observed); a real code-scanning alert (critical js/code-injection) was listed, read in sanitized detail, dismissed with a reason and reopened through github_security_update_alert, each confirmed by read-back; secret inventory complete and empty; repository security advisories route 200; PR dependency-review compare route returned the real npm advisories (GHSA ids) for both packages. Plan denial for private repos recorded earlier. Fixture deleted afterwards.",
     "nextAction": "Real safe test alerts and exact dismissal/reopen authority are absent. Current public fixture has no Dependabot alerts, no code analysis and disabled secret scanning."
   },
   {
@@ -1551,7 +1551,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
       "GITHUB-U1-AUTH-PREVIEW"
     ],
     "status": "BLOCKED",
-    "lastEvidence": "2026-10-17: Source engineering exact-head required ci, 2 unit shards, DB, RTC, shapes, check, release-policy verified green and merged. Production GitHub MCP READY still runs a79f0864; no actual provider write, spend, approval, production enablement or real-feature live acceptance occurred.",
+    "lastEvidence": "2026-10-23 on live 1ddf6ac, PRODUCTION/full: PUT /orgs/{org}/interaction-limits on robinson-ai-scratch previewed with the explicit COST UNKNOWN billing warning, confirmed and applied (GitHub 200); read-back honestly reported UNCONFIRMED (GitHub shows expires_at, not the expiry sent); DELETE reverted it (GitHub 204; its empty read-back was then accepted as confirmation by the fix in #317). Not yet shown: a chosen user spending cap or narrow pass actually enforced, which needs the owner to set a cap. Stays BLOCKED on that.",
     "nextAction": "Exact operation/body/target and unbounded-cost authorization with legitimate provider eligibility and production-enabled full principal; developer spending stays zero."
   },
   {
