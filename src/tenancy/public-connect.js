@@ -38,6 +38,7 @@ const random = (n) => randomBytes(n).toString('base64url');
 export class PublicConnectError extends Error {
   constructor(code, message) { super(message); this.name = 'PublicConnectError'; this.code = code; }
 }
+export const FORGET_CLIENT = 'pcl_forget_my_data_built_in_page_0000000';
 const refused = () => new PublicConnectError('refused', 'GitHub could not verify this sign-in. Start again from your client.');
 
 export { isPublicClientId, publicAuthCode, parsePublicCode };
@@ -78,7 +79,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   }
   function checkAuthorizeRequest(p) {
     const origin = active();
-    if (!isPublicClientId(p.client_id) || p.response_type !== 'code' || p.code_challenge_method !== 'S256' ||
+    if (!isPublicClientId(p.client_id) || p.client_id === FORGET_CLIENT || p.response_type !== 'code' || p.code_challenge_method !== 'S256' ||
         !CHALLENGE.test(String(p.code_challenge ?? '')) || p.resource !== origin + '/api/mcp' ||
         typeof p.redirect_uri !== 'string' || !validRedirectUri(p.redirect_uri) ||
         (p.state !== undefined && (typeof p.state !== 'string' || p.state.length > 256)) ||
@@ -115,7 +116,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const challenge = createHash('sha256').update(verifier).digest('base64url');
     const stored = await dir.createPublicFlow({ stateHash: sha(state), stage, clientId: client.clientId,
       redirectUri: flow.redirectUri, clientState: flow.clientState ?? null, codeChallenge: flow.codeChallenge,
-      tier: flow.tier, accountLogin: flow.accountLogin ?? null, allowChanges: flow.allowChanges === true, timeZone: flow.timeZone ?? null,
+      tier: flow.tier, accountLogin: flow.accountLogin ?? null, allowChanges: flow.allowChanges === true, timeZone: flow.timeZone ?? null, purpose: flow.purpose ?? null,
       providerVerifier: stage === 'signin' ? verifier : null, maxOpen: limits.maxOpenFlows, afterInstall });
     if (!stored) throw new PublicConnectError('capacity', 'Too many people are connecting right now. Please try again in a few minutes.');
     if (stage !== 'signin') return { state };
@@ -220,6 +221,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       const data = await exchange.json();
       if (!data?.access_token || data.error) throw refused();
       const principal = await verifyGithubBearerIdentity(data.access_token, { fetchImpl });
+      if (flow.purpose === 'forget') { outcome = 'ok'; return await forgetLookup(principal); }
       const installs = await listUserAppInstallations(data.access_token, { appId, fetchImpl });
       if (installs === null) throw refused();
       const asked = flow.accountLogin ? flow.accountLogin.split(',') : null;
@@ -284,6 +286,36 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     }
   }
 
+  // ---- "Delete my data" by the person themselves: sign in with GitHub, confirm, and their whole stored footprint goes.
+  /** Start: sign in with GitHub (no accounts are listed, no identity is created). Returns the GitHub URL and the cookie value. */
+  async function startForget() {
+    active(); await ensureSchema();
+    const dir = directory(), redirectUri = active() + '/api/oauth/authorize';
+    await dir.ensureForgetClient(FORGET_CLIENT, redirectUri, hashToken(randomToken(32)));
+    const client = await loadClient(FORGET_CLIENT, redirectUri);
+    return await openSignIn({ client, flow: { redirectUri, clientState: null, codeChallenge: random(32), tier: 'standard', purpose: 'forget' } });
+  }
+
+  /** The person came back from GitHub. Only a person already stored can be found; nobody is enrolled by asking to leave. */
+  async function forgetLookup(principal) {
+    const tenantId = await directory().findPublicTenantBySubject(principal.subject);
+    if (!tenantId) return { forget: { none: true } };
+    const handle = 'pc.' + random(32);
+    if (!await directory().createPublicFlow({ stateHash: sha(handle), stage: 'god', clientId: FORGET_CLIENT, redirectUri: active() + '/api/oauth/authorize',
+      codeChallenge: random(32), tier: 'standard', purpose: 'forget', tenantId, maxOpen: limits.maxOpenFlows }))
+      throw new PublicConnectError('capacity', 'Too many people are using this right now. Please try again in a few minutes.');
+    return { forget: { handle } };
+  }
+
+  /** Confirm: one use per handle, and only the browser that just signed in can use it. Returns true when data was deleted. */
+  async function forgetConfirm({ handle, browserCsrf }) {
+    active();
+    if (!STATE.test(String(handle ?? '')) || !sameState(handle, browserCsrf)) throw refused();
+    const flow = await directory().consumePublicFlow(sha(handle), 'god');
+    if (!flow || flow.purpose !== 'forget' || !flow.tenantId) throw refused();
+    return await directory().forgetPublicTenant(flow.tenantId);
+  }
+
   async function godScope(flow) {
     const dir = directory();
     const { db, sql, tenant } = await openAuthorizedTenantDb({ directory: dir, tenantId: flow.tenantId, verifiedIdentityId: flow.identityId,
@@ -299,7 +331,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     active();
     if (!STATE.test(String(handle ?? '')) || !sameState(handle, browserCsrf) || !['finish', 'notifications', 'package'].includes(choice)) throw refused();
     const flow = await directory().consumePublicFlow(sha(handle), 'god');
-    if (!flow || !flow.tenantId || !flow.identityId || !flow.accountLogin) throw refused();
+    if (!flow || flow.purpose || !flow.tenantId || !flow.identityId || !flow.accountLogin) throw refused();
     const logins = flow.accountLogin.split(',');
     const { db } = await godScope(flow);
     const mode = flow.allowChanges ? 'production' : 'preview';
@@ -324,5 +356,5 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     return { optional: { ...details, oauth: true } };
   }
 
-  return Object.freeze({ registerClient, inspect, start, resumeInstall, finish, godChoose, limits });
+  return Object.freeze({ registerClient, inspect, start, resumeInstall, finish, godChoose, startForget, forgetConfirm, limits });
 }

@@ -8,7 +8,7 @@ import { paramsOf, send } from '../core/http.js';
 import privateTenantAuthorize from '../../api/tenant/oauth/authorize.js';
 import { isPublicClientId } from '../tenancy/public-code.js';
 import { publicConnectEnabled } from '../tenancy/public-connect.js';
-import { publicAuthorize, publicRegister } from '../tenancy/public-http.js';
+import { publicAuthorize, publicForget, publicRegister } from '../tenancy/public-http.js';
 
 /** Runs one OAuth handler. Any failure answers 503 with no detail (never SQL, tokens, passphrases or stack text). */
 export async function handleOAuth(which, req, res, { db, env = process.env, consentFactory } = {}) {
@@ -22,6 +22,7 @@ export async function handleOAuth(which, req, res, { db, env = process.env, cons
       // PRIVATE tenant client must land on GitHub consent there, not the
       // global owner's administrator-passphrase authorization page.
       // Invalid signed clients fail closed; never query the owner DB for them.
+      if (params.forget === '1' && publicConnectEnabled(env)) return await publicForget(req, res, { env });
       if (isPublicClientId(params.client_id)) return await publicAuthorize(req, res, { env });
       if (isTenantRoutedCredential(params.client_id))
         return privateTenantAuthorize(req,res,{env,consentFactory});

@@ -3,11 +3,11 @@ import pg from 'pg';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 import { createDb } from '../../src/db.js';
 import { createTenantDirectory, tenantSchemaName } from '../../src/tenancy/directory.js';
-import { createPublicConnect, PublicConnectError } from '../../src/tenancy/public-connect.js';
+import { createPublicConnect, FORGET_CLIENT, PublicConnectError } from '../../src/tenancy/public-connect.js';
 import { parsePublicCode } from '../../src/tenancy/public-code.js';
 import { privateTenantToken } from '../../src/tenancy/oauth-token.js';
 import { resolvePrivateTenantMcpBearer } from '../../src/tenancy/mcp-route.js';
-import { publicAuthorize, publicCallback, publicRegister } from '../../src/tenancy/public-http.js';
+import { publicAuthorize, publicCallback, publicForget, publicRegister } from '../../src/tenancy/public-http.js';
 import { encryptSecret } from '../../src/core/crypto.js';
 import { call, json, request } from '../../test/helpers/http-harness.js';
 
@@ -479,5 +479,55 @@ describe('PUB-6 owner deletes one public person\'s data', () => {
     if (priv) await expect(directory.forgetPublicTenant(String(priv.tenant_id))).rejects.toThrow();
     // she can connect again afterwards as a brand-new person
     expect(await gate(await tokenFor('alice'))).not.toBeNull();
+  });
+});
+
+describe('PUB-6 a person deletes their own data', () => {
+  it('needs a GitHub sign-in, one use of the confirm step, and removes only that person', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const tokenFor = async (who) => {
+      const fin = await (await signIn(c, client, who)).finished;
+      return json(await exchange(client, new URL(fin.redirect).searchParams.get('code')));
+    };
+    const gate = (t) => resolvePrivateTenantMcpBearer({ authorization: 'Bearer ' + t.access_token, env, fetchImpl, rootSqlFactory, tenantSqlFactory });
+    const alice = await tokenFor('alice'), bob = await tokenFor('bob');
+    expect(await gate(alice)).not.toBeNull();
+    const signInToForget = async (who) => {
+      const started = await c.startForget();
+      expect(new URL(started.url).origin + new URL(started.url).pathname).toBe('https://github.com/login/oauth/authorize');
+      return c.finish({ state: started.csrfState, code: who + '-fixture-code-1', browserCsrf: started.csrfState });
+    };
+    // someone who never connected is told so, and is not enrolled by asking
+    const before = (await admin.query('SELECT count(*)::int AS n FROM gh_tenant_identities')).rows[0].n;
+    expect(await signInToForget('erin')).toEqual({ forget: { none: true } });
+    expect((await admin.query('SELECT count(*)::int AS n FROM gh_tenant_identities')).rows[0].n).toBe(before);
+    // the built-in page's client can never be used for a normal connection
+    await expect(c.start(authorizeParams({ client_id: FORGET_CLIENT }))).rejects.toThrow();
+    // alice signs in, gets one confirm handle that only her browser cookie can use
+    const asked = await signInToForget('alice');
+    expect(asked.forget.handle).toMatch(/^pc\./);
+    await expect(c.forgetConfirm({ handle: asked.forget.handle, browserCsrf: 'x'.repeat(asked.forget.handle.length) })).rejects.toThrow();
+    // a confirm handle is not a God-mode handle, and cannot be used as one
+    await expect(c.godChoose({ handle: asked.forget.handle, browserCsrf: asked.forget.handle, choice: 'finish' })).rejects.toThrow();
+    // (the two failed attempts above used the handle up or left it; ask again for a clean one)
+    const again = await signInToForget('alice');
+    expect(await c.forgetConfirm({ handle: again.forget.handle, browserCsrf: again.forget.handle })).toBe(true);
+    await expect(c.forgetConfirm({ handle: again.forget.handle, browserCsrf: again.forget.handle })).rejects.toThrow();
+    expect(await gate(alice)).toBeNull();
+    expect(await gate(bob)).not.toBeNull();
+    expect(await signInToForget('alice')).toEqual({ forget: { none: true } });
+  });
+  it('shows plain-English pages and refuses a post without the browser cookie', async () => {
+    const connect = make();
+    const page = await call((req, res) => publicForget(req, res, { env, connect }), request('GET', { forget: '1' }));
+    expect(page.statusCode).toBe(200);
+    expect(page.body).toContain('Delete my data');
+    expect(String(page.headers['Set-Cookie'])).toMatch(/HttpOnly; Secure; SameSite=Strict/);
+    const refused = await call((req, res) => publicForget(req, res, { env, connect }),
+      request('POST', { forget: '1', action: 'start', form_csrf: 'x'.repeat(43) }, { origin: ORIGIN }));
+    expect(refused.statusCode).toBe(403);
+    const off = await call((req, res) => publicForget(req, res, { env: { ...env, GITHUB_PUBLIC_CONNECT: undefined }, connect }), request('GET', { forget: '1' }));
+    expect(off.statusCode).toBe(404);
   });
 });
