@@ -20,14 +20,14 @@ export const NOW = Date.UTC(2026, 9, 10, 18, 0, 0);
 const ENV = { TOKEN_ENCRYPTION_KEY: crypto.randomBytes(32).toString('base64url') };
 
 /** A fresh world: fake database and GitHub, a fine-grained credential for example-org, and a connection of the given kind. */
-export async function makeWorld({ mode = 'preview', profile = 'everyday', accounts = ['example-org'], gates = [], scratchAccount = false, advanceClockOnSleep = false, packageToken = false, packageUser = false } = {}) {
+export async function makeWorld({ mode = 'preview', profile = 'everyday', accounts = ['example-org'], gates = [], scratchAccount = false, advanceClockOnSleep = false, packageToken = false, packageUser = false, externalRoutes = [] } = {}) {
   // Long multi-step fixtures must let reserved write slots expire in virtual time.
   // Production spacing remains real; this only advances the fake clock after a simulated sleep.
   let offsetMs = 0;
   const clock = () => NOW + offsetMs;
   const db = createFakeDb({ clock });
   await db.initSchema();
-  const gh = makeFakeGitHub();
+  const gh = makeFakeGitHub({ routes: externalRoutes });
   // Most write-contract fixtures classify notification recipients and read org
   // members. An unconfigured fake route answers 501, which Octokit *retries*
   // with real backoff; hundreds of contract checks then take minutes for no
@@ -87,11 +87,11 @@ export function doorsFor(definition) {
  * @param {(opts) => Function[]} [o.gatesFor] `({ protectedLevel, spendLimitCents })` -> gates; defaults to the fixture gates
  */
 export function runWriteContract({ label, definition, args, arrange, needsConfirm, production = false, notifies = [], accessWidening = false, spendCents = 0, quietArgs = null,
-  packageToken = false, conveyor = false, profile = 'everyday', scratchAccount = false, previewOnly = false, expectedWrites = 1, advanceClockOnSleep = false, prepare = null, gatesFor = ({ protectedLevel, spendLimitCents }) => [...(protectedLevel ? [protectionGate(protectedLevel)] : []), spendGate({ limitCents: spendLimitCents ?? 0 })] }) {
+  packageToken = false, conveyor = false, profile = 'everyday', scratchAccount = false, externalRoutes = [], previewOnly = false, expectedWrites = 1, advanceClockOnSleep = false, prepare = null, gatesFor = ({ protectedLevel, spendLimitCents }) => [...(protectedLevel ? [protectionGate(protectedLevel)] : []), spendGate({ limitCents: spendLimitCents ?? 0 })] }) {
   for (const door of doorsFor(definition)) {
     describe(`write contract: ${label} through ${door.name}`, () => {
       const world = async (options = {}, replies = 'ok') => {
-        const w = await makeWorld({ profile, scratchAccount, advanceClockOnSleep, packageToken, ...options, ...(options.gates === undefined ? { gates: gatesFor({ spendLimitCents: options.spendLimitCents ?? 100000 }) } : {}) });
+        const w = await makeWorld({ profile, scratchAccount, advanceClockOnSleep, packageToken, externalRoutes, ...options, ...(options.gates === undefined ? { gates: gatesFor({ spendLimitCents: options.spendLimitCents ?? 100000 }) } : {}) });
         arrange(w.gh, replies);
         if (prepare) await prepare(w);
         return w;

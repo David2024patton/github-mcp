@@ -1,0 +1,35 @@
+{
+  "subsections": [
+    {
+      "id": "CAP-4",
+      "criteria": [
+        {
+          "criterion": "Every active inventory gap assigned to this unit is implemented or has an explicit provider-evidenced unavoidable disposition, without duplicate names or treating universal discovery as coverage.",
+          "evidence": "Fifteen exact CAP-4 specialized tools are registered/documented, including separate App-owner JWT permission and pending-request views; universal discovery is not counted. Remaining CAP-1 active inventory rows and provider-evidenced unavoidable dispositions have NOT been reconciled. 2026-10-22 reconciliation: seven exact App-owner JWT routes (webhook config get/patch, deliveries list/get, redelivery, installation grants, installation requests) now resolve to their native tools and are recorded implemented-unverified in the CAP-1 inventory (139 implemented-unverified, 1,176 unresolved, 234 missing; apps family 7 of 37). GET /app is intentionally unmapped. Original criterion OPEN."
+        },
+        {
+          "criterion": "Enterprise audit/governance and identity; organization versus enterprise SAML/SCIM/IP policy; security/compliance; packages and registry lifecycle; permission and credential administration; App JWT and integration/event lifecycle; remaining active services are reconciled in approved CAP-4 order.",
+          "evidence": "Organization audit, SCIM identity read/provision/update/deprovision, SAML authorization read/revoke and JWT App owner identity, webhook configuration/delivery/retry and exact current installation grant/request visibility have been implemented in bounded handlers. Enterprise principal/audit/SAML/IP policy, package registry push/pull streams, remaining permission administration and active inventory gaps remain OPEN. This original CAP-4 family criterion is not complete."
+        },
+        {
+          "criterion": "Each supported workflow has exact official API/credential/host/tenant/secret/guard contracts with request-shape, guarded-write, isolation, error, replay/readback and bounded-result proof; real provider/device acceptance remains independently open.",
+          "evidence": "Immediate predecessor e6c8d378485cfb763866376a06c61d1e012c2e62 passed full CI 39844118551 and release policy 39844181606, no unresolved review threads. New App JWT grants/installation requests include synthetic tenant isolation, bounded metadata projection, and disposable PostgreSQL sealed-key tests but still require their own exact-head CI. Live enterprise/provider/device acceptance remains OPEN."
+        }
+      ],
+      "remainingEngineering": [
+        "Complete a verified enterprise principal and owner-grant enrollment path, enterprise audit/SCIM/SAML/IP governance and compliance permission matrix; keep disputed enterprise audit bearer contracts unresolved until independently evidenced.",
+        "Implement and verify actual GitHub package registry upload/download and lifecycle streaming, host/size/transport contracts and authentication without pretending REST metadata equals registry publish/pull.",
+        "After SCIM, SAML, App JWT configuration and bounded retry/readback, complete additional App permission/integration lifecycle and event contracts, operation-specific credential/token administration and real provider authorization proof; 202 alone must not count as webhook delivery.",
+        "Reconcile every remaining CAP-1 active operation/workflow row against implemented exact dispatch or provider-evidenced unavailable/retired disposition, with no invented coverage ratio or duplicate handler.",
+        "Complete full synthetic and disposable PostgreSQL source/request-shape/isolation/replay tests, relevant App JWT setup and event semantics, and final independent full-diff security review.",
+        "Run the original frozen CAP-4 bundle comparator successfully on final code and report, along with exact-head CI/release-policy checks, verified mergeability and required review dispositions; retain separate owner-authorized real GitHub and device acceptance."
+      ]
+    }
+  ],
+  "productionAdded": 1025,
+  "productionRemoved": 2,
+  "newEngineering": "Eleven connected CAP-4 tools across bounded organization audit, SCIM read/write, SAML SSO authorization inventory/revocation and encrypted-key App JWT owner identity/webhook metadata. Added safe provider cursor projections, new App owner principal matching and encrypted JWT issuance, native dispatch/catalog integration, fail-closed scope and cross-tenant guards, and unit plus disposable PostgreSQL tests. Added an authorized App webhook HTTPS destination/content-type change under the same encrypted-key JWT owner principal, with confirmed provider hash-based readback, guarded journal/replay, targeted synthetic all-door tests, and a third disposable real-PostgreSQL JWT lifecycle test. JWT-only App webhook redelivery now has source, synthetic all-door tests and real disposable-PostgreSQL replay/isolation test; a new GitHub App JWT rate lane uses the shared database rate-state and write-slot throttle rather than bypassing cross-instance write pacing. Added planned App-owner JWT-only installation permission/event/current grant reconciliation and isolated App installation request views, restricted to the enrolled account identity and exact installation ID. Added JWT-only exact active App installation grants and selected-account installation-request visibility, with seven synthetic unit cases, one real PostgreSQL case and per-source strict projection/isolation, built against official 2026-03-10 App JWT endpoints.",
+  "planComparison": "Frozen pre-source CAP-4 plan at a33d9eeef17a20617f3f2bc1d733d3a008050f46 retains the three original whole-unit acceptance criteria and an estimated 600 meaningful production lines. Current assembled feature head cfd4ff097fdf4e9b03bfd6b74fb6d6b3e9f1faad differs from main 473aa9b5883c51ea7026be639ab7ec7ba5a62682 by exactly 1025 src/ additions and two removals excluding tests, fixtures and docs, based on GitHub compare. The newest App-owner installation authority has 118 source additions. This is substantial but unfinished original CAP-4 engineering: unresolved enterprise principals/policy, registry upload/download streaming, permission credential breadth, remaining CAP-1 operation gaps, full provider/client acceptance. CONTINUE; no completed CAP-4 subsection is claimed.",
+  "relatedWorkDecision": "Continue work inside the existing open draft CAP-4 PR #277, not a helper-sized merged PR. CAP-3 optional live provider/device verification stays deferred but not waived; PUB-4 #268 owns separate client implementation; CAP-5 is dependent on original CAP-4 and PUB-4. Other provider and production gates remain independent.",
+  "decision": "CONTINUE"
+}

@@ -80,3 +80,14 @@ A plugin display name is not account authority; adapter sign-in does not prove G
 - The normal dynamic client registration endpoint remains the original admin-bound owner route; signed private pilot registration requires verified U bearer/installation plus the existing trusted tenant binding. Do not claim an unbound DCR client receives tenant access. OpenAI currently documents custom MCP apps in ChatGPT as web-only, so Android/iOS requires independently proven supported hosted app/plugin behavior and cannot be inferred from a native custom MCP install or Codex deep link.
 - Six full criteria above remain OPEN for genuine device/provider evidence and the hosted Sites bridge is NOT fixed by these server changes. The owner-backed original service and official GitHub plugin remain in place; pilot/public enrollment and production/spending remain unchanged. Exact-head CI, independent review, source merge, checked release and separate real client acceptance are still to be verified.
 
+
+## 2026-10-22 closeout (owner decision: do not wait for devices)
+
+Owner decision: PUB-4 covers **both** Claude and ChatGPT clients, and **desktop testing never blocks development or merge**.
+- **Source part (criteria 3, 4, 6): done and merged** with PR #268 — account-bound private clients, read-only consent preflight, truthful refusals,
+  RFC 9207 issuer, full installation pagination; unit and disposable-Postgres tests green at the merged head.
+- **Criteria 1, 2, 5 are real-client acceptance, not engineering.** Observed so far through the owner's connected custom server (no new code needed):
+  Claude phone app and ChatGPT (separate permissions: Claude live, ChatGPT read-only preview) both reached the server, showed account
+  robinson-ai-scratch and the correct mode. See `docs/status/2026-10-22-acceptance-org-reads-and-phone.md`.
+  Still open and owner-timed: a native desktop app test, and reconnect/refresh/revoke on a device. These sit on `docs/OWNER-CHECKLIST.md`
+  and do not block anything. Criterion text above stays the full target; nothing is relabelled as passed.
