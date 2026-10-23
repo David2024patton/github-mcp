@@ -397,3 +397,10 @@ carried over unchanged. Old text: `docs/archive/AGENTS-2026-10-22-before-simplif
 ## 2026-10-22 — Real-device checks separated from development (owner request, Chris)
 
 Device checks (e.g. PUB-4 on phone and desktop) live in `docs/OWNER-CHECKLIST.md` and never block implementation or merges.
+
+## 2026-10-23 — Owner answers on the remaining list (Chris)
+- The Hub is responsible for discovering and connecting to this server; it is not the only way in. No Hub-run acceptance rows are tracked for this product beyond keeping our connector compliant with the Hub's published spec. (Relay/sandbox rows stay Hub-owned and are not obligations here.)
+- Paid plan for Robinson-AI-Systems: not needed now.
+- ChatGPT on Android works; iPhone and desktop are optional, done only if convenient.
+- Disconnect/reconnect has been exercised many times in real use (account adding, preview-to-production switch).
+- Second GitHub account: only if actually needed. Package token: needs a guided walk-through when he is ready. PUB-5 stays a "much later, optional" item.
