@@ -1,0 +1,3 @@
+# 2026-10-23 — Sign-in button refused: the page's safety cookie never came back
+
+Logs showed the refusal: "form-check origin=ok cookie=missing". The consent page's small safety cookie was set with the strictest browser rule (SameSite=Strict) and the phone browser did not send it back when the button was pressed. It now uses Lax, the standard rule for sign-in pages; it still is not sent on a POST started from another website, and the origin check and hidden token stay. The log line also says whether any cookies arrived at all. Next: release, Chris retries, read the log again if it still refuses.
