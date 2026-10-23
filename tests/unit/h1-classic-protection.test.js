@@ -28,7 +28,8 @@ const original={
 const toResponse=body=>({
  required_status_checks:body.required_status_checks===null?null:{
   strict:body.required_status_checks.strict,
-  checks:body.required_status_checks.checks,
+  // Real GitHub (2026-10-23) reads an "any app" check (app_id -1) back as app_id null.
+  checks:body.required_status_checks.checks.map(c=>({...c,app_id:c.app_id===-1?null:c.app_id})),
   contexts:body.required_status_checks.checks.map(c=>c.context)},
  enforce_admins:{enabled:body.enforce_admins},
  required_pull_request_reviews:body.required_pull_request_reviews===null?null:{
@@ -118,6 +119,15 @@ describe('H-1 classic protection complete-object safety',()=>{
    expect(b[flag]).toBe(original[flag].enabled);
   expect(b.required_conversation_resolution).toBe(false);
   expect(w.gh.invalid).toEqual([]);
+ });
+ it('confirms an any-app required check that GitHub reads back as a null app',async()=>{
+  const w=await makeWorld({mode:'production',profile:'full'});
+  arrange(w.gh,'ok','set');
+  const r=await call(w,'github_protection_set',{repo:'hello',branch:'main',
+   changes:{required_status_checks:{strict:true,contexts:['ci'],checks:[{context:'ci',app_id:-1}]}},confirm:true});
+  expect(r).toMatchObject({done:true,status:'applied'});
+  expect(w.gh.calls.filter(c=>c.route===routes.put)[0].body.required_status_checks)
+   .toEqual({strict:true,checks:[{context:'ci',app_id:-1}]});
  });
  it('refuses incomplete required review membership before PUT',async()=>{
   const w=await makeWorld({mode:'production',profile:'full'});
