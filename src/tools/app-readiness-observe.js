@@ -198,6 +198,9 @@ export async function inspectReadiness(ctx,owner,repo,profile){
     const policy=actions.data.fork?.approval_policy;
     if(policy==='all_external_contributors'||policy===2)
       add(out,labels,'G16','done','All external fork contributors require review.');
+    else if(actions.data.fork?.not_applicable)
+      // GitHub has no fork-approval setting for a private repository (it answers 422), so there is nothing to repair.
+      add(out,labels,'G16','done','Not applicable: GitHub has no fork-approval setting for a private repository.');
     else{
       need('G16','Fork workflow approval is looser than all_external_contributors.');
       fixes.set('G16',{tool:'github_actions_set_settings',args:{owner,repo,

@@ -135,7 +135,13 @@ export const teamDelete=defineGithubWrite({
     return (await context(ctx,t)).request('DELETE /orgs/{org}/teams/{team_slug}',
       teamParams(t,a.teamSlug));
   },
-  readAfter:({args:a,ctx,target:t})=>getTeam(ctx,t,a.teamSlug),
+  // A deleted team can still be readable for a moment (seen live 2026-10-23); look again a few times, about five seconds at most.
+  readAfter:async({args:a,ctx,target:t})=>{
+    const wait=ctx.sleep??(ms=>new Promise(r=>setTimeout(r,ms)));
+    let x=await getTeam(ctx,t,a.teamSlug);
+    for(let i=0;i<3&&x!==null;i++){await wait(1500);x=await getTeam(ctx,t,a.teamSlug);}
+    return x;
+  },
   verify:({after:x})=>x===null,
   inverse:()=>null,present:({args:a})=>({team:a.teamSlug,deleted:true})
 });
@@ -153,7 +159,7 @@ export const teamSetMember=defineGithubWrite({
     const membership=await getMember(c,t,a.teamSlug,a.username);
     const org=await getOrgMember(c,t,a.username);
     return {team,role:membership?.role??null,state:membership?.state??null,
-      inOrg:org?.state==='active'};
+      inOrg:org?.state==='active',orgRole:org?.role??null};
   },
   classify:({args:a,before:b,target:t})=>{
     const grant=a.action==='set'&&
@@ -178,8 +184,11 @@ export const teamSetMember=defineGithubWrite({
         ...(a.action==='set'?{role:a.role}:{})});
   },
   readAfter:({args:a,ctx,target:t})=>getMember(ctx,t,a.teamSlug,a.username),
-  verify:({args:a,after:x})=>a.action==='remove'?x===null:
-    x?.role===a.role&&x.state==='active',
+  // GitHub makes every organization owner a team maintainer, so asking for "member" reads back as "maintainer" for them
+  // (seen live 2026-10-23); that is the only accepted difference.
+  verify:({args:a,before:b,after:x})=>a.action==='remove'?x===null:
+    x?.state==='active'&&(x.role===a.role||
+      (a.role==='member'&&x.role==='maintainer'&&b?.orgRole==='admin')),
   inverse:()=>null,present:({args:a,after:x})=>({
     username:a.username,team:a.teamSlug,state:x?.state??'removed',
     role:x?.role??null})

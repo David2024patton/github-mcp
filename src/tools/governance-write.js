@@ -50,6 +50,18 @@ const get=async(ctx,t,id)=>missing(async()=>{
   return x;
 });
 const eq=(x,y)=>isDeepStrictEqual(x,y);
+// GitHub fills in defaults we did not send (for example do_not_enforce_on_create:false on a required-status-checks rule).
+// Every value we sent must read back identically; extra provider defaults on an object are accepted.
+const covers=(sent,got)=>{
+  if(Array.isArray(sent))return Array.isArray(got)&&sent.length===got.length&&sent.every((v,i)=>covers(v,got[i]));
+  if(sent&&typeof sent==='object')return !!got&&typeof got==='object'&&!Array.isArray(got)&&
+    Object.keys(sent).every(k=>covers(sent[k],got[k]));
+  return sent===got||(sent==null&&got==null);
+};
+const sameRuleset=(got,sent)=>{
+  const g=normalizeRuleset(got);
+  return eq({...g,rules:null},{...sent,rules:null})&&covers(sent.rules,g.rules);
+};
 const word=r=>r.type==='non_fast_forward'?'Block force pushes':
   r.type==='required_status_checks'
   ?`Require ${(r.parameters?.required_status_checks??[]).map(s=>s.context).join(', ')} checks`
@@ -128,7 +140,7 @@ export const rulesetSave=defineGithubWrite({
     get(ctx,t,a.rulesetId??q?.data?.id),
   verify:({args:a,before:b,after:x,response:q})=>!!x&&
     x.id===(a.rulesetId??q?.data?.id)&&
-    eq(normalizeRuleset(x),b.merged),
+    sameRuleset(x,b.merged),
   inverse:()=>null,
   present:({after:x})=>({id:x?.id,name:x?.name,enforcement:x?.enforcement,
     target:x?.target,rule_count:x?.rules?.length??0,bypass_count:x?.bypass_actors?.length??0})

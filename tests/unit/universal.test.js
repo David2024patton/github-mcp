@@ -91,6 +91,41 @@ runWriteContract({
   }
 });
 
+describe('U-1 a create is confirmed from its collection',()=>{
+  const list='/orgs/{org}/actions/runner-groups';
+  const run=async(listed)=>{
+    const w=await makeWorld({profile:'full',mode:'production'});
+    w.gh.when('GET '+list).replySequence([
+      {status:200,body:{total_count:0,runner_groups:[]}},
+      {status:200,body:{total_count:listed.length,runner_groups:listed}}]);
+    w.gh.when('POST '+list).reply(201,{id:4,name:'g',visibility:'selected'});
+    return parse(await dispatch(w,'github_api_write',{...api('POST '+list,{org:'example-org'},
+      {name:'g',visibility:'selected'}),confirm:true}));
+  };
+  it('confirms when the created group is in the re-read list (seen live 2026-10-23)',async()=>{
+    expect(await run([{id:1,name:'Default',visibility:'all'},{id:4,name:'g',visibility:'selected'}]))
+      .toMatchObject({done:true,status:'applied'});
+  });
+  it('does not confirm when a different group with the same fields is listed',async()=>{
+    expect(await run([{id:9,name:'g',visibility:'selected'}])).toMatchObject({done:false});
+  });
+});
+describe('U-1 a delete is confirmed by absence',()=>{
+  const one='/orgs/{org}/actions/runner-groups/{runner_group_id}';
+  const run=async(afterStatus)=>{
+    const w=await makeWorld({profile:'full',mode:'production'});
+    w.gh.when('GET '+one).replySequence([{status:200,body:{id:4,name:'g'}},
+      afterStatus===404?{status:404,body:{message:'Not Found'}}:{status:200,body:{id:4,name:'g'}}]);
+    w.gh.when('DELETE '+one).reply(204,null);
+    return parse(await dispatch(w,'github_api_write',{...api('DELETE '+one,{org:'example-org',runner_group_id:4}),confirm:true}));
+  };
+  it('confirms when the object can no longer be read (seen live 2026-10-23)',async()=>{
+    expect(await run(404)).toMatchObject({done:true,status:'applied'});
+  });
+  it('does not confirm when the object is still readable',async()=>{
+    expect(await run(200)).toMatchObject({done:false});
+  });
+});
 describe('U-1 refusal and effect uncertainty',()=>{
   it('does not write on preview or when confirmation is absent',async()=>{
     const w=await makeWorld({profile:'full',mode:'preview'});

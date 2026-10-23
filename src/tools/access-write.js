@@ -41,9 +41,11 @@ const getKey=async(ctx,t,id)=>missing(async()=>{
     'GET /repos/{owner}/{repo}/keys/{key_id}',{...params(t),key_id:id})).data;
   if(!d||d.id!==id)throw refusal('Deploy key numeric identity changed.');
   return {id:d.id,title:d.title,read_only:d.read_only===true,
-    fingerprint:typeof d.key==='string'?createHash('sha256').update(d.key.trim()).digest('hex').slice(0,20):null};
+    fingerprint:typeof d.key==='string'?keyHash(d.key):null};
 });
-const keyHash=key=>createHash('sha256').update(key.trim()).digest('hex').slice(0,20);
+// GitHub stores a deploy key as "<type> <base64>" and drops any trailing comment, so hash only those two parts.
+const keyBody=key=>key.trim().split(/\s+/).slice(0,2).join(' ');
+const keyHash=key=>createHash('sha256').update(keyBody(key)).digest('hex').slice(0,20);
 const validateKey=value=>{
   if(typeof value!=='string'||value.length>8192||/PRIVATE KEY|BEGIN |\r|\n/.test(value)||
     !/^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp(?:256|384|521)) [A-Za-z0-9+/=]{40,}(?: [^\r\n]{0,255})?$/.test(value))

@@ -18,7 +18,8 @@ const routes={
 const PUBLIC='ssh-ed25519 '+('A'.repeat(56))+' test-key';
 const permission=(p='push')=>({permission:p,user:{login:'alice'}});
 const invite=(p='pull')=>({id:9,invitee:{login:'alice'},permissions:p==='push'?'write':p==='pull'?'read':p});
-const deploy={id:7,title:'automation key',key:PUBLIC,read_only:false};
+// Real GitHub (2026-10-23) stores the key as "<type> <base64>" and drops the trailing comment.
+const deploy={id:7,title:'automation key',key:PUBLIC.split(' ').slice(0,2).join(' '),read_only:false};
 const definition=n=>({tool:access.tools.find(t=>t.name===n),handler:access.handlers[n]});
 function arrangeAdd(gh,result){
   gh.when(routes.permission).replySequence([

@@ -16,7 +16,7 @@ const invitation=x=>({id:x.id,login:x.invitee?.login??null,
   created_at:x.created_at??null,inviter:x.inviter?.login??null,
   expired:x.expired===true});
 const fingerprint=value=>typeof value==='string'
-  ?createHash('sha256').update(value.trim()).digest('hex').slice(0,20):null;
+  ?createHash('sha256').update(value.trim().split(/\s+/).slice(0,2).join(' ')).digest('hex').slice(0,20):null;
 const key=x=>({id:x.id,title:x.title??null,read_only:x.read_only===true,
   verified:x.verified??null,added_at:x.created_at??null,
   last_used:x.last_used??null,fingerprint:fingerprint(x.key)});
