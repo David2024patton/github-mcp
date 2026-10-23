@@ -440,3 +440,44 @@ describe('PUB-6 owner usage summary', () => {
     expect(JSON.stringify(out)).not.toMatch(/alice|bob|tok-|@/);
   });
 });
+
+describe('PUB-6 owner deletes one public person\'s data', () => {
+  it('removes that person completely, keeps everyone else, and refuses organization names', async () => {
+    const { forgetPublicPerson, findPublicTenantsByLogin } = await import('../../src/tenancy/forget-person.js');
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const tokenFor = async (who) => {
+      const fin = await (await signIn(c, client, who)).finished;
+      return json(await exchange(client, new URL(fin.redirect).searchParams.get('code')));
+    };
+    const gate = (t) => resolvePrivateTenantMcpBearer({ authorization: 'Bearer ' + t.access_token, env, fetchImpl, rootSqlFactory, tenantSqlFactory });
+    const alice = await tokenFor('alice'), bob = await tokenFor('bob');
+    const aliceCtx = await gate(alice), bobCtx = await gate(bob);
+    expect(aliceCtx).not.toBeNull(); expect(bobCtx).not.toBeNull();
+    const opts = { connectionString: process.env.TEST_DATABASE_URL, sqlFactory: tenantSqlFactory };
+    const aliceTenant = await admin.query("SELECT tenant_id FROM gh_tenant_pilot_bootstraps b JOIN gh_tenant_identities i ON i.id=b.identity_id WHERE b.account_login='public-connect' AND i.provider_subject=$1", ['31001']).then((r) => r.rows[0].tenant_id);
+    const schemaExists = async (id) => (await admin.query('SELECT 1 FROM information_schema.schemata WHERE schema_name=$1', [tenantSchemaName(String(id))])).rowCount === 1;
+    expect(await schemaExists(aliceTenant)).toBe(true);
+    // an organization name never identifies a person; a name nobody connected finds nothing
+    expect(await findPublicTenantsByLogin(rootSqlFactory(), 'client-co', opts)).toEqual([]);
+    expect(await forgetPublicPerson(directory, rootSqlFactory(), 'nobody-here', opts)).toBe(0);
+    await expect(forgetPublicPerson(directory, rootSqlFactory(), 'bad name!', opts)).rejects.toThrow();
+    expect(await forgetPublicPerson(directory, rootSqlFactory(), 'alice-dev', opts)).toBe(1);
+    // alice is gone everywhere: namespace, root rows, identity, and her token no longer works
+    expect(await schemaExists(aliceTenant)).toBe(false);
+    for (const table of ['gh_tenants', 'gh_tenant_memberships', 'gh_tenant_pilot_bootstraps', 'gh_tenant_pilot_allowlist']) {
+      const col = table === 'gh_tenants' ? 'id' : 'tenant_id';
+      expect((await admin.query(`SELECT 1 FROM ${table} WHERE ${col}=$1`, [aliceTenant])).rowCount).toBe(0);
+    }
+    expect((await admin.query("SELECT 1 FROM gh_tenant_identities WHERE provider_subject='31001'")).rowCount).toBe(0);
+    expect(await gate(alice)).toBeNull();
+    // bob is untouched
+    expect(await gate(bob)).not.toBeNull();
+    expect(await directory.forgetPublicTenant(aliceTenant)).toBe(false);
+    // a private (non-public) tenant can never be removed this way
+    const priv = await admin.query("SELECT tenant_id FROM gh_tenant_pilot_bootstraps WHERE account_login<>'public-connect' LIMIT 1").then((r) => r.rows[0]);
+    if (priv) await expect(directory.forgetPublicTenant(String(priv.tenant_id))).rejects.toThrow();
+    // she can connect again afterwards as a brand-new person
+    expect(await gate(await tokenFor('alice'))).not.toBeNull();
+  });
+});

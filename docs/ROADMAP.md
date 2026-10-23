@@ -92,3 +92,5 @@ Approach: one public GitHub App, opened gradually. Every item below is part of "
 - Self-host the brand fonts (pages currently use system fonts) and a favicon `.ico`.
 - Move the connector to `github.robinsonaisystems.com` (OAuth callbacks, App settings, existing clients; DNS row on the owner checklist).
 - Real-device acceptance of the new flow (owner checklist, optional).
+
+- Self-serve "delete my data" page for public people (sign in with GitHub again, confirm, delete). The owner-run deletion exists (2026-10-23); this makes it available to each person without the owner.

@@ -26,6 +26,7 @@ import { purgeRevokedTenantArtifacts } from '../tenancy/incident-cleanup.js';
 import { registerPrivatePilotClient } from '../tenancy/client-registration.js';
 import { createTenantDirectory, openAuthorizedTenantDb } from '../tenancy/directory.js';
 import { saveTenantRuntimePolicy } from '../tenancy/runtime-limits.js';
+import { forgetPublicPerson } from '../tenancy/forget-person.js';
 import { publicUsageSummary } from '../tenancy/usage-summary.js';
 import { neon } from '@neondatabase/serverless';
 
@@ -211,6 +212,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
         target:passId,summary:'Revoked an RTC test pass',confirmed:true,production:false}).catch(()=>{});
       return page(revoked?200:404,{result:revoked?'RTC pass revoked immediately.':'No active RTC pass with that identifier.'});
     }
+    if (action === 'forget-person') return await forgetPerson(p, page);
     if (action === 'set-time-zone') return await setTimeZone(p, page);
     if (action === 'set-own-people') return await setOwnPeople(p, page);
     if (action === 'save-protected' || action === 'remove-protected') return await editProtected(action, p, page);
@@ -361,6 +363,24 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     await db.recordChange({ account: row.login, mode: 'setup', tool: 'setup_set_spend_limit', target: row.login, summary: `Monthly spend limit for ${row.login} set to ${money(cents)} (was ${money(Number(row.spend_limit_cents) || 0)})`,
       production: true, accessWidening: false, confirmed: true }).catch(() => {});
     return page(200, { result: `The monthly spend limit for ${row.login} is now ${money(cents)}${raised ? '. Actions that cost money still ask you first.' : '.'}`, spendLimits: await spendView() });
+  }
+
+  /** Owner request: delete everything stored for one public person (found by their personal GitHub account name). */
+  async function forgetPerson(p, page) {
+    if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
+    const name = String(p.login ?? '').trim().toLowerCase();
+    if (!isValidLogin(name) || String(p.confirmLogin ?? '').trim().toLowerCase() !== name || String(p.confirmDelete ?? '') !== 'yes')
+      return page(400, { result: 'Type the person\'s GitHub account name twice and tick the confirmation. Nothing was deleted.' });
+    if (!env.DATABASE_URL) return page(409, { result: 'No database is configured.' });
+    try {
+      const root = neon(env.DATABASE_URL);
+      const removed = await forgetPublicPerson(createTenantDirectory(root), root, name, { connectionString: env.DATABASE_URL });
+      await db.recordChange({ account: null, mode: 'setup', tool: 'setup_forget_public_person', target: 'public_person',
+        summary: `Deleted ${removed} public sign-in data set${removed === 1 ? '' : 's'} on request`, production: true, accessWidening: false, confirmed: true }).catch(() => {});
+      return page(removed ? 200 : 404, { result: removed
+        ? `Deleted. ${removed} data set${removed === 1 ? '' : 's'} for ${name} (sign-in, tokens, stored settings) removed for good. They can connect again later as a new person.`
+        : 'No public sign-in was found for that personal account name. Nothing was deleted.' });
+    } catch { return page(500, { result: 'The deletion could not be completed. Nothing further was changed; try again.' }); }
   }
 
   /** Read-only public usage numbers for the owner; any problem just hides the section. */
