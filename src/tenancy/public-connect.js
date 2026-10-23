@@ -39,6 +39,8 @@ export class PublicConnectError extends Error {
   constructor(code, message) { super(message); this.name = 'PublicConnectError'; this.code = code; }
 }
 export const FORGET_CLIENT = 'pcl_forget_my_data_built_in_page_0000000';
+// Claude asks for the permission names this server advertises in its discovery document; sign-in gives no extra power for them.
+const ADVERTISED_SCOPES = ['github.notifications.read'];
 const refused = () => new PublicConnectError('refused', 'GitHub could not verify this sign-in. Start again from your client.');
 
 export { isPublicClientId, publicAuthCode, parsePublicCode };
@@ -83,7 +85,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
         !CHALLENGE.test(String(p.code_challenge ?? '')) || p.resource !== origin + '/api/mcp' ||
         typeof p.redirect_uri !== 'string' || !validRedirectUri(p.redirect_uri) ||
         (p.state !== undefined && (typeof p.state !== 'string' || p.state.length > 256)) ||
-        (p.scope !== undefined && p.scope !== '')) throw refused();
+        (p.scope !== undefined && !(typeof p.scope === 'string' && p.scope.split(/\s+/).filter(Boolean).every((x) => ADVERTISED_SCOPES.includes(x))))) throw refused();
   }
 
   /** RFC 7591 registration for the public flow. Capped; the secret is shown once and only its hash is kept. */
