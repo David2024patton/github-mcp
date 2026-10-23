@@ -444,3 +444,6 @@ Device checks (e.g. PUB-4 on phone and desktop) live in `docs/OWNER-CHECKLIST.md
 
 ## 2026-10-23 — Offer the App on a person's own account (public sign-in)
 Decision: during public sign-in, when the person has not named accounts and their personal account lacks the App, send them once to install it; after returning, connect what is available (no loop). Reason: Chris's own sign-in connected only the scratch organization because the install step used to run only when nothing was connectable. One connection already holds several accounts at once (default: the person's own first). Not decided: a separate "add another account later" screen.
+
+## 2026-10-23 — God mode becomes one master token (owner decision)
+Chris: God mode should be **one master token** that unlocks permissions for everything possible, with tools for everything buildable on top of it that standard GitHub sign-in does not cover, not a menu of separate notifications and packages keys. Decision: new classic-token kind `M`, same-person proof, guarded use only; K and P keep working. Design and pieces: `docs/designs/GOD-TOKEN.md`. Risk accepted by the owner and disclosed on the page: the token carries the power of the person's whole GitHub login.
