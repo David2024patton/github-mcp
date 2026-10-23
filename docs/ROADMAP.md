@@ -94,3 +94,9 @@ Approach: one public GitHub App, opened gradually. Every item below is part of "
 - Real-device acceptance of the new flow (owner checklist, optional).
 
 - (Done 2026-10-23) Self-serve "delete my data" page for public people: sign in with GitHub, confirm once, everything stored is removed.
+
+## Owner-requested, not built yet (2026-10-23)
+- **God mode as ONE master token:** Chris's intent is a single classic GitHub token, typed on the God page (never into a chat), that unlocks everything the standard sign-in cannot: notifications, packages and every other classic-token-only operation — instead of today's separate "notifications token" / "package token" choices. Needs a design: one new credential kind that existing notification/package tools also accept, the token scopes to tell the person to tick, encrypted storage like the current keys, and tools for the remaining classic-only operations.
+- **Linking a second, separate GitHub login** into one connection (security-sensitive: needs sign-in as both people). Today each GitHub person gets their own separate space.
+
+- Link a second, separate GitHub login (for example a client's or an older work login) into one connection. Needs proof of both logins and a careful look at tenant isolation. Not built; one login with its personal account and organizations is covered.

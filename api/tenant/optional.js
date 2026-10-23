@@ -4,7 +4,7 @@ import {timingSafeEqual} from 'node:crypto';
 import {createPrivateOptionalEnrollment} from '../../src/tenancy/optional-setup.js';
 import {TenantCapacityError} from '../../src/tenancy/runtime-limits.js';
 import {escapeHtml,paramsOf,publicOrigin,send} from '../../src/core/http.js';
-import {publicGodPost,clearGodCookie,publicFailure} from '../../src/tenancy/public-http.js';
+import {publicGodPost,clearGodCookie,publicFailure,renderPublicStep} from '../../src/tenancy/public-http.js';
 
 const NAME='gh_tenant_optional_state';
 const CLEAR=NAME+'=; Max-Age=0; Path=/api/tenant/optional; HttpOnly; Secure; SameSite=Strict';
@@ -66,6 +66,7 @@ export function makePrivateOptionalPage({
       if(p.connect_god==='1'){
         try{
           const chosen=await publicGodPost(req,{env});
+          if(chosen.install||chosen.god)return renderPublicStep(res,chosen);
           if(chosen.redirect){
             res.setHeader('Set-Cookie',clearGodCookie());
             res.setHeader('Referrer-Policy','no-referrer');
