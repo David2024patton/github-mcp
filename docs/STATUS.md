@@ -1,3 +1,7 @@
+## 2026-10-22 — instructions simplified (owner request)
+
+AGENTS.md (534 → ~200 lines) and the bundle section of SESSION-START replaced with a finish-line policy: development never waits for acceptance, finished pieces merge, new scope needs Chris, un-curated inventory rows are backlog, counts are diagnostics. All hard limits/owner decisions kept; old text archived under docs/archive/. No code or CI change. Open work unchanged: CAP-4 #277 (green draft, split into mergeable pieces next), PUB-4 #268 (needs real device acceptance), CAP-5 not started.
+
 ## 2026-10-22 — private bootstrap HTTP namespace recovery
 
 Released main/live `abb5f177770de8bdedc31cbce0ef7181e85d55be` is READY. Actual custom MCP App I/U reads and the exact GitHub user-installation read succeeded; foreign-account and missing optional credential calls refused. The owner completed protected administrator authentication, but private bootstrap returned its safe generic initialization error. Read-only production diagnostics found one repeat-safe bootstrap row, status provisioning, an existing tenant namespace and zero tenant tables. No tenant was activated. This narrows failure to initialization, before App/account material is copied; the exact hidden exception was not logged and is not claimed known.
