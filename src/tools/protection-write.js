@@ -42,6 +42,15 @@ const group=(raw,label)=>raw===null?null:raw===undefined
   ?(()=>{throw refusal('Unverified '+label+' members; update refused.');})()
   :{users:names(raw.users,'login',label),teams:names(raw.teams,'slug',label),
     apps:names(raw.apps,'slug',label)};
+// GitHub omits required_status_checks, required_pull_request_reviews and restrictions from a protection that does not configure them
+// (it does not send null). Absent means "not configured"; every other missing piece is still refused by reads().
+export const normalizeProtection=(raw)=>{
+  if(!raw||typeof raw!=='object')return raw;
+  const out={...raw};
+  for(const k of ['required_status_checks','required_pull_request_reviews','restrictions'])
+    if(out[k]===undefined)out[k]=null;
+  return out;
+};
 const reads=(raw)=>{
   if(!raw||typeof raw!=='object')throw refusal('Protection configuration is missing.');
   const checks=raw.required_status_checks===null?null:(()=>{
@@ -128,11 +137,21 @@ const read=async(a,ctx,t)=>{
   const gh=await octo(ctx,t.owner),p=params(a,t);
   const b=(await gh.request('GET /repos/{owner}/{repo}/branches/{branch}',p)).data;
   if(b?.name!==a.branch||!b.commit?.sha)throw refusal('Exact branch and SHA could not be verified.');
-  const raw=await missing(async()=>(await gh.request('GET '+route,p)).data);
+  const raw=normalizeProtection(await missing(async()=>(await gh.request('GET '+route,p)).data));
   return {classic:raw,current:raw?reads(raw):null,sha:b.commit.sha,
     signatures:raw?.required_signatures?.enabled??null};
 };
-const verifySnapshot=(expected,actual)=>actual&&isDeepStrictEqual(expected,reads(actual));
+// A first-time protection sends only the flags it names; GitHub then reports every other flag at its default (false). Those extra, default-off flags are
+// accepted; any flag we did not send that is ON, and any difference in a field we did send, still fails verification.
+const verifySnapshot=(expected,actual)=>{
+  if(!actual)return false;
+  const got=reads(actual);
+  for(const k of Object.keys(got)){
+    if(k in expected){if(!isDeepStrictEqual(expected[k],got[k]))return false;}
+    else if(!FLAGS.includes(k)||got[k]!==false)return false;
+  }
+  return Object.keys(expected).every(k=>k in got);
+};
 export const protectionSet=defineGithubWrite({
   name:'github_protection_set',area:'protection',audience:['O'],
   description:'Safely merge named branch protection changes into a complete guarded PUT, preserving other controls.',
@@ -160,7 +179,7 @@ export const protectionSet=defineGithubWrite({
   },
   readAfter:({args:a,ctx,target:t})=>read(a,ctx,t),
   verify:({before:b,after:x})=>x?.classic&&x.sha===b.sha&&
-    x.signatures===b.signatures&&verifySnapshot(b.next,x.classic),
+    (x.signatures??false)===(b.signatures??false)&&verifySnapshot(b.next,x.classic),
   inverse:()=>null,
   present:({args:a,after:x})=>({branch:a.branch,classic_protection:!!x?.classic,
     retained_checks:x?.current?.required_status_checks?.checks?.length??0,

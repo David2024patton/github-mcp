@@ -73,6 +73,29 @@ async function call(w,name,args){
  const x=await d({registry,name,args,connection:w.connection,db:w.db});
  return x.structuredContent??(x.isError?{done:false,error:x.content?.[0]?.text}:parse(x));
 }
+describe('H-1 classic protection on a branch with no protection yet (real GitHub shapes)',()=>{
+ const optionalOmitted=body=>({enforce_admins:{enabled:body.enforce_admins},
+  ...Object.fromEntries(flags.map(f=>[f,{enabled:body[f]??false}])),required_signatures:{enabled:false}});
+ it('names the missing fields instead of a generic read failure',async()=>{
+  const w=await makeWorld({mode:'production',profile:'full'});
+  w.gh.when(routes.branch).reply(200,{name:'main',commit:{sha:'f'.repeat(40)}});
+  w.gh.when(routes.get).reply(404,{message:'Branch not protected'});
+  const r=await call(w,'github_protection_set',{repo:'hello',branch:'main',changes:{required_conversation_resolution:true},confirm:true});
+  expect(r).toMatchObject({done:false,status:'refused_by_guard'});
+  expect(r.error).toContain('requires explicit');
+  expect(w.gh.calls.some(c=>c.route===routes.put)).toBe(false);
+ });
+ it('creates first-time protection and confirms it when GitHub omits the unconfigured groups',async()=>{
+  const w=await makeWorld({mode:'production',profile:'full'});
+  const created=optionalOmitted({enforce_admins:false,required_conversation_resolution:true});
+  w.gh.when(routes.branch).reply(200,{name:'main',commit:{sha:'f'.repeat(40)}});
+  w.gh.when(routes.get).replySequence([{status:404,body:{message:'Branch not protected'}},{status:200,body:created},{status:200,body:created},{status:200,body:created}]);
+  w.gh.when(routes.put).reply(200,created);
+  const r=await call(w,'github_protection_set',{repo:'hello',branch:'main',confirm:true,
+   changes:{required_status_checks:null,enforce_admins:false,required_pull_request_reviews:null,restrictions:null,required_conversation_resolution:true}});
+  expect(r).toMatchObject({done:true,status:'applied'});
+ });
+});
 describe('H-1 classic protection complete-object safety',()=>{
  it('preserves required checks, reviewing membership and every unrelated flag in the PUT',async()=>{
   const w=await makeWorld({mode:'production',profile:'full'});

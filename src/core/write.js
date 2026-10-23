@@ -181,6 +181,8 @@ export function defineWrite(spec) {
       if (readError?.status === 403 || readError?.status === 404) {
         try { detail = explain(readError, { args, ctx, target: tgt }); } catch { /* generic refusal below */ }
       }
+      if (readError?.safeMessage === true && typeof readError.message === 'string' && readError.message.length > 0 && readError.message.length <= 300)
+        return refuse('read', `No change was sent. ${readError.message}`);
       const reason = typeof detail === 'string' && detail.length > 0 && detail.length <= 1024
         ? `The current state could not be read; no change was sent. ${detail}`
         : 'The current state could not be read, so nothing was sent. Try again in a moment.';
