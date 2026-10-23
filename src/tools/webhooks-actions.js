@@ -50,6 +50,14 @@ const deliveries=async(ctx,t,hookId)=>{
   return r.items.map(d=>({id:d.id,guid:d.guid??null,event:d.event??null,
     redelivery:d.redelivery===true}));
 };
+// GitHub records a ping or redelivery a moment after it accepts the request, so an immediate read can miss it (seen on the real
+// account). Look again a few times, bounded to about five seconds, before reporting "unconfirmed".
+const settled=async(ctx,t,hookId,found)=>{
+  const wait=ctx.sleep??(ms=>new Promise(r=>setTimeout(r,ms)));
+  let items=await deliveries(ctx,t,hookId);
+  for(let i=0;i<3&&!found(items);i++){await wait(1500);items=await deliveries(ctx,t,hookId);}
+  return items;
+};
 const summarizeTarget=(t,a)=>t.scope==='org'?t.owner:slug(t.owner,a.repo);
 
 export const webhookDelete=defineGithubWrite({
@@ -94,7 +102,8 @@ export const webhookRedeliver=defineGithubWrite({
   apply:({args:a,ctx,target:t})=>octo(ctx,t.owner).then(gh=>gh.request(
     'POST '+route(t,'/{hook_id}/deliveries/{delivery_id}/attempts'),
     {...args(t),hook_id:a.hookId,delivery_id:String(a.deliveryId)})),
-  readAfter:({args:a,ctx,target:t})=>deliveries(ctx,t,a.hookId),
+  readAfter:({args:a,ctx,target:t,before:b})=>settled(ctx,t,a.hookId,items=>items.some(d=>d.guid===b.delivery.guid&&
+    String(d.id)!==String(b.delivery.id)&&!b.known.includes(d.id)&&d.redelivery===true)),
   verify:({before:b,after:items})=>items?.some(d=>d.guid===b.delivery.guid&&
     String(d.id)!==String(b.delivery.id)&&!b.known.includes(d.id)&&d.redelivery===true),
   inverse:()=>null,
@@ -119,7 +128,7 @@ export const webhookPing=defineGithubWrite({
     '; delivery receipt is required to confirm success',
   apply:({args:a,ctx,target:t})=>octo(ctx,t.owner).then(gh=>gh.request(
     'POST '+route(t,'/{hook_id}/pings'),{...args(t),hook_id:a.hookId})),
-  readAfter:({args:a,ctx,target:t})=>deliveries(ctx,t,a.hookId),
+  readAfter:({args:a,ctx,target:t,before:b})=>settled(ctx,t,a.hookId,items=>items.some(d=>d.event==='ping'&&!b.known.includes(d.id))),
   verify:({before:b,after:items})=>items?.some(d=>d.event==='ping'&&!b.known.includes(d.id)),
   inverse:()=>null,present:({args:a,after:items,before:b})=>({
     webhook_id:a.hookId,ping_delivery_id:items?.find(d=>d.event==='ping'&&!b.known.includes(d.id))?.id??null})

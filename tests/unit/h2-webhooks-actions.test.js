@@ -73,6 +73,26 @@ describe('H-2 webhook mutation safety and refused paths',()=>{
   expect(r.done).toBe(false);
   expect(w.gh.calls.filter(c=>c.route===routes.retry)).toHaveLength(0);
  });
+ it('waits for a ping that GitHub records a moment after accepting it (seen on the real account)',async()=>{
+  const w=await makeWorld({mode:'production',profile:'full'});
+  w.gh.when(routes.hook).reply(200,hook);
+  w.gh.when(routes.list).replySequence([
+   {status:200,body:[]},{status:200,body:[]},{status:200,body:[{id:'3849911300538769408',event:'ping'}]}]);
+  w.gh.when(routes.ping).reply(204,null);
+  const r=await call(w,'github_webhook_ping',{repo:'hello',hookId:7,confirm:true});
+  expect(r).toMatchObject({done:true,status:'applied',confirmed:true});
+  expect(r.result.ping_delivery_id).toBe('3849911300538769408');
+ });
+ it('still reports unconfirmed, after a bounded wait, when no ping ever shows up',async()=>{
+  const w=await makeWorld({mode:'production',profile:'full'});
+  w.gh.when(routes.hook).reply(200,hook);
+  w.gh.when(routes.list).reply(200,[]);
+  w.gh.when(routes.ping).reply(204,null);
+  const r=await call(w,'github_webhook_ping',{repo:'hello',hookId:7,confirm:true});
+  expect(r.done).toBe(false);
+  expect(r.status).toBe('unconfirmed');
+  expect(w.gh.calls.filter(c=>c.route===routes.list).length).toBeLessThanOrEqual(5);
+ });
  it('refuses to ping webhook URLs on private or HTTP origins',async()=>{
   const w=await makeWorld({mode:'production',profile:'full'});
   arrange(w.gh,'ok','ping');
