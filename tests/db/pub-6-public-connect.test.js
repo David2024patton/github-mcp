@@ -410,3 +410,33 @@ describe('PUB-6 letting the assistant make changes', () => {
     expect((await routedGod.db.getAccessToken(tokenGod.access_token)).mode).toBe('production');
   });
 });
+
+describe('PUB-6 owner usage summary', () => {
+  it('adds up each person\'s assistant calls (counts only), skips old hours, and never shows names', async () => {
+    const people2 = await admin.query("SELECT tenant_id FROM gh_tenant_pilot_bootstraps WHERE account_login='public-connect' ORDER BY created_at LIMIT 2").then((r) => r.rows);
+    expect(people2.length).toBe(2);
+    const put = async (tenantId, hour, outcome, count) => {
+      const schema = tenantSchemaName(String(tenantId));
+      await admin.query(`INSERT INTO "${schema}".gh_tenant_runtime_metrics (hour,event,outcome,latency_bucket,count)
+        VALUES (date_trunc('hour', now()) - ($1 * interval '1 hour'),'mcp',$2,'lt100ms',$3)
+        ON CONFLICT (hour,event,outcome,latency_bucket) DO UPDATE SET count = EXCLUDED.count`, [hour, outcome, count]);
+    };
+    await put(people2[0].tenant_id, 0, 'ok', 10);
+    await put(people2[0].tenant_id, 0, 'refused', 2);
+    await put(people2[1].tenant_id, 0, 'ok', 5);
+    await put(people2[1].tenant_id, 0, 'throttled', 1);
+    await put(people2[1].tenant_id, 72, 'error', 4); // three days ago: in the week, not the day
+    await put(people2[1].tenant_id, 24 * 20, 'ok', 99); // twenty days ago: in neither
+    const { publicUsageSummary } = await import('../../src/tenancy/usage-summary.js');
+    const out = await publicUsageSummary(rootSqlFactory(), { connectionString: process.env.TEST_DATABASE_URL, sqlFactory: tenantSqlFactory });
+    expect(out.peopleConnected).toBeGreaterThanOrEqual(2);
+    expect(out.unreadable).toBe(0);
+    expect(out.lastDay.ok).toBeGreaterThanOrEqual(15);
+    expect(out.lastDay.refused).toBeGreaterThanOrEqual(2);
+    expect(out.lastDay.throttled).toBeGreaterThanOrEqual(1);
+    expect(out.lastDay.errors).toBe(0);
+    expect(out.lastWeek.errors).toBe(4);
+    expect(out.lastWeek.calls).toBe(out.lastWeek.ok + out.lastWeek.refused + out.lastWeek.throttled + out.lastWeek.errors);
+    expect(JSON.stringify(out)).not.toMatch(/alice|bob|tok-|@/);
+  });
+});

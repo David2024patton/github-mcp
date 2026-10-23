@@ -26,6 +26,7 @@ import { purgeRevokedTenantArtifacts } from '../tenancy/incident-cleanup.js';
 import { registerPrivatePilotClient } from '../tenancy/client-registration.js';
 import { createTenantDirectory, openAuthorizedTenantDb } from '../tenancy/directory.js';
 import { saveTenantRuntimePolicy } from '../tenancy/runtime-limits.js';
+import { publicUsageSummary } from '../tenancy/usage-summary.js';
 import { neon } from '@neondatabase/serverless';
 
 const HTML = 'text/html; charset=utf-8';
@@ -127,7 +128,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
         await db.getConnectorOAuthReadiness(),{mcpUrl:`${expectedOrigin}/api/mcp`});
       return page(200, { accounts, oauthReadiness, connections: (await db.listUpgradeableConnections()).filter((c) => c.kind === 'connector').map((c) => ({
         id: c.client_id, name: c.client_name || 'Custom MCP login', mode: c.mode, profile: c.profile, accounts: c.accounts
-      })), productionNames: await productionNames(db), protectedList: await protectedList(db), spendLimits: await spendView(), ownPeopleExtra: await extraOwnPeople(db) });
+      })), productionNames: await productionNames(db), protectedList: await protectedList(db), spendLimits: await spendView(), ownPeopleExtra: await extraOwnPeople(db), publicUsage: await publicUsage() });
     }
     if (action === 'reveal') {
       if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
@@ -360,6 +361,12 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
     await db.recordChange({ account: row.login, mode: 'setup', tool: 'setup_set_spend_limit', target: row.login, summary: `Monthly spend limit for ${row.login} set to ${money(cents)} (was ${money(Number(row.spend_limit_cents) || 0)})`,
       production: true, accessWidening: false, confirmed: true }).catch(() => {});
     return page(200, { result: `The monthly spend limit for ${row.login} is now ${money(cents)}${raised ? '. Actions that cost money still ask you first.' : '.'}`, spendLimits: await spendView() });
+  }
+
+  /** Read-only public usage numbers for the owner; any problem just hides the section. */
+  async function publicUsage() {
+    if (env.GITHUB_PRIVATE_TENANT_PILOT !== 'enabled' || !env.DATABASE_URL) return null;
+    try { return await publicUsageSummary(neon(env.DATABASE_URL), { connectionString: env.DATABASE_URL }); } catch { return null; }
   }
 
   /** Display-only time zone for times shown to assistants. Blank means UTC. Not a security setting, so it works in any mode. */

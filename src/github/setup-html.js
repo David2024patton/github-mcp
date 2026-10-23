@@ -36,7 +36,7 @@ function accountCard(a) {
 /**
  * @param {object} view `{ csrf, result?, revealed?, show?, accounts?, manifestForm?, installLink?, blocked?, keyHelp? }`
  */
-export function renderSetup({ csrf, result = '', revealed = null, show = '', accounts = null, manifestForm = null, installLink = null, blocked = '', keyHelp = '', productionNames = null, protectedList = null, spendLimits = null, ownPeopleExtra = null, secretEntry = null, oauthReadiness = null, connections = null }) {
+export function renderSetup({ csrf, result = '', revealed = null, show = '', accounts = null, manifestForm = null, installLink = null, blocked = '', keyHelp = '', productionNames = null, protectedList = null, spendLimits = null, ownPeopleExtra = null, secretEntry = null, oauthReadiness = null, connections = null, publicUsage = null }) {
   const form = (action, inner, button, extra = '') => `<form method="post" action="#setup-feedback" autocomplete="off">${hidden('csrf', csrf)}${hidden('action', action)}${extra}${inner}${passphrase}<button type="submit">${h(button)}</button></form>`;
   const login = '<label>GitHub account name (for example your organization or user name)<input name="login" required maxlength="39" autocomplete="off"></label>';
   const type = '<label>Account type<select name="accountType"><option value="Organization">Organization</option><option value="User">Personal user</option></select></label>';
@@ -121,6 +121,7 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
     '<h2>Your own people</h2><p>Comments, reviews and assignments that only reach your own people need no confirmation. These always count: your connected accounts, their organization members, github-actions[bot] and this server\'s own App bots. Add other GitHub names here, separated by commas. Saving replaces this extra list.</p>' +
     (ownPeopleExtra ? `<p><small>Extra names: ${h(ownPeopleExtra.join(', ') || 'none')}</small></p>` : '') +
     form('set-own-people', '<label>Extra names<input name="logins" maxlength="1000" autocomplete="off"></label>', 'Save own people') +
+    (publicUsage && publicUsage.peopleConnected > 0 ? `<h2>Public usage</h2><p>People connected through the public sign-in: ${h(String(publicUsage.peopleConnected))}${publicUsage.moreThanShown ? ' or more' : ''}. Assistant calls in the last day: ${h(String(publicUsage.lastDay.calls))} (${h(String(publicUsage.lastDay.refused))} refused, ${h(String(publicUsage.lastDay.throttled))} slowed down, ${h(String(publicUsage.lastDay.errors))} errors). Last 7 days: ${h(String(publicUsage.lastWeek.calls))}.${publicUsage.unreadable ? ` ${h(String(publicUsage.unreadable))} could not be read.` : ''} Counts only: no names or content.</p>` : '') +
     '<h2>Time zone</h2><p>Times shown to your assistants use this zone. If none is saved they show in UTC. Use a name like America/Denver.</p>' +
     form('set-time-zone', '<label>Time zone<input name="zone" maxlength="64" autocomplete="off" placeholder="UTC"></label>', 'Save time zone') +
     unlockSection({ form, login }) +
