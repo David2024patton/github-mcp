@@ -72,6 +72,6 @@ exists stays.
   assert the text "Gists" and "unlocked" appear and `fitsScreen` passes.
 
 ## Done when
-- [ ] `masterUnlocks` + tests; whoami and My connection show the list; enterprise link variant exists.
-- [ ] `npm run test:db -- tests/db/pub-6-public-connect.test.js` and `npm run test:browser` green locally or in CI.
-- [ ] `docs/designs/GOD-TOKEN.md` "Pieces" updated: GOD-2 and GOD-3 done (with PR number).
+- [x] `masterUnlocks` + tests; whoami and My connection show the list; enterprise link variant exists.
+- [ ] `npm run test:db -- tests/db/pub-6-public-connect.test.js` and `npm run test:browser` green locally or in CI (CI result recorded in the PR).
+- [x] `docs/designs/GOD-TOKEN.md` "Pieces" updated: GOD-2 and GOD-3 done (with PR number).

@@ -9,14 +9,16 @@ import { plain } from './github-read.js';
 import { ownerOf, refusal, missing, slug } from './github-write.js';
 import { notifyOutsiders, becomesPublic } from './people-guard.js';
 import { LOGIN, REPO_NAME } from './public-read.js';
+import { personalCred } from '../github/personal-cred.js';
 
 const AS = { ...LOGIN, description: 'Which of your connected accounts acts (default account)' };
 const actorTarget = (args, ctx) => ({ owner: ownerOf(args, ctx), scope: 'user', kind: 'user-settings' });
-const userClient = (ctx, owner) => githubFor(ctx, { owner, cred: 'U' });
+// GOD-2: the master token acts as the person when it is added and covers `scope`; otherwise the user sign-in (U).
+const userClient = async (ctx, owner, scope = 'user') => githubFor(ctx, { owner, cred: await personalCred(ctx, scope) });
 
 /** The signed-in user, proven by GET /user with the user credential (never trusted from the arguments). */
-async function viewer(ctx, target) {
-  const gh = await userClient(ctx, target.owner);
+async function viewer(ctx, target, scope = 'user') {
+  const gh = await userClient(ctx, target.owner, scope);
   const me = (await gh.request('GET /user')).data;
   if (!me?.id || !me?.login || (me.type && me.type !== 'User')) throw refusal('Your GitHub user sign-in could not be verified. Authorize the GitHub App as yourself on the setup page.');
   return { gh, user: { id: me.id, login: me.login } };
@@ -67,13 +69,13 @@ const watch = defineGithubWrite({
   declarations: { production: 'never', cred: 'U', profiles: ['everyday', 'full'] },
   target: actorTarget,
   read: async (args, ctx, target) => {
-    const { gh, user } = await viewer(ctx, target);
+    const { gh, user } = await viewer(ctx, target, 'repo');
     return { user, state: await readSub(gh, args) };
   },
   classify: () => ({}),
   summarize: ({ args, before }) => `Set your watch state for ${slug(args.owner, args.repo)} to ${args.state} (today ${before.state})`,
   apply: async ({ args, ctx, target, before }) => {
-    const { gh, user } = await viewer(ctx, target);
+    const { gh, user } = await viewer(ctx, target, 'repo');
     if (user.id !== before.user.id) throw refusal('The signed-in user changed.');
     if (before.state === args.state) throw refusal(`Already ${args.state}; nothing to do.`);
     const params = { owner: args.owner, repo: args.repo };
@@ -82,7 +84,7 @@ const watch = defineGithubWrite({
       : gh.request('PUT /repos/{owner}/{repo}/subscription', { ...params, subscribed: args.state === 'watching', ignored: args.state === 'ignoring' });
   },
   readAfter: async ({ args, ctx, target }) => {
-    const { gh, user } = await viewer(ctx, target);
+    const { gh, user } = await viewer(ctx, target, 'repo');
     return { user, state: await readSub(gh, args) };
   },
   verify: ({ args, before, after }) => after.user.id === before.user.id && after.state === args.state,
@@ -148,7 +150,7 @@ const deleteMutation = `mutation($listId: ID!) { deleteUserList(input: {listId: 
 const assignMutation = `mutation($itemId: ID!, $listIds: [ID!]!) { updateUserListsForItem(input: {itemId: $itemId, listIds: $listIds}) { lists { id } } }`;
 const shapeList = (l) => ({ id: l.id, name: l.name, slug: l.slug, description: l.description ?? null, isPrivate: l.isPrivate === true, count: l.items?.totalCount ?? 0, repositories: (l.items?.nodes ?? []).filter(Boolean).map((n) => n.nameWithOwner) });
 async function readLists(ctx, target) {
-  const gh = await userClient(ctx, target.owner);
+  const gh = await userClient(ctx, target.owner, 'repo');
   const v = (await graphql(gh, LISTS_QUERY)).viewer;
   if (!v?.id || !v?.login) throw refusal('Your GitHub user sign-in could not be verified. Authorize the GitHub App as yourself on the setup page.');
   const lists = (v.lists?.nodes ?? []).filter(Boolean);

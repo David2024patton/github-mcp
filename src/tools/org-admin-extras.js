@@ -4,6 +4,7 @@
 import { defineGithubWrite } from './define-github-write.js';
 import { defineRead } from './define-read.js';
 import { missing, octo, ownerOf, refusal } from './github-write.js';
+import { personalCred } from '../github/personal-cred.js';
 import { plain, readerFor } from './github-read.js';
 import { accessChange } from './people-guard.js';
 
@@ -118,6 +119,9 @@ const networkSave = defineGithubWrite({
 });
 
 // ---- organization migrations (export) ----
+// GOD-2: the master token (admin:org) when added; otherwise the App installation (I), exactly as before.
+const migCred = async (ctx) => ((await personalCred(ctx, 'admin:org')) === 'M' ? 'M' : 'I');
+const migOcto = async (ctx, owner) => octo(ctx, owner, await migCred(ctx));
 const STARTED = ['pending', 'exporting', 'exported'];
 const migrationView = (m) => ({ id: m.id, state: m.state, lock_repositories: !!m.lock_repositories, repositories: (m.repositories ?? []).map((r) => r.full_name ?? r.name).slice(0, 100), created_at: m.created_at, updated_at: m.updated_at });
 
@@ -128,18 +132,18 @@ const migrationStart = defineGithubWrite({
     excludeAttachments: { type: 'boolean' }, excludeReleases: { type: 'boolean' }, excludeMetadata: { type: 'boolean' }, excludeGitData: { type: 'boolean' }, orgMetadataOnly: { type: 'boolean' } }, required: ['repositories'],
   declarations: { production: 'always', confirm: 'always', profiles: ['full'] },
   target: orgTarget('org-migration'),
-  read: async (args, ctx, t) => ({ running: (await (await octo(ctx, t.owner)).request('GET /orgs/{org}/migrations', { org: t.owner })).data.filter((m) => ['pending', 'exporting'].includes(m.state)).map((m) => m.id) }),
+  read: async (args, ctx, t) => ({ running: (await (await migOcto(ctx, t.owner)).request('GET /orgs/{org}/migrations', { org: t.owner })).data.filter((m) => ['pending', 'exporting'].includes(m.state)).map((m) => m.id) }),
   classify: () => ({}),
   summarize: ({ args, target: t, before }) => (before.running.length ? `A migration is already running in ${t.owner} (${before.running.join(', ')}); a new one will not be started`
     : `Export ${args.repositories.length} repositories of ${t.owner} to a downloadable archive${args.lockRepositories ? ' and LOCK them read-only until you unlock them' : ' (repositories stay writable)'}. The archive holds private code and data.`),
   apply: async ({ args, ctx, target: t, before }) => {
     if (before.running.length) throw refusal('A migration is already running; wait for it to finish.');
-    return (await octo(ctx, t.owner)).request('POST /orgs/{org}/migrations', { org: t.owner, repositories: args.repositories, lock_repositories: args.lockRepositories === true,
+    return (await migOcto(ctx, t.owner)).request('POST /orgs/{org}/migrations', { org: t.owner, repositories: args.repositories, lock_repositories: args.lockRepositories === true,
       ...(args.excludeAttachments !== undefined ? { exclude_attachments: args.excludeAttachments } : {}), ...(args.excludeReleases !== undefined ? { exclude_releases: args.excludeReleases } : {}),
       ...(args.excludeMetadata !== undefined ? { exclude_metadata: args.excludeMetadata } : {}), ...(args.excludeGitData !== undefined ? { exclude_git_data: args.excludeGitData } : {}),
       ...(args.orgMetadataOnly !== undefined ? { org_metadata_only: args.orgMetadataOnly } : {}) });
   },
-  readAfter: async ({ ctx, target: t, response }) => missing(async () => migrationView((await (await octo(ctx, t.owner)).request('GET /orgs/{org}/migrations/{migration_id}', { org: t.owner, migration_id: response.data.id })).data)),
+  readAfter: async ({ ctx, target: t, response }) => missing(async () => migrationView((await (await migOcto(ctx, t.owner)).request('GET /orgs/{org}/migrations/{migration_id}', { org: t.owner, migration_id: response.data.id })).data)),
   verify: ({ after }) => !!after && STARTED.includes(after.state),
   inverse: () => null,
   present: ({ after }) => ({ migration: after, next: 'Check github_org_migration_status. Download the archive in the browser (Settings → Migrations); this server does not fetch it.' })
@@ -150,7 +154,8 @@ const migrationStatus = defineRead({
   description: 'State of an organization migration (pending, exporting, exported, failed) and where to download the finished archive.',
   properties: { owner: OWNER, migrationId: { type: 'integer', minimum: 1 } }, required: ['migrationId'],
   handler: (args, ctx) => plain(async () => {
-    const { owner, octokit } = await readerFor(args, ctx);
+    const { owner } = await readerFor(args, ctx);
+    const octokit = await migOcto(ctx, owner);
     const m = (await octokit.request('GET /orgs/{org}/migrations/{migration_id}', { org: owner, migration_id: args.migrationId })).data;
     return { ...migrationView(m), ...(m.state === 'exported' ? { archive: `Ready. Download it in the browser: https://github.com/organizations/${owner}/settings/migrations (the archive holds private data, so this server does not fetch or relay it).` } : {}) };
   })

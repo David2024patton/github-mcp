@@ -70,6 +70,18 @@ describe('github_whoami', () => {
     expect((await ask({ enrolled: false })).added).toBe(false);
   });
 
+  it('whoami lists what the master token unlocks', async () => {
+    const t = await build();
+    const withMaster = (status) => createDispatch({ env: ENV, credentials: { masterStatus: async () => status } });
+    const ask = async (status) => data(await withMaster(status)({ registry, name: 'github_whoami', args: {}, connection: t.connection, db: t.db })).master_token;
+    const on = await ask({ enrolled: true, scopes: ['gist', 'user'], expires_at: null });
+    expect(on.unlocks).toContainEqual({ area: 'Gists', unlocked: true });
+    expect(on.unlocks).toContainEqual({ area: 'Packages', unlocked: false, needs: 'write:packages' });
+    expect(JSON.stringify(on)).not.toMatch(/ghp_/);
+    const off = await ask({ enrolled: false });
+    expect(off.would_unlock).toContain('Gists');
+  });
+
   it('shows more with detail=full and only the named fields with fields', async () => {
     const t = await build();
     const full = data(await t.run('github_whoami', { detail: 'full' }));

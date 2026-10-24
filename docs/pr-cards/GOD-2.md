@@ -99,9 +99,9 @@ Fill this table before coding (compare to latest `main`):
 then `npx eslint .` and `BASE_SHA=$(git merge-base origin/main HEAD) npm run check`.
 
 ## Done when
-- [ ] `personalCred` exists with the unit test (8 cases) green.
-- [ ] Every call site in the Step 3 table uses it; every changed tool has a "uses the master token" and a "read-only keeps U" test.
-- [ ] No declaration `cred` changed; `node scripts/check-writes.mjs` green.
-- [ ] TOOL-CATALOG notes added; GOD-3 in the same PR; CI green; status note written.
+- [x] `personalCred` exists with the unit test (8 cases) green.
+- [x] Every call site in the Step 3 table uses it; every changed tool has a "uses the master token" and a "read-only keeps U" test.
+- [x] No declaration `cred` changed; `node scripts/check-writes.mjs` green.
+- [x] TOOL-CATALOG notes added; GOD-3 in the same PR; CI green; status note written.
 - [ ] Successor: ACC-1 adds live rows "personal tools with master token" (gist create+delete on Chris's account is
       allowed only as a disposable secret gist, deleted in the same run; keys/emails/profile are READ-only live checks).

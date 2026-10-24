@@ -250,6 +250,9 @@ describe('My connection', () => {
     await b.page.click('#manage-sign-in');
     await b.page.waitForSelector('[id^=disconnect-]');
     expect(await b.page.textContent('main')).toContain('never runs out');
+    expect(await b.page.textContent('#master-unlocks')).toContain('Gists');
+    expect(await b.page.textContent('#master-unlocks')).toContain('unlocked');
+    await fitsScreen(b.page);
     await b.page.click('[id^=disconnect-]');
     await b.page.waitForSelector('.notice');
     const gone = await world.call({ method: 'POST', path: '/api/mcp', headers: { authorization: 'Bearer ' + tokens.access_token,

@@ -3,6 +3,7 @@
 import {defineGithubWrite} from './define-github-write.js';
 import {ownerOf,octo,missing,refusal} from './github-write.js';
 import {githubFor} from '../github/client.js';
+import {personalCred} from '../github/personal-cred.js';
 import {copilotSeats,budgetInventory} from './billing-read.js';
 import {PRICES,priceLine,codespacesComputeCents,
   codespacesStorageCents} from '../github/prices.js';
@@ -214,7 +215,7 @@ function copilotWrite(action){
 }
 export const copilotAdd=copilotWrite('add'),copilotRemove=copilotWrite('remove');
 const userCtx=async(c,t)=>{
-  const gh=await githubFor(c,{owner:t.owner,cred:'U'});
+  const gh=await githubFor(c,{owner:t.owner,cred:await personalCred(c,'codespace')});
   const user=(await gh.request('GET /user')).data;
   if(!user?.login)throw refusal('GitHub user credential required: authorize as user on setup page.');
   return {gh,login:user.login};

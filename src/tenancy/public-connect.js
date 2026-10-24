@@ -28,6 +28,7 @@ import { verifyGithubBearerIdentity, listUserAppInstallations, verifyAccountAuth
 import { storePilotUserGrant } from './user-authorization.js';
 import { pilotAppClient } from './pilot-app-client.js';
 import { MASTER_HANDLE } from './master-credential.js';
+import { masterUnlocks } from '../github/master-areas.js';
 import { createDb } from '../db.js';
 import { hashToken, randomToken, validRedirectUri } from '../core/oauth.js';
 import { publicOrigin } from '../core/http.js';
@@ -400,7 +401,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
         accounts: c.accounts }));
     const master = await directory().getPilotOptionalCredential({ tenantId, identityId, accountLogin: MASTER_HANDLE, kind: 'M' }).catch(() => null);
     return { handle, signedInAs, accounts, connections, offers: offers ?? [], timeZone: (await db.getSetting(ZONE_SETTING)) ?? 'UTC',
-      master: master ? { added: true, expiresAt: master.expires_at ?? null } : { added: false }, notice };
+      master: master ? { added: true, expiresAt: master.expires_at ?? null, unlocks: masterUnlocks(master.scopes ?? []) } : { added: false, unlocks: [] }, notice };
   }
   /** One action on My connection. Every action uses up the page's handle and returns a fresh page (or somewhere to go). */
   async function manageAction({ handle, action, value }) {
