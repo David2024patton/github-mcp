@@ -15,11 +15,9 @@ describe('GQL-1 group 3/4: repository, deployments, refusals', () => {
   it('every refusal carries a plain-English reason', () => {
     for (const [m, why] of REFUSED_MUTATIONS) expect(why.length, m).toBeGreaterThan(30);
   });
-  it('only the enterprise settings mutations are still without a disposition', () => {
+  it('no GraphQL mutation is left without a disposition', () => {
     const inv = buildCapabilityInventory({ registryTools: registry.tools });
-    const missing = inv.operations.filter((r) => r.state === 'missing').map((r) => r.operation.field);
-    expect(missing.length).toBeGreaterThan(0);
-    for (const m of missing) expect(m, m).toMatch(/^updateEnterprise/);
+    expect(inv.operations.filter((r) => r.state === 'missing').map((r) => r.operation.field)).toEqual([]);
   });
   it('topics sort before comparing and the topic undo restores the old list', () => {
     const spec = WRITE_SPECS.get('updateTopics');

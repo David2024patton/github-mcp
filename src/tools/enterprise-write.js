@@ -129,7 +129,7 @@ const defaultsOf = async (gh, t, id) => {
 // Attaching a configuration to ALL repositories reaches repositories the per-repository gate never sees. So the enterprise's
 // organizations are looked up and the attach is refused when a protected repository lives in one (or the list is too long to check).
 const ORGS_QUERY = 'query($slug: String!) { enterprise(slug: $slug) { organizations(first: 100) { totalCount nodes { login } } } }';
-async function protectedInside(gh, ctx, t) {
+export async function protectedInside(gh, ctx, t) {
   const entries = (await protectedList(ctx.db)).filter((e) => e.kind === 'repo');
   if (!entries.length) return null;
   const orgs = (await graphql(gh, ORGS_QUERY, { slug: t.enterprise }))?.enterprise?.organizations;
