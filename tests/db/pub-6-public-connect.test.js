@@ -241,12 +241,47 @@ describe('PUB-6 public simple connect in REAL PostgreSQL', () => {
     expect(codeOf(redirect)).toBeTruthy();
   });
 
+  it('PUB-5 C: a code used with the wrong PKCE verifier is refused and the code is burned; a replay of a good exchange is refused', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const wrong = await approved(c, client, 'alice');
+    const logged = []; const realError = console.error; console.error = (...a) => { logged.push(a.join(' ')); };
+    let bad;
+    try { bad = await call((req, res) => privateTenantToken(req, res, { env, rootSqlFactory, tenantSqlFactory }),
+      request('POST', { grant_type: 'authorization_code', client_id: client.client_id, client_secret: client.client_secret,
+        redirect_uri: CB, code: codeOf(wrong), code_verifier: 'z'.repeat(43), resource: ORIGIN + '/api/mcp' })); } finally { console.error = realError; }
+    expect(bad.statusCode).toBe(400);
+    // the server log for that request carries no code, verifier or secret
+    for (const line of logged) for (const secret of [codeOf(wrong), 'z'.repeat(43), client.client_secret]) expect(line).not.toContain(secret);
+    expect((await exchange(client, codeOf(wrong))).statusCode).toBe(400);
+    const good = await approved(c, client, 'bob');
+    expect((await exchange(client, codeOf(good))).statusCode).toBe(200);
+    expect((await exchange(client, codeOf(good))).statusCode).toBe(400);
+  });
+
+  it('PUB-5 C: a person who hammers the token endpoint is told to wait (429 with Retry-After) and nobody else is affected', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const hammer = codeOf(await approved(c, client, 'alice'));
+    const other = codeOf(await approved(c, client, 'bob'));
+    const answers = [];
+    for (let i = 0; i < 40; i += 1) answers.push(await exchange(client, hammer));
+    const limited = answers.find((a) => a.statusCode === 429);
+    expect(limited, 'a 429 within 40 rapid calls').toBeTruthy();
+    expect(Number(limited.headers['Retry-After'])).toBeGreaterThan(0);
+    expect(json(limited).error).toBe('rate_limited');
+    expect((await exchange(client, other)).statusCode).toBe(200);
+  });
+
   it('refuses unknown or revoked clients and bad requests before any GitHub request', async () => {
     const c = make();
     const client = await c.registerClient({ redirect_uris: [CB] });
     await expect(c.begin(authorizeParams(client, { redirect_uri: 'https://elsewhere.example.test/cb' }))).rejects.toThrow();
     await expect(c.begin(authorizeParams(client, { resource: 'https://elsewhere.example.test/api/mcp' }))).rejects.toThrow();
     await expect(c.begin(authorizeParams(client, { scope: 'admin everything' }))).rejects.toThrow();
+    // PUB-5 C: no PKCE downgrade on the public sign-in
+    await expect(c.begin(authorizeParams(client, { code_challenge_method: 'plain' }))).rejects.toThrow();
+    await expect(c.begin(authorizeParams(client, { code_challenge: undefined }))).rejects.toThrow();
     await expect(c.begin(authorizeParams(client, { scope: 'github.notifications.read' }))).resolves.toBeTruthy();
     await expect(c.begin(authorizeParams({ client_id: MANAGE_CLIENT }))).rejects.toThrow();
     await expect(c.finish({ state: 'pc.' + 'a'.repeat(40), code: 'alice-fixture-code-1' })).rejects.toThrow();
@@ -536,6 +571,12 @@ describe('PUB-6 owner deletes one public person\'s data', () => {
       expect((await admin.query(`SELECT 1 FROM ${table} WHERE ${col}=$1`, [aliceTenant])).rowCount).toBe(0);
     }
     expect((await admin.query("SELECT 1 FROM gh_tenant_identities WHERE provider_subject='31001'")).rowCount).toBe(0);
+    // PUB-5 C: no table that carries a tenant_id (or identity_id) still holds anything for this person; a table added later is caught too
+    const carriers = (await admin.query("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema=current_schema() AND column_name='tenant_id' AND table_name LIKE 'gh\\_%'")).rows;
+    expect(carriers.length).toBeGreaterThan(3);
+    for (const { table_name: table, column_name: col } of carriers) {
+      expect((await admin.query(`SELECT 1 FROM ${table} WHERE ${col}=$1`, [aliceTenant])).rowCount, table + ' still holds the forgotten person').toBe(0);
+    }
     expect(await gateFor(alice)).toBeNull();
     expect(await gateFor(bob)).not.toBeNull();
     expect(await directory.forgetPublicTenant(aliceTenant)).toBe(false);

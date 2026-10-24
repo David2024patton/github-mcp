@@ -11,6 +11,8 @@ const ROUTES={
 const truncate=(v,n)=>typeof v==='string'?v.slice(0,n):null;
 const repoName=x=>x?.repository?.full_name??(typeof x?.repository_url==='string'
   ?x.repository_url.replace('https://api.github.com/repos/',''):null);
+// PUB-5 C: search results fail closed: text is untrusted unless GitHub says the author is an owner, member or collaborator.
+const outsider=x=>['OWNER','MEMBER','COLLABORATOR'].includes(x?.author_association)?{}:{untrusted:true};
 const projected={
   code:x=>({name:x.name,path:x.path,sha:x.sha,repository:repoName(x),url:x.html_url,
     fragments:(x.text_matches??[]).slice(0,2).map(t=>({
@@ -19,13 +21,14 @@ const projected={
     }))}),
   issue:x=>({number:x.number,title:truncate(x.title,300),state:x.state,
     repository:repoName(x),url:x.html_url,author:x.user?.login,
-    updated_at:x.updated_at}),
+    updated_at:x.updated_at,...outsider(x)}),
   pull_request:x=>({number:x.number,title:truncate(x.title,300),state:x.state,
     repository:repoName(x),url:x.html_url,author:x.user?.login,
-    draft:x.draft??false,updated_at:x.updated_at}),
+    draft:x.draft??false,updated_at:x.updated_at,...outsider(x)}),
+  // A commit message can be written by anyone who can push to a fork: always repository text, never instructions.
   commit:x=>({sha:x.sha,repository:repoName(x),
     message:truncate(x.commit?.message,240),author:x.author?.login,
-    url:x.html_url}),
+    url:x.html_url,untrusted:true}),
   repository:x=>({full_name:x.full_name,private:x.private,
     description:truncate(x.description,240),stars:x.stargazers_count,
     updated_at:x.updated_at,url:x.html_url}),

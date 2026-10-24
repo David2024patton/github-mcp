@@ -263,6 +263,9 @@ export function createDb(sql = productionSql()) {
         revoked_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
+      // PUB-5 C: the refresh token before the current one; showing it again means it was copied, and ends the sign-in.
+      await sql`ALTER TABLE oauth_tokens ADD COLUMN IF NOT EXISTS prev_refresh_hash TEXT`;
+      await sql`ALTER TABLE oauth_tokens ADD COLUMN IF NOT EXISTS rotated_at TIMESTAMPTZ`;
       await sql`CREATE TABLE IF NOT EXISTS rtc_pass_rate (
         token_hash TEXT PRIMARY KEY,
         window_start TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -913,12 +916,20 @@ export function createDb(sql = productionSql()) {
     async rotateRefreshToken({ refreshToken, clientId, accessToken, newRefreshToken, ttlSeconds = 3600 }) {
       if (typeof refreshToken !== 'string' || !refreshToken || !clientId) return null;
       const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
-      const rows = await sql`UPDATE oauth_tokens SET token_hash = ${hashToken(accessToken)}, refresh_hash = ${hashToken(newRefreshToken)},
+      const rows = await sql`UPDATE oauth_tokens SET token_hash = ${hashToken(accessToken)}, prev_refresh_hash = refresh_hash, rotated_at = now(), refresh_hash = ${hashToken(newRefreshToken)},
         expires_at = ${expiresAt}, last_used_at = NULL
         WHERE refresh_hash = ${hashToken(refreshToken)} AND client_id = ${clientId} AND revoked_at IS NULL AND kind = 'connector'
         RETURNING client_id, default_account, accounts, mode, profile, listing`;
       const row = rows[0];
-      return row ? { client_id: row.client_id, ...connectionSettings(row) } : null;
+      if (!row) {
+        // An already-used refresh token shown again: someone kept a copy. End that whole sign-in (access and refresh both stop).
+        // Within a minute of the rotation it is just two refreshes racing from the same app: refused, but the sign-in lives.
+        await sql`UPDATE oauth_tokens SET revoked_at = now()
+          WHERE prev_refresh_hash = ${hashToken(refreshToken)} AND client_id = ${clientId} AND revoked_at IS NULL AND kind = 'connector'
+            AND rotated_at < now() - interval '60 seconds'`;
+        return null;
+      }
+      return { client_id: row.client_id, ...connectionSettings(row) };
     },
 
     async revokeAccessToken(accessToken) {

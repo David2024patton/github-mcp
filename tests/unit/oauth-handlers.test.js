@@ -283,8 +283,19 @@ describe('code and token exchange', () => {
     const replay = await call(h.token, refreshRequest(client, original.refresh_token));
     expect(replay.statusCode).toBe(400);
     expect(json(replay).error).toBe('invalid_grant');
+    // a replay right after the rotation is only refused (two refreshes racing); the reuse test below covers the later replay
     const third = json(await call(h.token, refreshRequest(client, second.refresh_token)));
     expect(await db.getAccessToken(third.access_token)).toMatchObject(settings);
+  });
+  it('every normal refresh keeps the same settings and chains forward', async () => {
+    const { h, db } = await fixture();
+    const client = await register(h);
+    const code = new URL((await call(h.authorize, request('POST', form(client, { passphrase: baseEnv.ADMIN_PASSPHRASE })))).headers.Location).searchParams.get('code');
+    let tokens = json(await call(h.token, tokenRequest(client, code)));
+    for (let i = 0; i < 3; i += 1) {
+      tokens = json(await call(h.token, refreshRequest(client, tokens.refresh_token)));
+      expect(await db.getAccessToken(tokens.access_token)).toMatchObject({ default_account: 'example-user', profile: 'full', listing: 'compact' });
+    }
   });
 
   it('refuses a refresh from another client, for a foreign resource, after revocation, and a missing credential', async () => {
@@ -301,6 +312,27 @@ describe('code and token exchange', () => {
     expect((await call(h.token, refreshRequest(client, ''))).statusCode).toBe(400);
     await db.revokeAccessToken(tokens.access_token);
     expect((await call(h.token, refreshRequest(client, tokens.refresh_token))).statusCode).toBe(400);
+  });
+
+  it('PUB-5 C: a refresh token works once; showing a used one again ends the whole sign-in (access and refresh both stop)', async () => {
+    const { h, db, advance } = await fixture();
+    const client = await register(h);
+    const code = new URL((await call(h.authorize, request('POST', form(client, { passphrase: baseEnv.ADMIN_PASSPHRASE })))).headers.Location).searchParams.get('code');
+    const first = json(await call(h.token, tokenRequest(client, code)));
+    const second = json(await call(h.token, refreshRequest(client, first.refresh_token)));
+    expect(second.refresh_token).not.toBe(first.refresh_token);
+    expect(await db.getAccessToken(second.access_token)).not.toBeNull();
+    // two refreshes racing within a minute (same app, flaky network): the second is refused but the sign-in lives
+    expect((await call(h.token, refreshRequest(client, first.refresh_token))).statusCode).toBe(400);
+    expect(await db.getAccessToken(second.access_token)).not.toBeNull();
+    advance(120_000);
+    // the thief (or a confused client) shows the old refresh token again
+    const replay = await call(h.token, refreshRequest(client, first.refresh_token));
+    expect(replay.statusCode).toBe(400);
+    expect(json(replay).error).toBe('invalid_grant');
+    // the whole sign-in is over: the newest access token and the newest refresh token no longer work
+    expect(await db.getAccessToken(second.access_token)).toBeNull();
+    expect((await call(h.token, refreshRequest(client, second.refresh_token))).statusCode).toBe(400);
   });
 
   it('refuses a code used with the wrong verifier, redirect, client or an expired code, and unknown grant types', async () => {

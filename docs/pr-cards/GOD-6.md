@@ -345,10 +345,10 @@ fits the phone (`fitsScreen`). Write-contract suites (`runWriteContract`) stay g
 app path).
 
 ## Done when
-- [ ] All unit cases (1–16, 14a–14e) and the browser case pass; `npm run check`, `npm run test:db`, `npm run test:shapes`,
+- [x] All unit cases (1–16, 14a–14g) and the browser case pass (PR #371, merge 3fae30b); `npm run check`, `npm run test:db`, `npm run test:shapes`,
       `npm run test:browser` green; `ci` and `release-policy` green at the exact head.
 - [x] `node scripts/build-app-only-routes.mjs` output committed and its in-sync test passes (`tests/unit/god-6-app-only.test.js`).
-- [ ] Self-review records each `docs/AI-PR-READ-FIRST.md` constraint, in particular: no token in results or logs
+- [x] Self-review records (PR #371 description); each `docs/AI-PR-READ-FIRST.md` constraint, in particular: no token in results or logs
       (`containsCredential` still runs), `M` never reaches read-only or pass connections, no write is repeated, branch
       rules cannot be skipped by the credential change.
 - [x] Status note `docs/status/2026-10-24-god-6.md` (plain English) including the "only Chris" consequence above.
