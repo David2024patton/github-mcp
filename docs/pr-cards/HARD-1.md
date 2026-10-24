@@ -85,3 +85,8 @@ but let each heavy job finish fast:
 ## Done when
 - [ ] PR A merged with tests; PR B merged; webhook deliveries succeed on the new address; owner row for Setup URL added.
 - [ ] `wc -l docs/STATUS.md` under 400; `npm run session:status` still works.
+
+## Progress
+- PR A built (sign-in steps without a global row cap; one shared copy of the App keys): see `docs/status/2026-10-24-hard-1a.md`.
+  Deviation from the card: the two built-in pages get a cap of 200, not 20 (reason in the status note).
+- PR B (App addresses, documentation tidy, favicon): not started.

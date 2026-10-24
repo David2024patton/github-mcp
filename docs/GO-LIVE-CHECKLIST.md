@@ -96,7 +96,7 @@ explanations is `docs/APP-NEEDS-APPLIANCE-DESK.md`; the app's own checklist stay
 
 ## Simple public connect switches (PUB-6, all default off)
 - [ ] `GITHUB_PUBLIC_CONNECT=enabled` turns the flow on (needs `GITHUB_PRIVATE_TENANT_PILOT=enabled`, `GITHUB_PILOT_APP_ID`, production deployment). Unset it to stop new sign-ins at once; existing connections keep working until revoked.
-- [ ] Caps (stored as environment settings, sensible defaults): `GITHUB_PUBLIC_MAX_CLIENTS` (500), `GITHUB_PUBLIC_MAX_OPEN_FLOWS` (200), `GITHUB_PUBLIC_MAX_TENANTS` (25). Raise gradually.
+- [ ] Caps (stored as environment settings, sensible defaults): `GITHUB_PUBLIC_MAX_CLIENTS` (500), `GITHUB_PUBLIC_MAX_OPEN_FLOWS` (5000, shared by everyone), `GITHUB_PUBLIC_MAX_OPEN_FLOWS_PER_CLIENT` (20 open sign-in steps per app; the My connection and Delete my data pages have their own cap of 200), `GITHUB_PUBLIC_MAX_TENANTS` (25). Raise gradually.
 - [ ] Invite-only opening (LAUNCH-1): `GITHUB_PUBLIC_INVITE_ONLY=enabled` limits NEW people to the invite list on the owner setup page ("Invite list"); people who already connected are never locked out. Default off.
 - [ ] Trust pages (LAUNCH-1): set `PUBLIC_SUPPORT_EMAIL` and, once the wording is approved, `LEGAL_APPROVED=yes` in Vercel. Until then `/privacy`, `/terms`, `/security`, `/support` show a DRAFT banner.
 - [ ] GitHub App settings: "Request user authorization (OAuth) during installation" must be OFF and the Setup URL must be `/api/github/setup`; the App must be installable by the people being invited.

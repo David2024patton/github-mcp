@@ -72,7 +72,11 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   const appId = Number(env.GITHUB_PILOT_APP_ID);
   const limits = Object.freeze({
     maxClients: whole(env.GITHUB_PUBLIC_MAX_CLIENTS, 500, 100000),
-    maxOpenFlows: whole(env.GITHUB_PUBLIC_MAX_OPEN_FLOWS, 200, 100000),
+    // HARD-1: the shared cap is high (no one person can fill it); each registered app gets its own small cap, so one app opening many
+    // sign-in links can only block itself. The built-in pages (My connection, Delete my data) share one larger cap each.
+    maxOpenFlows: whole(env.GITHUB_PUBLIC_MAX_OPEN_FLOWS, 5000, 100000),
+    maxOpenPerClient: whole(env.GITHUB_PUBLIC_MAX_OPEN_FLOWS_PER_CLIENT, 20, 10000),
+    maxOpenPerBuiltIn: 200,
     maxTenants: whole(env.GITHUB_PUBLIC_MAX_TENANTS, 25, 1000000)
   });
   const active = () => {
@@ -129,6 +133,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       token_endpoint_auth_method: 'client_secret_post', grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'] });
   }
 
+  const perClient = (clientId) => ([FORGET_CLIENT, MANAGE_CLIENT].includes(clientId) ? limits.maxOpenPerBuiltIn : limits.maxOpenPerClient);
   /** Stores one step and, for a sign-in step, returns GitHub's sign-in address. */
   async function openStep({ client, flow, stage = 'signin', afterInstall = false }) {
     const state = 'pc.' + random(32), verifier = random(48);
@@ -136,7 +141,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const stored = await directory().createPublicFlow({ stateHash: sha(state), stage, clientId: client.clientId,
       redirectUri: flow.redirectUri, clientState: flow.clientState ?? null, codeChallenge: flow.codeChallenge,
       tier: 'standard', allowChanges: true, purpose: flow.purpose ?? null,
-      providerVerifier: stage === 'signin' ? verifier : null, maxOpen: limits.maxOpenFlows, afterInstall });
+      providerVerifier: stage === 'signin' ? verifier : null, maxOpen: limits.maxOpenFlows, maxOpenPerClient: perClient(client.clientId), afterInstall });
     if (!stored) throw busy();
     if (stage !== 'signin') return { state };
     const appClient = await pilotAppClient({ env, db: createDb(rootSql()) });
@@ -148,7 +153,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   async function openHandle(fields, ttlSeconds) {
     const handle = 'pc.' + random(32);
     if (!await directory().createPublicFlow({ tier: 'standard', codeChallenge: random(32), ...fields, stateHash: sha(handle), stage: 'god',
-      ttlSeconds, maxOpen: limits.maxOpenFlows })) throw busy();
+      ttlSeconds, maxOpen: limits.maxOpenFlows, maxOpenPerClient: perClient(fields.clientId) })) throw busy();
     return handle;
   }
   async function installUrl({ client, flow }) {
@@ -162,6 +167,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   async function begin(p) {
     active(); await ensureSchema(); checkAuthorizeRequest(p);
     const client = await loadClient(p.client_id, p.redirect_uri);
+    await directory().purgeExpiredPublicFlows(client.clientId);
     return await openStep({ client, flow: { redirectUri: p.redirect_uri, clientState: p.state, codeChallenge: p.code_challenge } });
   }
 
@@ -189,7 +195,8 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const { db } = await initializeProvisionedTenant({ tenantId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory });
     const app = await root.getApp(appId);
     if (!app || !app.client_secret_enc || !app.private_key_enc || !app.webhook_secret_enc) throw refused('r8');
-    // The tenant keeps its own copy of the App's sealed keys; refreshed on every sign-in so a replaced key spreads.
+    // The tenant keeps its own copy of the App's sealed keys (older code paths still read it) and it is refreshed on every sign-in.
+    // HARD-1: the shared (root) copy is authoritative - the MCP route reads it first, so a replaced key reaches everyone at once.
     await db.saveApp({ id: app.id, slug: app.slug, ownerLogin: app.owner_login, ownerType: app.owner_type, clientId: app.client_id,
       clientSecretEnc: app.client_secret_enc, privateKeyEnc: app.private_key_enc, webhookSecretEnc: app.webhook_secret_enc,
       permissions: app.permissions });
@@ -456,7 +463,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       const link = random(32);
       if (!await dir.createPublicFlow({ stateHash: sha(link), stage: 'god', clientId: MANAGE_CLIENT, redirectUri: manageUrl(),
         codeChallenge: random(32), tier: 'standard', purpose: 'master', tenantId: flow.tenantId, identityId: flow.identityId,
-        ttlSeconds: 600, maxOpen: limits.maxOpenFlows })) throw busy();
+        ttlSeconds: 600, maxOpen: limits.maxOpenFlows, maxOpenPerClient: limits.maxOpenPerBuiltIn })) throw busy();
       return { go: active() + '/api/tenant/optional?master_link=' + link };
     }
     if (action === 'add_place') return { manage: await view(await addPlace({ db, dir, tenant, value })) };
