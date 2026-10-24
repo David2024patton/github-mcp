@@ -208,6 +208,14 @@ const readTools = [
     keepsResult: false
   },
   {
+    name: 'github_credential_revoke',
+    area: 'server', audience: ['B', 'O', 'Op'],
+    description: 'Get a private one-use link (10 minutes) to cancel leaked GitHub tokens. You paste them on that page, never here; this tool takes no token.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    annotations: readOnly, // only makes a short-lived private link; GitHub is contacted from that page, by the person
+    keepsResult: false
+  },
+  {
     name: 'github_list_accounts',
     area: 'server', audience: ['O'],
     description: 'Connected GitHub accounts this connection may use: App installation, repository selection, your sign-in, notifications token, production on/off.',
@@ -275,7 +283,20 @@ async function masterTokenLink(args, ctx) {
     note: ctx.connection?.profile === 'read_only' ? 'This connection is read-only, so the master token will not be used here until you reconnect with changes allowed.' : undefined
   };
 }
-const readHandlers = { github_master_token_link: masterTokenLink, github_whoami: whoami, github_list_accounts: listAccounts, github_list_protected_resources: listProtectedResources, github_list_connections: listConnections, github_recent_changes: recentChanges, github_get_result: getResult };
+async function credentialRevoke(args, ctx) {
+  if (typeof ctx.credentials?.revokeLink !== 'function' || ctx.connection?.pass === true)
+    return { available: false, why: 'Cancelling leaked tokens needs a signed-in personal connection.' };
+  const clientId = ctx.connection?.client_id ?? ctx.clientId;
+  const client = typeof ctx.db?.getOAuthClient === 'function' ? await ctx.db.getOAuthClient(clientId) : null;
+  const redirectUri = client?.redirect_uris?.[0];
+  if (!redirectUri) return { available: false, why: 'This connection cannot open the page for cancelling tokens.' };
+  const made = await ctx.credentials.revokeLink({ clientId, redirectUri });
+  return {
+    available: true, open_this_link: made.url, expires_in_minutes: made.expiresInMinutes, one_use: true,
+    tell_the_person: 'Open the link in your browser and paste the leaked token(s) on that page, one per line, then tap Cancel. GitHub then cancels them for good. Never paste a token into this chat.'
+  };
+}
+const readHandlers = { github_credential_revoke: credentialRevoke, github_master_token_link: masterTokenLink, github_whoami: whoami, github_list_accounts: listAccounts, github_list_protected_resources: listProtectedResources, github_list_connections: listConnections, github_recent_changes: recentChanges, github_get_result: getResult };
 
 // ---- Production switch (B-2): ask here, confirm on the setup page; turning it off needs no passphrase. ----
 const PENDING_MINUTES = 10;

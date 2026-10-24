@@ -31,7 +31,7 @@ copy code) · `F` the old toolkit had it **with a bug or a missing guard**, fixe
 never collides with the Vercel or Neon server's tools in the same chat; `scripts/count-catalog.py` enforces it.
 
 
-## Server about itself (`github_*`) — 22
+## Server about itself (`github_*`) — 23
 
 Card(s): A-5, B-2, B-3, B-8, C-1, C-2, R-1, O-1, X-1. Meta-tools, connection and safety settings. Compact listing (`docs/designs/BATCH-C.md`) starts here.
 
@@ -39,6 +39,7 @@ Card(s): A-5, B-2, B-3, B-8, C-1, C-2, R-1, O-1, X-1. Meta-tools, connection and
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_whoami` | Which GitHub accounts this connection can use, mode (PREVIEW/PRODUCTION), profile, credential types present, API version, rate budget left, spend limit; for public sign-ins also the My connection page link | — | N | I | B,O,Op | R | A-5 built #13 |
 | `github_master_token_link` | Private one-use link (10 minutes) to add or remove your optional master token, with plain steps; no reconnecting | — | N | — | B,O,Op | R | PUB-6 built |
+| `github_credential_revoke` | Private one-use link (10 minutes) to cancel leaked GitHub tokens on a protected page; takes no token and returns none | — | N | — | B,O,Op | R | GOD-4 |
 | `github_list_accounts` | Accounts (orgs and users) connected to the server: app installation, repo selection, user authorization, optional classic token, production on/off | — | N | I | O | R | A-5 built #13 |
 | `github_set_default_account` | Which account a tool uses when `owner` is omitted | P | N | — | O | F | B-8 built #23 |
 | `github_check_permissions` | Inspect App grants, per-tool layers, pinned operation compatibility and private-user identity-read grant proof; actual operation execution remains unverified | — | N | — | O,B | R | B-8 built #24; CAP-3 binding draft #274 |
@@ -833,15 +834,15 @@ Card(s): GOD-4 (part B). Every tool here uses your master token (the permission 
 
 ## Totals
 
-**Totals:** 462 tools: 456 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
-dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 153, everyday adds 81
+**Totals:** 463 tools: 457 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 154, everyday adds 81
 (everyday lists 234), full adds 112 (full lists 389). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
 `github_search_tools` / `github_call`.
 
 | Section | Tools |
 | --- | --- |
-| Server about itself | 22 |
+| Server about itself | 23 |
 | Repositories | 22 |
 | Files, commits and git data | 15 |
 | Branches and tags | 9 |
@@ -883,7 +884,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Batch Y-9d financial and Copilot operations | 17 |
 | GitHub Enterprise | 13 |
 | Master-token families: Copilot Spaces, Classroom, Marketplace and more | 17 |
-| **Total** | **462** |
+| **Total** | **463** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 
