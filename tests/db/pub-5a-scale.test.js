@@ -156,7 +156,7 @@ describe('PUB-5 A: delete a person and the usage summary have no ceiling', () =>
     expect(await rowsFor(zoe.tenantId)).toEqual([]);
   });
 
-  it('counts 250 and more people (the old limit was 100), and says partial rather than a wrong total', async () => {
+  it('counts 250 and more people (the old limit was 100), with no ceiling (PR B reads one daily table, so the total is never cut)', async () => {
     const before = (await admin.query("SELECT count(*)::int AS n FROM gh_tenant_pilot_bootstraps WHERE account_login='public-connect'")).rows[0].n;
     for (let i = Math.max(0, 250 - before); i > 0; i--) await lightPerson();
     const total = (await admin.query("SELECT count(*)::int AS n FROM gh_tenant_pilot_bootstraps WHERE account_login='public-connect'")).rows[0].n;
@@ -165,9 +165,6 @@ describe('PUB-5 A: delete a person and the usage summary have no ceiling', () =>
     expect(out.peopleConnected).toBe(total);
     expect(out.partial).toBe(false);
     expect(out.peopleConnected).toBeGreaterThan(100);
-    const cut = await publicUsageSummary(rootSql(), { connectionString: url, sqlFactory: tenantSqlFactory, timeBudgetMs: -1 });
-    expect(cut.partial).toBe(true);
-    expect(cut.peopleConnected).toBe(0);
     expect(JSON.stringify(out)).not.toMatch(/tok|@|ghp_/);
   });
 });

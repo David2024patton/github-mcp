@@ -759,12 +759,21 @@ describe('spend limit and own people on the setup page (B-4)', () => {
     const { renderSetup } = await import('../../src/github/setup-html.js');
     const none = renderSetup({ csrf: 'c', publicUsage: { peopleConnected: 0, moreThanShown: false, unreadable: 0, lastDay: { calls: 0 }, lastWeek: { calls: 0 } } });
     expect(none).not.toContain('Public usage');
-    const some = renderSetup({ csrf: 'c', publicUsage: { peopleConnected: 3, moreThanShown: false, unreadable: 1,
-      lastDay: { calls: 12, refused: 2, throttled: 1, errors: 0 }, lastWeek: { calls: 80 } } });
+    const some = renderSetup({ csrf: 'c', publicUsage: { peopleConnected: 3, activeToday: 2, activeThisWeek: 3, unreadable: 1,
+      lastDay: { calls: 12, writes: 2, errors: 0 }, lastWeek: { calls: 80 }, signups: { paused: false, pauseCents: 5000 },
+      top: [{ login: 'heavy-user', calls: 60, writes: 4 }, { login: null, calls: 20, writes: 0 }] } });
     expect(some).toContain('Public usage');
     expect(some).toContain('People connected through the public sign-in: 3');
-    expect(some).toContain('Assistant calls in the last day: 12 (2 refused, 1 slowed down, 0 errors)');
-    expect(some).toContain('1 could not be read');
+    expect(some).toContain('Active today: 2; active this week: 3');
+    expect(some).toContain('Assistant calls today: 12 (2 real changes, 0 errors)');
+    expect(some).toContain('New sign-ups: <strong>open</strong>');
+    expect(some).toContain('heavy-user (60, 4)');
+    expect(some).toContain('name not available (20, 0)');
+    expect(some).toContain('1 names could not be read');
+    const paused = renderSetup({ csrf: 'c', publicUsage: { peopleConnected: 3, lastDay: { calls: 1 }, lastWeek: { calls: 1 },
+      signups: { paused: true, manual: false, reason: 'estimated monthly cost $60.00 reached $50.00', pauseCents: 5000 } } });
+    expect(paused).toContain('New sign-ups: paused');
+    expect(paused).toContain('reached $50.00');
   });
   it('refuses to delete a person\'s data unless the name is typed twice and confirmed', async () => {
     const t = await build();
