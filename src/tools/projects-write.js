@@ -125,8 +125,88 @@ export const projectRemoveItem=defineGithubWrite({
   verify:({after})=>after===null,inverse:()=>null,
   present:({args:a})=>({removed_item_id:a.itemId,field_values_lost:true})
 });
-export const tools=[projectSetItem.tool,projectRemoveItem.tool];
+
+// ---- PAR-1: edit many project items in one call ---------------------------------------------------------------------------------------
+// 40 items at most (the official server allows 50): writes are spaced one per second per installation and a function may run 60
+// seconds, so 40 updates plus the reads fit with room to spare. Every id is verified before the first change; the first failure
+// stops the run (nothing is retried) and the result says which items were done and which were not tried.
+const MAX_BULK_ITEMS=40;
+const BULK_ITEM={type:'object',properties:{itemId:NUMBER,fields:{type:'array',minItems:1,maxItems:20,items:FIELD}},
+  required:['itemId','fields'],additionalProperties:false};
+const getItemFields=(ctx,t,a,itemId,fieldIds)=>missing(async()=>
+  (await(await octo(ctx,t.owner)).request(
+    'GET /orgs/{org}/projectsV2/{project_number}/items/{item_id}',
+    {...p(t,a),item_id:itemId,fields:fieldIds})).data);
+const bulkFieldIds=item=>item.fields.map(f=>f.id);
+export const projectSetItems=defineGithubWrite({
+  name:'github_project_set_items',area:'project',audience:['Op'],
+  description:'Edit field values on up to 40 items of an organization project in one approved call; stops at the first failure.',
+  properties:{owner:OWNER,number:NUMBER,items:{type:'array',minItems:1,maxItems:MAX_BULK_ITEMS,items:BULK_ITEM}},
+  required:['number','items'],
+  declarations:{production:'never',confirm:'always'},
+  target:(a,c)=>{
+    if(new Set(a.items.map(i=>i.itemId)).size!==a.items.length)
+      throw new TypeError('Each project item ID must occur only once.');
+    for(const item of a.items)if(new Set(bulkFieldIds(item)).size!==item.fields.length)
+      throw new TypeError('Each project field ID must occur only once per item.');
+    return {owner:ownerOf(a,c),scope:'org'};
+  },
+  read:async(a,ctx,t)=>{
+    const project=await getProject(ctx,t,a);
+    const {items:fields,capped}=await readFull(ctx,t,
+      'GET /orgs/{org}/projectsV2/{project_number}/fields',p(t,a),200);
+    if(capped)throw refusal('Project fields are truncated, so field IDs cannot be verified.');
+    for(const item of a.items)for(const f of item.fields)if(!fields.some(v=>v.id===f.id))
+      throw refusal(`Field ${f.id} (item ${item.itemId}) is not in this project; nothing was changed.`);
+    const current={};
+    for(const item of a.items){
+      const row=await getItemFields(ctx,t,a,item.itemId,bulkFieldIds(item));
+      if(!row||row.id!==item.itemId)
+        throw refusal(`Project item ${item.itemId} was not verified; nothing was changed.`);
+      current[item.itemId]=row;
+    }
+    return {projectId:project.node_id,current};
+  },
+  classify:()=>({}),
+  summarize:({args:a,target:t})=>`Update ${a.items.length} item(s) (${a.items.reduce((n,i)=>n+i.fields.length,0)} field values) in project #${a.number} of ${t.owner} (approval required)`,
+  apply:async({args:a,ctx,target:t})=>{
+    const gh=await octo(ctx,t.owner);
+    const done=[];let failed=null;
+    for(const item of a.items){
+      try{
+        await gh.request('PATCH /orgs/{org}/projectsV2/{project_number}/items/{item_id}',
+          {...p(t,a),item_id:item.itemId,fields:item.fields});
+        done.push(item.itemId);
+      }catch(error){
+        failed={itemId:item.itemId,reason:String(error?.message??error).slice(0,200)};
+        break; // never retry (A8)
+      }
+    }
+    return {done,failed,notTried:a.items.map(i=>i.itemId).filter(id=>!done.includes(id)&&id!==failed?.itemId)};
+  },
+  readAfter:async({args:a,ctx,target:t,response:r})=>{
+    const rows={};
+    for(const item of a.items)if(r.done.includes(item.itemId))
+      rows[item.itemId]=await getItemFields(ctx,t,a,item.itemId,bulkFieldIds(item));
+    return {rows,done:r.done,failed:r.failed,notTried:r.notTried};
+  },
+  verify:({args:a,after})=>after.failed===null&&after.done.length===a.items.length&&
+    a.items.every(item=>{
+      const row=after.rows[item.itemId];
+      return row?.id===item.itemId&&item.fields.every(f=>(row.fields??[]).some(v=>v.id===f.id&&wantedValue(v,f.value)));
+    }),
+  inverse:({args:a,before:b,after})=>{
+    const items=a.items.filter(i=>after.done.includes(i.itemId)).map(i=>({itemId:i.itemId,
+      fields:i.fields.map(f=>({id:f.id,value:(b.current[i.itemId].fields??[]).find(v=>v.id===f.id)?.value??null}))}));
+    return items.length?{tool:'github_project_set_items',args:{number:a.number,items}}:null;
+  },
+  present:({args:a,after})=>({
+    updated:after.done.length,of:a.items.length,done:after.done,failed:after.failed,not_tried:after.notTried,
+    ...(after.failed?{note:`Updated ${after.done.length} of ${a.items.length} items; stopped at item ${after.failed.itemId} (${after.failed.reason}); ${after.notTried.length} not tried. Nothing was retried.`}:{})})
+});
+export const tools=[projectSetItem.tool,projectSetItems.tool,projectRemoveItem.tool];
 export const handlers={
   [projectSetItem.tool.name]:projectSetItem.handler,
+  [projectSetItems.tool.name]:projectSetItems.handler,
   [projectRemoveItem.tool.name]:projectRemoveItem.handler
 };

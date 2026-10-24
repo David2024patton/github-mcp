@@ -17,6 +17,7 @@ const ALLOWED = [
   /^GET \/users\/\{username\}\/(repos|social_accounts|followers|following)$/,
   /^GET \/repos\/\{owner\}\/\{repo\}$/,
   /^GET \/repos\/\{owner\}\/\{repo\}\/(readme|releases|issues|pulls)$/,
+  /^GET \/repos\/\{owner\}\/\{repo\}\/stargazers(\/count)?$/,
   /^GET \/repos\/\{owner\}\/\{repo\}\/contents(\/\{path\})?$/
 ];
 export const isAllowedPublicRoute = (route) => typeof route === 'string' && ALLOWED.some((pattern) => pattern.test(route));

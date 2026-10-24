@@ -209,6 +209,49 @@ const requestReviewers = defineGithubWrite({
   present: ({ after }) => ({ requested_users: after.users, requested_teams: after.teams })
 });
 
-const defs = [reviewCreate, reviewSubmit, reviewDismiss, reviewReply, reviewResolve, requestReviewers];
+// ---- ask Copilot to review a pull request (PAR-1) ----------------------------------------------------------------------------------------
+// GraphQL `requestReviewsByLogin` with `botLogins` (verified in the pinned schema). GitHub's docs say REST with
+// `copilot-pull-request-reviewer[bot]` also works, but REST can answer 201 while silently dropping the bot, so GraphQL is used.
+// https://docs.github.com/en/copilot/how-tos/copilot-on-github/use-copilot-agents/copilot-code-review
+const COPILOT_BOT = /^copilot-pull-request-reviewer/i;
+const COPILOT_STATE = 'query($id: ID!) { node(id: $id) { ... on PullRequest { reviewRequests(first: 30) { nodes { requestedReviewer { __typename ... on Bot { login } } } } reviews(last: 20) { nodes { author { login } submittedAt } } } } }';
+const REQUEST_COPILOT = 'mutation($input: RequestReviewsByLoginInput!) { requestReviewsByLogin(input: $input) { pullRequest { id } } }';
+const NO_COPILOT = 'Copilot code review is not available on this repository (it needs a Copilot plan that includes code review, turned on for this account).';
+async function copilotState(ctx, target, nodeId) {
+  const node = (await graphql(await octo(ctx, target.owner), COPILOT_STATE, { id: nodeId })).node ?? {};
+  const requested = (node.reviewRequests?.nodes ?? []).some((n) => n.requestedReviewer?.__typename === 'Bot' && COPILOT_BOT.test(n.requestedReviewer.login ?? ''));
+  const times = (node.reviews?.nodes ?? []).filter((r) => COPILOT_BOT.test(r.author?.login ?? '')).map((r) => String(r.submittedAt ?? '')).sort();
+  return { requested, reviews: times.length, lastReviewAt: times.at(-1) ?? null };
+}
+const requestCopilot = defineGithubWrite({
+  name: 'github_review_request_copilot', area: 'review', audience: ['B'],
+  description: 'Ask GitHub Copilot to review an open pull request. Needs a Copilot plan with code review; the review arrives in minutes.',
+  properties: { owner: OWNER, repo: REPO, number: NUMBER },
+  required: ['repo', 'number'],
+  declarations: { production: 'never' },
+  target: prTarget,
+  read: async (args, ctx, target) => {
+    const pr = await getPr(ctx, target, args);
+    if (pr.state !== 'open') return { open: false, nodeId: pr.node_id, requested: false, reviews: 0, lastReviewAt: null };
+    return { open: true, nodeId: pr.node_id, ...(await copilotState(ctx, target, pr.node_id)) };
+  },
+  classify: () => ({}),
+  summarize: ({ args, before, target }) => (before.open ? `Ask Copilot to review pull request #${args.number} in ${slug(target.owner, target.repo)}${before.reviews ? ' again' : ''}` : `Pull request #${args.number} in ${slug(target.owner, target.repo)} is not open, so Copilot cannot review it`),
+  apply: async ({ ctx, target, before }) => {
+    if (!before.open) throw refusal('Copilot can only review an open pull request.');
+    try {
+      return await graphql(await octo(ctx, target.owner), REQUEST_COPILOT, { input: { pullRequestId: before.nodeId, botLogins: ['copilot-pull-request-reviewer'], union: true } });
+    } catch (error) {
+      if ([403, 404, 422].includes(error?.status) || /bot|copilot|could not resolve|not (found|available)/i.test(String(error?.message))) throw refusal(NO_COPILOT);
+      throw error;
+    }
+  },
+  readAfter: ({ ctx, target, before }) => copilotState(ctx, target, before.nodeId),
+  verify: ({ before, after }) => after.requested || after.reviews > before.reviews || (after.lastReviewAt !== null && after.lastReviewAt !== before.lastReviewAt),
+  inverse: () => null, // a review request to a bot cannot be taken back reliably
+  present: ({ after }) => ({ copilot_requested: after.requested, note: 'Copilot usually posts its review within 3\u201310 minutes. Read the reviews again then.' })
+});
+
+const defs = [reviewCreate, reviewSubmit, reviewDismiss, reviewReply, reviewResolve, requestReviewers, requestCopilot];
 export const tools = defs.map((d) => d.tool);
 export const handlers = Object.fromEntries(defs.map((d) => [d.tool.name, d.handler]));

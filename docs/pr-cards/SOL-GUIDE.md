@@ -53,6 +53,8 @@ It is short on purpose; `AGENTS.md` still holds the hard limits.
 - Tool listing description ≤160 characters; every tool name starts with `github_`.
 - Pages: no cookies, no scripts, escape every value with `h()`, must fit a 412px phone (`fitsScreen` in browser tests).
 - In tests, stub global `fetch` BEFORE importing `api/` modules (some capture `fetch` at load time).
+- Several files to commit? Use `github_content_push_files` (up to 50 files in one commit) — or git, when the session has it —
+  never one `github_content_put_file` per file.
 
 ## Environment notes (seen 2026-10-23)
 - Local Postgres for db/browser tests: `scripts/local-postgres-test.sh` starts one if `initdb` is installed.

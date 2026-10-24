@@ -154,3 +154,9 @@ Defaults in brackets are what the agents build; change any by telling the agent.
 ## GitHub's new installation token format (2026-10-24)
 - [ ] Nothing required. The server already handles the longer tokens (tested). Optional: let an agent switch on GitHub's test header for a day
       on the live service to confirm, then switch it off (`docs/GO-LIVE-CHECKLIST.md`).
+
+## Using this connector in Claude Code (PAR-1, 2026-10-24)
+- [ ] Keep the official GitHub integration connected in Claude Code as well. It is what lets agents copy repositories,
+      push changes with git, use GitHub's command-line tool and get pull-request notifications. This connector cannot do
+      those (it lives in the conversation, not on the agent's computer). Agents should use this connector for GitHub tools;
+      the official one stays for git.
