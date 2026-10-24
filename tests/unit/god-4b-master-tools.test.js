@@ -20,27 +20,27 @@ const defs = (mod, name) => ({ tool: mod.tools.find((t) => t.name === name), han
 const sp = (name) => defs(spaces, name);
 const user = (gh) => gh.when('GET /user').reply(200, ME);
 
-runWriteContract({ ...opts(['copilot']), label: 'github_copilot_space_save (create)', definition: sp('github_copilot_space_save'), args: { name: 'Plans', generalInstructions: 'be brief' },
+runWriteContract({ ...opts(['user', 'repo']), label: 'github_copilot_space_save (create)', definition: sp('github_copilot_space_save'), args: { name: 'Plans', generalInstructions: 'be brief' },
   arrange(gh, o) { user(gh); gh.when(`POST ${U}`).reply(201, SP()); gh.when(`GET ${U}/{space_number}`).reply(200, SP({ general_instructions: o === 'ok' ? 'be brief' : 'other' })); } });
-runWriteContract({ ...opts(['copilot']), label: 'github_copilot_space_save (edit)', definition: sp('github_copilot_space_save'), args: { spaceNumber: 4, name: 'Renamed' },
+runWriteContract({ ...opts(['user', 'repo']), label: 'github_copilot_space_save (edit)', definition: sp('github_copilot_space_save'), args: { spaceNumber: 4, name: 'Renamed' },
   arrange(gh, o) { user(gh); seq(gh, `GET ${U}/{space_number}`, [[200, SP()], [200, SP({ name: o === 'ok' ? 'Renamed' : 'Plans' })]]); gh.when(`PUT ${U}/{space_number}`).reply(200, SP({ name: 'Renamed' })); } });
-runWriteContract({ ...opts(['copilot']), label: 'github_copilot_space_delete', definition: sp('github_copilot_space_delete'), args: { spaceNumber: 4 },
+runWriteContract({ ...opts(['user', 'repo']), label: 'github_copilot_space_delete', definition: sp('github_copilot_space_delete'), args: { spaceNumber: 4 },
   arrange(gh, o) { user(gh); seq(gh, `GET ${U}/{space_number}`, o === 'ok' ? [[200, SP()], NF] : [[200, SP()], [200, SP()]]); gh.when(`DELETE ${U}/{space_number}`).reply(204, null); } });
 const person = { ...ME, login: 'alice', id: 9, actor_type: 'User' };
-runWriteContract({ ...opts(['copilot']), label: 'github_copilot_space_set_collaborator (add)', accessWidening: true, definition: sp('github_copilot_space_set_collaborator'), args: { spaceNumber: 4, actorType: 'User', actor: 'alice', role: 'reader' },
+runWriteContract({ ...opts(['user', 'repo']), label: 'github_copilot_space_set_collaborator (add)', accessWidening: true, definition: sp('github_copilot_space_set_collaborator'), args: { spaceNumber: 4, actorType: 'User', actor: 'alice', role: 'reader' },
   arrange(gh, o) { user(gh); gh.when(`GET ${U}/{space_number}`).reply(200, SP());
     seq(gh, `GET ${U}/{space_number}/collaborators`, [[200, { collaborators: [] }], [200, { collaborators: o === 'ok' ? [{ ...person, role: 'reader' }] : [] }]]);
     gh.when(`POST ${U}/{space_number}/collaborators`).reply(201, { ...person, role: 'reader' }); } });
-runWriteContract({ ...opts(['copilot']), label: 'github_copilot_space_remove_collaborator', definition: sp('github_copilot_space_remove_collaborator'), args: { spaceNumber: 4, actorType: 'User', actor: 'alice' },
+runWriteContract({ ...opts(['user', 'repo']), label: 'github_copilot_space_remove_collaborator', definition: sp('github_copilot_space_remove_collaborator'), args: { spaceNumber: 4, actorType: 'User', actor: 'alice' },
   arrange(gh, o) { user(gh); gh.when(`GET ${U}/{space_number}`).reply(200, SP());
     seq(gh, `GET ${U}/{space_number}/collaborators`, o === 'ok' ? [[200, { collaborators: [{ ...person, role: 'writer' }] }], [200, { collaborators: [] }]] : [[200, { collaborators: [{ ...person, role: 'writer' }] }], [200, { collaborators: [{ ...person, role: 'writer' }] }]]);
     gh.when(`DELETE ${U}/{space_number}/collaborators/{actor_type}/{actor_identifier}`).reply(204, null); } });
 const RES = (md) => ({ id: 70, resource_type: 'free_text', metadata: md, created_at: '2026-10-23T00:00:00Z', updated_at: '2026-10-23T00:00:00Z' });
-runWriteContract({ ...opts(['copilot']), label: 'github_copilot_space_set_resource (attach)', definition: sp('github_copilot_space_set_resource'), args: { spaceNumber: 4, resourceType: 'free_text', metadata: { name: 'n', text: 'hello' } },
+runWriteContract({ ...opts(['user', 'repo']), label: 'github_copilot_space_set_resource (attach)', definition: sp('github_copilot_space_set_resource'), args: { spaceNumber: 4, resourceType: 'free_text', metadata: { name: 'n', text: 'hello' } },
   arrange(gh, o) { user(gh); gh.when(`GET ${U}/{space_number}`).reply(200, SP());
     seq(gh, `GET ${U}/{space_number}/resources`, [[200, { resources: [] }], [200, { resources: [RES(o === 'ok' ? { name: 'n', text: 'hello' } : { name: 'n', text: 'other' })] }]]);
     gh.when(`POST ${U}/{space_number}/resources`).reply(201, RES({ name: 'n', text: 'hello' })); } });
-runWriteContract({ ...opts(['copilot']), label: 'github_copilot_space_remove_resource', definition: sp('github_copilot_space_remove_resource'), args: { spaceNumber: 4, resourceId: 70 },
+runWriteContract({ ...opts(['user', 'repo']), label: 'github_copilot_space_remove_resource', definition: sp('github_copilot_space_remove_resource'), args: { spaceNumber: 4, resourceId: 70 },
   arrange(gh, o) { user(gh); gh.when(`GET ${U}/{space_number}`).reply(200, SP());
     seq(gh, `GET ${U}/{space_number}/resources`, o === 'ok' ? [[200, { resources: [RES({ text: 'x' })] }], [200, { resources: [] }]] : [[200, { resources: [RES({ text: 'x' })] }], [200, { resources: [RES({ text: 'x' })] }]]);
     gh.when(`DELETE ${U}/{space_number}/resources/{space_resource_id}`).reply(204, null); } });
@@ -52,7 +52,7 @@ runWriteContract({ ...opts(['project']), label: 'github_project_view_create', de
 const call = async (mod, name, w, args) => mod.handlers[name](args, w.ctx);
 describe('GOD-4 B reads and the missing master token', () => {
   it('lists, reads and shapes Copilot Spaces on the master token', async () => {
-    const w = await makeWorld({ profile: 'full', mode: 'production' }); await withMaster(['copilot'])(w); user(w.gh);
+    const w = await makeWorld({ profile: 'full', mode: 'production' }); await withMaster(['user', 'repo'])(w); user(w.gh);
     w.gh.when(`GET ${U}`).reply(200, { spaces: [SP()] });
     w.gh.when(`GET ${U}/{space_number}`).reply(200, SP());
     w.gh.when(`GET ${U}/{space_number}/collaborators`).reply(200, { collaborators: [{ ...person, role: 'reader' }] });
@@ -67,7 +67,7 @@ describe('GOD-4 B reads and the missing master token', () => {
   it('no tool can name another account for Copilot Spaces', () => {
     for (const t of spaces.tools) expect(Object.keys(t.inputSchema.properties)).not.toEqual(expect.arrayContaining(['username']));
   });
-  const reads = [[spaces, 'github_copilot_space_list', {}, 'copilot'], [spaces, 'github_copilot_space_get', { spaceNumber: 4 }, 'copilot'], [small, 'github_user_hovercard', { username: 'octocat' }, 'repo'], [small, 'github_classroom_list', {}, 'repo']];
+  const reads = [[spaces, 'github_copilot_space_list', {}, 'read:user'], [spaces, 'github_copilot_space_get', { spaceNumber: 4 }, 'user and repo'], [small, 'github_user_hovercard', { username: 'octocat' }, 'repo'], [small, 'github_classroom_list', {}, 'repo']];
   for (const [mod, name, args, scope] of reads) {
     it(`${name} without a master token says so plainly`, async () => {
       const w = await makeWorld({ profile: 'full', mode: 'production' });
@@ -78,9 +78,25 @@ describe('GOD-4 B reads and the missing master token', () => {
   it('a write without the master token is refused in plain words and sends nothing', async () => {
     const w = await makeWorld({ profile: 'full', mode: 'production' });
     const out = parse(await call(spaces, 'github_copilot_space_delete', w, { spaceNumber: 4, confirm: true }));
-    expect(JSON.stringify(out)).toMatch(/permission copilot/);
+    expect(JSON.stringify(out)).toMatch(/permission user and repo/);
     expect(out.status).not.toBe('applied');
     expect(w.gh.calls.filter((c) => c.method !== 'GET')).toEqual([]);
+  });
+  it('a token with only the copilot permission is refused (GitHub wants user and repo for these endpoints)', async () => {
+    const w = await makeWorld({ profile: 'full', mode: 'production' }); await withMaster(['copilot'])(w);
+    await expect(call(spaces, 'github_copilot_space_get', w, { spaceNumber: 4 })).rejects.toThrow(/user and repo/);
+  });
+  it('creating or editing a Space to base role reader is disclosed as PUBLIC and always asks', async () => {
+    const w = await makeWorld({ profile: 'full', mode: 'production' }); await withMaster(['user', 'repo'])(w); user(w.gh);
+    w.gh.when(`GET ${U}/{space_number}`).reply(200, SP());
+    const create = parse(await call(spaces, 'github_copilot_space_save', w, { name: 'Open', baseRole: 'reader', dryRun: true }));
+    expect(JSON.stringify(create)).toMatch(/PUBLICLY READABLE/);
+    expect(JSON.stringify(create)).toMatch(/ACCESS CHANGE/);
+    const edit = parse(await call(spaces, 'github_copilot_space_save', w, { spaceNumber: 4, baseRole: 'reader', dryRun: true }));
+    expect(JSON.stringify(edit)).toMatch(/PUBLICLY READABLE/);
+    expect(edit.needsConfirmation).toBe(true);
+    const quiet = parse(await call(spaces, 'github_copilot_space_save', w, { spaceNumber: 4, name: 'x', dryRun: true }));
+    expect(JSON.stringify(quiet)).not.toMatch(/PUBLICLY/);
   });
   it('Classroom closed by GitHub answers honestly', async () => {
     const w = await makeWorld({ profile: 'full', mode: 'production' }); await withMaster(['repo'])(w);

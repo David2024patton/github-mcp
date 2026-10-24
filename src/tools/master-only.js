@@ -4,8 +4,13 @@ import { githubFor } from '../github/client.js';
 import { personalCred } from '../github/personal-cred.js';
 import { refusal } from './github-write.js';
 
-export const needMasterText = (scope) => `Add your master token (My connection) with permission ${scope} to use this.`;
-export const hasMaster = async (ctx, scope) => (await personalCred(ctx, scope)) === 'M';
+const list = (scope) => (Array.isArray(scope) ? scope : [scope]);
+export const needMasterText = (scope) => `Add your master token (My connection) with permission ${list(scope).join(' and ')} to use this.`;
+/** True when the master token is added and covers every permission named (one scope or a list). */
+export const hasMaster = async (ctx, scope) => {
+  for (const one of list(scope)) if ((await personalCred(ctx, one)) !== 'M') return false;
+  return true;
+};
 
 /** The master-token client plus who it is. Throws a plain refusal when the token or permission is missing. */
 export async function masterClient(ctx, scope) {

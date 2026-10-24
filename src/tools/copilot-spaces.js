@@ -4,10 +4,13 @@ import { defineRead } from './define-read.js';
 import { defineGithubWrite } from './define-github-write.js';
 import { plain } from './github-read.js';
 import { missing, refusal } from './github-write.js';
-import { accessChange } from './people-guard.js';
+import { accessChange, becomesPublic } from './people-guard.js';
 import { hasMaster, masterClient, masterReader, needMasterText, userTarget } from './master-only.js';
 
-const SCOPE = 'copilot';
+// GitHub's description: reading the list/resources needs read:user, a single Space needs repo, collaborators/deletes/resource writes need user.
+// Every tool that reads a Space first (all but the list) therefore needs both `user` and `repo`.
+const SCOPE = ['user', 'repo'];
+const LIST_SCOPE = 'read:user';
 const NUM = { type: 'integer', minimum: 1 };
 const RID = { type: 'integer', minimum: 1 };
 const ACTOR = { type: 'string', minLength: 1, maxLength: 100, pattern: '^[A-Za-z0-9][A-Za-z0-9_./-]*$', description: 'User login, or team slug' };
@@ -34,7 +37,7 @@ const list = defineRead({
   description: 'List your own Copilot Spaces (number, name, instructions, base role). Uses your master token.',
   properties: { max: { type: 'integer', minimum: 1, maximum: 100 } }, required: [],
   handler: (args, ctx) => plain(async () => {
-    const { gh, login } = await masterReader(ctx, SCOPE);
+    const { gh, login } = await masterReader(ctx, LIST_SCOPE);
     const spaces = ((await gh.request(`GET ${BASE}`, { username: login, per_page: args.max ?? 50 })).data?.spaces ?? []).map(space);
     return { owner: login, count: spaces.length, spaces };
   })
@@ -84,10 +87,15 @@ const save = defineGithubWrite({
     if (!Object.keys(bodyOf(args)).length) throw refusal('Give at least one field to change.');
     return { login, current: space(await get(gh, login, args.spaceNumber)) };
   }),
-  classify: () => ({ production: 'changes your Copilot Spaces' }),
-  summarize: ({ args, before }) => (before.needsMaster ? needMasterText(SCOPE)
-    : args.spaceNumber === undefined ? `Create Copilot Space "${args.name}" for ${before.login}${args.baseRole === 'reader' ? ' (everyone you share with can read it)' : ''}`
-      : before.current ? `Edit Copilot Space ${args.spaceNumber} "${before.current.name}": ${Object.keys(bodyOf(args)).join(', ')}` : `You have no Copilot Space number ${args.spaceNumber}`),
+  // base_role "reader" makes the Space PUBLICLY readable (GitHub's description), so a move to it is a public-access change.
+  classify: ({ args, before }) => ({ production: 'changes your Copilot Spaces',
+    ...(args.baseRole === 'reader' && before?.current?.base_role !== 'reader' ? becomesPublic({ what: `Copilot Space "${args.name ?? before?.current?.name ?? args.spaceNumber}"` }) : {}) }),
+  summarize: ({ args, before }) => {
+    if (before.needsMaster) return needMasterText(SCOPE);
+    const pub = args.baseRole === 'reader' && before.current?.base_role !== 'reader' ? ' It will be PUBLICLY READABLE by anyone (base role reader), not just people you share it with.' : '';
+    if (args.spaceNumber === undefined) return `Create Copilot Space "${args.name}" for ${before.login}.${pub}`;
+    return before.current ? `Edit Copilot Space ${args.spaceNumber} "${before.current.name}": ${Object.keys(bodyOf(args)).join(', ')}.${pub} Today its base role is ${before.current.base_role}.` : `You have no Copilot Space number ${args.spaceNumber}`;
+  },
   apply: async ({ args, ctx, before }) => {
     must(before);
     const { gh, login } = await masterClient(ctx, SCOPE);
