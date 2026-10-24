@@ -32,8 +32,10 @@ export async function searchDocs({ query, max = 5, fetch: doFetch = globalThis.f
     }
   }
   const hits = Array.isArray(body?.hits) ? body.hits : [];
-  const items = hits.filter((h) => typeof h?.url === 'string' && h.url.startsWith(`${ORIGIN}/`)).slice(0, max).map((h) => ({
-    title: clip(strip(h.title), 200), url: h.url,
+  // GitHub answers with site-relative links ("/en/rest/..."); resolve them against the fixed origin and keep only docs.github.com.
+  const absolute = (value) => { try { const u = new URL(value, ORIGIN); return u.origin === ORIGIN ? u.href : null; } catch { return null; } };
+  const items = hits.map((h) => ({ h, url: typeof h?.url === 'string' ? absolute(h.url) : null })).filter((x) => x.url).slice(0, max).map(({ h, url }) => ({
+    title: clip(strip(h.title), 200), url,
     breadcrumbs: clip(strip(Array.isArray(h.breadcrumbs) ? h.breadcrumbs.join(' > ') : h.breadcrumbs), 200),
     snippet: clip(strip(Array.isArray(h.highlights?.content) ? h.highlights.content[0] : h.highlights?.content), 300)
   }));
