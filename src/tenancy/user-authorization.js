@@ -288,6 +288,21 @@ export function createTenantScopedCredentials({ base, directory, tenant, db,
       const origin=publicOrigin(env);
       return {url:origin+'/api/tenant/optional?master_link='+handle,expiresInMinutes:10};
     },
+    /** A private, one-use, ten-minute link to the "revoke a leaked token" page for THIS signed-in person. The tokens are
+     * pasted on that page, never into a chat; the link itself carries no secret. */
+    async revokeLink({clientId,redirectUri}={}){
+      if(typeof clientId!=='string'||!clientId.startsWith('pcl_')||typeof redirectUri!=='string')throw optionalDenied();
+      if(typeof directory.createPublicFlow!=='function')throw optionalDenied();
+      const active=await directory.authorizedPilotIdentity(tenant.tenantId,tenant.identityId);
+      if(!active||active.membershipRevision!==tenant.membershipRevision||
+        active.pilotRevision!==tenant.pilotRevision)throw optionalDenied();
+      const handle=randomBytes(32).toString('base64url');
+      const ok=await directory.createPublicFlow({stateHash:createHash('sha256').update(handle).digest('hex'),
+        stage:'god',clientId,redirectUri,codeChallenge:randomBytes(32).toString('base64url'),tier:'standard',
+        purpose:'revoke',tenantId:tenant.tenantId,identityId:tenant.identityId,ttlSeconds:600,maxOpen:200});
+      if(!ok)throw optionalDenied();
+      return {url:publicOrigin(env)+'/api/tenant/optional?revoke_link='+handle,expiresInMinutes:10};
+    },
     /** Nonsecret summary for github_whoami. Never the token. */
     async masterStatus(){
       try{

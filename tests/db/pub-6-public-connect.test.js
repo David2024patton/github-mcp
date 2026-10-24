@@ -726,3 +726,86 @@ describe('GOD-1 the master token lasts exactly as long as the person set it on G
     expect(await routed.credentials.token({ account: 'bob-test', cred: 'M' })).toBe(people.bob.token);
   });
 });
+
+describe('GOD-4 cancelling leaked tokens (github_credential_revoke)', () => {
+  const revokeCalls = [];
+  const fetchRevoke = (status = 202) => async (url, opts) => {
+    if (url === 'https://api.github.com/credentials/revoke') { revokeCalls.push(JSON.parse(opts.body)); return { status, ok: status < 300, headers: { get: () => null }, json: async () => ({}), text: async () => '' }; }
+    return fetchImpl(url, opts);
+  };
+  const enrollmentWith = async (fetchFn) => {
+    const { createPrivateOptionalEnrollment } = await import('../../src/tenancy/optional-setup.js');
+    const { openAuthorizedTenantDb } = await import('../../src/tenancy/directory.js');
+    return createPrivateOptionalEnrollment({ env, fetchImpl: fetchFn, directoryFactory: () => createTenantDirectory(rootSqlFactory()),
+      tenantAccess: (dir, claim) => openAuthorizedTenantDb({ directory: dir, tenantId: claim.tenantId, verifiedIdentityId: claim.identityId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory }) });
+  };
+  const open = async (routed, client, enrollment) => {
+    const made = await routed.credentials.revokeLink({ clientId: client.client_id, redirectUri: CB });
+    expect(made.url.startsWith(ORIGIN + '/api/tenant/optional?revoke_link=')).toBe(true);
+    return enrollment.startRevokeLink(new URL(made.url).searchParams.get('revoke_link'));
+  };
+  const LEAK1 = 'ghp_FAKEleakedtokenAAAA1111', LEAK2 = 'github_pat_FAKEleakedtokenBBBB2222';
+
+  it('opens a one-use form, sends the pasted tokens to GitHub once, and only ever reports their last four characters', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const enrollment = await enrollmentWith(fetchRevoke());
+    const routed = await gateFor(await tokenFor(c, client, 'dave'));
+    const made = await routed.credentials.revokeLink({ clientId: client.client_id, redirectUri: CB });
+    const handle = new URL(made.url).searchParams.get('revoke_link');
+    const form = await enrollment.startRevokeLink(handle);
+    expect(form.kind).toBe('R');
+    await expect(enrollment.startRevokeLink(handle)).rejects.toThrow(); // the link works once
+    await expect(enrollment.startRevokeLink('x'.repeat(43))).rejects.toThrow();
+    const out = await enrollment.revokeLeaked({ state: form.state, value: LEAK1 + '\n' + LEAK2 + '\n' + LEAK1 });
+    expect(out).toMatchObject({ accepted: true, status: 202, count: 2, last4: ['1111', '2222'] });
+    expect(JSON.stringify(out)).not.toContain('FAKEleaked');
+    expect(revokeCalls).toEqual([{ credentials: [LEAK1, LEAK2] }]);
+    await expect(enrollment.revokeLeaked({ state: form.state, value: LEAK1 })).rejects.toThrow(); // the form works once
+    expect(revokeCalls).toHaveLength(1);
+  });
+
+  it('refuses before any GitHub call: other kinds of link, bad input, too many tokens; and reports a GitHub refusal honestly', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const enrollment = await enrollmentWith(fetchRevoke(422));
+    const routed = await gateFor(await tokenFor(c, client, 'dave'));
+    revokeCalls.length = 0;
+    // a master-token link cannot open the revoke form, and the other way round
+    const masterHandle = new URL((await routed.credentials.masterLink({ clientId: client.client_id, redirectUri: CB })).url).searchParams.get('master_link');
+    await expect(enrollment.startRevokeLink(masterHandle)).rejects.toThrow();
+    const revokeHandle = new URL((await routed.credentials.revokeLink({ clientId: client.client_id, redirectUri: CB })).url).searchParams.get('revoke_link');
+    await expect(enrollment.startMasterLink(revokeHandle)).rejects.toThrow();
+    // the form handle is not a link and the link is not a form
+    const form = await open(routed, client, enrollment);
+    for (const value of ['', 'short', 'has a\u0001control char', Array.from({ length: 26 }, (_, i) => 'ghp_FAKE' + String(i).padStart(8, '0')).join('\n')]) {
+      const f = await open(routed, client, enrollment);
+      await expect(enrollment.revokeLeaked({ state: f.state, value })).rejects.toThrow();
+    }
+    expect(revokeCalls).toEqual([]);
+    const rejected = await enrollment.revokeLeaked({ state: form.state, value: LEAK1 });
+    expect(rejected).toMatchObject({ accepted: false, status: 422, count: 1, last4: ['1111'] });
+  });
+
+  it('the page renders the form and the result without ever echoing a pasted token', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const enrollment = await enrollmentWith(fetchRevoke());
+    const routed = await gateFor(await tokenFor(c, client, 'dave'));
+    const { makePrivateOptionalPage } = await import('../../api/tenant/optional.js');
+    const handler = makePrivateOptionalPage({ env, enrollment });
+    const res = () => { const r = { headers: {}, code: 0, body: '', setHeader(k, v) { r.headers[k] = v; }, status(n) { r.code = n; return r; }, send(b) { r.body = String(b); return r; }, end() { return r; } }; return r; };
+    const made = await routed.credentials.revokeLink({ clientId: client.client_id, redirectUri: CB });
+    const get = res();
+    await handler({ method: 'GET', query: { revoke_link: new URL(made.url).searchParams.get('revoke_link') }, headers: {} }, get);
+    expect(get.code).toBe(200);
+    expect(get.body).toContain('name="value"');
+    const state = get.body.match(/name="csrf" value="([A-Za-z0-9_-]{43})"/)[1];
+    const post = res();
+    await handler({ method: 'POST', body: { csrf: state, action: 'revoke_leaked', value: LEAK1 }, headers: { origin: ORIGIN } }, post);
+    expect(post.code).toBe(200);
+    expect(post.body).toContain('1111');
+    expect(post.body).not.toContain('FAKEleaked');
+    expect(get.body).not.toContain('FAKEleaked');
+  });
+});

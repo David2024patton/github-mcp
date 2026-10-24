@@ -35,7 +35,27 @@ const masterMarkup=details=>'<!doctype html><html lang="en"><head><meta charset=
   '<p>Paste it here only, never into a chat. We check it belongs to your own GitHub login and store it encrypted. '+
   'It is never shown again. It lasts as long as you set it to last on GitHub (30 days, a year, or never). '+
   'Removing it here does not delete it at GitHub; do that in your GitHub settings too.</p>'+brandFooter()+'</main></body></html>';
-const markup=details=>details.kind==='M'?masterMarkup(details):standardMarkup(details);
+const revokeMarkup=details=>'<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+  '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+  '<title>Cancel a leaked GitHub token</title><style>'+PAGE_CSS+'</style></head><body><main>'+brandHeader()+
+  '<h1>Cancel a leaked GitHub token</h1>'+
+  '<p>If a GitHub token was pasted somewhere it should not be (a chat, a document, a public file), paste it here and GitHub will cancel it for good. '+
+  'You can paste several, one per line. Nothing you paste is saved or shown again.</p>'+
+  '<form method="post" action="/api/tenant/optional">'+
+  '<input type="hidden" name="csrf" value="'+escapeHtml(details.state)+'">'+
+  '<input type="hidden" name="action" value="revoke_leaked">'+
+  '<label>Token(s) to cancel<textarea name="value" required rows="5" maxlength="120000" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box"></textarea></label>'+
+  '<button type="submit">Cancel these tokens</button></form>'+
+  '<p><small>This page works once and expires in ten minutes. Never paste a token into an AI chat.</small></p>'+brandFooter()+'</main></body></html>';
+const revokeResult=out=>'<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+  '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+  '<title>GitHub token cancel</title><style>'+PAGE_CSS+'</style></head><body><main>'+brandHeader()+
+  '<h1>'+(out.accepted?'GitHub accepted the request':'GitHub did not accept the request')+'</h1>'+
+  '<p>'+(out.accepted
+    ?'You sent '+out.count+' token'+(out.count===1?'':'s')+' for cancelling (ending in '+out.last4.map(x=>'<strong>'+escapeHtml(x)+'</strong>').join(', ')+'). GitHub cancels valid ones within moments; a token that was already invalid is simply ignored.'
+    :'Nothing was cancelled (GitHub answered '+escapeHtml(String(out.status||'no answer'))+'). Open a fresh link from your assistant and try again.')+'</p>'+
+  '<p>Nothing you pasted was saved. You can close this page.</p>'+brandFooter()+'</main></body></html>';
+const markup=details=>details.kind==='M'?masterMarkup(details):details.kind==='R'?revokeMarkup(details):standardMarkup(details);
 const standardMarkup=details=>'<!doctype html><html lang="en"><head><meta charset="utf-8">'+
   '<meta name="viewport" content="width=device-width,initial-scale=1">'+
   '<title>Additional GitHub authority</title><style>'+PAGE_CSS+'</style></head><body><main>'+brandHeader()+
@@ -83,6 +103,8 @@ export function makePrivateOptionalPage({
         if(['read-observed-at-enrollment','revoked-on-this-service'].includes(req.query?.github_mcp_optional))
           return send(res,200,'<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GitHub setup</title><style>'+PAGE_CSS+'</style><main>'+brandHeader()+'<h1 id="optional-done">'+(req.query.github_mcp_optional==='revoked-on-this-service'?'Removed':'Saved')+'</h1><p>'+(req.query.github_mcp_optional==='revoked-on-this-service'?'It is no longer stored here. Also delete it in your GitHub settings if you will not use it again.':'Your assistant can use it straight away; no reconnecting needed.')+'</p><p><a href="/connection">Back to My connection</a></p></main></html>','text/html; charset=utf-8');
         // GOD-1: a one-use link from github_master_token_link (add the master token any time, no reconnecting).
+        if(typeof req.query?.revoke_link==='string')
+          return renderOptionalForm(res,await enrollment.startRevokeLink(req.query.revoke_link));
         if(typeof req.query?.master_link==='string')
           return renderOptionalForm(res,await enrollment.startMasterLink(req.query.master_link));
         const result=await enrollment.start(paramsOf(req));
@@ -99,6 +121,8 @@ export function makePrivateOptionalPage({
         return send(res,403,{error:'credential_setup_denied',
           description:'This private browser step expired. Restart from your connection.'});
       res.setHeader('Set-Cookie',CLEAR);
+      if(p.action==='revoke_leaked')
+        return send(res,200,revokeResult(await enrollment.revokeLeaked({state:p.csrf,value:p.value})),'text/html; charset=utf-8');
       const result=await enrollment.finish({
         state:p.csrf,action:p.action,value:p.value});
       res.setHeader('Location',result.destination);

@@ -218,5 +218,40 @@ export function createPrivateOptionalEnrollment({
     return await begin({client_id:flow.clientId,account:MASTER_HANDLE,kind:'M',redirect_uri:flow.redirectUri},
       null,{tenantId:flow.tenantId,identityId:flow.identityId});
   }
-  return {start,startOAuth,startMasterLink,finish};
+  // GQL-1/GOD-4: "revoke a leaked token". The one-use link from github_credential_revoke arrives here; the form it opens is
+  // itself one-use. The pasted tokens go straight to GitHub's public revoke endpoint and are never stored or echoed.
+  async function startRevokeLink(handle){
+    origin();
+    if(typeof handle!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(handle))throw denied();
+    const directory=directoryFactory();
+    const flow=await directory.consumePublicFlow(digest(handle),'god');
+    if(!flow||flow.purpose!=='revoke'||!flow.tenantId||!flow.identityId)throw denied();
+    await scoped(flow.clientId,{tenantId:flow.tenantId,identityId:flow.identityId});
+    const state=randomState();
+    const stored=await directory.createPublicFlow({stateHash:digest(state),stage:'god',clientId:flow.clientId,
+      redirectUri:flow.redirectUri,codeChallenge:randomState(),tier:'standard',purpose:'revoke_form',
+      tenantId:flow.tenantId,identityId:flow.identityId,ttlSeconds:600,maxOpen:200});
+    if(!stored)throw denied();
+    return Object.freeze({state,kind:'R'});
+  }
+  async function revokeLeaked({state,value}={}){
+    origin();
+    if(typeof state!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(state)||typeof value!=='string'||value.length>120000)throw denied();
+    const tokens=[...new Set(value.split(/[\s,;]+/).filter(Boolean))];
+    if(tokens.length<1||tokens.length>25||tokens.some(t=>!/^[\x21-\x7e]{8,4096}$/.test(t)))throw denied();
+    const directory=directoryFactory();
+    // Atomic DELETE before provider traffic: the form cannot be replayed.
+    const flow=await directory.consumePublicFlow(digest(state),'god');
+    if(!flow||flow.purpose!=='revoke_form'||!flow.tenantId||!flow.identityId)throw denied();
+    await scoped(flow.clientId,{tenantId:flow.tenantId,identityId:flow.identityId});
+    let status=0;
+    try{
+      const res=await fetchImpl('https://api.github.com/credentials/revoke',{method:'POST',redirect:'error',
+        headers:{accept:'application/vnd.github+json','content-type':'application/json','x-github-api-version':'2026-03-10','user-agent':'robinson-github-mcp'},
+        body:JSON.stringify({credentials:tokens})});
+      status=res.status;
+    }catch{status=0;}
+    return Object.freeze({accepted:status===202,status,count:tokens.length,last4:Object.freeze(tokens.map(t=>t.slice(-4)))});
+  }
+  return {start,startOAuth,startMasterLink,startRevokeLink,revokeLeaked,finish};
 }
