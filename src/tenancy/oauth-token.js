@@ -11,6 +11,7 @@ import { createGithubPolicy } from '../oauth/policy.js';
 import { paramsOf, send } from '../core/http.js';
 import { admitTenantOAuth, TenantCapacityError, recordTenantMetric } from './runtime-limits.js';
 import { isPublicClientId, parsePublicCode } from './public-code.js';
+import { marketplaceResource } from '../marketplace/resource.js';
 
 export async function privateTenantToken(req, res, {
   env = process.env, rootSqlFactory = neon, tenantSqlFactory = neon
@@ -52,6 +53,8 @@ export async function privateTenantToken(req, res, {
       if (!claim) { note('no-claim'); return send(res, 401, { error: 'invalid_client' }); }
     }
     const pilot = await directory.authorizedPilotIdentity(claim.tenantId, claim.identityId);
+    const marketplace = await directory.marketplaceBinding(claim.tenantId);
+    if (marketplace && !marketplace.active) return send(res,401,{error:'invalid_client'});
     if (!pilot || pilot.tenantId !== claim.tenantId || pilot.identityId !== claim.identityId ||
         pilot.membershipRevision !== claim.membershipRevision ||
         pilot.pilotRevision !== claim.pilotRevision)
@@ -67,6 +70,7 @@ export async function privateTenantToken(req, res, {
     await admitTenantOAuth(tenantSql,params.client_id);
     const handlers = createOAuthHandlers({
       db: scope.db, env, policy: createGithubPolicy({ env }),
+      ...(marketplace ? {resourceUrl:marketplaceResource(marketplace.accountId, env)} : {}),
       issueTokens: () => ({
         accessToken: issueTenantCredential('tac', claim, env),
         refreshToken: issueTenantCredential('trf', claim, env)

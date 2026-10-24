@@ -28,6 +28,8 @@ export async function resolvePrivateTenantMcpBearer({
   try {
     const directory = createTenantDirectory(rootSqlFactory(env.DATABASE_URL));
     const authorized = await directory.authorizedPilotIdentity(claim.tenantId, claim.identityId);
+    const marketplace = await directory.marketplaceBinding(claim.tenantId);
+    if (marketplace && !marketplace.active) return null;
     if (!authorized || authorized.tenantId !== claim.tenantId ||
         authorized.identityId !== claim.identityId ||
         authorized.membershipRevision !== claim.membershipRevision ||
@@ -79,11 +81,24 @@ export async function resolvePrivateTenantMcpBearer({
     const meteredFetch=withTenantProviderMetrics(sql,fetchImpl);
     // HARD-1: the App's sealed keys come from the one shared (root) copy, so a replaced key reaches every person at once.
     const base = createCredentials({ db, env, fetch: meteredFetch, rootApps: createDb(rootSqlFactory(env.DATABASE_URL)) });
-    const credentials = createTenantScopedCredentials({
+    let credentials = createTenantScopedCredentials({
       base, directory, tenant: authorized, db, env, fetchImpl:meteredFetch
     });
+    if (marketplace) {
+      const live = async () => { if (!(await directory.marketplaceBinding(claim.tenantId))?.active)
+        throw new Error('Marketplace subscription is not active.'); };
+      const wrapped = {...credentials};
+      for (const name of ['token','operationAuthority','authorizeOptionalRequest']) {
+        const original = credentials[name];
+        if (typeof original === 'function') wrapped[name] = async (...args) => {
+          await live(); const result = await original(...args); await live(); return result;
+        };
+      }
+      credentials = wrapped;
+    }
     return { db: withTenantStorageLimits(db,sql,grant.client_id), credentials,
       sql, clientId: grant.client_id,
+      marketplaceAccountId: marketplace?.accountId ?? null,
       tenant: Object.freeze({ ...authorized }) };
   } catch {
     // Missing private registry, driver search_path refusal, revocation, and

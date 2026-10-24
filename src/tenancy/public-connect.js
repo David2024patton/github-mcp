@@ -37,6 +37,9 @@ import { bareOctokit } from '../github/client.js';
 import { hashToken, randomToken, validRedirectUri } from '../core/oauth.js';
 import { publicOrigin } from '../core/http.js';
 import { isPublicClientId, publicAuthCode, parsePublicCode } from './public-code.js';
+import { createMarketplaceStore } from '../marketplace/store.js';
+import { accountFromResource, marketplaceAccount } from '../marketplace/resource.js';
+import { marketplaceEnabled, verifyMarketplacePurchase } from '../marketplace/lifecycle.js';
 
 const gitAuthorize = 'https://github.com/login/oauth/authorize';
 const gitToken = 'https://github.com/login/oauth/access_token';
@@ -109,7 +112,8 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   function checkAuthorizeRequest(p) {
     const origin = active();
     if (!isPublicClientId(p.client_id) || [FORGET_CLIENT, MANAGE_CLIENT].includes(p.client_id) || p.response_type !== 'code' ||
-        p.code_challenge_method !== 'S256' || !CHALLENGE.test(String(p.code_challenge ?? '')) || p.resource !== origin + '/api/mcp' ||
+        p.code_challenge_method !== 'S256' || !CHALLENGE.test(String(p.code_challenge ?? '')) ||
+        !(p.resource === origin + '/api/mcp' || (marketplaceEnabled(env) && accountFromResource(p.resource, env))) ||
         typeof p.redirect_uri !== 'string' || !validRedirectUri(p.redirect_uri) ||
         (p.state !== undefined && (typeof p.state !== 'string' || p.state.length > 256)) ||
         (p.scope !== undefined && !(typeof p.scope === 'string' && p.scope.split(/\s+/).filter(Boolean).every((x) => ADVERTISED_SCOPES.includes(x))))) throw refused('r3');
@@ -148,6 +152,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const stored = await directory().createPublicFlow({ stateHash: sha(state), stage, clientId: client.clientId,
       redirectUri: flow.redirectUri, clientState: flow.clientState ?? null, codeChallenge: flow.codeChallenge,
       tier: 'standard', allowChanges: true, purpose: flow.purpose ?? null,
+      marketplaceAccountId: flow.marketplaceAccountId ?? null,
       providerVerifier: stage === 'signin' ? verifier : null, maxOpen: limits.maxOpenFlows, maxOpenPerClient: perClient(client.clientId), afterInstall });
     if (!stored) throw busy();
     if (stage !== 'signin') return { state };
@@ -175,7 +180,8 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     active(); await ensureSchema(); checkAuthorizeRequest(p);
     const client = await loadClient(p.client_id, p.redirect_uri);
     await directory().purgeExpiredPublicFlows(client.clientId);
-    return await openStep({ client, flow: { redirectUri: p.redirect_uri, clientState: p.state, codeChallenge: p.code_challenge } });
+    return await openStep({ client, flow: { redirectUri: p.redirect_uri, clientState: p.state, codeChallenge: p.code_challenge,
+      marketplaceAccountId: accountFromResource(p.resource, env) } });
   }
 
   /** GitHub sent the person back after installing the App: sign in once more (GitHub does it silently). */
@@ -200,15 +206,18 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   }
 
   /** One isolated tenant per verified GitHub person; every account that person connects lives inside it. */
-  async function ensureTenant({ principal, installations }) {
+  async function ensureTenant({ principal, installations, marketplaceAccountId = null, subscription = null }) {
     const dir = directory(), root = createDb(rootSql());
     // LAUNCH-1: while invite-only is on, a NEW person needs an invite; people who already have a store are never locked out.
     if (env.GITHUB_PUBLIC_INVITE_ONLY === 'enabled' && !await dir.findPublicTenantBySubject(principal.subject) && !await dir.isPublicInvited(principal.login))
       throw new PublicConnectError('invite_only', 'Robinson GitHub MCP is invite-only right now. Ask Chris for an invite.');
     const identityId = await dir.enrollVerifiedGithubSubject(principal.subject);
-    const existing = await dir.findPilotTenant(identityId, TENANT_KEY);
+    const tenantKey = marketplaceAccountId ? 'marketplace-' + marketplaceAccountId : TENANT_KEY;
+    const existing = await dir.findPilotTenant(identityId, tenantKey);
     if (!existing) await checkNewSignupsOpen(dir, root);
-    const tenantId = await dir.provisionPilotForOwnerAccount(identityId, TENANT_KEY);
+    const tenantId = await dir.provisionPilotForOwnerAccount(identityId, tenantKey);
+    if (marketplaceAccountId && !await createMarketplaceStore(rootSql()).bind({ accountId:marketplaceAccountId,
+      identityId, tenantId, effectiveAt:subscription?.effective_at })) throw refused('marketplace-cancelled');
     const { db } = await initializeProvisionedTenant({ tenantId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory });
     const app = await root.getApp(appId);
     if (!app || !app.client_secret_enc || !app.private_key_enc || !app.webhook_secret_enc) throw refused('r8');
@@ -288,8 +297,12 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     return { installs, chosen };
   }
   /** Creates/updates the person's tenant and stores their own sealed GitHub grant for every connected account. */
-  async function connect({ data, principal, chosen }) {
-    const made = await ensureTenant({ principal, installations: chosen });
+  async function connect({ data, principal, chosen, marketplaceAccountId = null }) {
+    const subscription = marketplaceAccountId ? await verifyMarketplacePurchase({ token:data.access_token,
+      accountId:marketplaceAccountId, store:createMarketplaceStore(rootSql()), env, fetchImpl }) : null;
+    if (marketplaceAccountId) chosen = chosen.filter(i => i.accountId === marketplaceAccountId);
+    if (!chosen.length) throw refused('marketplace-account');
+    const made = await ensureTenant({ principal, installations: chosen, marketplaceAccountId, subscription });
     const { db, sql } = await openAuthorizedTenantDb({ directory: made.dir, tenantId: made.tenantId,
       verifiedIdentityId: made.identityId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory });
     const latest = await made.dir.authorizedPilotIdentity(made.tenantId, made.identityId);
@@ -324,15 +337,20 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       const client = await loadClient(flow.clientId, flow.redirectUri);
       const { data, principal } = await signedIn(flow, code);
       if (flow.purpose === 'forget') { outcome = 'ok'; return await forgetLookup(principal); }
-      if (flow.purpose === 'manage') { outcome = 'ok'; return await manageAfterSignIn({ data, principal }); }
-      const { installs, chosen } = await connectable(data, principal);
+      if (flow.purpose === 'manage') { outcome = 'ok'; return await manageAfterSignIn({ data, principal, marketplaceAccountId:flow.marketplaceAccountId }); }
+      const found = await connectable(data, principal);
+      const installs = found.installs;
+      const chosen = flow.marketplaceAccountId ? found.chosen.filter(i => i.accountId === flow.marketplaceAccountId) : found.chosen;
+      if (flow.marketplaceAccountId) await verifyMarketplacePurchase({ token:data.access_token,
+        accountId:flow.marketplaceAccountId, store:createMarketplaceStore(rootSql()), env, fetchImpl });
       if (chosen.length === 0) {
         outcome = 'ok';
         return { install: { signedInAs: principal.login, again: flow.afterInstall === true,
-          url: (await installUrl({ client, flow: { redirectUri: flow.redirectUri, clientState: flow.clientState, codeChallenge: flow.codeChallenge } }))() } };
+          url: (await installUrl({ client, flow: { redirectUri: flow.redirectUri, clientState: flow.clientState, codeChallenge: flow.codeChallenge,
+            marketplaceAccountId:flow.marketplaceAccountId } }))(flow.marketplaceAccountId) } };
       }
-      const offers = await findOffers({ token: data.access_token, principal, installs });
-      const made = await connect({ data, principal, chosen });
+      const offers = flow.marketplaceAccountId ? [] : await findOffers({ token: data.access_token, principal, installs });
+      const made = await connect({ data, principal, chosen, marketplaceAccountId:flow.marketplaceAccountId });
       metricSql = made.sql;
       await admitTenantOAuth(made.sql, flow.clientId);
       await made.db.mirrorOAuthClient({ clientId: client.clientId, secretHash: client.secretHash, redirectUris: client.redirectUris,
@@ -343,7 +361,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       outcome = 'ok';
       return { approve: { handle, signedInAs: principal.login, appName: client.clientName, appHost: new URL(flow.redirectUri).host,
         accounts: made.rows.map((r) => ({ login: r.login, organization: r.account_type === 'Organization' })),
-        others: offers.map((o) => o.login), manageUrl: manageUrl() } };
+        others: offers.map((o) => o.login), manageUrl: manageUrl() + (flow.marketplaceAccountId ? '?marketplace_account=' + flow.marketplaceAccountId : '') } };
     } finally {
       if (metricSql) await recordTenantMetric(metricSql, { event: 'provider', outcome, durationMs: Math.max(0, Date.now() - started) }).catch(() => {});
     }
@@ -404,19 +422,20 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
 
   // ---------------------------------------------------------------- My connection
   /** Start: a GitHub sign-in that proves who is managing. */
-  async function startManage() {
+  async function startManage(marketplaceAccountId = null) {
     active(); await ensureSchema();
+    if (marketplaceAccountId !== null && (!marketplaceEnabled(env) || !marketplaceAccount(marketplaceAccountId))) throw refused('marketplace-account');
     const client = await builtInClient(MANAGE_CLIENT, 'My connection');
-    return await openStep({ client, flow: { redirectUri: client.redirectUris[0], clientState: null, codeChallenge: random(32), purpose: 'manage' } });
+    return await openStep({ client, flow: { redirectUri: client.redirectUris[0], clientState: null, codeChallenge: random(32), purpose: 'manage', marketplaceAccountId } });
   }
   /** After GitHub: refresh what is connected (new installations join, the stored grant is renewed) and open the page. */
-  async function manageAfterSignIn({ data, principal }) {
-    const tenantId = await directory().findPublicTenantBySubject(principal.subject);
+  async function manageAfterSignIn({ data, principal, marketplaceAccountId = null }) {
+    const tenantId = await directory().findPublicTenantBySubject(principal.subject, marketplaceAccountId ? 'marketplace-' + marketplaceAccountId : TENANT_KEY);
     if (!tenantId) return { manage: { none: true, signedInAs: principal.login } };
     const { installs, chosen } = await connectable(data, principal);
-    const offers = await findOffers({ token: data.access_token, principal, installs });
+    const offers = marketplaceAccountId ? [] : await findOffers({ token: data.access_token, principal, installs });
     let made;
-    if (chosen.length) made = await connect({ data, principal, chosen });
+    if (chosen.length) made = await connect({ data, principal, chosen, marketplaceAccountId });
     else {
       const identityId = await directory().enrollVerifiedGithubSubject(principal.subject);
       made = { tenantId, identityId, logins: [] };
@@ -430,6 +449,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     return { manage: await manageView({ tenantId, identityId: made.identityId, signedInAs: principal.login, offers, db }) };
   }
   async function manageView({ tenantId, identityId, signedInAs, offers, db, notice = null }) {
+    const marketplace = await directory().marketplaceBinding(tenantId);
     const handle = await openHandle({ clientId: MANAGE_CLIENT, redirectUri: manageUrl(), purpose: 'manage', tenantId, identityId,
       accountLogin: signedInAs.toLowerCase(), offers: offers?.length ? offers : null }, MANAGE_SECONDS);
     const all = await db.listAccounts();
@@ -456,7 +476,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     }
     // PUB-5 B: "used today: 312 of 5,000" (numbers only; a counting problem just hides the line).
     const usage = await createPublicUsage(rootSql(), usageLimits).usedToday(tenantId).catch(() => null);
-    return { handle, signedInAs, accounts, places, connections, usage, offers: offers ?? [], timeZone: (await db.getSetting(ZONE_SETTING)) ?? 'UTC',
+    return { handle, signedInAs, accounts, places, connections, usage, marketplaceAccountId:marketplace?.accountId ?? null, offers: offers ?? [], timeZone: (await db.getSetting(ZONE_SETTING)) ?? 'UTC',
       master: master ? { added: true, expiresAt: master.expires_at ?? null, unlocks: masterUnlocks(master.scopes ?? []), actAs } : { added: false, unlocks: [] }, notice };
   }
   /** One action on My connection. Every action uses up the page's handle and returns a fresh page (or somewhere to go). */
@@ -467,6 +487,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const flow = await directory().consumePublicFlow(sha(handle), 'god');
     if (!flow || flow.purpose !== 'manage' || !flow.tenantId || !flow.identityId || !flow.accountLogin) throw refused('r34');
     const { db, dir, tenant } = await scopeOf(flow);
+    if (await dir.marketplaceBinding(flow.tenantId) && !['refresh','read_only','allow_changes','time_zone','disconnect'].includes(action)) throw refused('marketplace-action');
     const view = (notice) => manageView({ tenantId: flow.tenantId, identityId: flow.identityId, signedInAs: flow.accountLogin, offers: flow.offers, db, notice });
     if (action === 'read_only') {
       const n = await db.setConnectionsReadOnly(true);

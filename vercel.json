@@ -67,5 +67,11 @@
       "**": false,
       "live": true
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/marketplace/sweep",
+      "schedule": "17 * * * *"
+    }
+  ]
 }

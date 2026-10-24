@@ -6,6 +6,7 @@ import { randomUUID,createHash } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { createDb, SCHEMA_TABLES } from '../db.js';
 import { initTenantRuntimeSchema } from './runtime-limits.js';
+import { initMarketplaceSchema, createMarketplaceStore } from '../marketplace/store.js';
 
 /** Postgres refuses two sessions replacing the same function at once ("tuple concurrently updated", SQLSTATE XX000).
  * Many first-time sign-ins can run this setup together, so that one refusal is retried a few times; anything else is raised. */
@@ -136,6 +137,7 @@ export function createTenantDirectory(sql) {
     }
   }
   return {
+    marketplaceBinding: (tenantId) => createMarketplaceStore(sql).binding(tenantId),
     async initSchema() {
       await sql`CREATE TABLE IF NOT EXISTS gh_tenant_identities (
         id UUID PRIMARY KEY, provider TEXT NOT NULL CHECK (provider = 'github'),
@@ -368,6 +370,8 @@ export function createTenantDirectory(sql) {
       END $body$`);
       await sql`CREATE INDEX IF NOT EXISTS gh_public_flows_expires
         ON gh_public_flows (expires_at)`;
+      await sql`ALTER TABLE gh_public_flows ADD COLUMN IF NOT EXISTS marketplace_account_id BIGINT`;
+      await initMarketplaceSchema(sql);
       // This function only accepts server-generated opaque namespaces. Unlike
       // concatenating raw SQL in JS, %I quotes the identifier within PostgreSQL.
       // It is SECURITY INVOKER (no privilege elevation) and has no public HTTP route.
@@ -657,6 +661,7 @@ export function createTenantDirectory(sql) {
         throw new TypeError('A verified, encrypted tenant user authorization is required.');
       }
       await ensureUserBindingSchema();
+      await initMarketplaceSchema(sql);
       const rows=await sql`INSERT INTO gh_tenant_user_authorizations (
         tenant_id,identity_id,account_login,user_login,access_enc,access_expires_at,
         refresh_enc,refresh_expires_at,authority_binding)
@@ -667,6 +672,7 @@ export function createTenantDirectory(sql) {
           JOIN gh_tenant_memberships m ON m.tenant_id=t.id
           JOIN gh_tenant_pilot_allowlist p ON p.tenant_id=t.id AND p.identity_id=m.identity_id
           WHERE t.id=${t}::uuid AND t.status='active'
+            AND NOT EXISTS (SELECT 1 FROM gh_marketplace_tenants mc WHERE mc.tenant_id=t.id AND mc.status<>'active')
             AND m.identity_id=${i}::uuid AND m.active=TRUE AND p.active=TRUE
             AND (${authorityBinding===null} OR (
               m.revision=${authorityBinding?.membershipRevision??0}
@@ -714,6 +720,7 @@ export function createTenantDirectory(sql) {
       if(typeof accountLogin!=='string' || !/^[a-z0-9][a-z0-9-]{0,38}$/.test(accountLogin) ||
         typeof expectedAccessEnc!=='string' || !expectedAccessEnc.startsWith('v1.') ||
         typeof claimId!=='string' || !/^[a-f0-9-]{36}$/.test(claimId)) return null;
+      await initMarketplaceSchema(sql);
       const rows=await sql`UPDATE gh_tenant_user_authorizations u
         SET refresh_claim_id=${claimId},
           refresh_claim_expires_at=now()+interval '60 seconds'
@@ -721,6 +728,7 @@ export function createTenantDirectory(sql) {
           AND u.account_login=${accountLogin}
           AND u.access_enc=${expectedAccessEnc}
           AND u.refresh_enc IS NOT NULL AND u.refresh_expires_at>now()
+          AND NOT EXISTS (SELECT 1 FROM gh_marketplace_tenants mc WHERE mc.tenant_id=u.tenant_id AND mc.status<>'active')
           AND (u.refresh_claim_id IS NULL OR u.refresh_claim_expires_at<now())
           AND EXISTS (SELECT 1 FROM gh_tenant_memberships m
             JOIN gh_tenants ten ON ten.id=m.tenant_id
@@ -965,7 +973,7 @@ export function createTenantDirectory(sql) {
     /** Returns false when too many sign-ins are already open (capacity guard). */
     async createPublicFlow({ stateHash, stage, clientId, redirectUri, clientState = null,
       codeChallenge, tier, accountLogin = null, allowChanges = false, timeZone = null, purpose = null, offers = null,
-      providerVerifier = null, afterInstall = false, tenantId = null, identityId = null, ttlSeconds = 600, maxOpen, maxOpenPerClient = 200 }) {
+      providerVerifier = null, afterInstall = false, tenantId = null, identityId = null, marketplaceAccountId = null, ttlSeconds = 600, maxOpen, maxOpenPerClient = 200 }) {
       if (!/^[a-f0-9]{64}$/.test(String(stateHash)) ||
           !['signin', 'install', 'god'].includes(stage) ||
           !['standard', 'god'].includes(tier) ||
@@ -981,15 +989,17 @@ export function createTenantDirectory(sql) {
           !Number.isSafeInteger(maxOpen) || maxOpen < 1 ||
           !Number.isSafeInteger(maxOpenPerClient) || maxOpenPerClient < 1)
         throw new TypeError('Invalid public connection state.');
+      if (marketplaceAccountId !== null && (!Number.isSafeInteger(marketplaceAccountId) || marketplaceAccountId<1))
+        throw new TypeError('Invalid Marketplace account.');
       const t = tenantId === null ? null : validUuid(tenantId);
       const i = identityId === null ? null : validUuid(identityId);
       await sql`DELETE FROM gh_public_flows WHERE expires_at < now() - interval '1 hour'`;
       const rows = await sql`INSERT INTO gh_public_flows (state_hash,stage,client_id,redirect_uri,
           client_state,code_challenge,tier,account_login,allow_changes,after_install,provider_verifier,
-          tenant_id,identity_id,expires_at,time_zone,purpose,offers)
+          tenant_id,identity_id,expires_at,time_zone,purpose,offers,marketplace_account_id)
         SELECT ${stateHash},${stage},${clientId},${redirectUri},${clientState},${codeChallenge},
           ${tier},${accountLogin},${allowChanges === true},${afterInstall === true},${providerVerifier},
-          ${t}::uuid,${i}::uuid,now() + (${ttlSeconds} * interval '1 second'),${timeZone},${purpose},${offers === null ? null : JSON.stringify(offers)}
+          ${t}::uuid,${i}::uuid,now() + (${ttlSeconds} * interval '1 second'),${timeZone},${purpose},${offers === null ? null : JSON.stringify(offers)},${marketplaceAccountId}
         WHERE (SELECT count(*) FROM gh_public_flows WHERE expires_at > now()) < ${maxOpen}
           AND (SELECT count(*) FROM gh_public_flows WHERE client_id = ${clientId} AND expires_at > now()) < ${maxOpenPerClient}
         RETURNING state_hash`;
@@ -1008,13 +1018,14 @@ export function createTenantDirectory(sql) {
       const rows = await sql`DELETE FROM gh_public_flows
         WHERE state_hash=${stateHash} AND stage=${stage} AND expires_at > now()
         RETURNING client_id,redirect_uri,client_state,code_challenge,tier,account_login,
-          allow_changes,after_install,provider_verifier,tenant_id,identity_id,time_zone,purpose,offers`;
+          allow_changes,after_install,provider_verifier,tenant_id,identity_id,time_zone,purpose,offers,marketplace_account_id`;
       const r = rows[0];
       return r ? { clientId: r.client_id, redirectUri: r.redirect_uri, clientState: r.client_state,
         codeChallenge: r.code_challenge, tier: r.tier, accountLogin: r.account_login,
         allowChanges: r.allow_changes, afterInstall: r.after_install, providerVerifier: r.provider_verifier, timeZone: r.time_zone ?? null, purpose: r.purpose ?? null,
         offers: (() => { try { return r.offers ? JSON.parse(r.offers) : null; } catch { return null; } })(),
         tenantId: r.tenant_id ? String(r.tenant_id) : null,
+        marketplaceAccountId: r.marketplace_account_id ? Number(r.marketplace_account_id) : null,
         identityId: r.identity_id ? String(r.identity_id) : null } : null;
     },
     /** LAUNCH-1 invite list (names are GitHub logins, lower-cased). */
@@ -1103,11 +1114,12 @@ export function createTenantDirectory(sql) {
       return people;
     },
     /** The public tenant of an already-known GitHub person, or null. Look-up only: it never enrolls anyone. */
-    async findPublicTenantBySubject(subject) {
+    async findPublicTenantBySubject(subject, tenantKey = 'public-connect') {
       if (!/^[1-9][0-9]{0,18}$/.test(String(subject))) return null;
+      if (tenantKey !== 'public-connect' && !/^marketplace-[1-9][0-9]{0,15}$/.test(tenantKey)) return null;
       const rows = await sql`SELECT b.tenant_id FROM gh_tenant_identities i
         JOIN gh_tenant_pilot_bootstraps b ON b.identity_id = i.id
-        WHERE i.provider = 'github' AND i.provider_subject = ${String(subject)} AND b.account_login = 'public-connect'`;
+        WHERE i.provider = 'github' AND i.provider_subject = ${String(subject)} AND b.account_login = ${tenantKey}`;
       return rows[0] ? String(rows[0].tenant_id) : null;
     },
     /** Makes sure the built-in "delete my data" page has a client row to hang its sign-in on. It can never receive tokens:
@@ -1247,6 +1259,8 @@ export async function openAuthorizedTenantDb({ directory, tenantId, verifiedIden
   const bound = await directory.authorized(tenantId, verifiedIdentityId);
   if (!bound || bound.namespace !== tenantSchemaName(tenantId))
     throw new Error('Tenant membership is not authorized.');
+  const marketplace = await directory.marketplaceBinding?.(tenantId);
+  if (marketplace && !marketplace.active) throw new Error('Marketplace subscription is not active.');
   const sql = createTenantSql(connectionString, tenantId, sqlFactory);
   await assertTenantSearchPath(sql, tenantId);
   const db = createDb(sql);
