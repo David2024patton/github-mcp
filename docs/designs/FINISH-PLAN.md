@@ -66,6 +66,7 @@ Do the cards in this order. One card = one PR unless the card says to split. Eac
 | 9 | **INV-1** | light | Data work: every operation gets a credential decision. | No |
 | 10 | **HARD-1** | light–medium | Hardening and docs tidy (B.3, the docs-only CI fast path, is already done). | One field in App settings |
 | 11 | **GOD-6** (added 2026-10-24) | medium–high, one PR, 6–8 h | "Act as me": with a master token, GitHub records the person instead of the bot; App-only requests stay on the bot. Card: `docs/pr-cards/GOD-6.md`. | No (the switch defaults on) |
+| 12 | **PAR-1** (added 2026-10-24) | light–medium, one PR, 3–4 h | Parity with GitHub's official MCP server (Copilot review, code quality, docs search, bulk project edits, stargazers). Card: `docs/pr-cards/PAR-1.md`. | No |
 
 "Finished" = all eleven cards merged and released, ACC-1's ledger has a recorded outcome (passed, or a named
 provider/plan limit) for every row, and `docs/STATUS.md` + this file say so.
