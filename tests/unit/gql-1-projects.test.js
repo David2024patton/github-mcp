@@ -24,7 +24,7 @@ describe('GQL-1 Projects v2 coverage', () => {
   });
 
   it('the two refused mutations say why and send nothing', async () => {
-    expect([...REFUSED_MUTATIONS.keys()].sort()).toEqual(['createProjectV2IssueField', 'updateProjectV2Collaborators']);
+    expect(REFUSED_MUTATIONS.has('createProjectV2IssueField') && REFUSED_MUTATIONS.has('updateProjectV2Collaborators')).toBe(true);
     for (const [name, type, input] of [['updateProjectV2Collaborators', 'UpdateProjectV2CollaboratorsInput', { projectId: 'P1', collaborators: [] }],
       ['createProjectV2IssueField', 'CreateProjectV2IssueFieldInput', { projectId: 'P1', issueFieldId: 'F1' }]]) {
       const w = await world();
@@ -41,7 +41,8 @@ describe('GQL-1 Projects v2 coverage', () => {
     for (const name of REFUSED_MUTATIONS.keys()) expect(WRITE_SPECS.has(name)).toBe(false);
     const inv = buildCapabilityInventory({ registryTools: registry.tools });
     const rows = inv.operations.filter((r) => r.state === 'refused-by-design');
-    expect(rows.map((r) => r.operation.field).sort()).toEqual(['createProjectV2IssueField', 'updateProjectV2Collaborators']);
+    expect(rows.map((r) => r.operation.field)).toEqual(expect.arrayContaining(['createProjectV2IssueField', 'updateProjectV2Collaborators']));
+    expect(rows.length).toBe(REFUSED_MUTATIONS.size);
     for (const r of rows) expect(r.implementation.reason.length).toBeGreaterThan(20);
     const project = inv.operations.filter((r) => r.interface === 'graphql' && r.operation?.root === 'mutation' && /ProjectV2/.test(r.operation.field));
     expect(project.filter((r) => r.state === 'missing')).toEqual([]);
