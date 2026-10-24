@@ -514,3 +514,6 @@ text. Nothing is inferred from another credential type or from the family name. 
 
 ## 2026-10-24 — Paid-upgrade-only checks are "unverified", not blockers (Chris)
 A check that cannot run without a paid plan or upgrade is recorded once as UNVERIFIED (needs paid plan) with the exact feature. It is not a blocker, does not hold any merge or release, and nobody buys anything to clear it. Ledger status stays BLOCKED only because the ledger has no other word; read it as "untested".
+
+## 2026-10-24 — No paid upgrade: those checks are dropped, not pending (Chris)
+Chris will not upgrade to a paid GitHub Enterprise or buy any plan or payment method. Every check that needs one (hosted runners, Enterprise Actions settings read, organization security attachments and the 100-entry case, private paid security writes, metered/paid writes, budget and Codespaces-policy writes, Copilot seats) is permanently recorded as untested and is NOT part of what "finished" means. No agent re-lists them as to-do, re-asks, or counts them as open. Their ledger status stays BLOCKED only because the ledger has no other word. This replaces the 2026-10-24 entry above ("unverified, not blockers") by making the drop permanent.
