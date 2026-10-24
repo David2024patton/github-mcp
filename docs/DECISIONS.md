@@ -1,3 +1,26 @@
+## 2026-10-23 — sign-in rebuilt: GitHub once, one Approve page, no cookies, "My connection" page, real-browser tests
+
+Chris asked why the connector sign-in kept breaking and approved fixing it properly. Findings: the flow had grown to up to ten
+hops (our form, GitHub, install, GitHub again, an accounts page, a God-mode page, a token page, a hand-back page), each hop
+depended on one of three short-lived cookies, in-app browsers on phones drop those, and nothing tested the flow in a real
+browser, so every fix needed a release and his phone. Decision:
+- **The sign-in is now:** app → GitHub (no page of ours first) → one **Approve** page → small hand-back page → app. Only when
+  no account the person owns has the App does an "Install the App" page come first (one tap to GitHub and back).
+- **No cookies.** Each step's state is a one-use random value stored (hashed) server-side. Protection against someone tricking
+  a person into finishing a sign-in they did not start is the Approve page: it names who is signed in and the exact app and
+  site that would get access, nothing reaches any app until Approve is tapped, and the Approve handle is minted after GitHub
+  sign-in and exists only in that person's page. Posts naming another site are refused; Cancel returns `access_denied`.
+- **Everything optional moved to `/connection` ("My connection"):** add accounts later (existing app connections get them at
+  once), the master token, read-only on/off for all apps, time zone, disconnect one app, delete my data. Reached by its own
+  GitHub sign-in; `github_whoami` gives its link on public connections. The God-mode choice, typed account list and
+  time-zone choice left the sign-in.
+- **Read-only** stays an optional tick on the Approve page (changes on by default, 2026-10-23 decision unchanged).
+- **One sign-in for everyone:** with public sign-in on, the older private-pilot sign-in takes no new sign-ins (its existing
+  connections keep refreshing). The passphrase form stays development-only for the owner's existing connections.
+- **Real-browser tests** (`tests/browser/`, CI job `browser`): Chromium as an Android phone and desktop, WebKit as an
+  iPhone, with the real server code, a fake GitHub and a fake app; no network service is contacted. On the old code they
+  reproduce both field failures.
+
 ## 2026-10-23 — people can delete their own data
 
 `/api/oauth/authorize?forget=1` (linked from the sign-in page, same off-switch as the rest of public sign-in) lets a person delete everything stored about them: sign in with GitHub to prove it is them, then confirm once. Nobody is enrolled by asking (look-up only), a confirm handle is single-use and tied to the same browser, it cannot be used as a God-mode handle, and the built-in page client can never take part in a normal connection or receive tokens. Deletion uses the same `gh_forget_public_tenant` function as the owner version.

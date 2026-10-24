@@ -98,9 +98,56 @@ jobs:
       # A deliberately non-certified manifest remains an explicit failed probe, never a pass.
       - run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:rtc
 
+  browser:
+    # Real browsers (Chromium as an Android phone and desktop, WebKit as an iPhone) walk the whole sign-in and the
+    # "My connection" page against the real server code, a fake GitHub and a fake app. No network service is contacted.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.11-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-not-a-secret
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm ci
+      # Chromium: the runner's own Google Chrome (nothing to download). WebKit: Playwright's build plus its system libraries.
+      # A slow or stuck install fails within 6 minutes and leaves its last output as an annotation on the check.
+      - name: Install the WebKit engine
+        timeout-minutes: 8
+        # Usually under a minute. Ubuntu's package mirror is sometimes very slow, so one stuck attempt is cut off and retried
+        # (the retry reuses what was already downloaded). A real failure still fails the job, with its output as an annotation.
+        run: |
+          start=$(date +%s)
+          for attempt in 1 2; do
+            if timeout 210 npx playwright install --with-deps webkit > /tmp/pw-install.log 2>&1; then
+              echo "::notice title=WebKit install::attempt $attempt took $(( $(date +%s) - start )) seconds"
+              exit 0
+            fi
+            echo "::warning title=WebKit install attempt $attempt::$(tail -c 400 /tmp/pw-install.log | tr '\n\r' '  ')"
+          done
+          echo "::error title=WebKit install failed::$(tail -c 900 /tmp/pw-install.log | tr '\n\r' '  ')"
+          exit 1
+      - run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:browser
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:ci-only-not-a-secret@127.0.0.1:5432/postgres
+          BROWSER_CHROMIUM_PATH: /usr/bin/google-chrome
+          REQUIRE_ALL_BROWSERS: '1'
+
   ci:
     if: always()
-    needs: [check, unit, db, shapes, rtc]
+    needs: [check, unit, db, shapes, rtc, browser]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -111,9 +158,10 @@ jobs:
           DB: ${{ needs.db.result }}
           SHAPES: ${{ needs.shapes.result }}
           RTC: ${{ needs.rtc.result }}
+          BROWSER: ${{ needs.browser.result }}
         run: |
           status=0
-          for job in CHECK UNIT DB SHAPES RTC; do
+          for job in CHECK UNIT DB SHAPES RTC BROWSER; do
             result="${!job}"
             echo "$job: $result"
             [ "$result" = success ] || status=1

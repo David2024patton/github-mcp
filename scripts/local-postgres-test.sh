@@ -7,7 +7,7 @@
 set -euo pipefail
 export CI=1
 if [[ -n "${TEST_DATABASE_URL:-}" ]]; then
-  exec npx --no-install vitest run --config vitest.db.config.js "$@"
+  exec npx --no-install vitest run --config "${VITEST_CONFIG:-vitest.db.config.js}" "$@"
 fi
 # Debian/Ubuntu keep server binaries outside PATH.
 if ! command -v initdb >/dev/null 2>&1; then
@@ -33,4 +33,4 @@ trap cleanup EXIT
 "${run[@]}" initdb -D "$tmp/data" -A trust -U postgres --no-instructions >/dev/null
 "${run[@]}" pg_ctl -D "$tmp/data" -o "-p $port -k $tmp -c listen_addresses=localhost" -l "$tmp/pg.log" -w start >/dev/null
 export TEST_DATABASE_URL="postgresql://postgres@localhost:$port/postgres"
-npx --no-install vitest run --config vitest.db.config.js "$@"
+npx --no-install vitest run --config "${VITEST_CONFIG:-vitest.db.config.js}" "$@"

@@ -100,3 +100,10 @@ Approach: one public GitHub App, opened gradually. Every item below is part of "
 - **Linking a second, separate GitHub login** into one connection (security-sensitive: needs sign-in as both people). Today each GitHub person gets their own separate space.
 
 - Link a second, separate GitHub login (for example a client's or an older work login) into one connection. Needs proof of both logins and a careful look at tenant isolation. Not built; one login with its personal account and organizations is covered.
+
+## Found during the 2026-10-23 sign-in rebuild (not built)
+- **Stateless sign-in steps:** every sign-in step is a database row under one global cap (200 open), so anyone opening many
+  sign-in links could briefly fill it. Signing the step into the address itself (and recording only used ones) would remove the cap.
+- **One copy of the App keys:** each person's area keeps its own sealed copy of the App's keys, refreshed at their next
+  sign-in. Reading the single shared copy instead would make a key change reach everyone at once.
+- **Second GitHub login in one connection** (above) would fit naturally on My connection once tenant merging is designed.

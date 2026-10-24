@@ -1,6 +1,6 @@
 # PUBLIC-SCALE — private-first, mobile-and-desktop GitHub MCP readiness
 
-**Status: DESIGN / NOT IMPLEMENTED. Owner requirement confirmed 2026-10-18.**
+**Status: DESIGN (2026-10-18). Superseded in places by later owner decisions:** the GitHub App is now publicly installable (Chris, 2026-10-23), and the public connect flow is the one in `docs/DECISIONS.md` 2026-10-23 "sign-in rebuilt" (one GitHub sign-in, one Approve page, no cookies, My connection page). Read the dated decisions first where they differ from this document.
 This document specifies the release-barrier design for **GitHub by Robinson AI Systems**. A successful private connector or production-enabled scratch account is **not** evidence that public multi-user service is safe. No owner consent to publish, enroll arbitrary tenants, spend money, or disable developer safety/release rules has been given.
 
 

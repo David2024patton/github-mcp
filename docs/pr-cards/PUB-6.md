@@ -36,3 +36,28 @@ God mode on the public connector is one optional master token (kind `M`) instead
 and `github_master_token_link` to add or remove it later without reconnecting. See `docs/designs/GOD-TOKEN.md`,
 `docs/status/2026-10-23-god-1-master-token.md`. Remaining: GOD-2 (tools only M can reach), GOD-3 (expiry reminders, summary).
 Follow-up 2026-10-23: master token lifetime is the person's own choice on GitHub (no cap of ours); whoami reminds within 14 days of expiry.
+
+## 2026-10-23 redesign — browser-tested, cookie-free sign-in and "My connection" (owner request)
+Chris asked for a review of the sign-in troubles and approved all four fixes. Why: about ten guess-fix PRs in one day, each
+needing a release and his phone, because the flow chained up to ten hops and depended on three cookies surviving in in-app
+browsers, and nothing tested it in a real browser.
+
+**Outcome:** the sign-in is app → GitHub once → one Approve page → app (an install page first only when no account of
+theirs has the App); it needs no cookie; everything optional moved to a `/connection` page; and a real-browser suite runs
+the whole thing in CI (Chromium as an Android phone and desktop, WebKit as an iPhone).
+
+Acceptance (all in `tests/browser/sign-in.test.js` unless noted):
+1. [x] The browser suite reproduces the two field failures on the OLD code (the stuck "loading bar" redirect chain, and
+   "This page was already used" when cookies are lost) — checked by hand against the old code during development.
+2. [x] First-time person installs the App inside the sign-in and is connected; returning person with a cookie-less
+   browser is connected; both on every browser profile.
+3. [x] No `Set-Cookie` anywhere in the sign-in ("sets no cookie anywhere").
+4. [x] Nothing reaches an app until Approve; Cancel sends `access_denied`; the Approve page is one use; a form from another
+   site is refused; someone else's sign-in link only shows their app's name and site (browser + db tests).
+5. [x] Organization members who are not owners get a clear "ask an owner" page and nothing is connected.
+6. [x] My connection: add an account later and the existing app gets it without reconnecting; read-only on/off; time
+   zone; master token; disconnect one app; a person with no connection is told so and not enrolled.
+7. [x] Delete my data works without cookies.
+8. [x] Once public sign-in is on, the retired private-pilot sign-in takes no new sign-ins ("Connect again" page); new
+   registrations always get the public flow.
+9. [x] Database security tests rewritten for the new flow (`tests/db/pub-6-public-connect.test.js`, 27 tests).

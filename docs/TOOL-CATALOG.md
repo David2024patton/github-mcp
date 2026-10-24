@@ -37,7 +37,7 @@ Card(s): A-5, B-2, B-3, B-8, C-1, C-2, R-1, O-1, X-1. Meta-tools, connection and
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_whoami` | Which GitHub accounts this connection can use, mode (PREVIEW/PRODUCTION), profile, credential types present, API version, rate budget left, spend limit | — | N | I | B,O,Op | R | A-5 built #13 |
+| `github_whoami` | Which GitHub accounts this connection can use, mode (PREVIEW/PRODUCTION), profile, credential types present, API version, rate budget left, spend limit; for public sign-ins also the My connection page link | — | N | I | B,O,Op | R | A-5 built #13 |
 | `github_master_token_link` | Private one-use link (10 minutes) to add or remove your optional master token, with plain steps; no reconnecting | — | N | — | B,O,Op | R | PUB-6 built |
 | `github_list_accounts` | Accounts (orgs and users) connected to the server: app installation, repo selection, user authorization, optional classic token, production on/off | — | N | I | O | R | A-5 built #13 |
 | `github_set_default_account` | Which account a tool uses when `owner` is omitted | P | N | — | O | F | B-8 built #23 |

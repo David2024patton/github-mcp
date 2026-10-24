@@ -76,11 +76,27 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 - [ ] **Decide pricing, if any,** once the cost numbers from the load test exist.
 - [x] **Package token saved and fully tested (done 2026-10-23).** Agents published a throwaway package themselves with a GitHub workflow; read, delete and restore all passed. Nothing more needed from you.
 
-## Public sign-in: where it stands (updated 2026-10-23)
-Built, tested and merged, but switched OFF. Done by you: the DNS record for `github.robinsonaisystems.com` is live over HTTPS, and the GitHub App is installable by any account. What remains is yours, plain and short:
-- [ ] **Say "go"** when you want public sign-in turned on. The agent then flips the production switch, moves the connector address to `github.robinsonaisystems.com`, and runs a real sign-in end to end first. Moving the address means you reconnect your OWN ChatGPT/Claude connector once afterwards (one click per app); everyone else starts fresh on the new address.
+## Public sign-in: where it stands (updated 2026-10-23, after the rebuild)
+Rebuilt and tested in real browsers (Android Chrome, iPhone Safari engine, desktop Chrome) by the agents, so you no longer
+test fixes on your phone. Still switched OFF. The new sign-in: your app opens GitHub, you tap **Approve** once, you are back
+in your app. Everything optional is on one page, **My connection** (`github.robinsonaisystems.com/connection`), which your
+assistant can give you the link to: add accounts, add the master token, make your apps read-only, time zone, disconnect an
+app, delete your data. What remains is yours:
+- [ ] **Say "go"** when you want public sign-in turned on. The agent flips the switch, moves the connector address to
+      `github.robinsonaisystems.com` and runs a real sign-in end to end first.
+- [ ] **Then move your own setup across (about five minutes, once):**
+      1. In ChatGPT and in Claude, remove the old Robinson GitHub MCP connector and add it again with the new address.
+      2. Connect: GitHub opens, then tap **Approve**. If the App is not yet on one of your accounts, the page says so and
+         gives you one "Install" button.
+      3. Open **My connection** and press **Add** next to any account still missing (for example `christcr2012` or
+         `Robinson-AI-Systems`).
+      4. On the same page press **Add my master token** and follow the four steps. It replaces the separate package and
+         notifications tokens you set up before.
+      Your old connection keeps working until you remove it, so nothing breaks in between. Custom entries you added to the
+      protected-repositories list on the old setup page do not carry over (the standard list does); tell the agent if you
+      had any.
 - [ ] **Approve the legal text** in `docs/legal/` (privacy notice and terms), ideally after a lawyer reads them, and **choose a support email** that goes on them and on the App.
 - [ ] **Decide pricing, if any,** once real usage numbers exist (the setup page shows them once people connect).
-- [ ] **Try the new sign-in on your phone and computer** after "go" (honest device check; the agent cannot do this for you).
-- Handled by the agent, nothing for you: time zones, read-only option, usage view, deleting a person's data (yours and theirs), key change procedure, and the domain's HTTPS certificate.
+- [ ] **Optional: try it once on your phone after "go".** Nice to have, not needed to prove it works.
+- Handled by the agent, nothing for you: time zones, read-only option, usage view, deleting a person's data (yours and theirs), key change procedure, the domain's HTTPS certificate, and the browser tests.
 - **When your registrar moves the nameservers to Vercel,** the DNS records must exist on the Vercel side too (including `github` and any email or website records). Tell the agent when the cutover is close and it will compare and add the missing records so nothing breaks.

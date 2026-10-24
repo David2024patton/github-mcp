@@ -806,6 +806,48 @@ export function createDb(sql = productionSql()) {
       const rows = await sql`UPDATE oauth_tokens SET revoked_at = now() WHERE client_id = ${clientId} AND kind IN ('connector','pass') AND revoked_at IS NULL RETURNING token_hash`;
       return rows.length;
     },
+    /** "Add an account later without reconnecting": every live connector login gains these accounts (up to ten per
+     * connection). A connection that may make changes gains only accounts whose changes are switched on, so it never
+     * silently covers an account in a weaker state. Returns how many logins changed. */
+    async addAccountsToConnections(logins) {
+      const wanted = [...new Set((Array.isArray(logins) ? logins : []).map((l) => String(l).toLowerCase()))]
+        .filter((l) => /^[a-z0-9][a-z0-9-]{0,38}$/.test(l));
+      if (!wanted.length) return 0;
+      const ready = (await sql`SELECT lower(login) AS login, production_enabled FROM gh_accounts
+        WHERE lower(login) = ANY(${wanted}::text[]) AND installation_status = 'active'`);
+      const all = ready.map((r) => r.login), changes = ready.filter((r) => r.production_enabled === true).map((r) => r.login);
+      const rows = await sql`SELECT token_hash, accounts, mode FROM oauth_tokens
+        WHERE kind = 'connector' AND revoked_at IS NULL AND (expires_at > now() OR refresh_hash IS NOT NULL)`;
+      let changed = 0;
+      for (const row of rows) {
+        const have = (row.accounts ?? []).map((a) => String(a).toLowerCase());
+        const add = (row.mode === 'production' ? changes : all).filter((l) => !have.includes(l));
+        const next = [...(row.accounts ?? []), ...add].slice(0, 10);
+        if (next.length === (row.accounts ?? []).length) continue;
+        await sql`UPDATE oauth_tokens SET accounts = ${next}::text[] WHERE token_hash = ${row.token_hash} AND revoked_at IS NULL`;
+        changed++;
+      }
+      return changed;
+    },
+    /** "Read-only" switch for all of this store's live connector logins (refreshable ones included).
+     * Read-only uses the read_only profile, which refuses every change tool, plus preview mode. Allowing changes again
+     * restores the full profile; production mode returns only where every account has changes switched on.
+     * Returns how many logins changed. */
+    async setConnectionsReadOnly(readOnly) {
+      if (readOnly === true) {
+        const rows = await sql`UPDATE oauth_tokens SET mode = 'preview', profile = 'read_only'
+          WHERE kind = 'connector' AND revoked_at IS NULL AND (expires_at > now() OR refresh_hash IS NOT NULL) RETURNING token_hash`;
+        return rows.length;
+      }
+      if (readOnly !== false) return 0;
+      const rows = await sql`UPDATE oauth_tokens t SET profile = 'full',
+          mode = CASE WHEN cardinality(t.accounts) > 0 AND NOT EXISTS (SELECT 1 FROM unnest(t.accounts) acct WHERE NOT EXISTS (
+            SELECT 1 FROM gh_accounts a WHERE lower(a.login) = lower(acct) AND a.production_enabled = TRUE AND a.installation_status = 'active'))
+            THEN 'production' ELSE 'preview' END
+        WHERE t.kind = 'connector' AND t.revoked_at IS NULL AND (t.expires_at > now() OR t.refresh_hash IS NOT NULL)
+        RETURNING token_hash`;
+      return rows.length;
+    },
     /** Changes the default account of one connector login's live tokens (the account must already be in each token's list). Returns how many changed. */
     async setConnectionDefaultAccount(clientId, login) {
       const rows = await sql`UPDATE oauth_tokens SET default_account = ${login} WHERE client_id = ${clientId} AND kind = 'connector' AND revoked_at IS NULL AND ${login} = ANY(accounts) RETURNING token_hash`;

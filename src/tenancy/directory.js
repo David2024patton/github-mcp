@@ -909,7 +909,7 @@ export function createTenantDirectory(sql) {
           (clientState !== null && (typeof clientState !== 'string' || clientState.length > 256)) ||
           (accountLogin !== null && !/^[a-z0-9][a-z0-9-]{0,38}(,[a-z0-9][a-z0-9-]{0,38}){0,9}$/.test(String(accountLogin))) ||
           (timeZone !== null && !validZone(timeZone)) ||
-          (purpose !== null && purpose !== 'forget' && purpose !== 'master') ||
+          (purpose !== null && !['forget', 'master', 'approve', 'manage'].includes(purpose)) ||
           (offers !== null && !(Array.isArray(offers) && offers.length >= 1 && offers.length <= 8 && offers.every((o) =>
             /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(String(o?.login)) && Number.isSafeInteger(o?.id) && o.id > 0 && ['User', 'Organization'].includes(o?.type)))) ||
           !Number.isSafeInteger(ttlSeconds) || ttlSeconds < 60 || ttlSeconds > 1800 ||
@@ -955,8 +955,12 @@ export function createTenantDirectory(sql) {
     /** Makes sure the built-in "delete my data" page has a client row to hang its sign-in on. It can never receive tokens:
      * its secret hash is random and unknown, and the authorize page refuses its id. */
     async ensureForgetClient(clientId, redirectUri, secretHash) {
+      return await this.ensureBuiltInClient(clientId, redirectUri, secretHash, 'Delete my data');
+    },
+    /** Same for any built-in page (delete my data, My connection). */
+    async ensureBuiltInClient(clientId, redirectUri, secretHash, name) {
       await sql`INSERT INTO gh_public_clients (client_id, secret_hash, redirect_uris, client_name)
-        VALUES (${clientId}, ${secretHash}, ${[redirectUri]}::text[], 'Delete my data')
+        VALUES (${clientId}, ${secretHash}, ${[redirectUri]}::text[], ${String(name).slice(0, 100)})
         ON CONFLICT (client_id) DO UPDATE SET redirect_uris = EXCLUDED.redirect_uris`;
     },
     /** Deletes one public person's tenant completely (see gh_forget_public_tenant). False when it does not exist. */

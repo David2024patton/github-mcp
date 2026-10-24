@@ -8,7 +8,7 @@ import { paramsOf, send } from '../core/http.js';
 import privateTenantAuthorize from '../../api/tenant/oauth/authorize.js';
 import { isPublicClientId } from '../tenancy/public-code.js';
 import { publicConnectEnabled } from '../tenancy/public-connect.js';
-import { publicAuthorize, publicForget, publicRegister } from '../tenancy/public-http.js';
+import { publicApprove, publicAuthorize, publicForget, publicManage, publicMoved, publicRegister } from '../tenancy/public-http.js';
 
 /** Runs one OAuth handler. Any failure answers 503 with no detail (never SQL, tokens, passphrases or stack text). */
 export async function handleOAuth(which, req, res, { db, env = process.env, consentFactory } = {}) {
@@ -22,10 +22,18 @@ export async function handleOAuth(which, req, res, { db, env = process.env, cons
       // PRIVATE tenant client must land on GitHub consent there, not the
       // global owner's administrator-passphrase authorization page.
       // Invalid signed clients fail closed; never query the owner DB for them.
-      if (params.forget === '1' && publicConnectEnabled(env)) return await publicForget(req, res, { env });
+      if (publicConnectEnabled(env)) {
+        if (params.forget === '1') return await publicForget(req, res, { env });
+        if (params.manage === '1' || req.query?.manage === '1') return await publicManage(req, res, { env });
+        if (params.step === 'approve') return await publicApprove(req, res, { env });
+      }
       if (isPublicClientId(params.client_id)) return await publicAuthorize(req, res, { env });
-      if (isTenantRoutedCredential(params.client_id))
+      if (isTenantRoutedCredential(params.client_id)) {
+        // One sign-in for everyone: once the public sign-in is on, the older private-pilot sign-in takes no NEW sign-ins.
+        // Connections it already made keep working (their refresh is untouched); reconnecting goes through the new flow.
+        if (publicConnectEnabled(env)) return publicMoved(req, res);
         return privateTenantAuthorize(req,res,{env,consentFactory});
+      }
     }
     if (which === 'token' && req.method === 'POST') {
       let params;

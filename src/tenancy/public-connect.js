@@ -1,24 +1,33 @@
-// PUB-6 (dark): the simple public connect flow. A person registers an MCP client, signs in with GitHub, the server finds
-// (or sends them to install) this service's GitHub App for the account they name, creates their own isolated tenant on
-// first sign-in, stores their own sealed GitHub authorization, and hands the MCP client an authorization code.
+// Public sign-in ("connect") and the person's own "My connection" page. Redesigned 2026-10-23 after a day of phone-only
+// failures: the old flow chained up to ten hops (our form, GitHub, install, GitHub again, an accounts page, a God-mode page,
+// a token page, a hand-back page) and needed three browser cookies to survive every hop. In-app browsers lost them.
 //
-// Safety shape (everything fails closed and says nothing about why):
-// * Off unless GITHUB_PUBLIC_CONNECT=enabled on the production deployment, and the private-tenant machinery is configured.
-// * Hard caps: public clients, open sign-ins, and self-serve tenants (kill switch = unset the flag).
-// * The person is whoever GitHub's numeric id says they are; typed names are only a request, verified against the
-//   installations their own token can see. The GitHub bearer lives in this request's memory only.
-// * A public client's secret is stored as a hash; the tenant copy is the hash too.
-// * Authorization codes carry the tenant routing marker `pc.<tenant>.<identity>.<random>`: only a selector. The tenant's
-//   own single-use code row, the client secret hash, PKCE and live membership revisions still decide everything.
+// The connect flow now is:  app -> our authorize (straight on to GitHub) -> GitHub -> our callback -> ONE "Approve" page
+// (a 200 page, so the redirect chain ends on our site) -> tap Approve -> small hand-back page -> app.
+// Only when no account of theirs has the App does an "Install the App" page come first (one tap to GitHub and back).
+// Everything else (more accounts, the master token, read-only, time zone, disconnecting apps, deleting data) lives on the
+// "My connection" page, reached by its own GitHub sign-in at any time.
+//
+// Safety shape (fails closed, says nothing about why):
+// * Off unless GITHUB_PUBLIC_CONNECT=enabled on the production deployment with the private-tenant machinery configured.
+// * NO browser cookie is needed anywhere. Each step's state is a one-use random value kept (hashed) in the database. What
+//   stops someone tricking a person into finishing a sign-in they did not start is the Approve page itself: it shows who is
+//   signed in and the exact site that will receive access, and nothing reaches any app until the person taps Approve there.
+//   The Approve handle is minted after GitHub sign-in and exists only inside that person's page.
+// * The person is whoever GitHub's numeric id says they are. Only accounts they own (their personal account, or an
+//   organization where GitHub says they are an admin) and that have the App installed are ever connected.
+// * Hard caps on public clients, open steps and self-serve tenants (kill switch = unset the flag).
+// * Authorization codes carry the routing marker `pc.<tenant>.<identity>.<random>`: only a selector. The tenant's own
+//   single-use code row, the client secret hash, PKCE and live membership revisions still decide everything.
 import { validZone, ZONE_SETTING } from '../core/time-zone.js';
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { createTenantDirectory, initializeProvisionedTenant, openAuthorizedTenantDb } from './directory.js';
 import { admitTenantOAuth, recordTenantMetric } from './runtime-limits.js';
 import { verifyGithubBearerIdentity, listUserAppInstallations, verifyAccountAuthority } from './github-identity.js';
 import { storePilotUserGrant } from './user-authorization.js';
-import { createPrivateOptionalEnrollment } from './optional-setup.js';
 import { pilotAppClient } from './pilot-app-client.js';
+import { MASTER_HANDLE } from './master-credential.js';
 import { createDb } from '../db.js';
 import { hashToken, randomToken, validRedirectUri } from '../core/oauth.js';
 import { publicOrigin } from '../core/http.js';
@@ -31,6 +40,7 @@ const CHALLENGE = /^[A-Za-z0-9_-]{43}$/;
 const STATE = /^pc\.[A-Za-z0-9_-]{32,256}$/;
 const CODE = /^[A-Za-z0-9_-]{8,256}$/;
 const TENANT_KEY = 'public-connect';
+const APPROVE_SECONDS = 900, MANAGE_SECONDS = 1800;
 const sha = (text) => createHash('sha256').update(text).digest('hex');
 const random = (n) => randomBytes(n).toString('base64url');
 
@@ -39,10 +49,13 @@ export class PublicConnectError extends Error {
   constructor(code, message) { super(message); this.name = 'PublicConnectError'; this.code = code; }
 }
 export const FORGET_CLIENT = 'pcl_forget_my_data_built_in_page_0000000';
+export const MANAGE_CLIENT = 'pcl_my_connection_built_in_page_00000000';
+export const MANAGE_PATH = '/connection';
 // Claude asks for the permission names this server advertises in its discovery document; sign-in gives no extra power for them.
 const ADVERTISED_SCOPES = ['github.notifications.read'];
 // `why` is an internal label for the server log only (never shown to the person, never a secret).
-const refused = (why = '') => Object.assign(new PublicConnectError('refused', 'GitHub could not verify this sign-in. Start again from your client.'), { why });
+const refused = (why = '') => Object.assign(new PublicConnectError('refused', 'GitHub could not verify this sign-in. Start again from your app.'), { why });
+const busy = () => new PublicConnectError('capacity', 'Too many people are connecting right now. Please try again in a few minutes.');
 
 export { isPublicClientId, publicAuthCode, parsePublicCode };
 export const publicConnectEnabled = (env = process.env) => env.GITHUB_PUBLIC_CONNECT === 'enabled';
@@ -74,6 +87,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     return schemaReady;
   };
   const callback = () => active() + '/api/github/user-callback';
+  const manageUrl = () => active() + MANAGE_PATH;
 
   async function loadClient(clientId, redirectUri) {
     const client = await directory().getPublicClient(clientId);
@@ -82,11 +96,17 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   }
   function checkAuthorizeRequest(p) {
     const origin = active();
-    if (!isPublicClientId(p.client_id) || p.client_id === FORGET_CLIENT || p.response_type !== 'code' || p.code_challenge_method !== 'S256' ||
-        !CHALLENGE.test(String(p.code_challenge ?? '')) || p.resource !== origin + '/api/mcp' ||
+    if (!isPublicClientId(p.client_id) || [FORGET_CLIENT, MANAGE_CLIENT].includes(p.client_id) || p.response_type !== 'code' ||
+        p.code_challenge_method !== 'S256' || !CHALLENGE.test(String(p.code_challenge ?? '')) || p.resource !== origin + '/api/mcp' ||
         typeof p.redirect_uri !== 'string' || !validRedirectUri(p.redirect_uri) ||
         (p.state !== undefined && (typeof p.state !== 'string' || p.state.length > 256)) ||
         (p.scope !== undefined && !(typeof p.scope === 'string' && p.scope.split(/\s+/).filter(Boolean).every((x) => ADVERTISED_SCOPES.includes(x))))) throw refused('r3');
+  }
+  /** The two built-in pages (delete my data, My connection) hang their GitHub sign-in on a client row that can never get tokens. */
+  async function builtInClient(clientId, name) {
+    const dir = directory(), redirectUri = clientId === MANAGE_CLIENT ? manageUrl() : active() + '/api/oauth/authorize';
+    await dir.ensureBuiltInClient(clientId, redirectUri, hashToken(randomToken(32)), name);
+    return await loadClient(clientId, redirectUri);
   }
 
   /** RFC 7591 registration for the public flow. Capped; the secret is shown once and only its hash is kept. */
@@ -106,63 +126,54 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       token_endpoint_auth_method: 'client_secret_post', grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'] });
   }
 
-  /** Read-only check used before the consent page is shown. */
-  async function inspect(p) {
-    active(); await ensureSchema(); checkAuthorizeRequest(p);
-    const client = await loadClient(p.client_id, p.redirect_uri);
-    return Object.freeze({ clientName: client.clientName });
-  }
-
-  async function openSignIn({ client, flow, stage = 'signin', afterInstall = false }) {
-    const dir = directory();
+  /** Stores one step and, for a sign-in step, returns GitHub's sign-in address. */
+  async function openStep({ client, flow, stage = 'signin', afterInstall = false }) {
     const state = 'pc.' + random(32), verifier = random(48);
     const challenge = createHash('sha256').update(verifier).digest('base64url');
-    const stored = await dir.createPublicFlow({ stateHash: sha(state), stage, clientId: client.clientId,
+    const stored = await directory().createPublicFlow({ stateHash: sha(state), stage, clientId: client.clientId,
       redirectUri: flow.redirectUri, clientState: flow.clientState ?? null, codeChallenge: flow.codeChallenge,
-      tier: flow.tier, accountLogin: flow.accountLogin ?? null, allowChanges: flow.allowChanges === true, timeZone: flow.timeZone ?? null, purpose: flow.purpose ?? null,
+      tier: 'standard', allowChanges: true, purpose: flow.purpose ?? null,
       providerVerifier: stage === 'signin' ? verifier : null, maxOpen: limits.maxOpenFlows, afterInstall });
-    if (!stored) throw new PublicConnectError('capacity', 'Too many people are connecting right now. Please try again in a few minutes.');
+    if (!stored) throw busy();
     if (stage !== 'signin') return { state };
     const appClient = await pilotAppClient({ env, db: createDb(rootSql()) });
     const q = new URLSearchParams({ client_id: appClient.clientId, redirect_uri: callback(), state,
       code_challenge: challenge, code_challenge_method: 'S256' });
-    return { url: gitAuthorize + '?' + q.toString(), csrfState: state };
+    return { url: gitAuthorize + '?' + q.toString(), state };
+  }
+  /** A follow-on page's one-use handle (Approve, My connection, delete). */
+  async function openHandle(fields, ttlSeconds) {
+    const handle = 'pc.' + random(32);
+    if (!await directory().createPublicFlow({ tier: 'standard', codeChallenge: random(32), ...fields, stateHash: sha(handle), stage: 'god',
+      ttlSeconds, maxOpen: limits.maxOpenFlows })) throw busy();
+    return handle;
+  }
+  async function installUrl({ client, flow }) {
+    const app = await createDb(rootSql()).getApp(appId);
+    if (!app?.slug || !/^[a-z0-9-]{1,100}$/.test(app.slug)) throw refused('r17');
+    const next = await openStep({ client, flow, stage: 'install' });
+    return (target) => `https://github.com/apps/${app.slug}/installations/new?state=${next.state}` + (target ? `&suggested_target_id=${target}` : '');
   }
 
-  /** Account names typed on the consent page: blank means every account where the App is installed and visible to this
-   * sign-in; otherwise up to ten names, comma or space separated. */
-  const parseAccounts = (text) => {
-    if (typeof text !== 'string' || !text.trim()) return null;
-    const names = [...new Set(text.split(/[\s,]+/).filter(Boolean).map((n) => n.toLowerCase()))];
-    if (names.length < 1 || names.length > 10 || !names.every((n) => LOGIN.test(n))) throw refused('r4');
-    return names.join(',');
-  };
-
-  /** The consent page was submitted: tier, optional account names, optional "read-only". */
-  async function start(p) {
+  /** The app opened our sign-in address. Checked, then straight on to GitHub: no page, no cookie. */
+  async function begin(p) {
     active(); await ensureSchema(); checkAuthorizeRequest(p);
     const client = await loadClient(p.client_id, p.redirect_uri);
-    const tier = p.tier === 'god' ? 'god' : 'standard';
-    return await openSignIn({ client, flow: { redirectUri: p.redirect_uri, clientState: p.state, codeChallenge: p.code_challenge,
-      tier, accountLogin: parseAccounts(p.account), allowChanges: p.read_only !== 'yes',
-      timeZone: p.time_zone ? (validZone(String(p.time_zone)) ?? (() => { throw refused('r5'); })()) : null } });
+    return await openStep({ client, flow: { redirectUri: p.redirect_uri, clientState: p.state, codeChallenge: p.code_challenge } });
   }
 
-  const sameState = (state, browserCsrf) => typeof browserCsrf === 'string' && browserCsrf.length === state.length &&
-    timingSafeEqual(Buffer.from(state), Buffer.from(browserCsrf));
-
-  /** GitHub sent the person back to install the App and we resume: sign in once more (no second approval needed). */
-  async function resumeInstall({ state, browserCsrf }) {
+  /** GitHub sent the person back after installing the App: sign in once more (GitHub does it silently). */
+  async function resumeInstall({ state }) {
     active();
-    if (!STATE.test(String(state ?? '')) || !sameState(state, browserCsrf)) throw refused('r6');
+    if (!STATE.test(String(state ?? ''))) throw refused('r6');
     const flow = await directory().consumePublicFlow(sha(state), 'install');
     if (!flow) throw refused('r7');
     const client = await loadClient(flow.clientId, flow.redirectUri);
-    return await openSignIn({ client, flow, afterInstall: true });
+    return await openStep({ client, flow, afterInstall: true });
   }
 
   /** One isolated tenant per verified GitHub person; every account that person connects lives inside it. */
-  async function ensureTenant({ principal, installations, allowChanges }) {
+  async function ensureTenant({ principal, installations }) {
     const dir = directory(), root = createDb(rootSql());
     const identityId = await dir.enrollVerifiedGithubSubject(principal.subject);
     const existing = await dir.findPilotTenant(identityId, TENANT_KEY);
@@ -172,6 +183,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const { db } = await initializeProvisionedTenant({ tenantId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory });
     const app = await root.getApp(appId);
     if (!app || !app.client_secret_enc || !app.private_key_enc || !app.webhook_secret_enc) throw refused('r8');
+    // The tenant keeps its own copy of the App's sealed keys; refreshed on every sign-in so a replaced key spreads.
     await db.saveApp({ id: app.id, slug: app.slug, ownerLogin: app.owner_login, ownerType: app.owner_type, clientId: app.client_id,
       clientSecretEnc: app.client_secret_enc, privateKeyEnc: app.private_key_enc, webhookSecretEnc: app.webhook_secret_enc,
       permissions: app.permissions });
@@ -185,23 +197,12 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
         credentialKind: 'app', appId });
       if (!await db.setInstallation(login, { installationId: installation.installationId,
         repositorySelection: installation.repositorySelection, permissions: installation.permissions, status: 'active' })) throw refused('r11');
-      // The person was verified as the owner of this account (own account, or organization admin) before we got here, and
-      // used a page that says plainly that their assistant can make changes (each one still confirmed) unless they tick Read-only. That is their own confirmation.
-      if (allowChanges === true && env.VERCEL_ENV === 'production') await db.setProductionEnabled(login, true);
+      // Verified owner of this account (own account, or organization admin). Changes are on by default for accounts the
+      // person owns (owner decision 2026-10-23); each change is still previewed and confirmed, and Read-only is one tap.
+      if (env.VERCEL_ENV === 'production') await db.setProductionEnabled(login, true);
       logins.push(login);
     }
     return { dir, tenantId, identityId, logins };
-  }
-
-  async function mintCode({ db, tenantId, identityId, logins, flow, mode }) {
-    const code = publicAuthCode(tenantId, identityId);
-    await db.createAuthCode({ code, clientId: flow.clientId, redirectUri: flow.redirectUri, codeChallenge: flow.codeChallenge,
-      codeChallengeMethod: 'S256', defaultAccount: logins[0], accounts: logins, mode, profile: 'full', listing: 'compact' });
-    const url = new URL(flow.redirectUri);
-    url.searchParams.set('code', code);
-    if (flow.clientState !== null && flow.clientState !== undefined) url.searchParams.set('state', flow.clientState);
-    url.searchParams.set('iss', active());
-    return url.toString();
   }
 
   /** Accounts this person administers (personal account first) where the App is not installed. Anything unexpected → none. */
@@ -210,7 +211,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       const have = new Set(installs.map((i) => i.login.toLowerCase()));
       const out = [];
       const subject = Number(principal.subject);
-      if (!have.has(principal.login.toLowerCase()) && Number.isSafeInteger(subject) && subject > 0 && LOGIN.test(principal.login.toLowerCase()))
+      if (!have.has(principal.login.toLowerCase()) && Number.isSafeInteger(subject) && subject > 0 && LOGIN.test(principal.login))
         out.push({ login: principal.login, id: subject, type: 'User' });
       const res = await fetchImpl('https://api.github.com/user/memberships/orgs?state=active&per_page=100', { signal: AbortSignal.timeout(8000),
         headers: { accept: 'application/vnd.github+json', authorization: 'Bearer ' + token, 'x-github-api-version': '2026-03-10' } });
@@ -218,7 +219,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
         for (const m of (await res.json()) ?? []) {
           const org = m?.organization;
           if (m?.state === 'active' && m?.role === 'admin' && org && Number.isSafeInteger(org.id) && org.id > 0 &&
-              LOGIN.test(String(org.login).toLowerCase()) && !have.has(String(org.login).toLowerCase())) out.push({ login: org.login, id: org.id, type: 'Organization' });
+              LOGIN.test(String(org.login)) && !have.has(String(org.login).toLowerCase())) out.push({ login: org.login, id: org.id, type: 'Organization' });
           if (out.length >= 8) break;
         }
       }
@@ -226,134 +227,93 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     } catch { return []; }
   }
 
-  /** The browser came back from GitHub sign-in. Returns {redirect} to the client, {god} for the extra-keys page, or
-   * {install} to send the person to GitHub to install the App. Anything unexpected is a generic refusal. */
-  async function finish({ state, code, browserCsrf }) {
+  /** Swaps GitHub's code for the person's GitHub token and works out which of their accounts can be connected. */
+  async function signedIn(flow, code) {
+    const appClient = await pilotAppClient({ env, db: createDb(rootSql()) });
+    const exchange = await fetchImpl(gitToken, { method: 'POST', signal: AbortSignal.timeout(10000),
+      headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: appClient.clientId, client_secret: appClient.clientSecret, code,
+        redirect_uri: callback(), code_verifier: flow.providerVerifier }) });
+    if (!exchange.ok) throw refused('r14');
+    const data = await exchange.json();
+    if (!data?.access_token || data.error) throw refused('r15');
+    const principal = await verifyGithubBearerIdentity(data.access_token, { fetchImpl });
+    return { data, principal };
+  }
+  async function connectable(data, principal) {
+    const installs = await listUserAppInstallations(data.access_token, { appId, fetchImpl });
+    if (installs === null) throw refused('r16');
+    // Installation tokens act with the App's own rights, so only accounts this person owns are connected; others are skipped.
+    const chosen = [];
+    for (const installation of installs.slice(0, 10))
+      if (await verifyAccountAuthority(data.access_token, { installation, subject: principal.subject, fetchImpl })) chosen.push(installation);
+    chosen.sort((x, y) => Number(y.login.toLowerCase() === principal.login.toLowerCase()) - Number(x.login.toLowerCase() === principal.login.toLowerCase()));
+    return { installs, chosen };
+  }
+  /** Creates/updates the person's tenant and stores their own sealed GitHub grant for every connected account. */
+  async function connect({ data, principal, chosen }) {
+    const made = await ensureTenant({ principal, installations: chosen });
+    const { db, sql } = await openAuthorizedTenantDb({ directory: made.dir, tenantId: made.tenantId,
+      verifiedIdentityId: made.identityId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory });
+    const latest = await made.dir.authorizedPilotIdentity(made.tenantId, made.identityId);
+    if (!latest) throw refused('r18');
+    const expiresIn = Number(data.expires_in ?? 28800);
+    const refreshExpiresIn = data.refresh_token_expires_in == null ? null : Number(data.refresh_token_expires_in);
+    if (!Number.isSafeInteger(expiresIn) || expiresIn < 60 || expiresIn > 31536000 ||
+        (refreshExpiresIn !== null && (!Number.isSafeInteger(refreshExpiresIn) || refreshExpiresIn < 60 || refreshExpiresIn > 31536000)) ||
+        (data.refresh_token !== undefined && (typeof data.refresh_token !== 'string' || data.refresh_token.length < 8 || data.refresh_token.length > 4096))) throw refused('r19');
+    const rows = [];
+    for (const login of made.logins) {
+      const account = await db.getAccount(login);
+      if (!account || account.installation_status !== 'active') throw refused('r20');
+      if (!await storePilotUserGrant({ directory: made.dir, tenantId: made.tenantId, identityId: made.identityId,
+        account: login, userLogin: principal.login, accessToken: data.access_token, expiresIn,
+        verifiedContext: { subject: principal.subject, tenant: latest, account },
+        refreshToken: data.refresh_token ?? null, refreshExpiresIn, env })) throw refused('r21');
+      rows.push(account);
+    }
+    return { ...made, db, sql, rows };
+  }
+
+  /** The browser came back from GitHub. Returns what the next page shows:
+   *  {approve} the Approve page, {install} the "install the App" page, {manage} My connection, {forget} delete-my-data. */
+  async function finish({ state, code }) {
     const started = Date.now(); let metricSql = null, outcome = 'error';
     try {
       active();
-      if (!STATE.test(String(state ?? '')) || !CODE.test(String(code ?? '')) || !sameState(state, browserCsrf)) throw refused('r12');
-      const dir = directory();
-      const flow = await dir.consumePublicFlow(sha(state), 'signin');
+      if (!STATE.test(String(state ?? '')) || !CODE.test(String(code ?? ''))) throw refused('r12');
+      const flow = await directory().consumePublicFlow(sha(state), 'signin');
       if (!flow) throw refused('r13');
       const client = await loadClient(flow.clientId, flow.redirectUri);
-      const appClient = await pilotAppClient({ env, db: createDb(rootSql()) });
-      const exchange = await fetchImpl(gitToken, { method: 'POST', signal: AbortSignal.timeout(10000),
-        headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ client_id: appClient.clientId, client_secret: appClient.clientSecret, code,
-          redirect_uri: callback(), code_verifier: flow.providerVerifier }) });
-      if (!exchange.ok) throw refused('r14');
-      const data = await exchange.json();
-      if (!data?.access_token || data.error) throw refused('r15');
-      const principal = await verifyGithubBearerIdentity(data.access_token, { fetchImpl });
+      const { data, principal } = await signedIn(flow, code);
       if (flow.purpose === 'forget') { outcome = 'ok'; return await forgetLookup(principal); }
-      const installs = await listUserAppInstallations(data.access_token, { appId, fetchImpl });
-      if (installs === null) throw refused('r16');
-      const asked = flow.accountLogin ? flow.accountLogin.split(',') : null;
-      const candidates = (asked ? installs.filter((i) => asked.includes(i.login.toLowerCase())) : installs).slice(0, 10);
-      // Installation tokens act with the App's own rights, so only accounts this person owns (their personal account, or an
-      // organization where they are an admin) may be connected. Others are skipped quietly.
-      const chosen = [];
-      for (const installation of candidates)
-        if (await verifyAccountAuthority(data.access_token, { installation, subject: principal.subject, fetchImpl })) chosen.push(installation);
+      if (flow.purpose === 'manage') { outcome = 'ok'; return await manageAfterSignIn({ data, principal }); }
+      const { installs, chosen } = await connectable(data, principal);
       if (chosen.length === 0) {
-        if (flow.afterInstall) throw new PublicConnectError('no_installation',
-          'The GitHub App is not installed on that account yet, or you are not an owner of it. Ask an owner of the account to install it (or connect it themselves), then connect again.');
-        const root = createDb(rootSql());
-        const app = await root.getApp(appId);
-        if (!app?.slug || !/^[a-z0-9-]{1,100}$/.test(app.slug)) throw refused('r17');
-        const next = await openSignIn({ client, flow, stage: 'install' });
-        return { install: { url: `https://github.com/apps/${app.slug}/installations/new?state=${next.state}`, csrfState: next.state } };
+        outcome = 'ok';
+        return { install: { signedInAs: principal.login, again: flow.afterInstall === true,
+          url: (await installUrl({ client, flow: { redirectUri: flow.redirectUri, clientState: flow.clientState, codeChallenge: flow.codeChallenge } }))() } };
       }
-      // Accounts the person could add (their own personal account, organizations they administer) that do not have the App yet.
-      // Offered AFTER the connection is safely made, so cancelling GitHub's install page never loses it. Best effort only.
-      const offers = asked ? [] : await findOffers({ token: data.access_token, principal, installs });
-      // The signed-in person's own account first (if connected), so a developer's default is their own.
-      chosen.sort((x, y) => Number(y.login.toLowerCase() === principal.login.toLowerCase()) - Number(x.login.toLowerCase() === principal.login.toLowerCase()));
-      const made = await ensureTenant({ principal, installations: chosen, allowChanges: flow.allowChanges });
-      const { db, sql } = await openAuthorizedTenantDb({ directory: made.dir, tenantId: made.tenantId,
-        verifiedIdentityId: made.identityId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory });
-      metricSql = sql;
-      await admitTenantOAuth(sql, flow.clientId);
-      // Display-only; a blank choice keeps whatever the person saved before (UTC if nothing).
-      if (flow.timeZone) await db.setSetting(ZONE_SETTING, flow.timeZone);
-      const latest = await made.dir.authorizedPilotIdentity(made.tenantId, made.identityId);
-      if (!latest) throw refused('r18');
-      const expiresIn = Number(data.expires_in ?? 28800);
-      const refreshExpiresIn = data.refresh_token_expires_in == null ? null : Number(data.refresh_token_expires_in);
-      if (!Number.isSafeInteger(expiresIn) || expiresIn < 60 || expiresIn > 31536000 ||
-          (refreshExpiresIn !== null && (!Number.isSafeInteger(refreshExpiresIn) || refreshExpiresIn < 60 || refreshExpiresIn > 31536000)) ||
-          (data.refresh_token !== undefined && (typeof data.refresh_token !== 'string' || data.refresh_token.length < 8 || data.refresh_token.length > 4096))) throw refused('r19');
-      const rows = [];
-      for (const login of made.logins) {
-        const account = await db.getAccount(login);
-        if (!account || account.installation_status !== 'active') throw refused('r20');
-        if (!await storePilotUserGrant({ directory: made.dir, tenantId: made.tenantId, identityId: made.identityId,
-          account: login, userLogin: principal.login, accessToken: data.access_token, expiresIn,
-          verifiedContext: { subject: principal.subject, tenant: latest, account },
-          refreshToken: data.refresh_token ?? null, refreshExpiresIn, env })) throw refused('r21');
-        rows.push(account);
-      }
-      await db.mirrorOAuthClient({ clientId: client.clientId, secretHash: client.secretHash, redirectUris: client.redirectUris,
+      const offers = await findOffers({ token: data.access_token, principal, installs });
+      const made = await connect({ data, principal, chosen });
+      metricSql = made.sql;
+      await admitTenantOAuth(made.sql, flow.clientId);
+      await made.db.mirrorOAuthClient({ clientId: client.clientId, secretHash: client.secretHash, redirectUris: client.redirectUris,
         clientName: client.clientName, authorizedAccount: null });
-      // Changes only when asked for AND every connected account really has them on; otherwise safe preview.
-      const mode = flow.allowChanges && env.VERCEL_ENV === 'production' && rows.every((r) => r.production_enabled === true) ? 'production' : 'preview';
+      const handle = await openHandle({ clientId: flow.clientId, redirectUri: flow.redirectUri, clientState: flow.clientState,
+        codeChallenge: flow.codeChallenge, accountLogin: made.logins.join(','), allowChanges: true, purpose: 'approve',
+        tenantId: made.tenantId, identityId: made.identityId, offers: offers.length ? offers : null }, APPROVE_SECONDS);
       outcome = 'ok';
-      const after = { clientId: flow.clientId, redirectUri: flow.redirectUri, clientState: flow.clientState, codeChallenge: flow.codeChallenge,
-        tier: flow.tier, accountLogin: made.logins.join(','), allowChanges: mode === 'production', tenantId: made.tenantId,
-        identityId: made.identityId, maxOpen: limits.maxOpenFlows };
-      if (offers.length > 0) {
-        const handle = 'pc.' + random(32);
-        if (!await made.dir.createPublicFlow({ ...after, stateHash: sha(handle), stage: 'god', offers })) throw new PublicConnectError('capacity',
-          'Too many people are connecting right now. Please try again in a few minutes.');
-        return { accounts: { handle, connected: rows.map((r) => r.login), offers } };
-      }
-      if (flow.tier === 'god') {
-        const handle = 'pc.' + random(32);
-        if (!await made.dir.createPublicFlow({ stateHash: sha(handle), stage: 'god', clientId: flow.clientId,
-          redirectUri: flow.redirectUri, clientState: flow.clientState, codeChallenge: flow.codeChallenge, tier: 'god',
-          accountLogin: made.logins.join(','), allowChanges: mode === 'production', tenantId: made.tenantId, identityId: made.identityId,
-          maxOpen: limits.maxOpenFlows })) throw new PublicConnectError('capacity', 'Too many people are connecting right now. Please try again in a few minutes.');
-        return { god: { handle, accounts: rows.map((r) => ({ login: r.login, organization: r.account_type === 'Organization' })) } };
-      }
-      return { redirect: await mintCode({ db, tenantId: made.tenantId, identityId: made.identityId, logins: made.logins,
-        flow: { clientId: flow.clientId, redirectUri: flow.redirectUri, codeChallenge: flow.codeChallenge, clientState: flow.clientState }, mode }) };
+      return { approve: { handle, signedInAs: principal.login, appName: client.clientName, appHost: new URL(flow.redirectUri).host,
+        accounts: made.rows.map((r) => ({ login: r.login, organization: r.account_type === 'Organization' })),
+        others: offers.map((o) => o.login), manageUrl: manageUrl() } };
     } finally {
       if (metricSql) await recordTenantMetric(metricSql, { event: 'provider', outcome, durationMs: Math.max(0, Date.now() - started) }).catch(() => {});
     }
   }
 
-  // ---- "Delete my data" by the person themselves: sign in with GitHub, confirm, and their whole stored footprint goes.
-  /** Start: sign in with GitHub (no accounts are listed, no identity is created). Returns the GitHub URL and the cookie value. */
-  async function startForget() {
-    active(); await ensureSchema();
-    const dir = directory(), redirectUri = active() + '/api/oauth/authorize';
-    await dir.ensureForgetClient(FORGET_CLIENT, redirectUri, hashToken(randomToken(32)));
-    const client = await loadClient(FORGET_CLIENT, redirectUri);
-    return await openSignIn({ client, flow: { redirectUri, clientState: null, codeChallenge: random(32), tier: 'standard', purpose: 'forget' } });
-  }
-
-  /** The person came back from GitHub. Only a person already stored can be found; nobody is enrolled by asking to leave. */
-  async function forgetLookup(principal) {
-    const tenantId = await directory().findPublicTenantBySubject(principal.subject);
-    if (!tenantId) return { forget: { none: true } };
-    const handle = 'pc.' + random(32);
-    if (!await directory().createPublicFlow({ stateHash: sha(handle), stage: 'god', clientId: FORGET_CLIENT, redirectUri: active() + '/api/oauth/authorize',
-      codeChallenge: random(32), tier: 'standard', purpose: 'forget', tenantId, maxOpen: limits.maxOpenFlows }))
-      throw new PublicConnectError('capacity', 'Too many people are using this right now. Please try again in a few minutes.');
-    return { forget: { handle } };
-  }
-
-  /** Confirm: one use per handle, and only the browser that just signed in can use it. Returns true when data was deleted. */
-  async function forgetConfirm({ handle, browserCsrf }) {
-    active();
-    if (!STATE.test(String(handle ?? '')) || !sameState(handle, browserCsrf)) throw refused('r22');
-    const flow = await directory().consumePublicFlow(sha(handle), 'god');
-    if (!flow || flow.purpose !== 'forget' || !flow.tenantId) throw refused('r23');
-    return await directory().forgetPublicTenant(flow.tenantId);
-  }
-
-  async function godScope(flow) {
+  /** Opens the tenant behind a stored step, re-checking that the person is still an active member. */
+  async function scopeOf(flow) {
     const dir = directory();
     const { db, sql, tenant } = await openAuthorizedTenantDb({ directory: dir, tenantId: flow.tenantId, verifiedIdentityId: flow.identityId,
       connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory });
@@ -361,71 +321,156 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     if (!live || live.membershipRevision !== tenant.membershipRevision) throw refused('r24');
     return { dir, db, sql };
   }
-
-  /** The "God mode" page: choose what to add. One use per handle. `choice` is 'finish', 'notifications' or 'package';
-   * `account` says which of the connected accounts a token is for. */
-  async function godChoose({ handle, browserCsrf, choice, account, offerIndex }) {
-    active();
-    if (!STATE.test(String(handle ?? '')) || !sameState(handle, browserCsrf) || !['finish', 'master', 'notifications', 'package', 'continue', 'add'].includes(choice)) throw refused('r25');
-    const flow = await directory().consumePublicFlow(sha(handle), 'god');
-    if (!flow || flow.purpose || !flow.tenantId || !flow.identityId || !flow.accountLogin) throw refused('r26');
-    const logins = flow.accountLogin.split(',');
-    const { db } = await godScope(flow);
-    const mode = flow.allowChanges ? 'production' : 'preview';
-    for (const login of logins) {
-      const row = await db.getAccount(login);
-      if (!row || (mode === 'production' && row.production_enabled !== true)) throw refused('r27');
-    }
-    if (flow.offers && (choice === 'continue' || choice === 'add')) {
-      const rest = { clientId: flow.clientId, redirectUri: flow.redirectUri, clientState: flow.clientState, codeChallenge: flow.codeChallenge };
-      if (choice === 'add') {
-        const offer = flow.offers[Number(offerIndex)];
-        if (!offer) throw refused('r29');
-        const root = createDb(rootSql());
-        const app = await root.getApp(appId);
-        if (!app?.slug || !/^[a-z0-9-]{1,100}$/.test(app.slug)) throw refused('r30');
-        const client = await loadClient(flow.clientId, flow.redirectUri);
-        const next = await openSignIn({ client, flow: { redirectUri: flow.redirectUri, clientState: flow.clientState, codeChallenge: flow.codeChallenge,
-          tier: flow.tier, accountLogin: null, allowChanges: flow.allowChanges }, stage: 'install' });
-        return { install: { url: `https://github.com/apps/${app.slug}/installations/new?state=${next.state}&suggested_target_id=${offer.id}`, csrfState: next.state } };
-      }
-      if (flow.tier === 'god') {
-        const handle = 'pc.' + random(32);
-        if (!await directory().createPublicFlow({ ...rest, stateHash: sha(handle), stage: 'god', tier: 'god', accountLogin: flow.accountLogin,
-          allowChanges: flow.allowChanges, tenantId: flow.tenantId, identityId: flow.identityId, maxOpen: limits.maxOpenFlows }))
-          throw new PublicConnectError('capacity', 'Too many people are connecting right now. Please try again in a few minutes.');
-        const rowsNow = [];
-        for (const login of logins) rowsNow.push(await db.getAccount(login));
-        return { god: { handle, accounts: rowsNow.map((r) => ({ login: r.login, organization: r.account_type === 'Organization' })) } };
-      }
-      return { redirect: await mintCode({ db, tenantId: flow.tenantId, identityId: flow.identityId, logins, flow: rest, mode }) };
-    }
-    if (choice === 'continue' || choice === 'add') throw refused('r31');
-    if (choice === 'finish') {
-      return { redirect: await mintCode({ db, tenantId: flow.tenantId, identityId: flow.identityId, logins,
-        flow: { clientId: flow.clientId, redirectUri: flow.redirectUri, codeChallenge: flow.codeChallenge, clientState: flow.clientState }, mode }) };
-    }
-    if (choice === 'master') {
-      const enrollment = createPrivateOptionalEnrollment({ env, fetchImpl, directoryFactory: directory,
-        tenantAccess: (dir, claim) => openAuthorizedTenantDb({ directory: dir, tenantId: claim.tenantId, verifiedIdentityId: claim.identityId,
-          connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory }) });
-      const details = await enrollment.start({ client_id: flow.clientId, account: 'master', kind: 'M', redirect_uri: flow.redirectUri },
-        { clientState: flow.clientState, codeChallenge: flow.codeChallenge, mode, profile: 'full', listing: 'compact', accounts: logins },
-        { tenantId: flow.tenantId, identityId: flow.identityId });
-      return { optional: { ...details, oauth: true } };
-    }
-    const target = typeof account === 'string' && logins.includes(account.toLowerCase()) ? account.toLowerCase() : logins[0];
-    const row = await db.getAccount(target);
-    if (choice === 'package' && row.account_type !== 'Organization') throw refused('r28');
-    const enrollment = createPrivateOptionalEnrollment({ env, fetchImpl, directoryFactory: directory,
-      tenantAccess: (dir, claim) => openAuthorizedTenantDb({ directory: dir, tenantId: claim.tenantId, verifiedIdentityId: claim.identityId,
-        connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory }) });
-    const details = await enrollment.start({ client_id: flow.clientId, account: target,
-      kind: choice === 'package' ? 'P' : 'K', redirect_uri: flow.redirectUri },
-    { clientState: flow.clientState, codeChallenge: flow.codeChallenge, mode, profile: 'full', listing: 'compact', accounts: logins },
-    { tenantId: flow.tenantId, identityId: flow.identityId });
-    return { optional: { ...details, oauth: true } };
+  async function mintCode({ db, tenantId, identityId, logins, flow, mode, profile = 'full' }) {
+    const code = publicAuthCode(tenantId, identityId);
+    await db.createAuthCode({ code, clientId: flow.clientId, redirectUri: flow.redirectUri, codeChallenge: flow.codeChallenge,
+      codeChallengeMethod: 'S256', defaultAccount: logins[0], accounts: logins, mode, profile, listing: 'compact' });
+    const url = new URL(flow.redirectUri);
+    url.searchParams.set('code', code);
+    if (flow.clientState !== null && flow.clientState !== undefined) url.searchParams.set('state', flow.clientState);
+    url.searchParams.set('iss', active());
+    return url.toString();
   }
 
-  return Object.freeze({ registerClient, inspect, start, resumeInstall, finish, godChoose, startForget, forgetConfirm, limits });
+  /** The Approve page was answered. `approve` hands the app its code; `cancel` tells the app the person said no. */
+  async function approve({ handle, choice, readOnly = false }) {
+    active();
+    if (!STATE.test(String(handle ?? '')) || !['approve', 'cancel'].includes(choice)) throw refused('r25');
+    const flow = await directory().consumePublicFlow(sha(handle), 'god');
+    if (!flow || flow.purpose !== 'approve' || !flow.tenantId || !flow.identityId || !flow.accountLogin) throw refused('r26');
+    if (choice === 'cancel') {
+      const url = new URL(flow.redirectUri);
+      url.searchParams.set('error', 'access_denied');
+      if (flow.clientState !== null && flow.clientState !== undefined) url.searchParams.set('state', flow.clientState);
+      url.searchParams.set('iss', active());
+      return { redirect: url.toString() };
+    }
+    const logins = flow.accountLogin.split(',');
+    const { db } = await scopeOf(flow);
+    const rows = [];
+    for (const login of logins) {
+      const row = await db.getAccount(login);
+      if (!row || row.installation_status !== 'active') throw refused('r27');
+      rows.push(row);
+    }
+    // Changes only when not read-only AND every connected account really has them on; otherwise safe preview.
+    // Read-only means the read_only profile (every change tool refused), not only preview mode.
+    const mode = readOnly !== true && env.VERCEL_ENV === 'production' && rows.every((r) => r.production_enabled === true) ? 'production' : 'preview';
+    return { redirect: await mintCode({ db, tenantId: flow.tenantId, identityId: flow.identityId, logins,
+      flow: { clientId: flow.clientId, redirectUri: flow.redirectUri, codeChallenge: flow.codeChallenge, clientState: flow.clientState },
+      mode, profile: readOnly === true ? 'read_only' : 'full' }) };
+  }
+
+  // ---------------------------------------------------------------- My connection
+  /** Start: a GitHub sign-in that proves who is managing. */
+  async function startManage() {
+    active(); await ensureSchema();
+    const client = await builtInClient(MANAGE_CLIENT, 'My connection');
+    return await openStep({ client, flow: { redirectUri: client.redirectUris[0], clientState: null, codeChallenge: random(32), purpose: 'manage' } });
+  }
+  /** After GitHub: refresh what is connected (new installations join, the stored grant is renewed) and open the page. */
+  async function manageAfterSignIn({ data, principal }) {
+    const tenantId = await directory().findPublicTenantBySubject(principal.subject);
+    if (!tenantId) return { manage: { none: true, signedInAs: principal.login } };
+    const { installs, chosen } = await connectable(data, principal);
+    const offers = await findOffers({ token: data.access_token, principal, installs });
+    let made;
+    if (chosen.length) made = await connect({ data, principal, chosen });
+    else {
+      const identityId = await directory().enrollVerifiedGithubSubject(principal.subject);
+      made = { tenantId, identityId, logins: [] };
+    }
+    if (made.tenantId !== tenantId) throw refused('r32');
+    const { db } = await scopeOf(made);
+    // Accounts added since an app connected join that app's connection now, without reconnecting.
+    if (made.logins.length) await db.addAccountsToConnections(made.logins);
+    await db.mirrorOAuthClient({ clientId: MANAGE_CLIENT, secretHash: hashToken(randomToken(32)), redirectUris: [manageUrl()],
+      clientName: 'My connection', authorizedAccount: null });
+    return { manage: await manageView({ tenantId, identityId: made.identityId, signedInAs: principal.login, offers, db }) };
+  }
+  async function manageView({ tenantId, identityId, signedInAs, offers, db, notice = null }) {
+    const handle = await openHandle({ clientId: MANAGE_CLIENT, redirectUri: manageUrl(), purpose: 'manage', tenantId, identityId,
+      accountLogin: signedInAs.toLowerCase(), offers: offers?.length ? offers : null }, MANAGE_SECONDS);
+    const accounts = (await db.listAccounts()).map((a) => ({ login: a.login, organization: a.account_type === 'Organization',
+      changes: a.production_enabled === true, active: a.installation_status === 'active' }));
+    // Refresh-aware: an app whose one-hour access lapsed but can still renew it is listed (and can be disconnected).
+    const seen = new Set();
+    const connections = (await db.listUpgradeableConnections()).filter((c) => c.client_id !== MANAGE_CLIENT && !seen.has(c.client_id) && seen.add(c.client_id))
+      .map((c) => ({ clientId: c.client_id, name: c.client_name ?? 'An app', readOnly: c.profile === 'read_only', canChange: c.profile !== 'read_only' && c.mode === 'production',
+        accounts: c.accounts }));
+    const master = await directory().getPilotOptionalCredential({ tenantId, identityId, accountLogin: MASTER_HANDLE, kind: 'M' }).catch(() => null);
+    return { handle, signedInAs, accounts, connections, offers: offers ?? [], timeZone: (await db.getSetting(ZONE_SETTING)) ?? 'UTC',
+      master: master ? { added: true, expiresAt: master.expires_at ?? null } : { added: false }, notice };
+  }
+  /** One action on My connection. Every action uses up the page's handle and returns a fresh page (or somewhere to go). */
+  async function manageAction({ handle, action, value }) {
+    active();
+    if (!STATE.test(String(handle ?? '')) ||
+        !['refresh', 'read_only', 'allow_changes', 'time_zone', 'disconnect', 'add', 'master'].includes(action)) throw refused('r33');
+    const flow = await directory().consumePublicFlow(sha(handle), 'god');
+    if (!flow || flow.purpose !== 'manage' || !flow.tenantId || !flow.identityId || !flow.accountLogin) throw refused('r34');
+    const { db, dir } = await scopeOf(flow);
+    const view = (notice) => manageView({ tenantId: flow.tenantId, identityId: flow.identityId, signedInAs: flow.accountLogin, offers: flow.offers, db, notice });
+    if (action === 'read_only') {
+      const n = await db.setConnectionsReadOnly(true);
+      return { manage: await view(n ? 'Done. Your apps can now look, but not change anything.' : 'No app is connected yet.') };
+    }
+    if (action === 'allow_changes') {
+      const n = await db.setConnectionsReadOnly(false);
+      return { manage: await view(n ? 'Done. Your apps can make changes again (each one is still shown to you first).' : 'No app is connected yet.') };
+    }
+    if (action === 'time_zone') {
+      const zone = validZone(String(value ?? ''));
+      if (!zone) throw refused('r35');
+      await db.setSetting(ZONE_SETTING, zone);
+      return { manage: await view('Saved. Times are shown in ' + zone + '.') };
+    }
+    if (action === 'disconnect') {
+      const target = (await db.listUpgradeableConnections()).find((c) => c.client_id === value && c.client_id !== MANAGE_CLIENT);
+      if (!target) throw refused('r36');
+      await db.revokeConnection(target.client_id);
+      return { manage: await view('Disconnected ' + (target.client_name ?? 'that app') + '. To use it again, connect from the app.') };
+    }
+    if (action === 'add') {
+      const offer = (flow.offers ?? []).find((o) => o.login === value);
+      if (!offer) throw refused('r37');
+      const client = await builtInClient(MANAGE_CLIENT, 'My connection');
+      const url = (await installUrl({ client, flow: { redirectUri: manageUrl(), clientState: null, codeChallenge: random(32), purpose: 'manage' } }))(offer.id);
+      return { go: url };
+    }
+    if (action === 'master') {
+      // Same one-use master-token page the github_master_token_link tool opens; the token is pasted there, never here.
+      const link = random(32);
+      if (!await dir.createPublicFlow({ stateHash: sha(link), stage: 'god', clientId: MANAGE_CLIENT, redirectUri: manageUrl(),
+        codeChallenge: random(32), tier: 'standard', purpose: 'master', tenantId: flow.tenantId, identityId: flow.identityId,
+        ttlSeconds: 600, maxOpen: limits.maxOpenFlows })) throw busy();
+      return { go: active() + '/api/tenant/optional?master_link=' + link };
+    }
+    return { manage: await view(null) };
+  }
+
+  // ---------------------------------------------------------------- delete my data
+  /** Start: sign in with GitHub (no accounts are listed, no identity is created). */
+  async function startForget() {
+    active(); await ensureSchema();
+    const client = await builtInClient(FORGET_CLIENT, 'Delete my data');
+    return await openStep({ client, flow: { redirectUri: client.redirectUris[0], clientState: null, codeChallenge: random(32), purpose: 'forget' } });
+  }
+  /** The person came back from GitHub. Only a person already stored can be found; nobody is enrolled by asking to leave. */
+  async function forgetLookup(principal) {
+    const tenantId = await directory().findPublicTenantBySubject(principal.subject);
+    if (!tenantId) return { forget: { none: true } };
+    const handle = await openHandle({ clientId: FORGET_CLIENT, redirectUri: active() + '/api/oauth/authorize', purpose: 'forget', tenantId }, 600);
+    return { forget: { handle, signedInAs: principal.login } };
+  }
+  /** Confirm: one use per handle. Returns true when data was deleted. */
+  async function forgetConfirm({ handle }) {
+    active();
+    if (!STATE.test(String(handle ?? ''))) throw refused('r22');
+    const flow = await directory().consumePublicFlow(sha(handle), 'god');
+    if (!flow || flow.purpose !== 'forget' || !flow.tenantId) throw refused('r23');
+    return await directory().forgetPublicTenant(flow.tenantId);
+  }
+
+  return Object.freeze({ registerClient, begin, resumeInstall, finish, approve, startManage, manageAction, startForget, forgetConfirm, limits });
 }

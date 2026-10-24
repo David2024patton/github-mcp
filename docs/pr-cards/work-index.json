@@ -1922,7 +1922,7 @@
     },
     {
       "id": "PUB-6",
-      "title": "Simple public connect: GitHub sign-in, multi-account, God mode, branded (dark)",
+      "title": "Simple public connect: one GitHub sign-in, Approve page, My connection page, browser-tested (dark)",
       "batch": "PUB",
       "design": "docs/designs/PUBLIC-SCALE.md",
       "dependencies": [
