@@ -12,7 +12,7 @@ const withMaster = async (w) => {
 };
 const M = (id, state, extra = {}) => ({ id, state, lock_repositories: false, repositories: [{ full_name: 'example-owner/sample' }], created_at: '2026-10-23T00:00:00Z', updated_at: '2026-10-23T00:00:00Z', ...extra });
 const seq = (gh, route, steps) => gh.when(route).replySequence(steps.map(([status, body, headers]) => ({ status, body, ...(headers ? { headers } : {}) })));
-const opts = { profile: 'full', needsConfirm: true, production: true, prepare: withMaster, gatesFor: () => [] };
+const opts = { profile: 'full', needsConfirm: true, production: true, prepare: withMaster };
 
 runWriteContract({ ...opts, label: 'github_account_export_start', definition: def('github_account_export_start'), args: { repositories: ['sample'] },
   arrange(gh, outcome) {
@@ -47,8 +47,8 @@ describe('GOD-4 account export and machines', () => {
     w.gh.when('GET /user/migrations').reply(200, [M(7, 'exported')]);
     w.gh.when('GET /user/migrations/{migration_id}').reply(200, M(7, 'exported'));
     w.gh.when('GET /user/migrations/{migration_id}/archive').reply(302, null, { location: 'https://example.test/signed' });
-    expect(parse(await exp.handlers.github_account_export_status({}, w.ctx)).exports).toHaveLength(1);
-    const link = parse(await exp.handlers.github_account_export_link({ migrationId: 7 }, w.ctx));
+    expect((await exp.handlers.github_account_export_status({}, w.ctx)).exports).toHaveLength(1);
+    const link = (await exp.handlers.github_account_export_link({ migrationId: 7 }, w.ctx));
     expect(link).toMatchObject({ sensitive: true, link: 'https://example.test/signed' });
     expect(w.gh.calls.some((c) => String(c.url ?? '').includes('example.test'))).toBe(false);
   });
@@ -56,14 +56,14 @@ describe('GOD-4 account export and machines', () => {
     const w = await makeWorld({ profile: 'full', mode: 'production' });
     await withMaster(w);
     w.gh.when('GET /user/migrations/{migration_id}').reply(200, M(7, 'exporting'));
-    expect(parse(await exp.handlers.github_account_export_link({ migrationId: 7 }, w.ctx))).toMatchObject({ link: null });
+    expect((await exp.handlers.github_account_export_link({ migrationId: 7 }, w.ctx))).toMatchObject({ link: null });
   });
   it('machines read uses the name and the master token', async () => {
     const w = await makeWorld({ profile: 'full', mode: 'production' });
     await withMaster(w);
     w.gh.when('GET /user').reply(200, { id: 1, login: 'example-owner', type: 'User' });
     w.gh.when('GET /user/codespaces/{codespace_name}/machines').reply(200, { total_count: 1, machines: [{ name: 'basicLinux32gb', display_name: '2 cores', operating_system: 'linux', storage_in_bytes: 34359738368, memory_in_bytes: 8589934592, cpus: 2, prebuild_availability: null }] });
-    const out = parse(await billing.codespaceMachines.handler({ codespaceName: 'sample-abc123' }, w.ctx));
+    const out = await billing.codespaceMachines.handler({ codespaceName: 'sample-abc123' }, w.ctx);
     expect(out.machines[0]).toMatchObject({ name: 'basicLinux32gb', cpus: 2, memory_gb: 8, storage_gb: 32 });
     expect(w.gh.calls.find((c) => c.route === 'GET /user/codespaces/{codespace_name}/machines').headers.authorization).toContain('ghp_FAKEmaster');
     expect(w.gh.invalid).toEqual([]);
