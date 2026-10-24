@@ -2084,7 +2084,7 @@
       "design": "docs/designs/FINISH-PLAN.md",
       "dependencies": [],
       "card": "docs/pr-cards/LAUNCH-1.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "additive root table gh_public_invites",
       "budget": 0,
       "units": [
@@ -2100,7 +2100,7 @@
       "design": "docs/designs/FINISH-PLAN.md",
       "dependencies": [],
       "card": "docs/pr-cards/AUTH-1.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 0,
       "units": [
@@ -2118,7 +2118,7 @@
         "GOD-2"
       ],
       "card": "docs/pr-cards/INV-1.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 0,
       "units": [

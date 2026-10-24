@@ -42,9 +42,9 @@ For each row marked "guide only" where `node scripts/openapi-find.mjs` shows a r
 the guide and mark the row "provider UI only" in the audit and in `docs/TOOL-CATALOG.md`.
 
 ## Done when
-- [ ] Audit report merged with every row decided; END-USER-AUTHORITY.md "OPEN work" section updated to "done on
+- [x] Audit report merged (#354) with every row decided; END-USER-AUTHORITY.md "OPEN work" section updated to "done on
       <date> (PRs …)" item by item.
-- [ ] Changed tools pass their nine checks and the three money tests; `node scripts/check-writes.mjs` green.
+- [x] No tool needed to change; the three money tests now run over every money-capable tool (`tests/unit/end-user-authority.test.js`).
 - [ ] ACC-1 row: one paid-capable tool previewed live on scratch showing the honest cost line (no real purchase).
 
 ## Progress

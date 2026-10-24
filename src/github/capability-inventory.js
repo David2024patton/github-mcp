@@ -1,5 +1,6 @@
 // CAP-1: source-pinned capability census. This module NEVER issues a provider request,
 // grants authority, or treats an API finder / tool count as actual GitHub coverage.
+import {deriveRestCredentials, listedFor, NO_EVIDENCE, DERIVED_REVIEWED} from './credential-derivation.js';
 import {restOperations} from './openapi-index.js';
 import {githubGraphqlSchema} from './graphql-schema.js';
 import {curatedTool} from './hand-built-map.js';
@@ -181,17 +182,22 @@ function documentedConflicts(op) {
   }
   if (op.category === 'packages') {
     result.push({
-      id: 'packages-rest-token-contradiction', status: 'unresolved',
+      id: 'packages-rest-token-contradiction', status: 'resolved',
       credentialKinds: ['app_installation', 'app_user', 'oauth_app', 'fine_grained_pat'],
       officialUrl: PACKAGE_REFERENCE,
-      explanation: 'The classic-PAT-only overview conflicts with per-operation App/OAuth/fine-grained support statements. This REST evidence does not cover registry authentication.'
+      explanation: 'The classic-PAT-only overview conflicts with per-operation App/OAuth/fine-grained support statements. This REST evidence does not cover registry authentication.',
+      resolution: 'INV-1 (' + DERIVED_REVIEWED + '): the per-operation statements win. GitHub\'s per-operation endpoint lists decide the App and fine-grained token types, and each operation\'s own text decides the classic and OAuth app scopes. The page-level "classic token" sentence is kept as context only. Registry (docker/npm) authentication is a separate transport and is not covered by these REST decisions.'
     });
   }
   if (op.deprecated) {
+    const stillListed = Object.keys(listedFor(route)).length > 0;
     result.push({
-      id: 'deprecated-is-not-retired', status: 'unresolved', credentialKinds: [],
+      id: 'deprecated-is-not-retired', status: 'resolved', credentialKinds: [],
       officialUrl: SOURCE.rest.url,
-      explanation: 'Deprecated in pinned source; provider retirement or replacement has not been verified.'
+      explanation: 'Deprecated in pinned source; provider retirement or replacement has not been verified.',
+      resolution: stillListed
+        ? 'INV-1 (' + DERIVED_REVIEWED + '): deprecated, not retired. GitHub\'s own token lists (docs data of 2026-10-23) still include this operation, so it is treated as available until GitHub removes it.'
+        : 'INV-1 (' + DERIVED_REVIEWED + '): deprecated and absent from GitHub\'s token lists. Retirement is not proven, so no credential is recorded as supported; only a live call can show whether it still answers.'
     });
   }
   return result;
@@ -225,7 +231,7 @@ function graphqlHosts(key) {
 }
 function unknownCredentials(interfaceName) {
   const entries = Object.fromEntries(CREDENTIAL_KINDS.map(kind => [kind, {
-    disposition: 'unknown', evidence: null, permissions: null, scopes: null
+    disposition: 'unknown', evidence: null, permissions: null, scopes: null, reason: NO_EVIDENCE
   }]));
   if (interfaceName === 'graphql') {
     // App JWTs cannot call GraphQL (official GitHub App auth documentation).
@@ -290,7 +296,7 @@ function restRecord(op, names) {
   if (reviewed) {
     rec.evidence.reviewedCredentials = {officialUrl: reviewed.officialUrl, checked: reviewed.reviewed};
     for (const [kind, decision] of Object.entries(reviewed.decisions)) {
-      if (rec.evidence.conflicts.some(conflict => conflict.credentialKinds.includes(kind))) continue;
+      if (rec.evidence.conflicts.some(conflict => conflict.status === 'unresolved' && conflict.credentialKinds.includes(kind))) continue;
       rec.credentialSupport[kind] = {
         ...decision, evidence: reviewed.officialUrl, reviewed: reviewed.reviewed
       };
@@ -300,6 +306,13 @@ function restRecord(op, names) {
     if (supported) rec.delivery.nextAction =
       'Verify registered dispatch, effective account/permissions and exact request-shape test; source support alone is not user authorization';
   }
+  // INV-1: decisions derived from GitHub's own per-operation lists and the operation's text fill every kind the hand review did not cover.
+  const derived = deriveRestCredentials(op);
+  for (const [kind, decision] of Object.entries(derived.decisions)) {
+    if (reviewed?.decisions?.[kind]) continue;
+    rec.credentialSupport[kind] = decision;
+  }
+  rec.evidence.conflicts.push(...derived.conflicts);
   const mapped = curatedTool(op);
   const route = routeEligibility(op);
   rec.implementation.universalCandidate = route.candidate;
@@ -498,6 +511,7 @@ export function summarizeCapabilityInventory(records) {
   const families = {};
   const statuses = Object.fromEntries(STATES.map(x => [x, 0]));
   let unknownCredentials = 0, unknownHostApplicability = 0, unresolvedConflictRows = 0, reviewedCredentialDecisions = 0;
+  let derivedCredentialDecisions = 0, resolvedConflictRows = 0, operationsWithADecision = 0;
   for (const row of records) {
     const family = families[row.family] ||= {total: 0, byState: Object.fromEntries(STATES.map(x => [x,0])),
       universalCandidates: 0, credentialUnknowns: 0, unresolvedConflicts: 0};
@@ -513,13 +527,19 @@ export function summarizeCapabilityInventory(records) {
     family.credentialUnknowns += c;
     unknownCredentials += c;
     reviewedCredentialDecisions += Object.values(row.credentialSupport).filter(x => x.reviewed).length;
+    derivedCredentialDecisions += Object.values(row.credentialSupport).filter(x => x.derived === true && x.disposition !== 'unknown').length;
+    if (row.evidence.conflicts.length && row.evidence.conflicts.every(x => x.status === 'resolved')) resolvedConflictRows++;
+    if (Object.values(row.credentialSupport).some(x => x.disposition !== 'unknown' && (x.derived === true || x.reviewed))) operationsWithADecision++;
     unknownHostApplicability += row.hostApplicability.filter(x => x.disposition === 'unknown').length;
   }
   return {totalOperations: records.length, byState: statuses,
     unknownCredentialDecisions: unknownCredentials,
     unverifiedHostApplicability: unknownHostApplicability,
     unresolvedConflictRows,
+    resolvedConflictRows,
     reviewedCredentialDecisions,
+    derivedCredentialDecisions,
+    operationsWithADecision,
     // Unknown and unverified rows are deliberately NOT a functional coverage numerator.
     verifiedOperations: statuses.verified,
     coverageRatio: null,
@@ -543,23 +563,24 @@ export function validateCapabilityInventory(inventory, options = {}) {
     }) : [];
     if (!Array.isArray(row.evidence.conflicts) ||
         requiredConflicts.some(required => !row.evidence.conflicts.some(actual =>
-          actual.id === required.id && actual.status === 'unresolved' &&
+          actual.id === required.id && actual.status === required.status &&
           actual.officialUrl === required.officialUrl &&
           JSON.stringify(actual.credentialKinds) === JSON.stringify(required.credentialKinds))))
       throw new TypeError('Missing official credential conflict record: ' + row.key);
     if (row.evidence.conflicts.some(conflict =>
-      !conflict || conflict.status !== 'unresolved' ||
+      !conflict || !['unresolved', 'resolved'].includes(conflict.status) ||
+      (conflict.status === 'resolved' && (typeof conflict.resolution !== 'string' || conflict.resolution.length < 20)) ||
       !Array.isArray(conflict.credentialKinds) || typeof conflict.officialUrl !== 'string' ||
       !conflict.officialUrl.startsWith('https://')))
-      throw new TypeError('Invalid unresolved credential conflict record: ' + row.key);
-    if (row.evidence.conflicts.some(conflict => conflict.credentialKinds.some(kind =>
+      throw new TypeError('Invalid credential conflict record: ' + row.key);
+    if (row.evidence.conflicts.some(conflict => conflict.status === 'unresolved' && conflict.credentialKinds.some(kind =>
       row.credentialSupport?.[kind]?.disposition === 'supported')))
       throw new TypeError('Unresolved credential conflict cannot prove support: ' + row.key);
     const reviewed = row.interface === 'rest' ? reviewedRestEvidence(
       row.operation?.method + ' ' + row.operation?.path) : null;
     if (reviewed) {
       for (const [kind, contract] of Object.entries(reviewed.decisions)) {
-        const conflict = row.evidence.conflicts.some(c => c.credentialKinds.includes(kind));
+        const conflict = row.evidence.conflicts.some(c => c.status === 'unresolved' && c.credentialKinds.includes(kind));
         const expected = conflict ? {disposition: 'unknown'} : contract;
         const actual = row.credentialSupport?.[kind];
         if (!actual || actual.disposition !== expected.disposition ||
@@ -569,6 +590,12 @@ export function validateCapabilityInventory(inventory, options = {}) {
               JSON.stringify(actual.scopes) !== JSON.stringify(contract.scopes))))
           throw new TypeError('Missing or altered reviewed credential contract: ' + row.key + '/' + kind);
       }
+    }
+    for (const [kind, value] of Object.entries(row.credentialSupport ?? {})) {
+      if (value?.disposition === 'unknown' && (typeof value.reason !== 'string' || !value.reason))
+        throw new TypeError('Unknown credential without a reason: ' + row.key + '/' + kind);
+      if (value?.disposition !== 'unknown' && value?.derived === true && !/^https:\/\//.test(String(value.evidence ?? '')))
+        throw new TypeError('Derived credential decision without official evidence: ' + row.key + '/' + kind);
     }
     if (Object.keys(row.credentialSupport || {}).length !== CREDENTIAL_KINDS.length ||
         CREDENTIAL_KINDS.some(x => !SUPPORT.has(row.credentialSupport[x]?.disposition)))
