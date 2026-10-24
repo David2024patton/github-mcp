@@ -32,6 +32,7 @@ const notifying = Object.freeze({ accessWidening: false, notifies: true, destruc
 const destructive = Object.freeze({ accessWidening: false, notifies: false, destructive: true });
 
 const closingIds = (node) => new Set((node?.closedByPullRequestsReferences?.nodes ?? []).map((n) => n?.id));
+const topicsOf = (node) => (node?.repositoryTopics?.nodes ?? []).map((n) => n?.topic?.name).filter(Boolean).sort();
 const restorable = (input, before, keys) => keys.some((k) => given(input, k)) && keys.every((k) => !given(input, k) || before?.[k] != null);
 const priorOf = (input, before, keys) => Object.fromEntries(keys.filter((k) => given(input, k)).map((k) => [k, before[k]]));
 
@@ -306,6 +307,18 @@ export const WRITE_SPECS = new Map([
     before: '... on Issue { duplicateOf { id } }',
     already: (i, b) => b?.duplicateOf?.id !== i.canonicalId, verify: (i, a) => a?.duplicateOf?.id !== i.canonicalId, inverse: null, cls: notifying,
     undoHint: 'To mark it as a duplicate again, close the issue as a duplicate with github_issue_update (state closed, stateReason duplicate, duplicateIssueId).'
+  }],
+  // GQL-1 group 3: repository topics and deployments.
+  ['updateTopics', {
+    scope: 'repo', primary: 'repositoryId', ids: { repositoryId: ['Repository'] }, changes: ['topicNames'],
+    before: '... on Repository { repositoryTopics(first: 100) { nodes { topic { name } } } }',
+    already: (i, b) => same(topicsOf(b), [...i.topicNames].sort()), verify: (i, a) => same(topicsOf(a), [...i.topicNames].sort()),
+    inverse: (i, b) => ({ mutation: 'updateTopics', input: { repositoryId: i.repositoryId, topicNames: topicsOf(b) } }), cls: quiet
+  }],
+  ['deleteDeployment', {
+    scope: 'repo', primary: 'id', ids: { id: ['Deployment'] }, changes: [], before: '... on Deployment { environment }',
+    deleted: true, verify: (_i, a) => a === null, inverse: null, cls: destructive,
+    undoHint: 'A deleted deployment record cannot be restored. Create a new one with github_deploy_create.'
   }]
 ]);
 
@@ -323,7 +336,90 @@ export const REFUSED_MUTATIONS = new Map([
   ['applyPendingIssueSuggestions', 'It applies suggested issue edits chosen by an actor id. Make the edits yourself with github_issue_update, github_issue_set_labels or github_issue_set_assignees.'],
   ['rejectPendingIssueSuggestions', 'It discards suggested issue edits chosen by an actor id and cannot be read back. Edit the issue directly instead.'],
   ['addPullRequestReviewComment', 'It adds to a pending review that is not readable first. Put the comments in one github_review_create call.'],
-  ['addPullRequestReviewThread', 'It adds to a pending review that is not readable first. Put the comments in one github_review_create call.']
+  ['addPullRequestReviewThread', 'It adds to a pending review that is not readable first. Put the comments in one github_review_create call.'],
+  ['addProjectCard', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['addProjectColumn', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['cloneProject', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['convertProjectCardNoteToIssue', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['createProject', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['deleteProject', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['deleteProjectCard', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['deleteProjectColumn', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['importProject', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['linkRepositoryToProject', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['moveProjectCard', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['moveProjectColumn', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['unlinkRepositoryFromProject', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['updateProject', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['updateProjectCard', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['updateProjectColumn', 'Classic projects were retired by GitHub. Use Projects v2 (the github_project_* tools).'],
+  ['acceptTopicSuggestion', 'GitHub retired topic suggestions. Set topics with github_graphql_write updateTopics.'],
+  ['declineTopicSuggestion', 'GitHub retired topic suggestions. Set topics with github_graphql_write updateTopics.'],
+  ['acceptEnterpriseAdministratorInvitation', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['acceptEnterpriseMemberInvitation', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['addEnterpriseOrganizationMember', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['addEnterpriseSupportEntitlement', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['cancelEnterpriseAdminInvitation', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['cancelEnterpriseMemberInvitation', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['createEnterpriseOrganization', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['grantEnterpriseOrganizationsMigratorRole', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['revokeEnterpriseOrganizationsMigratorRole', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['inviteEnterpriseAdmin', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['inviteEnterpriseMember', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['regenerateEnterpriseIdentityProviderRecoveryCodes', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['removeEnterpriseAdmin', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['removeEnterpriseIdentityProvider', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['removeEnterpriseMember', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['removeEnterpriseOrganization', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['removeEnterpriseSupportEntitlement', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['setEnterpriseIdentityProvider', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['transferEnterpriseOrganization', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['updateEnterpriseAdministratorRole', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['updateEnterpriseOwnerOrganizationRole', 'Enterprise membership, administrators, identity provider and organization moves change who controls the whole enterprise and are done by an enterprise owner on github.com.'],
+  ['abortQueuedMigrations', 'Migrations move whole repositories and their data between accounts. Start an export with github_org_migration_start; other migration steps are done on github.com.'],
+  ['abortRepositoryMigration', 'Migrations move whole repositories and their data between accounts. Start an export with github_org_migration_start; other migration steps are done on github.com.'],
+  ['createMigrationSource', 'Migrations move whole repositories and their data between accounts. Start an export with github_org_migration_start; other migration steps are done on github.com.'],
+  ['grantMigratorRole', 'Migrations move whole repositories and their data between accounts. Start an export with github_org_migration_start; other migration steps are done on github.com.'],
+  ['revokeMigratorRole', 'Migrations move whole repositories and their data between accounts. Start an export with github_org_migration_start; other migration steps are done on github.com.'],
+  ['startOrganizationMigration', 'Migrations move whole repositories and their data between accounts. Start an export with github_org_migration_start; other migration steps are done on github.com.'],
+  ['startRepositoryMigration', 'Migrations move whole repositories and their data between accounts. Start an export with github_org_migration_start; other migration steps are done on github.com.'],
+  ['createIpAllowListEntry', 'IP allow lists can lock every person out of the organization or enterprise. Change them on github.com.'],
+  ['deleteIpAllowListEntry', 'IP allow lists can lock every person out of the organization or enterprise. Change them on github.com.'],
+  ['updateIpAllowListEntry', 'IP allow lists can lock every person out of the organization or enterprise. Change them on github.com.'],
+  ['updateIpAllowListEnabledSetting', 'IP allow lists can lock every person out of the organization or enterprise. Change them on github.com.'],
+  ['updateIpAllowListForInstalledAppsEnabledSetting', 'IP allow lists can lock every person out of the organization or enterprise. Change them on github.com.'],
+  ['updateIpAllowListUserLevelEnforcementEnabledSetting', 'IP allow lists can lock every person out of the organization or enterprise. Change them on github.com.'],
+  ['addVerifiableDomain', 'Verifiable domains control who can see members email addresses and need DNS changes only the owner can make. Do this on github.com.'],
+  ['approveVerifiableDomain', 'Verifiable domains control who can see members email addresses and need DNS changes only the owner can make. Do this on github.com.'],
+  ['deleteVerifiableDomain', 'Verifiable domains control who can see members email addresses and need DNS changes only the owner can make. Do this on github.com.'],
+  ['regenerateVerifiableDomainToken', 'Verifiable domains control who can see members email addresses and need DNS changes only the owner can make. Do this on github.com.'],
+  ['verifyVerifiableDomain', 'Verifiable domains control who can see members email addresses and need DNS changes only the owner can make. Do this on github.com.'],
+  ['createSponsorships', 'Sponsorship listings, tiers and bulk sponsoring move money or publish prices. Sponsor one person at a time with github_sponsor_set, which enforces the spend limit.'],
+  ['createSponsorsListing', 'Sponsorship listings, tiers and bulk sponsoring move money or publish prices. Sponsor one person at a time with github_sponsor_set, which enforces the spend limit.'],
+  ['createSponsorsTier', 'Sponsorship listings, tiers and bulk sponsoring move money or publish prices. Sponsor one person at a time with github_sponsor_set, which enforces the spend limit.'],
+  ['publishSponsorsTier', 'Sponsorship listings, tiers and bulk sponsoring move money or publish prices. Sponsor one person at a time with github_sponsor_set, which enforces the spend limit.'],
+  ['retireSponsorsTier', 'Sponsorship listings, tiers and bulk sponsoring move money or publish prices. Sponsor one person at a time with github_sponsor_set, which enforces the spend limit.'],
+  ['updatePatreonSponsorability', 'Sponsorship listings, tiers and bulk sponsoring move money or publish prices. Sponsor one person at a time with github_sponsor_set, which enforces the spend limit.'],
+  ['updateSponsorshipPreferences', 'Sponsorship listings, tiers and bulk sponsoring move money or publish prices. Sponsor one person at a time with github_sponsor_set, which enforces the spend limit.'],
+  ['accessUserNamespaceRepository', 'It exists for GitHub staff and migrations and cannot be proven to belong to your account.'],
+  ['createAttributionInvitation', 'It claims commits that another account made and cannot be undone or read back first.'],
+  ['addPullRequestCreationCapBypassUsers', 'It lets people skip the pull request creation limit, which widens access. Change it on github.com.'],
+  ['removePullRequestCreationCapBypassUsers', 'It changes who may skip the pull request creation limit. Change it on github.com.'],
+  ['replaceActorsForAssignable', 'It swaps the whole assignee list, including Copilot agents. Use github_issue_set_assignees to add or remove people.'],
+  ['archivePullRequest', 'GitHub offers no way to read the archived state of a pull request, so the change could not be confirmed.'],
+  ['unarchivePullRequest', 'GitHub offers no way to read the archived state of a pull request, so the change could not be confirmed.'],
+  ['createCheckSuite', 'Check suites are created by GitHub for each commit. Create a check run with github_check_create_run instead.'],
+  ['rerequestCheckSuite', 'Re-running checks is done by re-running the workflow run with the Actions tools.'],
+  ['updateCheckSuitePreferences', 'It decides which Apps may start checks automatically. Change it on github.com.'],
+  ['updateRefs', 'It moves many branches or tags at once, and could force-update them. Use github_git_update_ref one reference at a time.'],
+  ['pinEnvironment', 'An environment cannot be proven to belong to your repository from its id alone, and pinning is cosmetic. Pin on github.com.'],
+  ['reorderEnvironment', 'An environment cannot be proven to belong to your repository from its id alone, and the order is cosmetic. Reorder on github.com.'],
+  ['updateNotificationRestrictionSetting', 'It limits where notification emails may go for a whole organization. Change it on github.com.'],
+  ['updateOrganizationWebCommitSignoffSetting', 'Not offered by a tool yet; change it on github.com.'],
+  ['createUserList', 'Star lists are personal bookmarks without an ownership scope here. Manage them on github.com.'],
+  ['deleteUserList', 'Star lists are personal bookmarks without an ownership scope here. Manage them on github.com.'],
+  ['updateUserList', 'Star lists are personal bookmarks without an ownership scope here. Manage them on github.com.'],
+  ['updateUserListsForItem', 'Star lists are personal bookmarks without an ownership scope here. Manage them on github.com.']
 ]);
 
 export const writeSpec = (mutation) => WRITE_SPECS.get(mutation) ?? null;

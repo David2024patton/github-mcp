@@ -64,7 +64,11 @@ const ROWS = [
     { closedByPullRequestsReferences: { nodes: [] } }, { closedByPullRequestsReferences: { nodes: [{ id: 'PR1' }] } }],
   ['removeCloseIssueReferences', { issueId: 'I1', pullRequestIds: ['PR1'] }, { I1: 'Issue', PR1: 'PullRequest' },
     { closedByPullRequestsReferences: { nodes: [{ id: 'PR1' }] } }, { closedByPullRequestsReferences: { nodes: [] } }],
-  ['unmarkIssueAsDuplicate', { duplicateId: 'I1', canonicalId: 'I2' }, { I1: 'Issue', I2: 'Issue' }, { duplicateOf: { id: 'I2' } }, { duplicateOf: null }]
+  ['unmarkIssueAsDuplicate', { duplicateId: 'I1', canonicalId: 'I2' }, { I1: 'Issue', I2: 'Issue' }, { duplicateOf: { id: 'I2' } }, { duplicateOf: null }],
+  // GQL-1 group 3: topics and deployments
+  ['updateTopics', { repositoryId: 'R1', topicNames: ['api', 'mcp'] }, { R1: 'Repository' },
+    { repositoryTopics: { nodes: [{ topic: { name: 'old' } }] } }, { repositoryTopics: { nodes: [{ topic: { name: 'mcp' } }, { topic: { name: 'api' } }] } }],
+  ['deleteDeployment', { id: 'DP1' }, { DP1: 'Deployment' }, { environment: 'staging' }, null]
 ];
 
 const scopeNode = (id, type, repo = REPO) => {
