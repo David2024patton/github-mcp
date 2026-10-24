@@ -375,8 +375,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/H-3.md",
     "gates": "Checked READY deployment contains merged H-3 source; scratch-only, explicit owner authority and fixture safeguards, no production settings or spend activation without independent approval",
     "dependsOn": [],
-    "status": "BLOCKED",
-    "lastEvidence": "2026-10-24 04:30 MDT on live 8ed877a, custom service-issued MCP, PRODUCTION/full. Created private fixture robinson-ai-scratch/rtc-acc1-20261024-1; github_deploykey_add dry run OK (read-only key, fingerprint shown), confirmed add refused by GitHub HTTP 422 'Deploy keys are disabled for this repository' (organization policy on the scratch org). Not changed: turning that policy on would widen access and is an owner decision. Cleanup: fixture repository deleted (readback deleted=true). Re-entry: owner enables deploy keys for the scratch org, or run on another disposable repo.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:30 MDT on live 8ed877a, custom service-issued MCP, PRODUCTION/full. Created private fixture robinson-ai-scratch/rtc-acc1-20261024-1; github_deploykey_add dry run OK (read-only key, fingerprint shown), confirmed add refused by GitHub HTTP 422 'Deploy keys are disabled for this repository' (organization policy on the scratch org). Not changed: turning that policy on would widen access and is an owner decision. Cleanup: fixture repository deleted (readback deleted=true). Re-entry: owner enables deploy keys for the scratch org, or run on another disposable repo. RETRY 2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. After Chris enabled deploy keys: fixture robinson-ai-scratch/rtc-acc1-20261024-3: github_deploykey_add (read-only, fingerprint ec13a876...) applied, github_deploykey_list read back it (verified, read_only), github_deploykey_delete applied, list read back empty. Private half of the key was discarded at creation. Cleanup: fixture deleted. Collaborator invite not run (needs a second GitHub account; optional).",
     "nextAction": "Exact disposable collaborator/key principal and independent access-widening, production and cleanup approval; no outside invitations or new keys inferred."
   },
   {
@@ -945,6 +945,119 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Verified READY implementation ancestry; genuine already-authorized private developer fixture and service-owned grant, exact existing restricted pass and ordinary connection. No public tenant activation, new real credential, access expansion, production write or spend is inferred.",
     "dependsOn": [],
     "lastEvidence": "Superseded 2026-10-24: the private-pilot sign-in was retired on 2026-10-23 (PUB-6 rebuild); public tenants are covered by tests/db/pub-6-public-connect.test.js and tests/unit/private-user-pass-downscope.test.js. No live run needed."
+  },
+  {
+    "id": "GITHUB-GOD2-PERSONAL-M",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Gist create/read-back/delete with the master token (secret gist on christcr2012).",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. github_gist_save created secret gist 33d6defc... (verified, 1 file); github_gist_delete removed it (deleted=true). Cleanup: none left."
+  },
+  {
+    "id": "GITHUB-GOD3-UNLOCKS",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "github_whoami lists which areas the master token unlocks.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. github_whoami returned master_token.unlocks with 14 areas (Gists, Notifications, Packages, SSH keys, GPG, Profile, Stars, Classroom/Marketplace, Copilot Spaces, Codespaces, Account export, Org admin extras, Projects, Enterprise ENT-1), all unlocked:true."
+  },
+  {
+    "id": "GITHUB-ENT1-READS",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Enterprise reads on the trial enterprise robinson-ai-systems.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. github_enterprise_list (1 enterprise), github_enterprise_overview (admin yes, 1 org), github_enterprise_security_configs (1 GitHub recommended config + defaults), github_enterprise_dependabot (alerts empty) all returned. github_enterprise_actions_settings returned HTTP 402 'valid payment method required': UNVERIFIED, needs a payment method or paid plan (owner rule 2026-10-24, not a blocker)."
+  },
+  {
+    "id": "GITHUB-ENT1-CONFIG-LIFECYCLE",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Enterprise code-security configuration create and delete, free settings only.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. github_enterprise_security_config_save dry run, then create 'acc1-throwaway' (id 286906, dependency graph on, unenforced, paid=false); github_enterprise_security_config_delete removed it (deleted=286906). Attached to nothing. Cleanup: none left. Other ENT write tools (policy_set, profile_set, actions_settings_set, dependabot_access_set, config_apply) not run."
+  },
+  {
+    "id": "GITHUB-GOD4-CODESPACES-SECRETS",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Personal Codespaces secret created with a generated value, listed, deleted.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. github_secret_set level user kind codespaces ACC1_THROWAWAY valueFrom generate (value hidden); github_secret_list showed it (value never shown); github_secret_delete removed it."
+  },
+  {
+    "id": "GITHUB-GOD4-EXPORT",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Account export of one disposable repository, status, private link, archive delete.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. Org repository refused by GitHub for a personal export (422). Disposable empty private repo christcr2012/rtc-acc1-20261024-4 created, github_account_export_start applied (id 14960475), status went pending then exported, github_account_export_link returned a short-lived private address (not opened, not stored); github_account_export_delete was accepted by GitHub but the readback could not confirm the archive is gone (reported 'unconfirmed'; status still says exported). Repo deleted. Open item: archive deletion unconfirmed; it expires on its own (about 2 days)."
+  },
+  {
+    "id": "GITHUB-GOD4-SPACES",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Copilot Space create, list, delete.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. github_copilot_space_save created Space #1 'acc1-throwaway' (base_role no_access); github_copilot_space_list read it back; github_copilot_space_delete removed it (deleted=1)."
+  },
+  {
+    "id": "GITHUB-GOD5-PLACE",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Add a read-only extra place with the master token, read OK, write refused, remove.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Adding a place is done on the My connection page, which needs Chris's own sign-in in a browser, so the agent cannot add one. Unit and database tests cover it (tests/db/pub-6-public-connect.test.js GOD-5).",
+    "nextAction": "Owner checklist row: add robinson-ai-scratch as an extra place on My connection, then the agent runs read, refused write and remove."
+  },
+  {
+    "id": "GITHUB-GQL1-GROUPS",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "One representative GraphQL mutation per group on a scratch fixture.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Not yet run live (needs a scratch fixture and the group list from the GQL-1 card). Source and shape tests merged.",
+    "nextAction": "Run one mutation per group on a disposable scratch repo with github_graphql_write (dry run, confirm, read back, clean up)."
+  },
+  {
+    "id": "GITHUB-HARD1-SIGNIN-NO-CAP",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Sign-in still works after the per-app cap change.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Needs a real sign-in through the live public page (Chris's browser). Covered by DB and browser tests in CI.",
+    "nextAction": "Owner checklist: next time a new person or app signs in, confirm it works; the agent reads the refusal log."
   }
 ]
 ```
