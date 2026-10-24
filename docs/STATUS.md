@@ -1066,8 +1066,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/ACC-1.md",
     "gates": "Saved developer connection; scratch organization or disposable fixture named rtc-acc1-<date>-<n> only; never overrideRules on a real repository; no spend.",
     "dependsOn": [],
-    "status": "PASSED",
-    "lastEvidence": "2026-10-24 13:15-13:30 MDT on live d96aab4 (Vercel READY), custom service-issued MCP, PRODUCTION/full. github_whoami acting_as=you; repo create, file write, branch, ruleset, PR create on rtc-acc1-20261024-god6 all returned acting_as 'christcr2012 (you)', file/branch steps 'some steps by the app'. App-only route and switch-off not run live (unit tests). Cleanup: repo deleted."
+    "status": "PENDING",
+    "lastEvidence": "2026-10-24 13:15-13:30 MDT on live d96aab4 (Vercel READY), custom service-issued MCP, PRODUCTION/full. github_whoami acting_as=you; repo create, file write, branch, ruleset, PR create on rtc-acc1-20261024-god6 all returned acting_as 'christcr2012 (you)', file/branch steps 'some steps by the app'. App-only route and switch-off not run live (unit tests). Cleanup: repo deleted. PARTIAL: the main scenarios passed; the rest stays outstanding.",
+    "nextAction": "Still to observe live: an app-only call (check run) staying on the app; the Act-as-me switch turned off on My connection (owner step, needs Chris's sign-in) returning writes to the app; a read-only connection never using the person's token."
   },
   {
     "id": "GITHUB-GOD6-RULE-OVERRIDE",
@@ -1077,8 +1078,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/ACC-1.md",
     "gates": "Saved developer connection; scratch organization or disposable fixture named rtc-acc1-<date>-<n> only; never overrideRules on a real repository; no spend.",
     "dependsOn": [],
-    "status": "PASSED",
-    "lastEvidence": "2026-10-24 13:15-13:30 MDT on live d96aab4 (Vercel READY), custom service-issued MCP, PRODUCTION/full, scratch only. Merge without override refused (409); override preview listed '1 required approval (0 given)'; with no bypass actor GitHub declined and PR stayed open; after granting bypass on the scratch ruleset the override merge completed (merged=true). Protected-list refusal not run live (unit tests). Cleanup: repo deleted."
+    "status": "PENDING",
+    "lastEvidence": "2026-10-24 13:15-13:30 MDT on live d96aab4 (Vercel READY), custom service-issued MCP, PRODUCTION/full, scratch only. Merge without override refused (409); override preview listed '1 required approval (0 given)'; with no bypass actor GitHub declined and PR stayed open; after granting bypass on the scratch ruleset the override merge completed (merged=true). Protected-list refusal not run live (unit tests). Cleanup: repo deleted. PARTIAL: the main scenarios passed; the rest stays outstanding.",
+    "nextAction": "Still to observe live: a repository on the protected list refusing the override (preview only, never a real override on a real repository)."
   },
   {
     "id": "GITHUB-PUB5-HEADERS-LIMITS",
