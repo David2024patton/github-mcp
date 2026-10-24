@@ -82,8 +82,7 @@ async function whoami(args, ctx) {
     ? { mode: 'you', login: me.login ?? (await loginFor(ctx, me.subject)), personal_rate: mine ? { remaining: mine.remaining, resets_at: when(mine.reset_at) } : { remaining: null, note: 'No call made yet' } }
     : { mode: 'app', login: null, ...(me.reason ? { reason: me.reason } : {}) };
   return {
-    acting_as,
-    mode: ctx.connection.mode.toUpperCase(), profile: ctx.connection.profile, listing: ctx.connection.listing,
+    mode: ctx.connection.mode.toUpperCase(), profile: ctx.connection.profile, listing: ctx.connection.listing, acting_as,
     default_account: ctx.connection.default_account, api_version: GITHUB_API_VERSION,
     credential_types: { I: 'installation token (or fine-grained token)', U: 'your sign-in for personal settings', K: 'notifications-only classic token', P: 'package-only classic token', ...(master ? { M: 'your master token (everything your GitHub login can do, used only when the App cannot)' } : {}) },
     ...(master ? { master_token: master.enrolled ? { added: true, permissions: master.scopes, ...masterExpiry(master.expires_at), unlocks: masterUnlocks(master.scopes ?? []) } : { added: false, how_to_add: 'Ask the assistant to run github_master_token_link; it gives you a private link.', would_unlock: MASTER_AREAS.map((a) => a.area) } } : {}),
