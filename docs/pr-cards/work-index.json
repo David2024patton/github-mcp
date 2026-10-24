@@ -2100,6 +2100,22 @@
       "ownerInputs": []
     },
     {
+      "id": "PAR-1",
+      "title": "Parity with GitHub's official MCP server: Copilot review, code quality, docs search, bulk project edits, stargazers",
+      "batch": "FIN",
+      "design": "docs/pr-cards/PAR-1.md",
+      "dependencies": [],
+      "card": "docs/pr-cards/PAR-1.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 0,
+      "units": [
+        "PAR-1"
+      ],
+      "readiness": "READY",
+      "ownerInputs": []
+    },
+    {
       "id": "LAUNCH-1",
       "title": "Public launch readiness: uninstall clean-up for public people, invite-only, load test, cost view, trust pages, App permission review",
       "batch": "FIN",
