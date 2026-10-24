@@ -28,7 +28,7 @@ export const curatedGraphqlMutation=name=>curated.get(name)??null;
 export const curatedTargets=()=>Object.freeze([...new Set(curated.values())]);
 const money=/codespace|copilot|enterprise|billing|budget|sponsor|purchase|paid|marketplace|license|runner|securityFeature|storage|minutes|payment/i;
 const secretKey=/(?:token|secret|password|passphrase|private.?key|auth.?code|invitation.?code|webhook.?signature|credential)/i;
-const secretValue=/(github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9_]{18,}|rtc_pass_[A-Za-z0-9_-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)/;
+const secretValue=/(github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9._-]{18,}|rtc_pass_[A-Za-z0-9_-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)/;
 const dangerousKey=/(bypass.?rules|bypassRules|force.?push|skip.?checks)/i;
 function scan(value,key='',depth=0){
   if(depth>16)throw new TypeError('GraphQL variables nested too deeply.');

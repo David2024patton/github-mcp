@@ -144,3 +144,6 @@ Defaults in brackets are what the agents build; change any by telling the agent.
       Overriding branch rules (for example merging without the required review) works when you ask for it: the assistant
       shows which rules it would skip and you confirm each time. A second switch on My connection turns that off.
 
+## GitHub's new installation token format (2026-10-24)
+- [ ] Nothing required. The server already handles the longer tokens (tested). Optional: let an agent switch on GitHub's test header for a day
+      on the live service to confirm, then switch it off (`docs/GO-LIVE-CHECKLIST.md`).
