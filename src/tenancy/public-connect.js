@@ -470,7 +470,12 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       accountLogin: signedInAs.toLowerCase(), offers: offers?.length ? offers : null }, MANAGE_SECONDS);
     const all = await db.listAccounts();
     const accounts = all.filter((a) => a.credential_kind !== 'master').map((a) => ({ login: a.login, organization: a.account_type === 'Organization',
-      changes: a.production_enabled === true, active: a.installation_status === 'active' }));
+      changes: a.production_enabled === true, active: a.installation_status === 'active',
+      // GitHub's own page for this installation, where the person can change its repositories or uninstall it. Only the page
+      // address is built here; this server never uninstalls anything.
+      githubUrl: Number.isSafeInteger(Number(a.installation_id)) && Number(a.installation_id) > 0 && LOGIN.test(String(a.login))
+        ? (a.account_type === 'Organization' ? `https://github.com/organizations/${a.login}/settings/installations/${Number(a.installation_id)}` : `https://github.com/settings/installations/${Number(a.installation_id)}`)
+        : null }));
     const places = all.filter((a) => a.credential_kind === 'master').map((a) => ({ login: a.login, organization: a.account_type === 'Organization',
       changes: a.allow_changes === true, repos: a.allowed_repos ?? null }));
     // Refresh-aware: an app whose one-hour access lapsed but can still renew it is listed (and can be disconnected).

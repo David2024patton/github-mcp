@@ -492,6 +492,10 @@ describe('My connection', () => {
     const back = await c.finish({ state: resumed.state, code: 'dave-fixture-code-1' });
     expect(back.manage.accounts.map((a) => a.login).sort()).toEqual(['client-co', 'dave-solo']);
     expect(back.manage.offers).toEqual([]);
+    // each installed place links to GitHub's own page for that installation (change repositories / uninstall); nothing here uninstalls
+    const byLogin = Object.fromEntries(back.manage.accounts.map((a) => [a.login, a.githubUrl]));
+    expect(byLogin['dave-solo']).toBe('https://github.com/settings/installations/41051');
+    expect(byLogin['client-co']).toMatch(/^https:\/\/github\.com\/organizations\/client-co\/settings\/installations\/\d+$/);
     expect((await (await gateFor(token)).db.getAccessToken(token.access_token)).accounts).toEqual(['client-co', 'dave-solo']);
     people.dave.installs.pop();
   });
