@@ -57,7 +57,6 @@ const go = (res, url, status = 302) => { res.setHeader('Cache-Control', 'no-stor
  * Some in-app browsers send no Origin, or "null"; anything naming another site is refused. */
 const sameSite = (req, env) => { const o = String(req.headers?.origin ?? ''); return o === '' || o === 'null' || o === publicOrigin(env); };
 const hidden = (name, value) => `<input type="hidden" name="${name}" value="${h(value)}">`;
-const list = (items) => items.map(h).join(', ');
 
 /** POST /api/oauth/register while the flow is on. */
 export async function publicRegister(req, res, { env = process.env, ...deps } = {}) {
@@ -125,7 +124,8 @@ function approvePage(res, a) {
     '<div class="choice"><input type="checkbox" id="ro" name="read_only" value="yes"><label for="ro"><strong>Read-only</strong><small>Your assistant can look but cannot change anything. Leave unticked and it can make changes, each one shown to you first.</small></label></div>' +
     '<button type="submit" id="approve">Approve</button></form>' +
     `<form method="post" action="${STEP}">${hidden('step', 'approve')}${hidden('handle', a.handle)}${hidden('choice', 'cancel')}<button type="submit" class="plain" id="cancel">Cancel</button></form>` +
-    (a.others.length ? `<p><small>${list(a.others)} can be added later from <a href="${h(a.manageUrl)}">My connection</a> (the App is not installed there yet).</small></p>` : '') +
+    (a.others.length ? '<p><small>The App is not installed on these other places of yours yet. Add one now and you come straight back here:</small></p>' +
+      a.others.map((o) => `<form method="post" action="${STEP}">${hidden('step', 'approve')}${hidden('handle', a.handle)}${hidden('choice', 'add')}${hidden('value', o)}<button type="submit" class="plain" id="add-${h(o)}">Add ${h(o)}</button></form>`).join('') : '') +
     `<p><small>Only approve if you just started connecting from that app. You can change all of this later at <a href="${h(a.manageUrl)}">My connection</a>.</small></p>`);
 }
 function installPage(res, i) {
@@ -200,7 +200,7 @@ export async function publicApprove(req, res, { env = process.env, ...deps } = {
   try {
     if (req.method !== 'POST' || !sameSite(req, env)) return failure(res, null, 'approve-origin');
     const p = paramsOf(req);
-    return render(res, await make(env, deps).approve({ handle: p.handle, choice: p.choice, readOnly: p.read_only === 'yes' }));
+    return render(res, await make(env, deps).approve({ handle: p.handle, choice: p.choice, readOnly: p.read_only === 'yes', value: p.value }));
   } catch (error) { return failure(res, error, 'approve'); }
 }
 
