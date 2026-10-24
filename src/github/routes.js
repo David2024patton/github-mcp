@@ -8,6 +8,8 @@ import { publicCallback, publicInstallReturn } from '../tenancy/public-http.js';
 import { createPublicCleanup } from '../tenancy/public-cleanup.js';
 import { publicConnectEnabled } from '../tenancy/public-connect.js';
 import { neon } from '@neondatabase/serverless';
+import { marketplaceEnabled } from '../marketplace/lifecycle.js';
+import { marketplaceSetup } from '../marketplace/setup.js';
 
 const ROUTES = { 'setup': 'setup', 'manifest-callback': 'manifestCallback', 'user-callback': 'userCallback' };
 
@@ -29,6 +31,8 @@ export async function handleGithub(action, req, res, { runtime, env = process.en
     if(action==='setup' && String(req.query?.state||'').startsWith('pc.'))
       return await publicInstallReturn(req,res,{env});
     const { db, credentials, oneTimeStore } = runtime ?? await getSecretsRuntime({ env, fetch });
+    if (action==='setup' && !req.query?.state && req.query?.installation_id && marketplaceEnabled(env))
+      return await marketplaceSetup(req,res,{sql:neon(env.DATABASE_URL),credentials,env,fetchImpl:fetch});
     const handlers = createSetupHandlers({ db, credentials, oneTimeStore, env, fetch });
     res.setHeader('Cache-Control', 'no-store');
     return await handlers[name](req, res);

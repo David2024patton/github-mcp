@@ -25,6 +25,9 @@ GitHub (the source of your data and your authorization), our hosting provider (V
 ## How long we keep it
 Sign-in grants until they expire or you disconnect, and are removed if you have not used the service or signed in for 180 days (you simply sign in again; your settings stay); settings and the change record until you ask us to delete them; short-lived results 24 hours; usage counts in aggregate. When you ask to be deleted, we remove your sign-in, grants, settings, change record and saved results for good, and your tokens stop working immediately.
 
+## Marketplace subscriptions (draft addition, 2026-10-24)
+Marketplace connections store your billing account number, free-plan number and subscription status separately from direct connections. Cancellation blocks Marketplace access immediately. We retry revocation of its GitHub user tokens and removal of its isolated settings, changes and saved results, with a maximum deletion commitment of 30 days. Independent direct connections remain active. Once cleanup completes we remove the Marketplace account and subscription records. To reject repeated or delayed purchase deliveries, we retain hashed delivery receipts and a keyed account digest with the event time and status; no raw webhook payload or customer profile is kept in those records.
+
 ## Your choices
 Disconnect any time from your AI app or by revoking the GitHub App's access in your GitHub settings. Delete everything yourself, any time, at the "Delete my data" link on the sign-in page (you sign in with GitHub, confirm once, and it is removed for good), or ask us at [support email]. Choose a read-only connection when you sign in if you want your assistant to only look and preview.
 

@@ -13,11 +13,12 @@ const bad = (res, status, code, description) => send(res, status, { error: code,
 const html = (res, status, page) => send(res, status, page, 'text/html; charset=utf-8');
 const str = (x) => (typeof x === 'string' ? x : '');
 
-export function createOAuthHandlers({ db, env = process.env, policy, scopesSupported, issueTokens = () => ({ accessToken: randomToken(32), refreshToken: randomToken(32) }) }) {
+export function createOAuthHandlers({ db, env = process.env, policy, scopesSupported, resourceUrl = null, issueTokens = () => ({ accessToken: randomToken(32), refreshToken: randomToken(32) }) }) {
   if (!policy || ['choices', 'page', 'validate', 'tokenSettings'].some((name) => typeof policy[name] !== 'function')) {
     throw new TypeError('createOAuthHandlers needs a policy with choices, page, validate and tokenSettings.');
   }
-  const urls = () => { const origin = publicOrigin(env); return { origin, resource: origin + '/api/mcp' }; };
+  // resourceUrl is supplied only by trusted service composition after resolving the token's tenant.
+  const urls = () => { const origin = publicOrigin(env); return { origin, resource: resourceUrl ?? origin + '/api/mcp' }; };
   const validateResource = (value) => value === urls().resource;
 
   async function register(req, res) {

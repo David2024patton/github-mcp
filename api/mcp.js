@@ -17,7 +17,7 @@ const safeOrigin = () => { try { return publicOrigin(); } catch { return null; }
 
 export const config = { api: { bodyParser: true } };
 
-export default async function handler(req, res) {
+export async function handleMcp(req, res, { marketplaceAccountId = null } = {}) {
   const began = Date.now();
   let tenantSql = null;
   let eventOutcome = 'error';
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     const context = tenantRoute
       ? await resolvePrivateTenantMcpBearer({ authorization: req.headers.authorization })
       : await getSecretsRuntime();
-    if (!context) {
+    if (!context || (context.marketplaceAccountId ?? null) !== marketplaceAccountId) {
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader('WWW-Authenticate', 'Bearer error="invalid_token"');
       return res.status(401).json({ error: 'invalid_token' });
@@ -97,3 +97,5 @@ export default async function handler(req, res) {
     if (countedCall && eventOutcome === 'error') await usage.recordError(publicTenantId).catch(() => {});
   }
 }
+
+export default (req, res) => handleMcp(req, res);

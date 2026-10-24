@@ -155,6 +155,16 @@ Defaults in brackets are what the agents build; change any by telling the agent.
 - [ ] Nothing required. The server already handles the longer tokens (tested). Optional: let an agent switch on GitHub's test header for a day
       on the live service to confirm, then switch it off (`docs/GO-LIVE-CHECKLIST.md`).
 
+## Marketplace final owner inputs (2026-10-24)
+
+Implementation is approved and the publication hold is lifted. Remaining private/legal inputs, after the prepared code and listing are reviewable:
+
+- [ ] Verify the Robinson-AI-Systems publisher email using GitHub's email to hello@robinsonaisystems.com.
+- [ ] Choose the Marketplace trader classification that truthfully describes your business.
+- [ ] Approve the final privacy, terms and security text, including separate Marketplace cancellation and anti-replay record retention, then accept GitHub's Marketplace agreement on the prepared listing.
+- [ ] Privately enroll the Marketplace webhook and cron secrets in the prepared GitHub/Vercel forms; keep them out of chat. Exact variable names and endpoints are in the Marketplace activation section of `docs/GO-LIVE-CHECKLIST.md`.
+- [ ] Through the normal initial GitHub sign-in/install flow, give the custom connector the organization's App installation identity needed for protected-branch merges. The current master-token extra place cannot satisfy that rule. No branch-rule override or separate manual installation is inferred.
+
 ## Using this connector in Claude Code (PAR-1, 2026-10-24)
 - [ ] Keep the official GitHub integration connected in Claude Code as well. It is what lets agents copy repositories,
       push changes with git, use GitHub's command-line tool and get pull-request notifications. This connector cannot do

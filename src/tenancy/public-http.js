@@ -1,3 +1,4 @@
+import { marketplaceAccount } from '../marketplace/resource.js';
 // The web side of the public sign-in and of the person's "My connection" page. Plain-English pages, no scripts, strict CSP,
 // and NO cookies: every step carries its own one-use handle (see public-connect.js for why that is safe). Every failure
 // shows a short generic message; why a sign-in was refused goes to the server log only. Everything answers 404 while the
@@ -158,7 +159,7 @@ function managePage(res, m) {
     '<h2>Apps using your GitHub</h2>' + (m.connections.length ? m.connections.map((c) => `<div class="row"><span>${h(c.name)} <span class="tag">${label(c)}</span></span></div>` +
       act('disconnect', `Disconnect ${h(c.name)}`, { value: c.clientId, plain: true, id: 'disconnect-' + c.clientId })).join('') : '<p class="muted">No app is connected right now.</p>') +
     (m.connections.length ? (anyChanges ? act('read_only', 'Make all my apps read-only', { plain: true }) : act('allow_changes', 'Let my apps make changes again', { plain: true })) : '') +
-    '<h2>Master token (optional)</h2>' + (m.master.added
+    (m.marketplaceAccountId ? '' : '<h2>Master token (optional)</h2>' + (m.master.added
       ? `<p>Added${m.master.expiresAt ? ', runs out ' + h(when(m.master.expiresAt)) : ', never runs out'}. It unlocks what normal sign-in cannot (notifications, packages, gists, organization settings).</p>` +
         (m.master.unlocks?.length ? '<div id="master-unlocks">' + m.master.unlocks.map((u) => `<div class="row"><span>${h(u.area)}</span><span class="tag">${u.unlocked ? 'unlocked' : 'locked — tick “' + h(u.needs) + '”'}</span></div>`).join('') + '</div>' : '') +
         (m.master.actAs ? '<h3>Act as me</h3>' +
@@ -176,11 +177,11 @@ function managePage(res, m) {
           act('place_changes', pl.changes ? `Make ${h(pl.login)} read-only` : `Allow changes for ${h(pl.login)}`, { value: pl.login + ':' + (pl.changes ? 'off' : 'on'), plain: true, id: 'place-changes-' + pl.login }) +
           (pl.repos?.length ? pl.repos.map((r) => act('remove_place', `Remove ${h(pl.login)}/${h(r)}`, { value: pl.login + '/' + r, plain: true, id: 'remove-place-' + pl.login + '-' + r })).join('') : act('remove_place', `Remove ${h(pl.login)}`, { value: pl.login, plain: true, id: 'remove-place-' + pl.login }))).join('') : '<p class="muted">No extra places yet.</p>') +
         `<form method="post" action="${MANAGE_PATH}">${hidden('handle', m.handle)}${hidden('action', 'add_place')}<label>Organization or owner/repository<input type="text" name="value" id="place-value" maxlength="150" autocomplete="off"></label><button type="submit" id="add-place">Add place</button></form>`
-      : '<p class="muted">Extra places need your master token. Add it above first.</p>') +
+      : '<p class="muted">Extra places need your master token. Add it above first.</p>')) +
     '<h2>Time zone</h2>' +
     `<form method="post" action="${MANAGE_PATH}">${hidden('handle', m.handle)}${hidden('action', 'time_zone')}<label>Show times in<select name="value">` +
       COMMON_ZONES.map((z) => `<option value="${h(z)}"${z === m.timeZone ? ' selected' : ''}>${h(z.replace('_', ' '))}</option>`).join('') + '</select></label><button type="submit" id="save-zone">Save</button></form>' +
-    `<h2>Leave</h2><p><a href="${STEP}?forget=1">Delete my data</a> removes everything we store about you.</p>` +
+    (m.marketplaceAccountId ? '<h2>Leave Marketplace</h2><p><a href="https://github.com/settings/billing">Cancel your Marketplace subscription on GitHub</a>. Marketplace access stops on cancellation and its stored data is deleted. Your direct connections stay separate.</p>' : `<h2>Leave</h2><p><a href="${STEP}?forget=1">Delete my data</a> removes everything we store about you.</p>`) +
     '<p><small>This page works for 30 minutes. Open it again any time; you sign in with GitHub each time.</small></p>');
 }
 function render(res, result) {
@@ -211,9 +212,11 @@ export async function publicManage(req, res, { env = process.env, ...deps } = {}
   try {
     const p = paramsOf(req), connect = make(env, deps);
     if (req.method === 'GET') {
-      if (p.go === '1') return go(res, (await connect.startManage()).url);
+      const account = p.marketplace_account === undefined ? null : marketplaceAccount(p.marketplace_account);
+      if (p.marketplace_account !== undefined && !account) return failure(res, null, 'marketplace-account');
+      if (p.go === '1') return go(res, (await connect.startManage(account)).url);
       return page(res, 200, 'My connection', '<p>See and change how your assistants use your GitHub: add accounts, add the optional master token, make your apps read-only, pick your time zone, disconnect an app or delete your data.</p>' +
-        `<p><a class="button" id="manage-sign-in" href="${MANAGE_PATH}?go=1">Sign in with GitHub</a></p><p><small>You never type a password or token here for this. <a href="/limits">See the limits</a>.</small></p>`);
+        `<p><a class="button" id="manage-sign-in" href="${MANAGE_PATH}?go=1${account ? '&amp;marketplace_account=' + account : ''}">Sign in with GitHub</a></p><p><small>You never type a password or token here for this. <a href="/limits">See the limits</a>.</small></p>`);
     }
     if (req.method !== 'POST' || !sameSite(req, env)) return failure(res, null, 'manage-origin');
     return render(res, await connect.manageAction({ handle: p.handle, action: p.action, value: p.value }));

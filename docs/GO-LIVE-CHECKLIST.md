@@ -111,3 +111,9 @@ explanations is `docs/APP-NEEDS-APPLIANCE-DESK.md`; the app's own checklist stay
 ## Temporary: GitHub stateless installation tokens (2026-10-24)
 - [ ] Optional validation: set `GITHUB_STATELESS_INSTALLATION_TOKENS=enabled` on production, make a few normal calls (read, preview,
       one scratch write), then **remove the setting** so GitHub's rollout decides. `disabled` forces the old short tokens if anything breaks.
+
+## Marketplace lifecycle activation (owner-approved 2026-10-24; not activated)
+
+After Marketplace lifecycle PR is merged and deployed, enroll `GITHUB_MARKETPLACE_WEBHOOK_SECRET` and `CRON_SECRET` privately in Vercel Production (at least 32 characters each); put the same webhook secret in the Marketplace listing's webhook settings. Never send either through tools, chat, files or logs. Use `/api/marketplace/webhook` for signed Marketplace deliveries, `/api/marketplace/sweep` for the hourly authenticated cleanup cron, and the existing `/api/github/setup` installation return.
+
+Configure `GITHUB_MARKETPLACE_PLAN_ID` with the actual published free plan's numeric ID and `GITHUB_MARKETPLACE_CONNECT=enabled` only for Production after tests/review and secure setup. Redeploy through the authorized release path. Verify an actual signed purchase, GitHub subscription readback, customer-specific resource consent, cancellation denial, individual token revocation, data deletion and direct-connection survival. Monitoring must flag 503 cleanup responses. Complete publisher email verification, trader declaration, approved trust pages and Marketplace agreement before submission. A draft listing or active free plan is not proof this workflow works.

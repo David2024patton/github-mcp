@@ -1,0 +1,10 @@
+# Marketplace lifecycle — 2026-10-24
+
+Owner approved a separate Marketplace customer lifecycle. Publication hold is lifted.
+PR #387: `ai/codex/marketplace-free-webhook-20261024`. First remote head `4f8c6eb524567d36df4af739ecd545600700298c` passed exact-head ci and release-policy, including the new integrated database lifecycle test. Final review then added atomic enrollment and in-flight refresh regression coverage; these changes require fresh CI before merge.
+
+Implementation in progress: signed purchase/cancellation ingestion; current GitHub purchase verification and administrator checks; account-specific OAuth/MCP resource and isolated tenant; cancellation barrier, per-token revocation and durable scheduled data deletion. Direct enrollments retain separate tenants and credentials. A keyed account digest and status/effective-date watermark remain to prevent delayed purchase delivery from restoring cancelled access; no customer grant, tenant settings or results are retained after successful cleanup.
+
+Validation: focused resource/cron unit tests pass. Full unit tests pass (9,477 tests), and shape tests pass (21). Full check passes with complete history and BASE_SHA. CI provided disposable PostgreSQL and browser verification at the first head; fresh CI must verify the final race fix. Focused unit coverage now has five tests, including webhook boundaries and installation setup. Local PostgreSQL is absent; the repository launcher reports this explicitly. No real credentials are used in tests. No Marketplace production flag, secrets, webhook or cron has been activated.
+
+Remaining activation: exact-head CI/review and merge; secure signing/cron-secret enrollment; published free-plan ID configuration; signed test purchase/cancellation with actual readbacks; owner email verification, trader classification, final trust-page/legal approval and Marketplace agreement/submission. These are not reported complete. Existing custom connector lacks the App installation identity required for merges; do not route around that refusal or override branch rules.
