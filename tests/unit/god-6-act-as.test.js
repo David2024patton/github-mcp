@@ -117,6 +117,19 @@ describe('who makes the call', () => {
   });
 });
 
+describe('attribution follows the credential actually used', () => {
+  it('an explicit master-token request is recorded as you, not as the app', async () => {
+    const w = await setup({ status: { enrolled: false } });
+    w.gh.when('GET /user').reply(200, { login: 'chris-fake' });
+    const { createActorLog } = await import('../../src/github/act-as.js');
+    const actor = createActorLog();
+    const o = await githubFor({ ...w.ctx, actor }, { owner: 'example-org', cred: 'M' });
+    await o.request('GET /user');
+    expect(who(w.gh.calls[0])).toBe('M');
+    expect(actor.summary().as).toBe('you');
+  });
+});
+
 describe('when GitHub refuses the personal token', () => {
   const read = async (w) => { const o = await githubFor(w.ctx, { owner: 'example-org' }); return o.request('GET /repos/{owner}/{repo}', { owner: 'example-org', repo: 'hello' }); };
   it('8. a 401 on a read is repeated once with the app, remembered, and cleared by a new token', async () => {
@@ -322,6 +335,13 @@ describe('skipping rules on purpose (14a to 14e)', () => {
     const dispatcher = createDispatch({ credentials: w.credentials, gates: [protectionGate('locked')], fetch: w.gh.fetch, now: w.ctx.now, sleep: async () => {} });
     const out = await dispatcher({ registry, name: 'github_pr_merge', args: override, connection: w.connection, db: w.db });
     expect(JSON.stringify(out)).toMatch(/locked|protected/i);
+    expect(w.gh.calls.some((c) => c.route.startsWith('PUT'))).toBe(false);
+  });
+  it('14g. a pr-only repository keeps its green-check rule: the override is refused there and nothing is sent', async () => {
+    const w = await live(); mergeWorld(w.gh, { state: 'blocked', ciRuns: [{ ...run, conclusion: 'failure' }] });
+    await w.db.seedProtectedResources([{ kind: 'repo', target: 'example-org/hello', level: 'pr-only', reason: 'test' }]);
+    const r = await call(w, 'github_pr_merge', override);
+    expect(JSON.stringify(r.body ?? r.out)).toMatch(/protected list/);
     expect(w.gh.calls.some((c) => c.route.startsWith('PUT'))).toBe(false);
   });
   it('14e. the bypass option appears in no other request', async () => {

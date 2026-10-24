@@ -250,7 +250,7 @@ export async function githubFor(ctx, { owner, cred = 'I', scope } = {}) {
         cached = await ctx.db.getEtag(rateKey, urlKey);
         if (cached) sent.headers = { ...sent.headers, 'if-none-match': cached.etag };
       }
-      const noteActor = () => ctx.actor?.record?.({ as: useMe ? 'you' : 'app', note: why ?? null, viaUser: !useMe && cred === 'U' });
+      const noteActor = () => ctx.actor?.record?.({ as: useMe || actual === 'M' ? 'you' : 'app', note: why ?? null, viaUser: !useMe && cred === 'U' });
       let response;
       try {
         response = await request(sent);

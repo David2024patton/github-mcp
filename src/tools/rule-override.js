@@ -7,6 +7,7 @@
 import { githubFor } from '../github/client.js';
 import { OVERRIDE_ARGS, overrideAllowed, overrideSummaryPrefix, skippedRules } from '../github/act-as.js';
 import { refusal } from './github-write.js';
+import { matchingEntries, protectedList } from './protect-guard.js';
 
 const plans = new WeakMap(); // args object -> what was worked out while reading (the same args object reaches every stage)
 const RULE_WORDS = /rule|protect|bypass|ruleset|required|review|status check/i;
@@ -19,6 +20,10 @@ export async function planOverride(ctx, args, { owner, repo, branch, ci = null, 
   if (args.overrideRules !== true) return null;
   const allowed = await overrideAllowed(ctx, args);
   if (!allowed.ok) return { refuse: allowed.message };
+  // A repository on the protected list (pr-only or locked) keeps its green-check merge rule: the override never applies there.
+  // If the list cannot be read, fail closed.
+  const listed = await protectedList(ctx.db).then((entries) => matchingEntries(entries, { owner, repo }).length > 0, () => true);
+  if (listed) return { refuse: 'This repository is on the protected list (it moves only through green, exact-head pull requests), so its rules cannot be skipped.' };
   if (!branch) return { refuse: 'Only a branch\'s rules can be skipped this way; this change has no branch.' };
   const octokit = await githubFor({ ...ctx, actor: undefined }, { owner });
   const skipped = await skippedRules(octokit, { owner, repo, branch, ci, approvals }).catch(() => ['branch rules: could not be read']);
