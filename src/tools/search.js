@@ -36,7 +36,7 @@ const projected={
 };
 export const searchGitHub=defineRead({
   name:'github_search_github',area:'search',audience:['B','Op'],
-  description:'Search GitHub code, issues, pull requests, commits, repositories or users with bounded results.',
+  description:'Search GitHub code, issues, PRs, commits, repos or users (find organizations: type users plus type:org in the query).',
   properties:{
     owner:OWNER,
     type:{type:'string',enum:Object.keys(ROUTES)},

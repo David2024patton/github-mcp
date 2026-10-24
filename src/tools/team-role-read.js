@@ -40,7 +40,7 @@ export const teamList=defineRead({
 });
 export const teamGet=defineRead({
   name:'github_team_get',area:'team',audience:['O'],
-  description:'Inspect an exact team and bounded member/repository memberships and their effective repository permissions.',
+  description:'A team\'s members and roles, its repositories and their effective permissions; needs the exact team slug.',
   properties:{...teamSchema,max:MAX,includeRoles:{type:'boolean'}},required:['teamSlug'],
   handler:(a,c)=>readOrg(a,c,async(gh,org)=>{
     const p={org,team_slug:a.teamSlug},max=a.max??100;

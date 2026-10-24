@@ -164,3 +164,9 @@ Implementation is approved and the publication hold is lifted. Remaining private
 - [ ] Approve the final privacy, terms and security text, including separate Marketplace cancellation and anti-replay record retention, then accept GitHub's Marketplace agreement on the prepared listing.
 - [ ] Privately enroll the Marketplace webhook and cron secrets in the prepared GitHub/Vercel forms; keep them out of chat. Exact variable names and endpoints are in the Marketplace activation section of `docs/GO-LIVE-CHECKLIST.md`.
 - [ ] Through the normal initial GitHub sign-in/install flow, give the custom connector the organization's App installation identity needed for protected-branch merges. The current master-token extra place cannot satisfy that rule. No branch-rule override or separate manual installation is inferred.
+
+## Using this connector in Claude Code (PAR-1, 2026-10-24)
+- [ ] Keep the official GitHub integration connected in Claude Code as well. It is what lets agents copy repositories,
+      push changes with git, use GitHub's command-line tool and get pull-request notifications. This connector cannot do
+      those (it lives in the conversation, not on the agent's computer). Agents should use this connector for GitHub tools;
+      the official one stays for git.

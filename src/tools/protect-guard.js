@@ -21,7 +21,7 @@ export const PROTECTED_SEED = Object.freeze([
 /** What a `pr-only` repository allows: the normal pull-request conveyor, and only away from the default and protected branches. */
 export const PR_ONLY_TOOLS = Object.freeze(new Set([
   'github_branch_create', 'github_branch_delete', 'github_branch_rename', 'github_branch_merge',
-  'github_content_put_file', 'github_content_delete_file', 'github_content_push_files', 'github_git_update_ref',
+  'github_content_put_file', 'github_content_delete_file', 'github_content_push_files', 'github_content_edit_files', 'github_git_update_ref',
   'github_pr_create', 'github_pr_update', 'github_pr_set_draft', 'github_pr_close', 'github_pr_update_branch', 'github_pr_stack_manage',
   'github_review_create', 'github_review_submit', 'github_review_dismiss', 'github_review_reply', 'github_review_resolve_thread', 'github_review_request_reviewers',
   'github_issue_create', 'github_issue_update', 'github_issue_lock', 'github_issue_comment', 'github_issue_edit_comment', 'github_issue_set_labels',
@@ -38,7 +38,7 @@ const SHA = /^[0-9a-f]{40}$/i;
 /** What a profile's `agentMay` entries mean, by tool. Nothing else is ever allowed on an owned ref without `outsideProject`. */
 export const AGENT_OPERATION = Object.freeze({
   github_branch_create: 'create-from-default',
-  github_content_put_file: 'commit-files', github_content_push_files: 'commit-files'
+  github_content_put_file: 'commit-files', github_content_push_files: 'commit-files', github_content_edit_files: 'commit-files'
 });
 
 /** Tools that touch a project-owned ref add this argument; the guard reads it, the tool does not. */

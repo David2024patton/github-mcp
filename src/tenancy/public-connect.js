@@ -394,11 +394,19 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   }
 
   /** The Approve page was answered. `approve` hands the app its code; `cancel` tells the app the person said no. */
-  async function approve({ handle, choice, readOnly = false }) {
+  async function approve({ handle, choice, readOnly = false, value = '' }) {
     active();
-    if (!STATE.test(String(handle ?? '')) || !['approve', 'cancel'].includes(choice)) throw refused('r25');
+    if (!STATE.test(String(handle ?? '')) || !['approve', 'cancel', 'add'].includes(choice)) throw refused('r25');
     const flow = await directory().consumePublicFlow(sha(handle), 'god');
     if (!flow || flow.purpose !== 'approve' || !flow.tenantId || !flow.identityId || !flow.accountLogin) throw refused('r26');
+    if (choice === 'add') {
+      // Another place of theirs (an organization or account without the App): go to GitHub's install screen aimed at it, then
+      // come back through the normal silent sign-in to this same Approve page, now listing the new account too.
+      const offer = (flow.offers ?? []).find((o) => o.login === value);
+      if (!offer) throw refused('r25');
+      const client = await loadClient(flow.clientId, flow.redirectUri);
+      return { go: (await installUrl({ client, flow: { redirectUri: flow.redirectUri, clientState: flow.clientState, codeChallenge: flow.codeChallenge } }))(offer.id) };
+    }
     if (choice === 'cancel') {
       const url = new URL(flow.redirectUri);
       url.searchParams.set('error', 'access_denied');
@@ -539,7 +547,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
         ? (value === 'on' ? 'Done. GitHub will record you as the one who makes each change.' : 'Done. GitHub will show the Robinson GitHub MCP app for each change.')
         : (value === 'on' ? 'Done. Your assistant may ask to skip a branch\'s rules for one change, and you confirm each one.' : 'Done. Branch rules can no longer be skipped for you.')) };
     }
-    if (action === 'add_place') return { manage: await view(await addPlace({ db, dir, tenant, value })) };
+    if (action === 'add_place') return { manage: await view(await addPlace({ db, dir, tenant, value, offers: flow.offers ?? [] })) };
     if (action === 'place_changes') {
       const [login, state] = String(value ?? '').split(':');
       if (!LOGIN.test(login ?? '') || !['on', 'off'].includes(state)) throw refused('r38');
@@ -559,7 +567,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
 
   // GOD-5: "extra places". The master token is read here only to ask GitHub whether the person can really see the place; it
   // is never stored again, logged or shown. The reply to the person is a plain sentence either way.
-  async function addPlace({ db, dir, tenant, value }) {
+  async function addPlace({ db, dir, tenant, value, offers = [] }) {
     const text = String(value ?? '').trim();
     if (!PLACE.test(text)) return 'Type an organization (like acme-co) or a repository (like acme-co/website).';
     const [owner, repoWanted = null] = text.split('/');
@@ -587,7 +595,11 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const row = await db.upsertExtraPlace({ login: who.login, accountId: who.id, accountType: who.type, repo });
     if (!row) return `${who.login} could not be added.`;
     await db.addAccountsToConnections([who.login]);
-    return `Added ${repo ? who.login + '/' + repo : who.login} as an extra place. It starts read-only: your apps can look, and every change is refused until you allow changes for it here.`;
+    // The App is what lets changes there be made safely, so say plainly how to install it (the Add button above, or an owner).
+    const install = offers.some((o) => String(o.login).toLowerCase() === who.login.toLowerCase())
+      ? ` The App is not installed on ${who.login} yet: tap "Add ${who.login}" above to install it there.`
+      : who.type === 'Organization' ? ` The App is not installed on ${who.login}; an owner of ${who.login} can install it.` : '';
+    return `Added ${repo ? who.login + '/' + repo : who.login} as an extra place. It starts read-only: your apps can look, and every change is refused until you allow changes for it here.${install}`;
   }
 
   // ---------------------------------------------------------------- delete my data

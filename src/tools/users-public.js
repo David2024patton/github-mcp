@@ -106,6 +106,25 @@ const publicRepoList = defineRead({
   })
 });
 
-const all = [userGet, userRepos, userSocial, followers, following, publicRepoGet, publicRepoList];
+// PAR-1: who starred a public repository. Public repositories only (the same rule as github_public_repo_get): a private or missing
+// repository gives the one not-found answer. `withDates` asks GitHub for the star timestamps.
+const stargazers = defineRead({
+  name: 'github_repo_list_stargazers', area: 'user', audience: ['B', 'O', 'Op'],
+  description: 'List the people who starred a PUBLIC repository, with the total and optionally when each starred.',
+  properties: { as: AS, owner: USERNAME, repo: REPO_NAME, max: MAX, page: PAGE, withDates: { type: 'boolean', description: 'Include when each person starred' } },
+  required: ['owner', 'repo'],
+  handler: (args, ctx) => plain(async () => {
+    const c = await client(args, ctx);
+    await publicRepo(c, args);
+    const base = { owner: args.owner, repo: args.repo };
+    const total = await publicGet(c, 'GET /repos/{owner}/{repo}/stargazers/count', base);
+    const rows = await publicGet(c, 'GET /repos/{owner}/{repo}/stargazers', { ...base, per_page: args.max ?? 30, page: args.page ?? 1,
+      ...(args.withDates ? { headers: { accept: 'application/vnd.github.star+json' } } : {}) });
+    return { total: typeof total === 'number' ? total : Number(total?.count ?? rows.length), page: args.page ?? 1,
+      items: rows.map((row) => { const u = row.user ?? row; return { login: u.login, type: u.type, ...(args.withDates ? { starred_at: row.starred_at ?? null } : {}) }; }) };
+  })
+});
+
+const all = [userGet, userRepos, userSocial, followers, following, publicRepoGet, publicRepoList, stargazers];
 export const tools = all.map((d) => d.tool);
 export const handlers = Object.fromEntries(all.map((d) => [d.tool.name, d.handler]));
