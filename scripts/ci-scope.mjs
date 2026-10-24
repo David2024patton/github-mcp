@@ -35,6 +35,13 @@ export function needsCode(changed, texts) {
   return false;
 }
 
+/** Changed paths between `base` and HEAD. `--no-renames` keeps BOTH sides of a move visible (a test or code file moved
+ * into docs/ must still count as a code change). */
+export function changedFiles(root, base) {
+  return execFileSync('git', ['diff', '--name-only', '--no-renames', base, 'HEAD'], { cwd: root, encoding: 'utf8' })
+    .split('\n').filter(Boolean);
+}
+
 function main() {
   const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
   const base = process.env.BASE_SHA;
@@ -42,7 +49,7 @@ function main() {
   try {
     if (process.env.GITHUB_EVENT_NAME === 'pull_request' && /^[0-9a-f]{40}$/.test(String(base))) {
       execFileSync('git', ['fetch', '--quiet', '--depth=1', 'origin', base], { cwd: root, stdio: 'ignore' });
-      const changed = execFileSync('git', ['diff', '--name-only', base, 'HEAD'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
+      const changed = changedFiles(root, base);
       code = needsCode(changed, testTexts(root));
       console.error(`ci-scope: ${changed.length} changed file(s); heavy jobs ${code ? 'run' : 'skipped (documentation only)'}`);
     }
