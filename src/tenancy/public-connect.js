@@ -211,13 +211,19 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     // LAUNCH-1: while invite-only is on, a NEW person needs an invite; people who already have a store are never locked out.
     if (env.GITHUB_PUBLIC_INVITE_ONLY === 'enabled' && !await dir.findPublicTenantBySubject(principal.subject) && !await dir.isPublicInvited(principal.login))
       throw new PublicConnectError('invite_only', 'Robinson GitHub MCP is invite-only right now. Ask Chris for an invite.');
-    const identityId = await dir.enrollVerifiedGithubSubject(principal.subject);
     const tenantKey = marketplaceAccountId ? 'marketplace-' + marketplaceAccountId : TENANT_KEY;
-    const existing = await dir.findPilotTenant(identityId, tenantKey);
+    const existing = await dir.findPublicTenantBySubject(principal.subject,tenantKey);
     if (!existing) await checkNewSignupsOpen(dir, root);
-    const tenantId = await dir.provisionPilotForOwnerAccount(identityId, tenantKey);
-    if (marketplaceAccountId && !await createMarketplaceStore(rootSql()).bind({ accountId:marketplaceAccountId,
-      identityId, tenantId, effectiveAt:subscription?.effective_at })) throw refused('marketplace-cancelled');
+    let tenantId,identityId;
+    if (marketplaceAccountId) {
+      const made = await createMarketplaceStore(rootSql()).enroll({accountId:marketplaceAccountId,
+        subject:principal.subject,planId:Number(subscription?.plan_id),effectiveAt:subscription?.effective_at});
+      if (!made) throw refused('marketplace-cancelled');
+      ({tenantId,identityId}=made);
+    } else {
+      identityId = await dir.enrollVerifiedGithubSubject(principal.subject);
+      tenantId = await dir.provisionPilotForOwnerAccount(identityId, tenantKey);
+    }
     const { db } = await initializeProvisionedTenant({ tenantId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory });
     const app = await root.getApp(appId);
     if (!app || !app.client_secret_enc || !app.private_key_enc || !app.webhook_secret_enc) throw refused('r8');

@@ -1317,5 +1317,28 @@ describe('Marketplace isolated free customer lifecycle', () => {
     expect((await delivery(payload('purchased','2026-01-01T00:00:00Z'),'market-stale-002')).statusCode).toBe(200);
     expect(await store.subscription(51001)).toBeNull();
     expect(await gateFor(originalDirect)).not.toBeNull();
+    // A sign-in begun before cancellation must not leave a new identity or namespace behind.
+    expect(await store.enroll({accountId:51001,subject:'999991',planId:920001,effectiveAt:'2026-01-01T00:00:00Z'})).toBeNull();
+    expect((await admin.query("SELECT 1 FROM gh_tenant_identities WHERE provider_subject='999991'")).rowCount).toBe(0);
+  });
+  it('waits for an in-flight refresh, revokes its replacement and rejects a pending Approve page', async () => {
+    expect((await delivery(payload('purchased','2026-01-03T00:00:00Z'),'market-rebuy-001')).statusCode).toBe(200);
+    const c=make(mpEnv()), client=await c.registerClient({redirect_uris:[CB]});
+    const pending=await (await signIn(c,client,'market',{resource})).finished;
+    const tenantId=await directory.findPublicTenantBySubject('31001','marketplace-51001');
+    const identityId=(await admin.query('SELECT identity_id FROM gh_marketplace_tenants WHERE tenant_id=$1',[tenantId])).rows[0].identity_id;
+    const old=await directory.getPilotUserAuthorization(tenantId,identityId,'client-co');
+    const claimId=crypto.randomUUID();
+    expect(await directory.claimPilotUserRefresh({tenantId,identityId,accountLogin:'client-co',expectedAccessEnc:old.access_enc,claimId})).not.toBeNull();
+    expect((await delivery(payload('cancelled','2026-01-04T00:00:00Z'),'market-cancel-002')).statusCode).toBe(503);
+    await expect(c.approve({handle:pending.approve.handle,choice:'approve'})).rejects.toThrow();
+    expect(await directory.claimPilotUserRefresh({tenantId,identityId,accountLogin:'client-co',expectedAccessEnc:old.access_enc,claimId:crypto.randomUUID()})).toBeNull();
+    const accessEnc=encryptSecret('ghu_FAKE-marketplace-refreshed',{key:Buffer.from(env.TOKEN_ENCRYPTION_KEY,'base64url'),
+      aad:`github-mcp/private-tenant/${tenantId}/identity/${identityId}/account/client-co/access`});
+    expect(await directory.finishPilotUserRefresh({tenantId,identityId,accountLogin:'client-co',expectedAccessEnc:old.access_enc,claimId,
+      accessEnc,accessExpiresAt:new Date(Date.now()+3600000),refreshEnc:old.refresh_enc,refreshExpiresAt:old.refresh_expires_at})).toBe(true);
+    expect(await sweepMarketplace({sql:sqlFor(admin),rootDb:root,env:mpEnv(),fetchImpl})).toEqual({removed:1,failed:0});
+    expect(revokedMarketplace.has('ghu_FAKE-marketplace-refreshed')).toBe(true);
+    expect((await admin.query('SELECT 1 FROM gh_marketplace_grants WHERE tenant_id=$1',[tenantId])).rowCount).toBe(0);
   });
 });
