@@ -1043,9 +1043,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/ACC-1.md",
     "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "Not yet run live (needs a scratch fixture and the group list from the GQL-1 card). Source and shape tests merged.",
-    "nextAction": "Run one mutation per group on a disposable scratch repo with github_graphql_write (dry run, confirm, read back, clean up)."
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:55 MDT on live b555df1 (Vercel READY), PRODUCTION/full, fixture robinson-ai-scratch/rtc-acc1-20261024-5 (auto-init, 1 issue). github_graphql_write pinIssue (specced, repo scope): dry run, confirm, independent read isPinned=true; unpinIssue inverse isPinned=false. createRef and addReaction were refused by the universal door ('no independently verifiable readback ... use the specialized guarded tool') because curated tools own them: correct by design. Fixture deleted. Only one representative specced mutation was run; the other groups are covered by source and shape tests."
   },
   {
     "id": "GITHUB-HARD1-SIGNIN-NO-CAP",

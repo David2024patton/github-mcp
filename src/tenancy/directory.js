@@ -1142,8 +1142,29 @@ export async function openAuthorizedTenantDb({ directory, tenantId, verifiedIden
     throw new Error('Tenant membership is not authorized.');
   const sql = createTenantSql(connectionString, tenantId, sqlFactory);
   await assertTenantSearchPath(sql, tenantId);
-  return { tenant: Object.freeze(bound), db: createDb(sql), sql };
+  const db = createDb(sql);
+  await upgradeTenantSchemaOnce(tenantId, connectionString, db, sql);
+  return { tenant: Object.freeze(bound), db, sql };
 }
+
+// HARD-2: a tenant's tables are created once, when the person first signs in. A release that adds a column (GOD-5 added
+// accounts.allow_changes) must therefore reach people who signed in earlier. Every statement in initSchema is additive and
+// IF NOT EXISTS, so the first request for a tenant on each server instance re-runs it. A failure is not remembered (the next
+// request tries again) and never blocks the request, because reads that do not touch the new column keep working.
+const upgradedTenants = new Map();
+async function upgradeTenantSchemaOnce(tenantId, connectionString, db, sql) {
+  const key = `${tenantId}|${connectionString ?? ''}`;
+  if (!upgradedTenants.has(key)) {
+    const running = (async () => {
+      await db.initSchema();
+      await initTenantRuntimeSchema(sql);
+    })();
+    upgradedTenants.set(key, running);
+    running.catch(() => { if (upgradedTenants.get(key) === running) upgradedTenants.delete(key); });
+  }
+  try { await upgradedTenants.get(key); } catch { /* retried on the next request */ }
+}
+export function forgetUpgradedTenantsForTests() { upgradedTenants.clear(); }
 
 /** For a newly provisioned, inactive tenant only. The caller is trusted internal
  * code; never expose this to an MCP tool, arbitrary OAuth client or public URL. */
