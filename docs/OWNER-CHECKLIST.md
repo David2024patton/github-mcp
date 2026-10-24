@@ -28,8 +28,7 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 - [ ] **Two-minute tidy-up (optional):** delete the old, finished branches on the repository page (Branches; GitHub's "delete branch after merge" setting would stop new ones piling up): ai/o2-org-members-20261014,
       ai/o2-owner-org-members-20261014, docs/authority-corrections-acceptance-handoff, docs/hub-contract-reference-20261019 (all merged), and
       scratch/status-fragments (its content is redundant), plus the merged ai/claude/* working branches. The agent's environment is not allowed to delete branches.
-- [ ] **Much later, only if you ever want it public: PUB-5 publication.** Needs a third-party directory's approval of an unofficial connector,
-      which may not be possible. The product works privately without it; nothing waits on it.
+- [x] **PUB-5 decided 2026-10-24:** no ChatGPT/Claude directory listing (they refuse unofficial connectors); public and free from your website instead. Steps are in "PUB-5 launch" below.
 
 ## B2. Give the agent a working connection to your deployed server (lets agents run the real-account tests for you)
 
@@ -71,7 +70,7 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 
 ## Later, for the public launch (approved 2026-10-23; blocks nothing now)
 - [ ] **Read and approve the terms of service and privacy policy** the agent drafts, and have a lawyer look at them before launch. Drafts are in `docs/legal/` (PRIVACY-DRAFT.md, TERMS-DRAFT.md); nothing serves them yet.
-- [ ] **Say go** before the GitHub App is switched to "installable by any account", and before each widening of the invite list.
+- [x] **Say go** for public use: done 2026-10-24 — public and free, from your website, no invite list, no people cap (PUB-5).
 - [ ] **Choose the support contact** (an email address) that appears on the App and the legal pages.
 - [ ] **Decide pricing, if any,** once the cost numbers from the load test exist.
 - [x] **Package token saved and fully tested (done 2026-10-23).** Agents published a throwaway package themselves with a GitHub workflow; read, delete and restore all passed. Nothing more needed from you.
@@ -118,7 +117,7 @@ The remaining work is planned in `docs/designs/FINISH-PLAN.md`. None of these bl
       lawyer reads it), and the monthly hosting-cost alert amount (default $20).
 - Money decisions stay yours and stay untested until you choose: budgets deletion, paid runners, paid Copilot or
   Sponsors actions.
-- [ ] (LAUNCH-1) Decide when to limit new sign-ups to the invite list: set `GITHUB_PUBLIC_INVITE_ONLY=enabled` for the production deployment, then add names on the owner setup page. Today anyone with the link can connect (capped by `GITHUB_PUBLIC_MAX_TENANTS`). Not needed for building or merging.
+- [x] (LAUNCH-1) Invite list: decided 2026-10-24 — not used; the service stays open to everyone. The switch remains only as an emergency lever.
 - [ ] (LAUNCH-1) Check the hosting cost estimate: on the owner setup page, "Public usage" shows an estimated monthly cost. The starting price (`PUBLIC_COST_PER_1K_CALLS_CENTS`, 5 cents per 1,000 calls) is a rough guess; when you have a real Vercel/Neon bill, set it to match, and set `PUBLIC_COST_ALERT_CENTS` (default 2000 = $20) to the monthly amount you want a warning at. Not needed for building or merging.
 - [ ] (LAUNCH-1) Publish decisions for the trust pages: the privacy, terms, security and support pages now exist at `/privacy`, `/terms`, `/security`, `/support` with a "DRAFT" banner. When you are happy with the wording (ideally after a lawyer reads `docs/legal/`), set `LEGAL_APPROVED=yes`; set `PUBLIC_SUPPORT_EMAIL` to the address people should write to (until then they say "support email coming soon"). Not needed for building or merging.
 - [ ] (LAUNCH-1) Decide whether the GitHub App keeps its full permission list. The review (`docs/audits/APP-PERMISSIONS-2026-10.md`) recommends keeping it: nothing is unused. If you want a smaller App, say so; changing it on GitHub makes every installer approve again. Not needed for building or merging.
@@ -126,3 +125,15 @@ The remaining work is planned in `docs/designs/FINISH-PLAN.md`. None of these bl
 - [x] (done 2026-10-24) **Optional: allow deploy keys on the scratch organization** (GitHub org Settings → Repository → "Deploy keys" policy). Only needed to finish one test row (GITHUB-H3-ACCESS-LIFECYCLE); it widens access slightly, so it is your call. Not a blocker.
 - [ ] **Two quick checks on your phone or computer (ACC-1):** (1) [done 2026-10-24: Robinson-AI-Systems added as a read-only extra place and tested; removed again by you at 06:48; nothing left to do] (2) next time you sign in a new app or person, tell the agent whether it worked. Neither blocks anything.
 - [x] (done 2026-10-24, approved by Chris) **Optional shortcut, restores whoami and changes now instead of after tomorrow's release (HARD-2):** tell the agent "yes, run the two additive column statements on the two existing person schemas". Otherwise the fix arrives with the next daily release. Reads keep working either way.
+
+## PUB-5 launch (written 2026-10-24; agents build it, nothing here blocks building or merging)
+Defaults in brackets are what the agents build; change any by telling the agent.
+- [ ] **Name shown to people** [Robinson MCP for GitHub, with "Not affiliated with or endorsed by GitHub" on every page]. Leading with your own brand keeps clear of GitHub's trademark.
+- [ ] **Free daily limit per person** [5,000 assistant calls a day, 300 changes an hour]. Stops one heavy user from running up your bill. Your own GitHub account is exempt (the agent fills in its number for you; you add it as a setting) so your agents are never slowed.
+- [ ] **Pause new sign-ups automatically when the estimated monthly cost reaches** [$50]. People already connected keep working. You can also pause by hand.
+- [ ] **Sign people out after this long without use** [180 days]. They just sign in again; it keeps fewer stored keys and costs less.
+- [ ] **Turn on spend alerts in Vercel and Neon** (their own settings pages, free): Vercel → Settings → Billing → Spend Management; Neon → Billing. Those emails are how you hear about cost, so the server needs no email system.
+- [ ] **Launch with the trust pages still marked DRAFT?** [yes]. When ready: set `LEGAL_APPROVED=yes` and `PUBLIC_SUPPORT_EMAIL`.
+- [ ] **Move the GitHub App to your Robinson-AI-Systems organization** (GitHub → the App's settings → Advanced → Transfer ownership). Recommended before the Marketplace listing, which shows the owner's name; today it shows `robinson-ai-scratch`.
+- [ ] **After PR D:** paste the connect button from `docs/website/` into your website (or ask the website's agent to); publish to the official MCP Registry (one DNS record + one command; steps in the PR D status note); submit the free GitHub Marketplace listing from `docs/marketplace/` as organization owner.
+

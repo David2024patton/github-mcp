@@ -113,7 +113,7 @@ Approach: one public GitHub App, opened gradually. Every item below is part of "
 ## Planned 2026-10-23 (batch FIN, see docs/designs/FINISH-PLAN.md)
 GOD-2 personal tools on the master token · GOD-3 "what it unlocks" · ENT-1 enterprise tools (trial) · ACC-1 acceptance
 sweep · GOD-4 new master-token families · GQL-1 GraphQL write specs · GOD-5 extra places · HARD-1 hardening and tidy.
-Still NOT planned (stay here): PUB-5 directory listing (policy-blocked); linking a second, separate GitHub login into one
+Still NOT planned (stay here): ChatGPT/Claude directory listings (policy-blocked; PUB-5 is now the website launch); linking a second, separate GitHub login into one
 connection; OAuth-app token management and App-manifest conversion (need an OAuth app's own secret).
 
 ## Found while building ENT-1 (2026-10-23)
@@ -123,3 +123,14 @@ connection; OAuth-app token management and App-manifest conversion (need an OAut
   confirm apply; read-back is not possible). Re-open when GitHub adds a read operation.
 - **Enterprise membership changes** (invite or remove admins and members, create organizations, GraphQL) stay out of ENT-1 on
   purpose (access changes at enterprise scale); GQL-1 may add them with Chris's say-so.
+
+## Monetization (later; Chris 2026-10-24: free for now, wants to monetize someday)
+Nothing here is built. PUB-5 measures each person's daily calls and changes so any of these can be priced from real data.
+- Free tier with the PUB-5 fair-use limits; a paid tier with higher limits, God-mode features or longer saved results.
+- Team or organization plans (one bill for several people's connections).
+- Payment through Stripe (Chris has a Stripe MCP) or GitHub Marketplace paid plans (GitHub requires a verified publisher
+  and at least 100 installations before a paid plan; once a paid version exists outside the Marketplace, the Marketplace
+  listing must offer one too).
+- Getting people to use it: the official MCP Registry and GitHub Marketplace listings (PUB-5 PR D), the website button,
+  a short demo video, posts in MCP communities, and a clear README on the public repository.
+

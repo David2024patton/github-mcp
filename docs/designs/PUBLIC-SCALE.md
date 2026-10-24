@@ -73,6 +73,9 @@ This document specifies the release-barrier design for **GitHub by Robinson AI S
 
 ### PUB-5 — independent pre-publication gate (completion, not development approval)
 
+> **Superseded 2026-10-24 by Chris's decision** (public, free, from his website; no directory listing; no people cap).
+> The card `docs/pr-cards/PUB-5.md` is the design now; the threat list below is reused in its PR C.
+
 - Audit system threats: cross-tenant access, OAuth attacks, installed App abuse, forged webhook delivery, stolen refresh token, shared rate exhaustion, paid/provider exposures, delete/replay, and tool prompt injection; complete real-Postgres + provider/test-client evidence.
 - Define measured SLO/capacity and support/incident ownership, cost model, privacy/retention obligations and required verified developer/business identity for directory publishing.
 - Compile approval evidence: all 57 original release acceptance criteria properly dispositioned (passed or an explicitly owner-accepted, documented provider-unavailable exception), tenant isolation, two-platform first-hand acceptance, operational and legal checks. Obtain a **new explicit owner publication decision**. Until then, PRIVACY=PRIVATE / no public enrollment, even if product features work in personal production.
