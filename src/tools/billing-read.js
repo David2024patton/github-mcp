@@ -195,13 +195,25 @@ export const codespaces=defineRead({
       complete,note:complete?null:'Codespaces list is partial; no complete compute-cost assertion.'};
   })
 });
+export const codespaceMachines=defineRead({
+  name:'github_codespace_list_machines',area:'codespace',audience:['O','B'],
+  description:'Machine types (cores, memory, storage) a codespace of yours could be switched to.',
+  properties:{codespaceName:{type:'string',pattern:'^[A-Za-z0-9-]{1,90}$',description:'Exact codespace name (from github_codespace_list)'}},required:['codespaceName'],
+  handler:(a,c)=>plain(async()=>{
+    const {gh}=await userCred({},c,'codespace');
+    const d=await request(gh,'GET /user/codespaces/{codespace_name}/machines',{codespace_name:a.codespaceName});
+    const machines=(d?.machines??[]).map(m=>({name:m.name,display_name:m.display_name,cpus:m.cpus,memory_gb:Number.isFinite(m.memory_in_bytes)?Math.round(m.memory_in_bytes/2**30):null,storage_gb:Number.isFinite(m.storage_in_bytes)?Math.round(m.storage_in_bytes/2**30):null,prebuild_availability:m.prebuild_availability??null}));
+    return {codespace:a.codespaceName,count:machines.length,machines};
+  })
+});
 export {budgetInventory,orgCred,userCred,copilotSeats};
 export const tools=[billingUsage.tool,billingBudgets.tool,marketplace.tool,
-  copilotBilling.tool,codespaces.tool];
+  copilotBilling.tool,codespaces.tool,codespaceMachines.tool];
 export const handlers=Object.fromEntries([
   [billingUsage.tool,billingUsage.handler],
   [billingBudgets.tool,billingBudgets.handler],
   [marketplace.tool,marketplace.handler],
   [copilotBilling.tool,copilotBilling.handler],
-  [codespaces.tool,codespaces.handler]
+  [codespaces.tool,codespaces.handler],
+  [codespaceMachines.tool,codespaceMachines.handler]
 ].map(([t,h])=>[t.name,h]));

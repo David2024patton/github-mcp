@@ -1984,7 +1984,7 @@
         "GOD-3"
       ],
       "card": "docs/pr-cards/ENT-1.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "none",
       "budget": 0,
       "units": [
@@ -2018,7 +2018,7 @@
         "GOD-3"
       ],
       "card": "docs/pr-cards/GOD-4.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 0,
       "units": [

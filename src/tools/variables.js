@@ -7,6 +7,7 @@ import { OUTSIDE_PROJECT } from './protect-guard.js';
 import { missing, octo, ownerOf, refusal, slug } from './github-write.js';
 import { plain, readerFor } from './github-read.js';
 import { productionReason } from './production-guard.js';
+import { personalCred } from '../github/personal-cred.js';
 
 const OWNER = { type: 'string', maxLength: 39, description: 'GitHub account (default: the connection\'s default account)' };
 const REPO = { type: 'string', minLength: 1, maxLength: 100, description: 'Leave out for an organization-level variable or secret' };
@@ -17,6 +18,11 @@ const KINDS = ['actions', 'dependabot', 'codespaces', 'agents'];
 /** Where the thing lives: its API base path and a plain label. */
 export function place(args, ctx) {
   const owner = ownerOf(args, ctx);
+  if (args.level === 'user') {
+    if (args.repo || args.environment !== undefined) throw new TypeError('level "user" is your own account: leave out repo and environment.');
+    if ((args.kind ?? 'actions') !== 'codespaces') throw new TypeError('Only Codespaces secrets exist on a personal account: set kind to codespaces.');
+    return { level: 'user', owner, label: 'your personal Codespaces secrets' };
+  }
   if (args.environment !== undefined && !args.repo) throw new TypeError('An environment belongs to a repository: give repo too.');
   if (args.environment !== undefined) return { level: 'environment', owner, repo: args.repo, environment: args.environment, label: `the ${args.environment} environment of ${slug(owner, args.repo)}` };
   if (args.repo) return { level: 'repo', owner, repo: args.repo, label: slug(owner, args.repo) };
@@ -27,7 +33,9 @@ const varRoute = (pl) => ({
   one: pl.level === 'org' ? '/orgs/{org}/actions/variables/{name}' : pl.level === 'environment' ? '/repos/{owner}/{repo}/environments/{environment_name}/variables/{name}' : '/repos/{owner}/{repo}/actions/variables/{name}'
 });
 const varParams = (pl) => (pl.level === 'org' ? { org: pl.owner } : pl.level === 'environment' ? { owner: pl.owner, repo: pl.repo, environment_name: pl.environment } : { owner: pl.owner, repo: pl.repo });
-export const targetOf = (pl) => ({ owner: pl.owner, ...(pl.repo ? { repo: pl.repo } : {}), ...(pl.environment ? { environment: pl.environment } : {}), scope: pl.level === 'org' ? 'org' : 'repo' });
+export const targetOf = (pl) => ({ owner: pl.owner, ...(pl.repo ? { repo: pl.repo } : {}), ...(pl.environment ? { environment: pl.environment } : {}), scope: pl.level === 'org' ? 'org' : pl.level === 'user' ? 'user' : 'repo' });
+// Which credential a secret kind needs: Codespaces secrets belong to the person's own account (master token, GOD-2); the rest use the App.
+export const secretCred = async (ctx, kind) => ((kind ?? 'actions') === 'codespaces' ? personalCred(ctx, 'codespace') : 'I');
 const getVar = (ctx, pl, name) => missing(async () => (await (await octo(ctx, pl.owner)).request(`GET ${varRoute(pl).one}`, { ...varParams(pl), name })).data);
 
 export const variableList = defineRead({
@@ -92,12 +100,20 @@ const variableDelete = defineGithubWrite({
 export const secretList = defineRead({
   name: 'github_secret_list', area: 'secret', audience: ['B', 'O'],
   description: 'Secret names and dates for a repository, an environment or an organization (never values), and which repositories can use an organization secret.',
-  properties: { owner: OWNER, repo: REPO, environment: ENVIRONMENT, kind: { type: 'string', enum: KINDS, description: 'Default actions' }, includeOrganization: { type: 'boolean', description: 'For a repository: also the organization secrets it can use' } },
+  properties: { owner: OWNER, repo: REPO, environment: ENVIRONMENT, level: { type: 'string', enum: ['user'], description: 'user = your own personal Codespaces secrets (kind codespaces; leave out repo)' }, kind: { type: 'string', enum: KINDS, description: 'Default actions' }, includeOrganization: { type: 'boolean', description: 'For a repository: also the organization secrets it can use' } },
   required: [],
   handler: (args, ctx) => plain(async () => {
+    const kind = args.kind ?? 'actions';
+    if (args.level === 'user') {
+      const pu = place(args, ctx);
+      const cred = await secretCred(ctx, kind);
+      if (cred !== 'M') throw refusal('Your personal Codespaces secrets need your master token with the codespace permission; add it on the My connection page.', 403);
+      const data = (await (await octo(ctx, pu.owner, cred)).request('GET /user/codespaces/secrets', { per_page: 100 })).data;
+      const items = (data.secrets ?? []).map((x) => ({ name: x.name, created_at: x.created_at, updated_at: x.updated_at, visibility: x.visibility }));
+      return { where: pu.label, kind, count: items.length, items, note: 'Values are never shown; GitHub does not return them.' };
+    }
     const { owner, octokit } = await readerFor(args, ctx);
     const pl = place({ ...args, owner }, ctx);
-    const kind = args.kind ?? 'actions';
     if (pl.level === 'environment' && kind !== 'actions') throw new TypeError('Only Actions secrets exist per environment.');
     const route = pl.level === 'org' ? `GET /orgs/{org}/${kind}/secrets` : pl.level === 'environment' ? 'GET /repos/{owner}/{repo}/environments/{environment_name}/secrets' : `GET /repos/{owner}/{repo}/${kind}/secrets`;
     const data = (await octokit.request(route, { ...varParams(pl), per_page: 100 })).data;
