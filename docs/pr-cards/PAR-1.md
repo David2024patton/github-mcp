@@ -197,3 +197,4 @@ listing modes and `github_search_tools`); anything needing git on the agent's ow
 - Stargazers took its total from a separate count endpoint that did not answer live. The total now comes from the repository's own star count, which the public-repo check already reads. One fewer GitHub call.
 - Approve page and My connection: a permanent "Install on another organization or account" button (value `*`) opens GitHub's install picker with no place pre-selected, so it does not depend on our own organization lookup.
 - Stargazers: when GitHub refuses the listing of a repository already confirmed public, retry once with the App credential and otherwise say so plainly with the star total (no more misleading "not found").
+- Status set to MERGED; live results recorded in docs/status/2026-10-24-par-1-live-results.md.
