@@ -66,8 +66,20 @@ async function readReply({ tool, args, raw, connection, db, mode }) {
   return { content: [{ type: 'text', text: JSON.stringify(body) }], structuredContent: body };
 }
 
-export function createDispatch({ env = process.env, now = Date.now, fetch = globalThis.fetch, credentials = null, gates = null, sleep = undefined } = {}) {
-  return async function dispatch({ registry, name, args, connection, db, actor = null, actAsCache = null }) {
+// PUB-5 B: a real change is one that was applied, or whose result is not certain (unconfirmed, uncertain). Previews and refusals are not.
+const COUNTED_STATUSES = new Set(['applied', 'unconfirmed', 'uncertain']);
+
+/** `usage` is optional: `{ beforeWrite(): Promise<null|{message, retryAfterSeconds}> (reserves a slot), afterWrite(): Promise<void> (confirms it), release?(): Promise<void> (hands it back) }`. Absent = no limits
+ *  (every existing caller and the owner path behave exactly as before). It is asked before each real change and told after it. */
+export function createDispatch({ env = process.env, now = Date.now, fetch = globalThis.fetch, credentials = null, gates = null, sleep = undefined, usage = null } = {}) {
+  // PUB-5 B: a change slot is reserved before the change runs (so parallel calls cannot slip past the limit) and handed back
+  // unless the change was counted. `box` remembers that for this one call.
+  const dispatch = async (input) => {
+    const box = { reserved: false, counted: false };
+    try { return await run(input, box); }
+    finally { if (box.reserved && !box.counted) { try { await usage.release?.(); } catch { /* best effort */ } } }
+  };
+  async function run({ registry, name, args, connection, db, actor = null, actAsCache = null }, box) {
     // GOD-6: one log of "who acted" per top-level call; a workflow's nested calls share it, so its result covers them.
     const topLevel = actor === null;
     const actorLog = actor ?? createActorLog();
@@ -84,6 +96,13 @@ export function createDispatch({ env = process.env, now = Date.now, fetch = glob
     // A service pass is narrower than its profile. This is the one place every call passes, so a workflow's nested calls are held to it too.
     const outside = passRefusal({ tool, args: args ?? {}, connection });
     if (outside) return fail(outside);
+    // PUB-5 B: the free fair-use limit on real changes. A preview (dryRun) is never limited and never counted; reads are never limited.
+    const limited = usage && isWrite && args?.dryRun !== true;
+    if (limited) {
+      let stop = null;
+      try { stop = await usage.beforeWrite(); box.reserved = !stop; } catch { stop = null; /* a counting problem never blocks work */ }
+      if (stop) return { ...fail(stop.message), structuredContent: { error: 'rate_limited', retry_after_seconds: stop.retryAfterSeconds } };
+    }
     let result;
     try {
       const challenge=await optionalConsentChallenge({
@@ -110,6 +129,7 @@ export function createDispatch({ env = process.env, now = Date.now, fetch = glob
         : result;
     } else if (isWrite) {
       const body = result?.structuredContent ?? null;
+      if (limited && COUNTED_STATUSES.has(body?.status)) { box.counted = true; try { await usage.afterWrite(); } catch { /* counting is best effort */ } }
       const clean = body ? shapeResult(body, { mode }) : null;
       shaped = clean ? { ...result, structuredContent: clean, content: [{ type: 'text', text: JSON.stringify(clean) }] } : result;
     } else {
@@ -123,5 +143,6 @@ export function createDispatch({ env = process.env, now = Date.now, fetch = glob
     }
     if (containsCredential(JSON.stringify(shaped))) return fail('The result was withheld because it looked like it contained a credential.');
     return shaped;
-  };
+  }
+  return dispatch;
 }

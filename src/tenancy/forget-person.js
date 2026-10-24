@@ -1,6 +1,7 @@
 // Owner-only deletion of one public person's data. NOT a tool and not a public URL: the protected owner setup page calls it
-// after the owner types the person's GitHub account name twice. The person is found by the account name inside each public
-// person's own store (personal accounts only, never an organization), so nothing about them is kept at the shared level.
+// after the owner types the person's GitHub account name twice. The person is found through the saved sign-in, which keeps their
+// personal GitHub name at the shared level (the owner also sees the name and daily counts of the ten heaviest users on the
+// usage page, PUB-5 B), and is always confirmed inside their own store (personal accounts only, never an organization).
 import { createTenantDirectory, createTenantSql } from './directory.js';
 
 const LOGIN = /^[a-z0-9][a-z0-9-]{0,38}$/;

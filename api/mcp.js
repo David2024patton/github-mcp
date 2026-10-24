@@ -9,6 +9,9 @@ import { serverInfo } from '../src/brand/brand.js';
 import { publicOrigin } from '../src/core/http.js';
 import { loadZone, withTimeZone } from '../src/core/time-zone.js';
 import { admitTenantMcp, TenantCapacityError, recordTenantMetric } from '../src/tenancy/runtime-limits.js';
+import { neon } from '@neondatabase/serverless';
+import { isPublicClientId } from '../src/tenancy/public-code.js';
+import { createPublicUsage, publicUsageLimits } from '../src/tenancy/public-usage.js';
 
 const safeOrigin = () => { try { return publicOrigin(); } catch { return null; } };
 
@@ -18,6 +21,7 @@ export default async function handler(req, res) {
   const began = Date.now();
   let tenantSql = null;
   let eventOutcome = 'error';
+  let usage = null, usageHook = null, publicTenantId = null, countedCall = false;
   try {
     // Tenant-marked access tokens are NEVER retried against the owner database.
     // When the closed pilot is disabled or its grant is revoked, return 401.
@@ -36,13 +40,41 @@ export default async function handler(req, res) {
       // All active tenant clients share one DB-backed budget; each connection
       // has a smaller independent burst limit. Original owner unchanged.
       await admitTenantMcp(tenantSql, context.clientId);
+      // PUB-5 B: free fair use for PUBLIC people. Only `tools/call` counts (initialize, tools/list and notifications are free);
+      // real changes are counted one by one inside dispatch. Numbers only, kept at the shared level.
+      if (isPublicClientId(context.clientId) && process.env.DATABASE_URL) {
+        publicTenantId = String(context.tenant.tenantId);
+        usage = createPublicUsage(neon(process.env.DATABASE_URL), publicUsageLimits(process.env));
+        const items = Array.isArray(req.body) ? req.body : [req.body];
+        const calls = items.filter((m) => m?.method === 'tools/call').length;
+        if (calls > 0) {
+          // A counting problem never takes the service down: the call just goes uncounted.
+          let exempt = false, claim = null;
+          try {
+            exempt = await usage.isExempt(String(context.tenant.identityId));
+            claim = await usage.claimCalls(publicTenantId, { n: calls, exempt });
+          } catch { claim = null; }
+          if (claim && !claim.ok) {
+            eventOutcome = 'throttled';
+            res.setHeader('Cache-Control', 'no-store');
+            res.setHeader('Retry-After', String(claim.retryAfterSeconds));
+            const detail = { error: 'rate_limited', retry_after_seconds: claim.retryAfterSeconds };
+            // A single call gets an ordinary tool answer the assistant can read; a batch is refused as a whole.
+            if (!Array.isArray(req.body)) return res.status(200).json({ jsonrpc: '2.0', id: req.body.id ?? null,
+              result: { isError: true, content: [{ type: 'text', text: claim.message }], structuredContent: detail } });
+            return res.status(429).json({ ...detail, error_description: claim.message });
+          }
+          countedCall = claim !== null;
+          usageHook = usage.dispatchHook(publicTenantId, { exempt });
+        }
+      }
     }
     const policy = createGithubPolicy();
     const zone = await loadZone(db);
     const answer = await withTimeZone(zone, () => createMcpHandler({
       ...(tenantRoute?{toolSecuritySchemes:tool=>[{type:'oauth2',
         scopes:tool.name==='github_notify_list'?['github.notifications.read']:[]}]}:{}),
-      db, registry, toConnection: policy.toConnection, dispatch: createDispatch({ credentials, gates: createGates({ db }) }), serverInfo: serverInfo(safeOrigin())
+      db, registry, toConnection: policy.toConnection, dispatch: createDispatch({ credentials, gates: createGates({ db }), ...(usageHook ? { usage: usageHook } : {}) }), serverInfo: serverInfo(safeOrigin())
     })(req, res));
     eventOutcome = 'ok';
     return answer;
@@ -62,5 +94,6 @@ export default async function handler(req, res) {
     if (tenantSql) await recordTenantMetric(tenantSql,{
       event:'mcp',outcome:eventOutcome,durationMs:Math.max(0,Date.now()-began)
     }).catch(()=>{});
+    if (countedCall && eventOutcome === 'error') await usage.recordError(publicTenantId).catch(() => {});
   }
 }

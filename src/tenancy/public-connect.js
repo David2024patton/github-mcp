@@ -23,6 +23,9 @@ import { validZone, ZONE_SETTING } from '../core/time-zone.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { createTenantDirectory, initializeProvisionedTenant, openAuthorizedTenantDb } from './directory.js';
+import { createPublicUsage, publicUsageLimits } from './public-usage.js';
+import { publicSignupState } from './usage-cost.js';
+import { removeInactivePeopleHourly } from './public-inactive.js';
 import { admitTenantOAuth, recordTenantMetric } from './runtime-limits.js';
 import { verifyGithubBearerIdentity, listUserAppInstallations, verifyAccountAuthority } from './github-identity.js';
 import { storePilotUserGrant, createTenantScopedCredentials } from './user-authorization.js';
@@ -71,14 +74,16 @@ const whole = (text, fallback, max) => {
 export function createPublicConnect({ env = process.env, fetchImpl = fetch, rootSqlFactory = neon, tenantSqlFactory = neon } = {}) {
   const appId = Number(env.GITHUB_PILOT_APP_ID);
   const limits = Object.freeze({
-    maxClients: whole(env.GITHUB_PUBLIC_MAX_CLIENTS, 500, 100000),
+    maxClients: whole(env.GITHUB_PUBLIC_MAX_CLIENTS, 100000, 1000000),
     // HARD-1: the shared cap is high (no one person can fill it); each registered app gets its own small cap, so one app opening many
     // sign-in links can only block itself. The built-in pages (My connection, Delete my data) share one larger cap each.
     maxOpenFlows: whole(env.GITHUB_PUBLIC_MAX_OPEN_FLOWS, 5000, 100000),
     maxOpenPerClient: whole(env.GITHUB_PUBLIC_MAX_OPEN_FLOWS_PER_CLIENT, 20, 10000),
-    maxOpenPerBuiltIn: 200,
-    maxTenants: whole(env.GITHUB_PUBLIC_MAX_TENANTS, 25, 1000000)
+    maxOpenPerBuiltIn: 200
   });
+  // PUB-5 B: there is NO cap on the number of people. Cost is protected by fair-use limits per person, the cost auto-pause of NEW
+  // sign-ups (below) and the clean-up of people who stopped using the service.
+  const usageLimits = publicUsageLimits(env);
   const active = () => {
     if (!publicConnectEnabled(env) || env.GITHUB_PRIVATE_TENANT_PILOT !== 'enabled' ||
         env.VERCEL_ENV !== 'production' || !env.DATABASE_URL ||
@@ -124,6 +129,8 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
         !uris.every((u) => typeof u === 'string' && validRedirectUri(u)) ||
         (body.token_endpoint_auth_method && body.token_endpoint_auth_method !== 'client_secret_post'))
       throw new PublicConnectError('invalid_client_metadata', 'One to eight valid, distinct redirect URIs are required.');
+    // PUB-5 B: unused app registrations (no token in 30 days) are cleaned away as new ones arrive, at most 50 at a time.
+    await directory().deleteStalePublicClients({ days: 30, limit: 50, keep: [FORGET_CLIENT, MANAGE_CLIENT] }).catch(() => {});
     const clientId = 'pcl_' + random(24), secret = randomToken(32);
     const name = typeof body.client_name === 'string' ? body.client_name.slice(0, 100) : null;
     const stored = await directory().createPublicClient({ clientId, secretHash: hashToken(secret), redirectUris: uris,
@@ -181,6 +188,17 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     return await openStep({ client, flow, afterInstall: true });
   }
 
+  /** PUB-5 B: NEW people only (people who already have a store are never refused). Closed by hand (GITHUB_PUBLIC_NEW_SIGNUPS=paused)
+   *  or automatically when the estimated monthly cost reaches the pause level. */
+  async function checkNewSignupsOpen(dir, root) {
+    const paused = () => new PublicConnectError('paused', 'New sign-ups are paused for a short while. Please try again later.');
+    if (env.GITHUB_PUBLIC_NEW_SIGNUPS === 'paused') throw paused();
+    if (usageLimits.costPauseCents > 0) {
+      const state = await publicSignupState({ rootSql: rootSql(), root, env, limits: usageLimits });
+      if (state.paused) throw paused();
+    }
+  }
+
   /** One isolated tenant per verified GitHub person; every account that person connects lives inside it. */
   async function ensureTenant({ principal, installations }) {
     const dir = directory(), root = createDb(rootSql());
@@ -189,8 +207,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       throw new PublicConnectError('invite_only', 'Robinson GitHub MCP is invite-only right now. Ask Chris for an invite.');
     const identityId = await dir.enrollVerifiedGithubSubject(principal.subject);
     const existing = await dir.findPilotTenant(identityId, TENANT_KEY);
-    if (!existing && await dir.countPilotTenants() >= limits.maxTenants)
-      throw new PublicConnectError('capacity', 'We are at our current capacity for new accounts. Please try again later.');
+    if (!existing) await checkNewSignupsOpen(dir, root);
     const tenantId = await dir.provisionPilotForOwnerAccount(identityId, TENANT_KEY);
     const { db } = await initializeProvisionedTenant({ tenantId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory });
     const app = await root.getApp(appId);
@@ -219,6 +236,9 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     // person's own store now holds, so accounts added earlier are kept. Extra places (master token) have no installation.
     await dir.indexPublicInstallations(tenantId, (await db.listAccounts())
       .filter((a) => a.credential_kind === 'app' && a.installation_id).map((a) => a.installation_id));
+    // PUB-5 B: now and then (at most hourly, 20 people) sign out people who stopped using the service. Never the person signing in now.
+    await removeInactivePeopleHourly({ root, rootSql: rootSql(), connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory,
+      limits: usageLimits, exceptTenantId: tenantId }).catch(() => {});
     return { dir, tenantId, identityId, logins };
   }
 
@@ -434,7 +454,9 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
           rejected: !!(await read('master_rejected_at')), expired: !!expired };
       }
     }
-    return { handle, signedInAs, accounts, places, connections, offers: offers ?? [], timeZone: (await db.getSetting(ZONE_SETTING)) ?? 'UTC',
+    // PUB-5 B: "used today: 312 of 5,000" (numbers only; a counting problem just hides the line).
+    const usage = await createPublicUsage(rootSql(), usageLimits).usedToday(tenantId).catch(() => null);
+    return { handle, signedInAs, accounts, places, connections, usage, offers: offers ?? [], timeZone: (await db.getSetting(ZONE_SETTING)) ?? 'UTC',
       master: master ? { added: true, expiresAt: master.expires_at ?? null, unlocks: masterUnlocks(master.scopes ?? []), actAs } : { added: false, unlocks: [] }, notice };
   }
   /** One action on My connection. Every action uses up the page's handle and returns a fresh page (or somewhere to go). */

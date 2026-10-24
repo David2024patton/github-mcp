@@ -10,7 +10,7 @@ Status: draft written 2026-10-23 from what the server actually does. A lawyer sh
 - **Connection settings:** which accounts you connected, whether the connection is read-only, your time zone.
 - **A record of changes:** each change your assistant makes is logged with who, where, what, the before/after of what changed, whether it was confirmed, and GitHub's request reference, so it can be explained and, where possible, undone. This can include text of the thing that was changed (for example a file, issue or setting).
 - **Short-lived results:** large answers are kept for 24 hours behind a private handle so your assistant can page through them, then removed.
-- **Usage counts:** hourly totals of calls by result and speed. They contain no content and no names.
+- **Usage counts:** hourly totals of calls by result and speed (they contain no content and no names), and, for each person, how many calls, real changes and errors they made each day (kept up to 400 days; per-hour change counts are kept 48 hours). These per-person counts are used for the free fair-use limits and to control cost. The service owner can see them, and can see the GitHub name of the ten heaviest users each week, only to prevent abuse and control cost.
 - **Hosting logs:** our hosting provider keeps ordinary request logs (time, address, route, status) for operating and securing the service.
 
 ## What your assistant receives
@@ -23,7 +23,7 @@ We do not sell your data, show ads, or use your repositories to train models. [O
 GitHub (the source of your data and your authorization), our hosting provider (Vercel) and our database provider (Neon). [Owner to list any others added later.]
 
 ## How long we keep it
-Sign-in grants until they expire or you disconnect; settings and the change record until you ask us to delete them; short-lived results 24 hours; usage counts in aggregate. When you ask to be deleted, we remove your sign-in, grants, settings, change record and saved results for good, and your tokens stop working immediately.
+Sign-in grants until they expire or you disconnect, and are removed if you have not used the service or signed in for 180 days (you simply sign in again; your settings stay); settings and the change record until you ask us to delete them; short-lived results 24 hours; usage counts in aggregate. When you ask to be deleted, we remove your sign-in, grants, settings, change record and saved results for good, and your tokens stop working immediately.
 
 ## Your choices
 Disconnect any time from your AI app or by revoking the GitHub App's access in your GitHub settings. Delete everything yourself, any time, at the "Delete my data" link on the sign-in page (you sign in with GitHub, confirm once, and it is removed for good), or ask us at [support email]. Choose a read-only connection when you sign in if you want your assistant to only look and preview.

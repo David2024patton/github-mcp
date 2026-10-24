@@ -16,7 +16,7 @@ beforeAll(async () => {
   if (process.env.LOAD_TARGET_ORIGIN && process.env.LOAD_TARGET_ORIGIN !== ORIGIN) throw new Error('The load test only runs against the local fake service.');
   world = await startWorld();
   // The sign-up caps are for real life; this test measures the service, not the caps.
-  process.env.GITHUB_PUBLIC_MAX_TENANTS = '100000'; process.env.GITHUB_PUBLIC_MAX_CLIENTS = '100000'; process.env.GITHUB_PUBLIC_MAX_OPEN_FLOWS = '100000';
+  process.env.GITHUB_PUBLIC_MAX_CLIENTS = '100000'; process.env.GITHUB_PUBLIC_MAX_OPEN_FLOWS = '100000';
 });
 afterAll(async () => { await world?.close(); });
 

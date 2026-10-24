@@ -290,15 +290,46 @@ describe('PUB-6 public simple connect in REAL PostgreSQL', () => {
     expect((await exchange(client, codeOf(a))).statusCode).toBe(401);
   });
 
-  it('holds hard caps: self-serve tenants and open sign-ins', async () => {
+  it('PUB-5 B: no cap on the number of people; the open-sign-in cap still holds', async () => {
     const existing = (await admin.query('SELECT count(*)::int n FROM gh_tenant_pilot_bootstraps')).rows[0].n;
+    // the old setting is ignored: a brand-new person still gets in even when it equals the number of people
     const c = make({ GITHUB_PUBLIC_MAX_TENANTS: String(existing) });
     const client = await c.registerClient({ redirect_uris: [CB] });
     people.zed = { token: 'tok-zed-00004', id: 31004, login: 'zed-new', installs: [{ id: 41030, app_id: APP, account: { id: 31004, login: 'zed-new', type: 'User' }, repository_selection: 'all', suspended_at: null }] };
-    await expect((await signIn(c, client, 'zed')).finished).rejects.toMatchObject({ code: 'capacity' });
+    expect(await approved(c, client, 'zed')).toContain(CB);
     expect(await approved(c, client, 'alice')).toContain(CB);
     const open = (await admin.query('SELECT count(*)::int n FROM gh_public_flows WHERE expires_at > now()')).rows[0].n;
     await expect(make({ GITHUB_PUBLIC_MAX_OPEN_FLOWS: String(open) }).begin(authorizeParams(client))).rejects.toMatchObject({ code: 'capacity' });
+  });
+
+  it('PUB-5 B: new sign-ups pause by hand or when the estimated cost is reached; people already in are never affected', async () => {
+    people.pauser = { token: 'tok-pauser-07', id: 31907, login: 'pauser-one', installs: [{ id: 41960, app_id: APP, account: { id: 31907, login: 'pauser-one', type: 'User' }, repository_selection: 'all', suspended_at: null }] };
+    const c = make({ GITHUB_PUBLIC_NEW_SIGNUPS: 'paused' });
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    await expect((await signIn(c, client, 'pauser')).finished).rejects.toMatchObject({ code: 'paused' });
+    expect(await approved(c, client, 'alice')).toContain(CB); // already connected: still fine
+    // by cost: put one heavy day of calls in, with a tiny pause level
+    const [{ tenant_id }] = (await admin.query('SELECT tenant_id FROM gh_tenant_pilot_bootstraps LIMIT 1')).rows;
+    await admin.query('INSERT INTO gh_public_usage_daily(day, tenant_id, calls) VALUES ((now() AT TIME ZONE \'UTC\')::date, $1, 700000) ON CONFLICT (day, tenant_id) DO UPDATE SET calls = 700000', [tenant_id]);
+    await admin.query("DELETE FROM server_settings WHERE setting = 'public_cost_estimate_cache'");
+    const cost = make({ PUBLIC_COST_PAUSE_CENTS: '100' });
+    await expect((await signIn(cost, client, 'pauser')).finished).rejects.toMatchObject({ code: 'paused' });
+    expect(await approved(cost, client, 'alice')).toContain(CB);
+    // pause level 0 = off
+    await admin.query("DELETE FROM server_settings WHERE setting = 'public_cost_estimate_cache'");
+    expect(await approved(make({ PUBLIC_COST_PAUSE_CENTS: '0' }), client, 'pauser')).toContain(CB);
+    await admin.query('DELETE FROM gh_public_usage_daily WHERE calls = 700000');
+  });
+
+  it('PUB-5 B: stale never-used registrations are removed, recent ones and the fixed ones stay', async () => {
+    const c = make();
+    const old = await c.registerClient({ redirect_uris: [CB] });
+    const fresh = await c.registerClient({ redirect_uris: [CB] });
+    await admin.query("UPDATE gh_public_clients SET created_at = now() - interval '40 days' WHERE client_id = $1", [old.client_id]);
+    await c.registerClient({ redirect_uris: [CB] }); // registering sweeps
+    const left = (await admin.query('SELECT client_id FROM gh_public_clients WHERE client_id = ANY($1)', [[old.client_id, fresh.client_id, FORGET_CLIENT, MANAGE_CLIENT]])).rows.map((r) => r.client_id);
+    expect(left).not.toContain(old.client_id);
+    expect(left).toContain(fresh.client_id);
   });
 
   it('web pages: straight to GitHub, no cookies, plain English, never echo untrusted input', async () => {
@@ -522,31 +553,74 @@ describe('My connection', () => {
 });
 
 describe('PUB-6 owner usage summary', () => {
-  it('adds up each person\'s assistant calls (counts only), skips old hours, and never shows names', async () => {
+  it('PUB-5 B: adds up each person\'s calls from the daily counts, shows the top 10, and never shows tokens', async () => {
     const people2 = await admin.query("SELECT tenant_id FROM gh_tenant_pilot_bootstraps WHERE account_login='public-connect' ORDER BY created_at LIMIT 2").then((r) => r.rows);
     expect(people2.length).toBe(2);
-    const put = async (tenantId, hour, outcome, count) => {
-      const schema = tenantSchemaName(String(tenantId));
-      await admin.query(`INSERT INTO "${schema}".gh_tenant_runtime_metrics (hour,event,outcome,latency_bucket,count)
-        VALUES (date_trunc('hour', now()) - ($1 * interval '1 hour'),'mcp',$2,'lt100ms',$3)
-        ON CONFLICT (hour,event,outcome,latency_bucket) DO UPDATE SET count = EXCLUDED.count`, [hour, outcome, count]);
-    };
-    await put(people2[0].tenant_id, 0, 'ok', 10);
-    await put(people2[0].tenant_id, 0, 'refused', 2);
-    await put(people2[1].tenant_id, 0, 'ok', 5);
-    await put(people2[1].tenant_id, 0, 'throttled', 1);
-    await put(people2[1].tenant_id, 72, 'error', 4);
-    await put(people2[1].tenant_id, 24 * 20, 'ok', 99);
+    const put = async (tenantId, daysAgo, calls, writes, errors) => admin.query(
+      `INSERT INTO gh_public_usage_daily(day, tenant_id, calls, writes, errors) VALUES ((now() AT TIME ZONE 'UTC')::date - $2::int, $1, $3, $4, $5)
+       ON CONFLICT (day, tenant_id) DO UPDATE SET calls = EXCLUDED.calls, writes = EXCLUDED.writes, errors = EXCLUDED.errors`, [tenantId, daysAgo, calls, writes, errors]);
+    await put(people2[0].tenant_id, 0, 12, 2, 0);
+    await put(people2[1].tenant_id, 0, 5, 0, 1);
+    await put(people2[1].tenant_id, 3, 4, 1, 4);
+    await put(people2[1].tenant_id, 20, 99, 0, 0);
     const { publicUsageSummary } = await import('../../src/tenancy/usage-summary.js');
-    const out = await publicUsageSummary(rootSqlFactory(), { connectionString: process.env.TEST_DATABASE_URL, sqlFactory: tenantSqlFactory });
+    const out = await publicUsageSummary(rootSqlFactory(), { connectionString: process.env.TEST_DATABASE_URL, sqlFactory: tenantSqlFactory, env });
     expect(out.peopleConnected).toBeGreaterThanOrEqual(2);
-    expect(out.unreadable).toBe(0);
-    expect(out.lastDay.ok).toBeGreaterThanOrEqual(15);
-    expect(out.lastDay.refused).toBeGreaterThanOrEqual(2);
-    expect(out.lastDay.throttled).toBeGreaterThanOrEqual(1);
-    expect(out.lastWeek.errors).toBeGreaterThanOrEqual(4);
-    expect(out.lastWeek.calls).toBe(out.lastWeek.ok + out.lastWeek.refused + out.lastWeek.throttled + out.lastWeek.errors);
-    expect(JSON.stringify(out)).not.toMatch(/alice|bob|tok-|@/);
+    expect(out.activeToday).toBeGreaterThanOrEqual(2);
+    expect(out.lastDay.calls).toBeGreaterThanOrEqual(17);
+    expect(out.lastDay.writes).toBeGreaterThanOrEqual(2);
+    expect(out.lastWeek.calls).toBeGreaterThanOrEqual(out.lastDay.calls + 4);
+    expect(out.lastWeek.calls).toBeLessThan(out.lastDay.calls + 4 + 99);
+    expect(out.lastWeek.errors).toBeGreaterThanOrEqual(5);
+    expect(out.top.length).toBeGreaterThanOrEqual(2);
+    expect(out.top.length).toBeLessThanOrEqual(10);
+    expect(out.top[0].calls).toBeGreaterThanOrEqual(out.top[1].calls);
+    expect(JSON.stringify(out)).not.toMatch(/tok-|secret|@/);
+    await admin.query('DELETE FROM gh_public_usage_daily');
+  });
+});
+
+describe('PUB-5 B hourly change allowance', () => {
+  it('parallel changes cannot pass the limit, and a handed-back slot can be used again', async () => {
+    const { createPublicUsage } = await import('../../src/tenancy/public-usage.js');
+    const { publicUsageLimits } = await import('../../src/tenancy/public-usage.js');
+    const limits = publicUsageLimits({ PUBLIC_FREE_WRITES_PER_HOUR: '10' });
+    const [{ tenant_id }] = (await admin.query('SELECT tenant_id FROM gh_tenant_pilot_bootstraps LIMIT 1')).rows;
+    const clientsN = await Promise.all([1, 2, 3, 4, 5].map(async () => connect(process.env.TEST_DATABASE_URL)));
+    for (const c of clientsN) await c.query('SET search_path TO "' + admin.ns + '"');
+    const usages = clientsN.map((c) => createPublicUsage(sqlFor(c), limits));
+    const results = await Promise.all(Array.from({ length: 40 }, (_, i) => usages[i % 5].reserveWrite(tenant_id)));
+    expect(results.filter((r) => r === null).length).toBe(10);
+    const refused = results.find((r) => r);
+    expect(refused.message).toContain('10');
+    expect(refused.retryAfterSeconds).toBeGreaterThan(0);
+    await usages[0].releaseWrite(tenant_id);
+    expect(await usages[1].reserveWrite(tenant_id)).toBeNull();
+    expect(await usages[2].reserveWrite(tenant_id)).not.toBeNull();
+    expect(await usages[3].reserveWrite(tenant_id, { exempt: true })).toBeNull(); // exempt people are never refused
+    await admin.query('DELETE FROM gh_public_usage_hourly');
+  });
+});
+
+describe('PUB-5 B inactive people', () => {
+  it('signs out people unused for the set number of days; keeps recent, just-signed-in and unlimited people', async () => {
+    const { removeInactivePeople } = await import('../../src/tenancy/public-inactive.js');
+    const { publicUsageLimits } = await import('../../src/tenancy/public-usage.js');
+    const rows = (await admin.query(`SELECT b.tenant_id, i.provider_subject FROM gh_tenant_pilot_bootstraps b JOIN gh_tenant_identities i ON i.id=b.identity_id
+      WHERE b.account_login='public-connect' AND EXISTS (SELECT 1 FROM gh_tenant_user_authorizations a WHERE a.tenant_id=b.tenant_id) ORDER BY b.created_at LIMIT 4`)).rows;
+    expect(rows.length).toBe(4);
+    const [stale, used, unlimited, mine] = rows;
+    const grants = async (t) => Number((await admin.query('SELECT count(*) n FROM gh_tenant_user_authorizations WHERE tenant_id=$1', [t.tenant_id])).rows[0].n);
+    await admin.query("UPDATE gh_tenant_user_authorizations SET updated_at = now() - interval '300 days' WHERE tenant_id = ANY($1::uuid[])", [rows.map((r) => r.tenant_id)]);
+    await admin.query("INSERT INTO gh_public_usage_daily(day, tenant_id, calls) VALUES ((now() AT TIME ZONE 'UTC')::date - 2, $1, 3) ON CONFLICT DO NOTHING", [used.tenant_id]);
+    const limits = publicUsageLimits({ PUBLIC_UNLIMITED_SUBJECTS: String(unlimited.provider_subject) });
+    const out = await removeInactivePeople({ rootSql: rootSqlFactory(), connectionString: process.env.TEST_DATABASE_URL, sqlFactory: tenantSqlFactory, limits, exceptTenantId: mine.tenant_id });
+    expect(out).toBeGreaterThanOrEqual(1);
+    expect(await grants(stale)).toBe(0);
+    expect(await grants(used)).toBeGreaterThan(0);
+    expect(await grants(unlimited)).toBeGreaterThan(0);
+    expect(await grants(mine)).toBeGreaterThan(0);
+    await admin.query('DELETE FROM gh_public_usage_daily');
   });
 });
 

@@ -311,6 +311,27 @@ export function createTenantDirectory(sql) {
         PRIMARY KEY (installation_id, tenant_id)
       )`;
       await sql`CREATE INDEX IF NOT EXISTS gh_public_installations_tenant ON gh_public_installations (tenant_id)`;
+      // PUB-5 B: how much each public person uses the service. Numbers only. Calls and changes per UTC day (kept 400 days) and
+      // changes per hour (kept 48 hours) drive the free fair-use limits, the owner's Public usage page and the cost estimate.
+      await sql`CREATE TABLE IF NOT EXISTS gh_public_usage_daily (
+        day DATE NOT NULL,
+        tenant_id UUID NOT NULL REFERENCES gh_tenants(id),
+        calls INT NOT NULL DEFAULT 0,
+        writes INT NOT NULL DEFAULT 0,
+        errors INT NOT NULL DEFAULT 0,
+        PRIMARY KEY (day, tenant_id)
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS gh_public_usage_daily_tenant ON gh_public_usage_daily (tenant_id, day)`;
+      await sql`CREATE TABLE IF NOT EXISTS gh_public_usage_hourly (
+        hour TIMESTAMPTZ NOT NULL,
+        tenant_id UUID NOT NULL REFERENCES gh_tenants(id),
+        calls INT NOT NULL DEFAULT 0,
+        writes INT NOT NULL DEFAULT 0,
+        errors INT NOT NULL DEFAULT 0,
+        PRIMARY KEY (hour, tenant_id)
+      )`;
+      // PUB-5 B: when an app registration last got a token, so registrations nobody uses can be cleaned away.
+      await sql`ALTER TABLE gh_public_clients ADD COLUMN IF NOT EXISTS last_token_at TIMESTAMPTZ`;
       // PUB-6: owner-requested deletion of ONE public person's data. Only a tenant created by the public sign-in
       // (bootstrap key 'public-connect') with a single member can go. It removes every root row that points at the tenant,
       // then drops that tenant's own database namespace, so nothing of theirs survives and nobody else's data is touched.
@@ -333,6 +354,8 @@ export function createTenantDirectory(sql) {
         DELETE FROM gh_public_flows WHERE tenant_id = target;
         DELETE FROM gh_tenant_pilot_allowlist WHERE tenant_id = target;
         DELETE FROM gh_public_installations WHERE tenant_id = target;
+        DELETE FROM gh_public_usage_daily WHERE tenant_id = target;
+        DELETE FROM gh_public_usage_hourly WHERE tenant_id = target;
         DELETE FROM gh_tenant_pilot_bootstraps WHERE tenant_id = target;
         DELETE FROM gh_tenant_memberships WHERE tenant_id = target;
         DELETE FROM gh_tenants WHERE id = target;
@@ -908,6 +931,23 @@ export function createTenantDirectory(sql) {
         WHERE (SELECT count(*) FROM gh_public_clients) < ${maxClients}
         RETURNING client_id`;
       return rows.length === 1;
+    },
+    /** PUB-5 B: marks an app registration as in use (at most once a day, one cheap statement). */
+    async touchPublicClient(clientId) {
+      if (!/^pcl_[A-Za-z0-9_-]{32,64}$/.test(String(clientId))) return false;
+      const rows = await sql`UPDATE gh_public_clients SET last_token_at = now() WHERE client_id = ${clientId}
+        AND (last_token_at IS NULL OR last_token_at < now() - interval '1 day') RETURNING client_id`;
+      return rows.length === 1;
+    },
+    /** PUB-5 B: removes app registrations that never got a token in `days` days (at most `limit` per call). Built-in pages are kept. */
+    async deleteStalePublicClients({ days = 30, limit = 50, keep = [] } = {}) {
+      const d = Math.min(Math.max(Number.isInteger(days) ? days : 30, 1), 3650), n = Math.min(Math.max(Number.isInteger(limit) ? limit : 50, 1), 50);
+      const rows = await sql`DELETE FROM gh_public_clients WHERE client_id IN (
+          SELECT client_id FROM gh_public_clients
+          WHERE coalesce(last_token_at, created_at) < now() - (${d} * interval '1 day')
+            AND client_id <> ALL(${keep.map(String)}::text[])
+          ORDER BY coalesce(last_token_at, created_at) LIMIT ${n}) RETURNING client_id`;
+      return rows.length;
     },
     async getPublicClient(clientId) {
       if (!/^pcl_[A-Za-z0-9_-]{32,64}$/.test(String(clientId))) return null;
