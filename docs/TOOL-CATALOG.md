@@ -805,11 +805,35 @@ Card(s): ENT-1. Every tool uses the person's **master token** (credential `M`, w
 | `github_enterprise_dependabot_access_set` | Change Dependabot's default repository access level, or add or remove repositories it may access | C·A·Prod | N | M | O | F | ENT-1 |
 | `github_enterprise_actions_settings_set` | Change one enterprise Actions setting: cache retention, cache storage limit, or an OIDC custom property | C·Prod | N | M | O | F | ENT-1 |
 
+## Master-token families: Copilot Spaces, Classroom, Marketplace and more (`github_copilot_space_*, github_classroom_*, ...`) — 17
+
+Card(s): GOD-4 (part B). Every tool here uses your master token (the permission named in the tool), and answers in plain words when it is missing. Copilot Spaces are your own (`{username}` is always the token's owner). GitHub has closed the Classroom service, so those four reads usually answer "not available" honestly. Not built here: `github_credential_revoke` (needs its own protected one-use token page; listed as the remaining part of GOD-4).
+
+| Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `github_copilot_space_list` | List your Copilot Spaces (uses your master token) | — | N | U | B,O | R | GOD-4 |
+| `github_copilot_space_get` | One Space with collaborators and resources (uses your master token) | — | N | U | B,O | R | GOD-4 |
+| `github_copilot_space_collaborators` | Who can use a Space and their role (uses your master token) | — | N | U | B,O | R | GOD-4 |
+| `github_copilot_space_resources` | Resources attached to a Space, or one by id (uses your master token) | — | N | U | B,O | R | GOD-4 |
+| `github_copilot_space_save` | Create or edit one of your Spaces (uses your master token) | C·Prod | N | U | B,O | F | GOD-4 |
+| `github_copilot_space_delete` | Delete a Space; cannot be undone (uses your master token) | C·D·Prod | N | U | B,O | F | GOD-4 |
+| `github_copilot_space_set_collaborator` | Give a person or team a role on a Space (uses your master token) | C·Prod·A | N | U | B,O | F | GOD-4 |
+| `github_copilot_space_remove_collaborator` | Remove a person or team from a Space (uses your master token) | C·Prod | N | U | B,O | F | GOD-4 |
+| `github_copilot_space_set_resource` | Attach or change a Space resource (uses your master token) | C·Prod | N | U | B,O | F | GOD-4 |
+| `github_copilot_space_remove_resource` | Detach a resource from a Space (uses your master token) | C·Prod | N | U | B,O | F | GOD-4 |
+| `github_classroom_list` | Your Classrooms (GitHub closed the service; usually "not available") (uses your master token) | — | N | U | O | R | GOD-4 |
+| `github_classroom_get` | One Classroom (usually "not available") (uses your master token) | — | N | U | O | R | GOD-4 |
+| `github_classroom_assignments` | A Classroom's assignments (usually "not available") (uses your master token) | — | N | U | O | R | GOD-4 |
+| `github_classroom_grades` | An assignment's grades (usually "not available") (uses your master token) | — | N | U | O | R | GOD-4 |
+| `github_marketplace_listing` | Marketplace plans/accounts of an App you own, else honest "not available" (uses your master token) | — | N | U | O | R | GOD-4 |
+| `github_user_hovercard` | A user's public hovercard facts, optionally in a context (uses your master token) | — | N | U | B,O | R | GOD-4 |
+| `github_project_view_create` | Create a view on one of your user projects (uses your master token) | C·Prod | N | U | B,O | F | GOD-4 |
+
 ## Totals
 
-**Totals:** 443 tools: 437 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
-dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 143, everyday adds 81
-(everyday lists 224), full adds 103 (full lists 368). In compact mode (`docs/designs/BATCH-C.md`) an agent
+**Totals:** 460 tools: 454 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 153, everyday adds 81
+(everyday lists 234), full adds 110 (full lists 387). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
 `github_search_tools` / `github_call`.
 
@@ -856,7 +880,8 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Everything else on GitHub: the universal tools | 6 |
 | Batch Y-9d financial and Copilot operations | 17 |
 | GitHub Enterprise | 11 |
-| **Total** | **443** |
+| Master-token families: Copilot Spaces, Classroom, Marketplace and more | 17 |
+| **Total** | **460** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 
