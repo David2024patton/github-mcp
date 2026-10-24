@@ -14,3 +14,7 @@ Chris asked for a review of why the connector sign-in kept failing, then approve
 Verified locally: browser suite 17/17 on Chromium (WebKit runs in CI only; the agent environment cannot download it),
 database suite 201/201, unit and shape suites, lint, check. Still dark: `GITHUB_PUBLIC_CONNECT` is off until Chris says go.
 Next: CI on the PR, merge, then the daily release carries it.
+
+Follow-up (same PR): the browser check on GitHub's Chrome found a real phone bug: the master-token page was wider than
+the screen (paste box and Continue button off the right edge). It now uses the same Robinson look as the other pages and
+fits; the browser tests now check that every page fits the screen.

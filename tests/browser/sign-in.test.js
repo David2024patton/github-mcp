@@ -27,6 +27,11 @@ async function open(profile, { cookies = true } = {}) {
   return { context, page };
 }
 const arrived = (from) => world.app.received.slice(from);
+/** Nothing on our pages may be wider than the screen (a phone would have to scroll sideways, and buttons get covered). */
+async function fitsScreen(page) {
+  const { wide, view } = await page.evaluate(() => ({ wide: document.documentElement.scrollWidth, view: window.innerWidth }));
+  expect(wide, 'page wider than the screen: ' + page.url()).toBeLessThanOrEqual(view);
+}
 async function waitForApp(page, from) {
   await page.waitForURL((u) => u.host === 'chat.example.test', { timeout: 15000 });
   const got = arrived(from);
@@ -42,11 +47,13 @@ async function connect(page, { readOnly = false, expectInstall = false, installO
   if (expectInstall) {
     await page.waitForSelector('#install');
     expect(await page.title()).toBe('One more step');
+    await fitsScreen(page);
     await page.click('#install');
     await page.click('#gh-install-' + installOn);
   }
   await page.waitForSelector('#approve');
   expect(await page.title()).toBe('Approve the connection');
+  await fitsScreen(page);
   expect(await page.textContent('main')).toContain('chat.example.test');
   if (readOnly) await page.check('#ro');
   await page.click('#approve');
@@ -208,6 +215,7 @@ describe('My connection', () => {
     await b.page.goto(ORIGIN + '/connection');
     await b.page.click('#manage-sign-in');
     await b.page.waitForSelector('#read_only');
+    await fitsScreen(b.page);
     await b.page.click('#read_only');
     await b.page.waitForSelector('.notice');
     expect((await mcpTool(world, tokens.access_token, 'github_whoami')).content.mode).toBe('PREVIEW');
@@ -223,9 +231,11 @@ describe('My connection', () => {
     await b.page.click('#master');
     await b.page.waitForSelector('input[name=value]');
     expect(await b.page.title()).toBe('Master token');
+    await fitsScreen(b.page);
     await b.page.fill('input[name=value]', world.github.classicToken(p));
     await b.page.click('button[type=submit]');
     await b.page.waitForSelector('#optional-done');
+    await fitsScreen(b.page);
     const who = await mcpTool(world, tokens.access_token, 'github_whoami');
     expect(who.content.master_token.added).toBe(true);
 

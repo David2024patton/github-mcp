@@ -5,16 +5,18 @@ import {createPrivateOptionalEnrollment} from '../../src/tenancy/optional-setup.
 import {TenantCapacityError} from '../../src/tenancy/runtime-limits.js';
 import {escapeHtml,paramsOf,publicOrigin,send} from '../../src/core/http.js';
 import {masterTokenLink} from '../../src/tenancy/master-credential.js';
+import {BRAND_CSS,brandHeader,brandFooter} from '../../src/brand/brand.js';
 
+// Same Robinson look as the sign-in pages. Every field and button fits the screen width on a phone.
+const PAGE_CSS=BRAND_CSS+'input,select,button{width:100%;max-width:100%}'+
+  'a.big{display:block;text-align:center;font-weight:600;color:#fff;background:var(--grad);border-radius:50px;padding:13px 20px;text-decoration:none}';
 const NAME='gh_tenant_optional_state';
 const CLEAR=NAME+'=; Max-Age=0; Path=/api/tenant/optional; HttpOnly; Secure; SameSite=Strict';
 const cookie=req=>/(?:^|;\s*)gh_tenant_optional_state=([A-Za-z0-9_-]{43})(?:;|$)/
   .exec(String(req.headers?.cookie||''))?.[1]||null;
 const masterMarkup=details=>'<!doctype html><html lang="en"><head><meta charset="utf-8">'+
   '<meta name="viewport" content="width=device-width,initial-scale=1">'+
-  '<title>Master token</title><style>body{font:16px system-ui,sans-serif;max-width:450px;margin:5vh auto;padding:20px}'+
-  'form{display:grid;gap:14px}input,button,select{font:inherit;padding:12px}p,li{line-height:1.5}'+
-  'a.big{display:block;text-align:center;padding:12px;border:1px solid #888;border-radius:8px}</style></head><body>'+
+  '<title>Master token</title><style>'+PAGE_CSS+'</style></head><body><main>'+brandHeader()+
   '<h1>Add your master token</h1>'+
   '<p>This is optional. It lets your assistant do things the normal sign-in cannot, such as notifications, packages, gists and organization settings. '+
   'It has the power of your whole GitHub login, so only add it if you want that. You can remove it any time.</p>'+
@@ -31,13 +33,11 @@ const masterMarkup=details=>'<!doctype html><html lang="en"><head><meta charset=
   '</select></label><button type="submit">Continue</button></form>'+
   '<p>Paste it here only, never into a chat. We check it belongs to your own GitHub login and store it encrypted. '+
   'It is never shown again. It lasts as long as you set it to last on GitHub (30 days, a year, or never). '+
-  'Removing it here does not delete it at GitHub; do that in your GitHub settings too.</p></body></html>';
+  'Removing it here does not delete it at GitHub; do that in your GitHub settings too.</p>'+brandFooter()+'</main></body></html>';
 const markup=details=>details.kind==='M'?masterMarkup(details):standardMarkup(details);
 const standardMarkup=details=>'<!doctype html><html lang="en"><head><meta charset="utf-8">'+
   '<meta name="viewport" content="width=device-width,initial-scale=1">'+
-  '<title>Additional GitHub authority</title><style>body{font:16px system-ui,sans-serif;'+
-  'max-width:450px;margin:5vh auto;padding:20px}form{display:grid;gap:14px}'+
-  'input,button,select{font:inherit;padding:10px}p{line-height:1.5}</style></head><body>'+
+  '<title>Additional GitHub authority</title><style>'+PAGE_CSS+'</style></head><body><main>'+brandHeader()+
   '<h1>Additional GitHub authority</h1>'+
   '<p>Workspace account: <strong>'+escapeHtml(details.account)+'</strong>.</p>'+
   '<p>Requested read: <strong>'+escapeHtml(details.operation)+'</strong>.</p>'+
@@ -53,12 +53,12 @@ const standardMarkup=details=>'<!doctype html><html lang="en"><head><meta charse
   '</select></label><button type="submit">Continue and return to my connection</button></form>'+
   '<p>Interrupted? Restart from the connection permission check. A failed or expired '+ 
   'form leaves your previous credential unchanged. Removing a token from this service '+
-  'does not revoke it at GitHub; do that separately in GitHub settings.</p></body></html>';
+  'does not revoke it at GitHub; do that separately in GitHub settings.</p>'+brandFooter()+'</main></body></html>';
 
 export function renderOptionalForm(res,details,clearCookies=[]){
   // Same-origin POST must retain Origin. Completion responses remain no-referrer.
   res.setHeader('Referrer-Policy','same-origin');
-  res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+  res.setHeader('Content-Security-Policy',"default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
   const fresh=NAME+'='+details.state+
     '; Max-Age=600; Path=/api/tenant/optional; HttpOnly; Secure; SameSite=Strict';
   res.setHeader('Set-Cookie',clearCookies.length?[...clearCookies,fresh]:fresh);
@@ -72,7 +72,7 @@ export function makePrivateOptionalPage({
     res.setHeader('Cache-Control','no-store');
     res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('X-Content-Type-Options','nosniff');
-    res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+    res.setHeader('Content-Security-Policy',"default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
     if(!['GET','POST'].includes(req.method)){
       res.setHeader('Allow','GET, POST');
       return send(res,405,{error:'method_not_allowed'});
@@ -80,7 +80,7 @@ export function makePrivateOptionalPage({
     try{
       if(req.method==='GET'){
         if(['read-observed-at-enrollment','revoked-on-this-service'].includes(req.query?.github_mcp_optional))
-          return send(res,200,'<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GitHub setup</title><style>body{font:16px system-ui,sans-serif;max-width:450px;margin:5vh auto;padding:20px}</style><h1 id="optional-done">'+(req.query.github_mcp_optional==='revoked-on-this-service'?'Removed':'Saved')+'</h1><p>'+(req.query.github_mcp_optional==='revoked-on-this-service'?'It is no longer stored here. Also delete it in your GitHub settings if you will not use it again.':'Your assistant can use it straight away; no reconnecting needed.')+'</p><p><a href="/connection">Back to My connection</a></p></html>','text/html; charset=utf-8');
+          return send(res,200,'<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GitHub setup</title><style>'+PAGE_CSS+'</style><main>'+brandHeader()+'<h1 id="optional-done">'+(req.query.github_mcp_optional==='revoked-on-this-service'?'Removed':'Saved')+'</h1><p>'+(req.query.github_mcp_optional==='revoked-on-this-service'?'It is no longer stored here. Also delete it in your GitHub settings if you will not use it again.':'Your assistant can use it straight away; no reconnecting needed.')+'</p><p><a href="/connection">Back to My connection</a></p></main></html>','text/html; charset=utf-8');
         // GOD-1: a one-use link from github_master_token_link (add the master token any time, no reconnecting).
         if(typeof req.query?.master_link==='string')
           return renderOptionalForm(res,await enrollment.startMasterLink(req.query.master_link));
