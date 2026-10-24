@@ -40,12 +40,9 @@ to keep the official integration connected for that, next to this connector.
 | Pinned REST has `GET /repos/{owner}/{repo}/stargazers` and `.../stargazers/count` | `node scripts/openapi-find.mjs "stargazers"` | | |
 | Writes are spaced 1 per second per installation (`WRITE_SPACING_MS = 1000`, `src/github/rate.js`) and functions may run 60 s (`vercel.json`) | `grep -n WRITE_SPACING_MS src/github/rate.js` | | |
 
-## 0. Register the card (first commit)
-Add PAR-1 to `docs/pr-cards/work-index.json` (batch `FIN`, after `GOD-6`; copy GOD-6's entry shape: `design` and `card`
-`docs/pr-cards/PAR-1.md`, `dependencies: []`, `status: "IN_PROGRESS"`, `migration: "none"`, `units: ["PAR-1"]`,
-`readiness: "READY"`), add `PAR-1` to the FIN line of the unit list in `docs/pr-cards/validate-index.py`, and add row
-12 to the order table in `docs/designs/FINISH-PLAN.md`: "PAR-1 | light–medium, one PR, 3–4 h | parity with GitHub's
-official MCP server | No". `python3 docs/pr-cards/validate-index.py` must pass.
+## 0. Registration
+Already registered (work-index `PAR-1`, validator unit list, FINISH-PLAN row 12). Set the status to `IN_PROGRESS` in your
+first commit and `MERGED` after merge.
 
 ## 1. `github_review_request_copilot` — ask Copilot to review a pull request (write)
 
