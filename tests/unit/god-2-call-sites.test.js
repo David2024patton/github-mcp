@@ -62,6 +62,14 @@ describe('GOD-2 personal tools pick the credential', () => {
       expect(w.gh.calls.some((x) => (x.headers.authorization ?? '').includes('ghp_FAKEmaster'))).toBe(false);
     });
   }
+  it('key listing picks the credential per key kind', async () => {
+    const w = withMaster(await makeWorld({ profile: 'full' }), ['admin:gpg_key']);
+    cases[2].arrange(w.gh);
+    await call(w, 'github_account_list_keys', {});
+    expect(usedMaster(w, 'GET /user/gpg_keys')).toBe(true);
+    expect(usedMaster(w, 'GET /user/keys')).toBe(false);
+    expect(usedMaster(w, 'GET /user/ssh_signing_keys')).toBe(false);
+  });
   it('a master token without the needed scope falls back to U', async () => {
     const w = withMaster(await makeWorld({ profile: 'full' }), ['repo']);
     cases[0].arrange(w.gh);

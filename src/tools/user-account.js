@@ -117,10 +117,13 @@ const specs=[
     description:'List public Git SSH, SSH signing and GPG key fingerprints and creation dates, never private or full public key material.',
     properties:{owner:OWNER,max:MAX},
     handler:(a,c)=>plain(async()=>{
-      const t=accountTarget(a,c),{gh,user}=await self(c,t,'admin:public_key'),max=a.max??100;
+      const t=accountTarget(a,c),{user}=await self(c,t,'user'),max=a.max??100;
       const keys={};
-      for(const kind of Object.keys(routes))
+      // GOD-2: each key kind has its own scope, so each inventory picks its own credential (master token or U).
+      for(const kind of Object.keys(routes)){
+        const gh=await githubFor(c,{owner:t.owner,cred:await personalCred(c,keyScope(kind))});
         keys[kind]=await tryList(()=>getKeys(gh,kind,max),x=>safeKey(x,kind));
+      }
       return {principal:user,keys};
     })}),
   defineRead({name:'github_account_list_invitations',area:'account',audience:['O'],
