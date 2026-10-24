@@ -37,7 +37,7 @@ export function assertUniversalAuthority(op,params,body) {
     if(typeof value==='string'){
       if(/(password|(^|_)access_token|private_key|client_secret|(^|_)secret_value|refresh_token)/i.test(key))
         throw new TypeError('Credential or private key arguments are not permitted.');
-      if(/(github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9_]{18,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)/.test(value))
+      if(/(github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9._-]{18,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)/.test(value))
         throw new TypeError('Credential or private key material is not permitted.');
     } else if(Array.isArray(value))value.forEach(x=>visit(x,key,depth+1));
     else if(value && typeof value==='object')for(const [k,v]of Object.entries(value))visit(v,k,depth+1);

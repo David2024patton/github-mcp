@@ -107,6 +107,11 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
     const app = await appOf(row);
     const jwt = signAppJwt({ appId: app.id, privateKey: open(app.private_key_enc, contexts.privateKey(app.id)), now });
     const body = {};
+    // Optional, temporary: GitHub's per-request override for the new stateless installation token format
+    // (https://github.blog/changelog/2026-05-15-github-app-installation-tokens-per-request-override-header). Unset = GitHub's
+    // normal rollout. Only 'enabled' or 'disabled' is sent; remove the setting once both formats are validated.
+    const format = env.GITHUB_STATELESS_INSTALLATION_TOKENS;
+    if (format === 'enabled' || format === 'disabled') body.headers = { 'x-github-stateless-s2s-token': format };
     if (scope?.repositories?.length) body.repositories = scope.repositories;
     if (scope?.repository_ids?.length) body.repository_ids = scope.repository_ids;
     if (scope?.permissions) body.permissions = scope.permissions;

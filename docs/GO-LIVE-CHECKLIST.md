@@ -107,3 +107,7 @@ explanations is `docs/APP-NEEDS-APPLIANCE-DESK.md`; the app's own checklist stay
 - **Routing key (`GITHUB_TENANT_ROUTING_KEY`)** signs every public client, access and refresh token. Changing it signs EVERYONE out at once (an emergency lever, for example if the key leaked). People reconnect with one click; nothing is lost. There is deliberately no overlap period for this key.
 - Neither key is ever typed into a chat, a tool or a pull request.
 - [ ] Cost estimate rates (LAUNCH-1): optionally set `PUBLIC_COST_PER_1K_CALLS_CENTS` and `PUBLIC_COST_ALERT_CENTS` in Vercel to match real prices and your alert level; defaults are 5 cents per 1,000 calls and 2000 cents.- [x] GitHub App webhook address moved to `https://github.robinsonaisystems.com/api/github/webhook` (2026-10-24, HARD-1 B.1; read back: host correct, TLS verified). First real delivery from the new address is still to be seen in the delivery list (none yet; acceptance row, not a blocker). Setup URL is the owner row in OWNER-CHECKLIST.
+
+## Temporary: GitHub stateless installation tokens (2026-10-24)
+- [ ] Optional validation: set `GITHUB_STATELESS_INSTALLATION_TOKENS=enabled` on production, make a few normal calls (read, preview,
+      one scratch write), then **remove the setting** so GitHub's rollout decides. `disabled` forces the old short tokens if anything breaks.
