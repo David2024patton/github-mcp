@@ -55,7 +55,7 @@ const marketplace = defineRead({
 
 const hovercard = defineRead({
   name: 'github_user_hovercard', area: 'user', audience: ['B', 'O'],
-  description: 'Read the short public "hovercard" facts GitHub shows for a user, optionally in the context of an organization, repository, issue or pull request. Uses your master token.',
+  description: 'Read the public hovercard facts GitHub shows for a user, optionally in an organization, repository, issue or PR context. Uses your master token.',
   properties: { username: { type: 'string', minLength: 1, maxLength: 39, pattern: '^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$' },
     subjectType: { type: 'string', enum: ['organization', 'repository', 'issue', 'pull_request'] }, subjectId: ID }, required: ['username'],
   handler: (args, ctx) => plain(async () => {

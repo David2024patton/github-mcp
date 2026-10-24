@@ -186,7 +186,7 @@ const removeCollaborator = defineGithubWrite({
 
 const setResource = defineGithubWrite({
   name: 'github_copilot_space_set_resource', area: 'copilot', audience: ['B', 'O'],
-  description: 'Attach a resource (repository, file, text, issue, pull request) to one of your Copilot Spaces, or change one with resourceId. Uses your master token.',
+  description: 'Attach a resource (repository, file, text, issue, PR) to your Copilot Space, or change one with resourceId. Uses your master token.',
   properties: { spaceNumber: NUM, resourceId: RID, resourceType: { type: 'string', enum: RESOURCE_TYPES, description: 'Needed when attaching a new resource' }, metadata: METADATA },
   required: ['spaceNumber', 'metadata'], declarations: decl(), target: userTarget('copilot-space'),
   read: guarded(async (args, ctx) => {
