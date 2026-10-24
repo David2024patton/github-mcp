@@ -63,7 +63,8 @@
         "denied_resource: foreign owner refused client:outside_scope before GitHub",
         "denied_identity: personal key reads refused because the user grant lacks the permission",
         "not_run:webhook_receiver_signing,package_credential,spend_and_access_widening_owner_approved_writes,second_account_review_thread_replies",
-        "2026-10-24: real GitHub results read back for deploy key add/delete, secret webhook create/rotate/delete, secret gist create/delete, Enterprise security configuration create/delete, personal Codespaces secret, Copilot Space and pinIssue/unpinIssue; Enterprise Actions settings returned 402 (unverified, needs a payment method)"
+        "2026-10-24: real GitHub results read back for deploy key add/delete, secret webhook create/rotate/delete, secret gist create/delete, Enterprise security configuration create/delete, personal Codespaces secret, Copilot Space and pinIssue/unpinIssue; Enterprise Actions settings returned 402 (unverified, needs a payment method)",
+        "2026-10-24 on live d96aab4: GOD-6 act-as and deliberate rule override exercised on a disposable scratch repo (deleted). Write results reported acting_as 'christcr2012 (you)'; merge refused without override; override preview listed the skipped rule; GitHub declined until the login could skip rules, then merged. Protected-list refusal and app-only routes not run live (unit tests)."
       ],
       "source": "custom_service",
       "service": "robinson-github-mcp",
