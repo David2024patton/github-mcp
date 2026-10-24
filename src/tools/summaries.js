@@ -19,13 +19,16 @@ const shape = (spec) => (o) => {
   return out;
 };
 
+/** Commit messages are written by whoever can push (including to a fork): always marked untrusted (PUB-5 C). */
+const always = (fn) => (o) => ({ ...fn(o), untrusted: true });
+
 export const SUMMARIES = Object.freeze({
   repository: shape({ full_name: 'full_name', description: 'description', private: 'private', visibility: 'visibility', fork: 'fork', archived: 'archived', default_branch: 'default_branch',
     language: 'language', stars: 'stargazers_count', forks: 'forks_count', open_issues: 'open_issues_count', pushed_at: 'pushed_at', html_url: 'html_url' }),
   branch: shape({ name: 'name', protected: 'protected', sha: 'commit.sha' }),
-  commit: shape({ sha: 'sha', message: 'commit.message', author: first('author.login', 'commit.author.name'), date: 'commit.author.date', verified: 'commit.verification.verified', parents: count('parents'), html_url: 'html_url' }),
-  compare: shape({ status: 'status', ahead_by: 'ahead_by', behind_by: 'behind_by', total_commits: 'total_commits', merge_base: 'merge_base_commit.sha', files_changed: count('files'),
-    commits: (o) => o.commits?.slice(0, 20).map((c) => ({ sha: c.sha, message: c.commit?.message?.split('\n')[0] })), html_url: 'html_url' }),
+  commit: always(shape({ sha: 'sha', message: 'commit.message', author: first('author.login', 'commit.author.name'), date: 'commit.author.date', verified: 'commit.verification.verified', parents: count('parents'), html_url: 'html_url' })),
+  compare: always(shape({ status: 'status', ahead_by: 'ahead_by', behind_by: 'behind_by', total_commits: 'total_commits', merge_base: 'merge_base_commit.sha', files_changed: count('files'),
+    commits: (o) => o.commits?.slice(0, 20).map((c) => ({ sha: c.sha, message: c.commit?.message?.split('\n')[0] })), html_url: 'html_url' })),
   pull_request: shape({ number: 'number', title: 'title', state: 'state', draft: 'draft', merged: 'merged', user: login('user'), head: 'head.ref', head_sha: 'head.sha', base: 'base.ref',
     mergeable_state: 'mergeable_state', labels: names('labels'), updated_at: 'updated_at', html_url: 'html_url' }),
   review: shape({ id: 'id', user: login('user'), state: 'state', submitted_at: 'submitted_at', commit_id: 'commit_id', body: 'body', html_url: 'html_url' }),
