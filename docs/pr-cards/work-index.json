@@ -2034,7 +2034,7 @@
       "design": "docs/designs/FINISH-PLAN.md",
       "dependencies": [],
       "card": "docs/pr-cards/GQL-1.md",
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 0,
       "units": [

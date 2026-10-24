@@ -18,7 +18,7 @@ const isIdField = (field) => {
 };
 
 // ID inputs a spec refuses on purpose because ownership of those nodes cannot be proven (team members are users).
-const REFUSED_ON_PURPOSE = { updateTeamReviewAssignment: ['excludedTeamMemberIds'] };
+const REFUSED_ON_PURPOSE = { updateTeamReviewAssignment: ['excludedTeamMemberIds'], updateProjectV2DraftIssue: ['assigneeIds'] };
 
 describe('Y-2 GraphQL write specs (WU-Y2a)', () => {
   it('has at least 24 reviewed mutations', () => {

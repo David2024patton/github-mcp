@@ -6,7 +6,7 @@ import {githubFor,graphql} from '../github/client.js';
 import {plain} from './github-read.js';
 import {inspectGraphql,graphqlSelectionFields,graphqlRootSelections} from '../github/graphql-schema.js';
 import {valueFromASTUntyped} from 'graphql';
-import {writeSpec,specReadQuery,specInput,inverseDocument,snapshotChanged} from '../github/graphql-writes.js';
+import {writeSpec,REFUSED_MUTATIONS,specReadQuery,specInput,inverseDocument,snapshotChanged} from '../github/graphql-writes.js';
 import {refusal} from './github-write.js';
 import {classifyGraphqlMutation,relevantGraphqlNodeId,assertSafeGraphqlArguments} from '../github/mutation-classes.js';
 
@@ -17,7 +17,7 @@ const REPO={type:'string',minLength:1,maxLength:100,description:'Explicit reposi
 const CRED={type:'string',enum:['I','U','M'],description:'I installation; U user credential; M your enrolled master token (only when the App cannot do it)'};
 const common={variables:VARIABLES,owner:OWNER,cred:CRED};
 
-export const SCOPE_QUERY='query UniversalResourceScope($id: ID!) { node(id: $id) { __typename id ... on Repository { nameWithOwner } ... on Issue { title repository { nameWithOwner } } ... on PullRequest { title repository { nameWithOwner } } ... on Discussion { title repository { nameWithOwner } } ... on Release { releaseName:name repository { nameWithOwner } } ... on Milestone { title repository { nameWithOwner } } ... on Label { labelName:name repository { nameWithOwner } } ... on Commit { repository { nameWithOwner } } ... on DiscussionComment { discussion { repository { nameWithOwner } } } ... on IssueComment { issue { repository { nameWithOwner } } } ... on ProjectV2 { title owner { ... on Organization { login } ... on User { login } } } ... on ProjectV2Item { project { id owner { ... on Organization { login } ... on User { login } } } content { ... on Issue { repository { nameWithOwner } } ... on PullRequest { repository { nameWithOwner } } } } ... on ProjectV2Field { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2SingleSelectField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2IterationField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2MultiSelectField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on Organization { login } ... on User { login } ... on Team { slug organization { login } } ... on DiscussionCategory { repository { nameWithOwner } } ... on PullRequestReviewComment { pullRequest { repository { nameWithOwner } } } ... on CommitComment { repository { nameWithOwner } } ... on LinkedBranch { ref { repository { nameWithOwner } } } } }';
+export const SCOPE_QUERY='query UniversalResourceScope($id: ID!) { node(id: $id) { __typename id ... on Repository { nameWithOwner } ... on Issue { title repository { nameWithOwner } } ... on PullRequest { title repository { nameWithOwner } } ... on Discussion { title repository { nameWithOwner } } ... on Release { releaseName:name repository { nameWithOwner } } ... on Milestone { title repository { nameWithOwner } } ... on Label { labelName:name repository { nameWithOwner } } ... on Commit { repository { nameWithOwner } } ... on DiscussionComment { discussion { repository { nameWithOwner } } } ... on IssueComment { issue { repository { nameWithOwner } } } ... on ProjectV2 { title owner { ... on Organization { login } ... on User { login } } } ... on ProjectV2Item { project { id owner { ... on Organization { login } ... on User { login } } } content { ... on Issue { repository { nameWithOwner } } ... on PullRequest { repository { nameWithOwner } } } } ... on ProjectV2Field { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2SingleSelectField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2IterationField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2MultiSelectField { fieldName:name project { id owner { ... on Organization { login } ... on User { login } } } } ... on Organization { login } ... on User { login } ... on ProjectV2View { project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2StatusUpdate { project { id owner { ... on Organization { login } ... on User { login } } } } ... on ProjectV2Workflow { project { id owner { ... on Organization { login } ... on User { login } } } } ... on DraftIssue { projectsV2(first: 20) { nodes { id owner { ... on Organization { login } ... on User { login } } } } } ... on Team { slug organization { login } } ... on DiscussionCategory { repository { nameWithOwner } } ... on PullRequestReviewComment { pullRequest { repository { nameWithOwner } } } ... on CommitComment { repository { nameWithOwner } } ... on LinkedBranch { ref { repository { nameWithOwner } } } } }';
 /** Exact field readback is separate from GitHub's mutation response. It also
  * carries its owning field's real ID, preventing a same-name field collision. */
 export const PROJECT_FIELD_QUERY='query UniversalFieldReadback($itemId: ID!, $fieldName: String!) { node(id:$itemId) { ... on ProjectV2Item { id fieldValueByName(name:$fieldName) { __typename ... on ProjectV2ItemFieldValueCommon { field { ... on Node { id } } } ... on ProjectV2ItemFieldTextValue { text } ... on ProjectV2ItemFieldNumberValue { number } ... on ProjectV2ItemFieldDateValue { date } ... on ProjectV2ItemFieldSingleSelectValue { optionId } ... on ProjectV2ItemFieldIterationValue { iterationId } ... on ProjectV2ItemFieldMultiSelectValue { options { id } } } } } }';
@@ -60,9 +60,18 @@ function scopedNode(node,owner,repo){
 function orgNode(node,owner){
   if(!node?.id||typeof node.__typename!=='string')
     throw new TypeError('GraphQL ID could not be independently resolved.');
+  const same=l=>typeof l==='string'&&l.toLowerCase()===owner.toLowerCase();
   const login=node.__typename==='Team'?node.organization?.login:node.__typename==='Organization'?node.login:null;
-  if(typeof login==='string'&&login.toLowerCase()===owner.toLowerCase())
+  if(same(login))
     return {id:node.id,type:'organization',repo:null,projectId:null};
+  // GQL-1: a project, or something inside one, belongs to the account when the project's owner is that account.
+  const project=node.__typename==='ProjectV2'?node:node.project;
+  if(project?.id&&same(project.owner?.login))
+    return {id:node.id,type:'project',repo:null,projectId:project.id};
+  // A draft issue can sit in several projects: every one of them must belong to the account.
+  const drafts=node.__typename==='DraftIssue'?node.projectsV2?.nodes:null;
+  if(Array.isArray(drafts)&&drafts.length>0&&drafts.every(p=>p?.id&&same(p.owner?.login)))
+    return {id:node.id,type:'project',repo:null,projectId:drafts[0].id};
   throw new TypeError('GraphQL resource is not proven to belong to the requested enrolled organization.');
 }
 async function readScope(entry,owner,repo,ctx,cred){
@@ -136,6 +145,8 @@ function targetWrite(a,c){
     throw new TypeError('GraphQL variables exceed the safe request budget.');
   const entry=inspectGraphql(a.mutation,a.variables??{},'mutation');
   assertSafeGraphqlArguments(entry);
+  if(REFUSED_MUTATIONS.has(entry.mutation))
+    throw new TypeError(entry.mutation+' is refused on purpose: '+REFUSED_MUTATIONS.get(entry.mutation));
   const spec=writeSpec(entry.mutation);
   const repoOk=typeof repo==='string'&&/^[A-Za-z0-9_.-]{1,100}$/.test(repo);
   if((!spec||spec.scope==='repo')&&!repoOk)

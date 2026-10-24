@@ -73,3 +73,17 @@ just stops counting them as missing. Add a unit test that every tool name in the
 - [ ] Four PRs merged; `node scripts/capability-inventory.mjs --report` shows 0 rows "GraphQL mutations with no write
       specification"; refused ones are listed with reasons; TOOL-CATALOG unchanged (no new tools) except the
       universal tool's description if it mentions counts.
+
+## Progress
+- [x] Group 1 (Projects v2) — 25 mutations mapped to existing `github_project_*` tools (`curated` map in
+      `src/github/mutation-classes.js`, which also stops the generic route bypassing those tools); 7 new reviewed specs
+      (`updateProjectV2View` (name, filter, layout; visible columns refused), `updateProjectV2StatusUpdate`, `deleteProjectV2StatusUpdate`, `deleteProjectV2Workflow`,
+      `mark/unmarkProjectV2AsTemplate`, `updateProjectV2DraftIssue`); 2 refused on purpose
+      (`updateProjectV2Collaborators`, `createProjectV2IssueField`) via the new `REFUSED_MUTATIONS` map and inventory
+      state `refused-by-design`. Org-scope ownership now accepts a project (and its views, status updates, workflows,
+      draft issues) owned by the enrolled account. Tests: `tests/unit/gql-1-projects.test.js` and the new rows in
+      `tests/unit/y2-graphql-specs.test.js`. Note: the card said to add a new `COVERED_BY_TOOL` map; the existing
+      `curated` map already does exactly this, so it was extended instead.
+- [ ] Group 2 (issues, labels, reviews, discussions, reactions)
+- [ ] Group 3 (repository, environments, checks, deployments, branches)
+- [ ] Group 4 (refused / owner-gated; enterprise settings)
