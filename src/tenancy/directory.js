@@ -260,6 +260,11 @@ export function createTenantDirectory(sql) {
         ADD COLUMN IF NOT EXISTS optional_kind TEXT`;
       // PUB-6 (dark): public simple-connect. Root-level, additive. A public client
       // stores only a hash of its secret; flows are short-lived single-use rows.
+      // LAUNCH-1: who may become a NEW public person while GITHUB_PUBLIC_INVITE_ONLY is on. Existing people are never affected.
+      await sql`CREATE TABLE IF NOT EXISTS gh_public_invites (
+        login TEXT PRIMARY KEY CHECK (login = lower(login) AND login ~ '^[a-z0-9][a-z0-9-]{0,38}$'),
+        added_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )`;
       await sql`CREATE TABLE IF NOT EXISTS gh_public_clients (
         client_id TEXT PRIMARY KEY CHECK (client_id ~ '^pcl_[A-Za-z0-9_-]{32,64}$'),
         secret_hash TEXT NOT NULL,
@@ -943,6 +948,33 @@ export function createTenantDirectory(sql) {
         offers: (() => { try { return r.offers ? JSON.parse(r.offers) : null; } catch { return null; } })(),
         tenantId: r.tenant_id ? String(r.tenant_id) : null,
         identityId: r.identity_id ? String(r.identity_id) : null } : null;
+    },
+    /** LAUNCH-1 invite list (names are GitHub logins, lower-cased). */
+    async addPublicInvites(logins) {
+      const clean = [...new Set((Array.isArray(logins) ? logins : []).map((l) => String(l).trim().toLowerCase()))].slice(0, 100);
+      if (!clean.length || clean.some((l) => !/^[a-z0-9][a-z0-9-]{0,38}$/.test(l))) throw new TypeError('Invite names must be valid GitHub account names.');
+      for (const login of clean) await sql`INSERT INTO gh_public_invites (login) VALUES (${login}) ON CONFLICT (login) DO NOTHING`;
+      return clean.length;
+    },
+    async removePublicInvite(login) {
+      const rows = await sql`DELETE FROM gh_public_invites WHERE login = ${String(login).trim().toLowerCase()} RETURNING login`;
+      return rows.length === 1;
+    },
+    async listPublicInvites() { return (await sql`SELECT login FROM gh_public_invites ORDER BY login LIMIT 500`).map((r) => r.login); },
+    async isPublicInvited(login) {
+      return (await sql`SELECT 1 FROM gh_public_invites WHERE login = ${String(login ?? '').trim().toLowerCase()}`).length === 1;
+    },
+    /** LAUNCH-1: the person revoked the App's authorization on GitHub, so every stored user grant of theirs goes. */
+    async revokeUserAuthorizationsBySubject(subject) {
+      if (!/^[1-9][0-9]{0,18}$/.test(String(subject))) return 0;
+      const rows = await sql`DELETE FROM gh_tenant_user_authorizations a USING gh_tenant_identities i
+        WHERE a.identity_id = i.id AND i.provider = 'github' AND i.provider_subject = ${String(subject)} RETURNING a.identity_id`;
+      return rows.length;
+    },
+    /** LAUNCH-1: public tenants that could hold an installation (bounded; the same cap the usage summary uses). */
+    async listPublicTenantIds(limit = 1000) {
+      const max = Math.min(Math.max(Number.isInteger(limit) ? limit : 1000, 1), 1000);
+      return (await sql`SELECT tenant_id FROM gh_tenant_pilot_bootstraps WHERE account_login='public-connect' ORDER BY created_at LIMIT ${max}`).map((r) => String(r.tenant_id));
     },
     /** The public tenant of an already-known GitHub person, or null. Look-up only: it never enrolls anyone. */
     async findPublicTenantBySubject(subject) {

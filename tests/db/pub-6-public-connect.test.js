@@ -9,7 +9,11 @@ import { privateTenantToken } from '../../src/tenancy/oauth-token.js';
 import { resolvePrivateTenantMcpBearer } from '../../src/tenancy/mcp-route.js';
 import { publicApprove, publicAuthorize, publicCallback, publicForget, publicManage, publicRegister } from '../../src/tenancy/public-http.js';
 import { encryptSecret } from '../../src/core/crypto.js';
-import { call, json, request } from '../../test/helpers/http-harness.js';
+import { Readable } from 'node:stream';
+import { createCredentials } from '../../src/github/credentials.js';
+import { createWebhookHandler } from '../../src/github/webhook.js';
+import { createPublicCleanup } from '../../src/tenancy/public-cleanup.js';
+import { call, json, request, response } from '../../test/helpers/http-harness.js';
 
 const APP = 960001, ORIGIN = 'https://connect.example.test', CB = 'https://chat.example.test/oauth/callback';
 let admin, root, directory, env;
@@ -959,5 +963,81 @@ describe('GOD-5 extra places (master token) in REAL PostgreSQL', () => {
     for (const text of ['Extra places (uses your master token)', 'side-co', 'read-only', 'id="add-place"', 'id="place-changes-side-co"', 'id="remove-place-side-co"']) expect(html.body).toContain(text);
     expect(html.body).not.toContain(people.alice.token);
     await s.act('remove_place', 'side-co');
+  });
+});
+
+// LAUNCH-1: uninstalling or revoking the App cleans a public person's own store; invite-only keeps newcomers out.
+describe('LAUNCH-1 uninstall clean-up and invite-only in REAL PostgreSQL', () => {
+  const SECRET = 'fixture-webhook-secret';
+  const delivery = (event, payload, { secret = SECRET } = {}) => {
+    const body = Buffer.from(JSON.stringify(payload));
+    return Object.assign(Readable.from([body]), { method: 'POST', headers: { 'x-github-event': event, 'x-github-hook-installation-target-id': String(APP),
+      'x-hub-signature-256': 'sha256=' + crypto.createHmac('sha256', secret).update(body).digest('hex') } });
+  };
+  const handler = () => createWebhookHandler({ db: root, credentials: createCredentials({ db: root, env }),
+    publicCleanup: createPublicCleanup({ rootSql: rootSqlFactory(), connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory }) });
+  const send = async (event, payload, opts) => { const res = response(); await handler()(delivery(event, payload, opts), res); return res; };
+  const tenantFor = async (who) => tenantOf(await parsePublicCode(codeOf(await approved(make(), await make().registerClient({ redirect_uris: [CB] }), who))));
+  const inst = (id, login) => ({ id, account: { login } });
+
+  it('an uninstalled App marks the public person\'s account none and drops its cached tokens; others are untouched', async () => {
+    const aliceDb = await tenantFor('alice'), bobDb = await tenantFor('bob');
+    const stored = await aliceDb.getAccount('client-co');
+    expect(stored).toMatchObject({ installation_id: 41002, installation_status: 'active' });
+    await aliceDb.putInstallationToken(41002, 'k', 'enc-token-value', new Date(Date.now() + 3600_000));
+    expect(await aliceDb.getInstallationToken(41002, 'k')).toBeTruthy();
+
+    expect((await send('installation', { action: 'deleted', installation: inst(41002, 'client-co') }, { secret: 'wrong' })).statusCode).toBe(401);
+    expect((await aliceDb.getAccount('client-co')).installation_status).toBe('active');
+
+    expect((await send('installation', { action: 'deleted', installation: inst(41002, 'client-co') })).statusCode).toBe(200);
+    expect((await aliceDb.getAccount('client-co')).installation_status).toBe('none');
+    expect(await aliceDb.getInstallationToken(41002, 'k')).toBeFalsy();
+    expect((await aliceDb.getAccount('alice-dev')).installation_status).toBe('active');
+    expect((await bobDb.getAccount('bob-test')).installation_status).toBe('active');
+
+    // suspend and unsuspend follow the installation id; an unknown installation changes nothing
+    await send('installation', { action: 'suspend', installation: inst(41010, 'bob-test') });
+    expect((await bobDb.getAccount('bob-test')).installation_status).toBe('suspended');
+    await send('installation', { action: 'unsuspend', installation: inst(41010, 'bob-test') });
+    expect((await bobDb.getAccount('bob-test')).installation_status).toBe('active');
+    expect((await send('installation', { action: 'deleted', installation: inst(99999, 'nobody') })).statusCode).toBe(200);
+    expect((await bobDb.getAccount('bob-test')).installation_status).toBe('active');
+  });
+
+  it('a revoked App authorization removes that person\'s stored user grants only', async () => {
+    const count = async (subject) => Number((await admin.query(`SELECT count(*) n FROM gh_tenant_user_authorizations a JOIN gh_tenant_identities i ON i.id=a.identity_id WHERE i.provider_subject=$1`, [String(subject)])).rows[0].n);
+    const before = { alice: await count(31001), bob: await count(31002) };
+    expect(before.alice).toBeGreaterThan(0); expect(before.bob).toBeGreaterThan(0);
+    expect((await send('github_app_authorization', { action: 'revoked', sender: { id: 31001, login: 'alice-dev' } })).statusCode).toBe(200);
+    expect(await count(31001)).toBe(0);
+    expect(await count(31002)).toBe(before.bob);
+    expect((await send('github_app_authorization', { action: 'revoked', sender: {} })).statusCode).toBe(200);
+    expect(await count(31002)).toBe(before.bob);
+  });
+
+  it('invite-only keeps a new person out until invited, never locks out an existing person, and the list is managed in the directory', async () => {
+    people.gina = { token: 'tok-gina-0007', id: 31007, login: 'gina-new', installs: [{ id: 41060, app_id: APP, account: { id: 31007, login: 'gina-new', type: 'User' }, repository_selection: 'all', suspended_at: null }] };
+    people.ivan = { token: 'tok-ivan-0008', id: 31008, login: 'ivan-new', installs: [{ id: 41061, app_id: APP, account: { id: 31008, login: 'ivan-new', type: 'User' }, repository_selection: 'all', suspended_at: null }] };
+    const dir = createTenantDirectory(rootSqlFactory());
+    const c = make({ GITHUB_PUBLIC_INVITE_ONLY: 'enabled' });
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    // a brand-new person (no store yet) is refused with the plain sentence, and no store is created
+    await expect((await signIn(c, client, 'gina')).finished).rejects.toMatchObject({ code: 'invite_only', message: /invite-only right now/ });
+    expect(await dir.findPublicTenantBySubject(31007)).toBeNull();
+    // existing people still sign in and approve
+    expect(codeOf(await approved(c, client, 'bob'))).toBeTruthy();
+    // invites are lower-cased, validated and removable; an invited newcomer gets in
+    expect(await dir.addPublicInvites(['Gina-New', 'someone'])).toBe(2);
+    expect(await dir.isPublicInvited('gina-new')).toBe(true);
+    await expect(dir.addPublicInvites(['bad name!'])).rejects.toThrow();
+    expect(await dir.removePublicInvite('someone')).toBe(true);
+    expect(await dir.listPublicInvites()).toContain('gina-new');
+    expect(await dir.listPublicInvites()).not.toContain('someone');
+    expect(codeOf(await approved(c, client, 'gina'))).toBeTruthy();
+    expect(await dir.findPublicTenantBySubject(31007)).toBeTruthy();
+    // off by default: an uninvited newcomer connects
+    const open = make();
+    expect(codeOf(await approved(open, await open.registerClient({ redirect_uris: [CB] }), 'ivan'))).toBeTruthy();
   });
 });

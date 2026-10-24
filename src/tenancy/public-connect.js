@@ -178,6 +178,9 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   /** One isolated tenant per verified GitHub person; every account that person connects lives inside it. */
   async function ensureTenant({ principal, installations }) {
     const dir = directory(), root = createDb(rootSql());
+    // LAUNCH-1: while invite-only is on, a NEW person needs an invite; people who already have a store are never locked out.
+    if (env.GITHUB_PUBLIC_INVITE_ONLY === 'enabled' && !await dir.findPublicTenantBySubject(principal.subject) && !await dir.isPublicInvited(principal.login))
+      throw new PublicConnectError('invite_only', 'Robinson GitHub MCP is invite-only right now. Ask Chris for an invite.');
     const identityId = await dir.enrollVerifiedGithubSubject(principal.subject);
     const existing = await dir.findPilotTenant(identityId, TENANT_KEY);
     if (!existing && await dir.countPilotTenants() >= limits.maxTenants)

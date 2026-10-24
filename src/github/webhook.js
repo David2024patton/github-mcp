@@ -31,8 +31,8 @@ const header = (req, name) => {
   return Array.isArray(value) ? value[0] : value;
 };
 
-/** @param {{ db: object, credentials: object }} deps */
-export function createWebhookHandler({ db, credentials }) {
+/** @param {{ db: object, credentials: object, publicCleanup?: object }} deps `publicCleanup` (LAUNCH-1) tidies public people's own stores */
+export function createWebhookHandler({ db, credentials, publicCleanup = null }) {
   const reply = (res, status, body) => res.status(status).json(body);
 
   return async function webhook(req, res) {
@@ -57,9 +57,16 @@ export function createWebhookHandler({ db, credentials }) {
       if (event === 'ping') return reply(res, 200, { ok: true });
       const accounts = (await db.listAccounts()).filter((a) => a.app_id === appId);
       if (event === 'github_app_authorization') {
-        if (payload.action === 'revoked') for (const a of accounts) await credentials.forgetUserAuthorization(a.login);
+        if (payload.action === 'revoked') {
+          for (const a of accounts) await credentials.forgetUserAuthorization(a.login);
+          // A public person's own grants (the sender is the GitHub person who revoked).
+          if (publicCleanup && Number.isSafeInteger(payload.sender?.id)) await publicCleanup.authorizationRevoked({ subject: String(payload.sender.id) });
+        }
         return reply(res, 200, { ok: true });
       }
+      // A public person's installation lives in their own store, never in the owner's list below.
+      if (event === 'installation' && publicCleanup && Number.isSafeInteger(payload.installation?.id))
+        await publicCleanup.installationChanged({ installationId: payload.installation.id, action: String(payload.action || '') });
       // installation / installation_repositories: believed only for the account that owns this App.
       const installation = payload.installation;
       const login = String(installation?.account?.login || '').toLowerCase();

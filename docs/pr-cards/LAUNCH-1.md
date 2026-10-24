@@ -74,3 +74,10 @@ again (GitHub itself refuses the installation token, so this is stale state, not
 ## Done when
 - [ ] A, B, C merged; owner rows added: invite-only switch, cost alert amount, support email, legal approval, permission change.
 - [ ] Load-test numbers and the cost estimate recorded in a status note.
+
+## Progress
+- PR A (built; invite-only default OFF, Chris decides when to switch on): uninstall/suspend/revoke clean-up for public people
+  (`src/tenancy/public-cleanup.js`, called from the webhook after the signature check) and the invite list (`GITHUB_PUBLIC_INVITE_ONLY`,
+  `gh_public_invites`, owner setup page form). Tests: DB describe "LAUNCH-1 uninstall clean-up and invite-only" in
+  `tests/db/pub-6-public-connect.test.js` (kept in that file because its large fixture is not shared), setup-page unit test.
+- PR B, PR C: not started.

@@ -773,6 +773,27 @@ describe('spend limit and own people on the setup page (B-4)', () => {
     expect((await t.post({ action: 'forget-person', login: 'alice-dev', confirmLogin: 'alice-dev' })).statusCode).toBe(400);
     expect((await t.post({ action: 'forget-person', login: 'bad name!', confirmLogin: 'bad name!', confirmDelete: 'yes' })).statusCode).toBe(400);
   });
+  it('shows the invite list with its on/off state, and the invite forms refuse bad names, a wrong passphrase and a preview deployment (LAUNCH-1)', async () => {
+    const { renderSetup } = await import('../../src/github/setup-html.js');
+    const on = renderSetup({ csrf: 'c', publicInvites: { on: true, logins: ['gina-new', 'ivan'] } });
+    expect(on).toContain('Invite list');
+    expect(on).toContain('Invite-only is ON');
+    expect(on).toContain('gina-new, ivan');
+    expect(renderSetup({ csrf: 'c', publicInvites: { on: false, logins: [] } })).toContain('Invite-only is OFF');
+    expect(renderSetup({ csrf: 'c' })).not.toContain('Invite list');
+    const t = await build({ env: { ...PROD, GITHUB_PRIVATE_TENANT_PILOT: 'enabled', DATABASE_URL: 'postgres://invalid.example.test/none' } });
+    await t.open();
+    expect((await t.post({ action: 'add-invites', logins: 'bad name!' })).statusCode).toBe(400);
+    expect((await t.post({ action: 'add-invites', logins: '' })).statusCode).toBe(400);
+    expect((await t.post({ action: 'remove-invite', login: 'no good' })).statusCode).toBe(400);
+    expect((await t.post({ action: 'add-invites', logins: 'gina', passphrase: 'wrong-wrong-wrong' })).statusCode).toBe(401);
+    const notSetUp = await build();
+    await notSetUp.open();
+    expect((await notSetUp.post({ action: 'add-invites', logins: 'gina' })).statusCode).toBe(409);
+    const preview = await build({ env: { ...PROD, VERCEL_ENV: 'preview' } });
+    await preview.open();
+    expect((await preview.post({ action: 'add-invites', logins: 'gina' })).statusCode).toBe(403);
+  });
   it('saves a display time zone (blank means UTC) and rejects a name that is not a real zone', async () => {
     const t = await build();
     await t.open();
