@@ -125,14 +125,20 @@ jobs:
       # Chromium: the runner's own Google Chrome (nothing to download). WebKit: Playwright's build plus its system libraries.
       # A slow or stuck install fails within 6 minutes and leaves its last output as an annotation on the check.
       - name: Install the WebKit engine
-        timeout-minutes: 7
+        timeout-minutes: 8
+        # Usually under a minute. Ubuntu's package mirror is sometimes very slow, so one stuck attempt is cut off and retried
+        # (the retry reuses what was already downloaded). A real failure still fails the job, with its output as an annotation.
         run: |
           start=$(date +%s)
-          if ! timeout 360 npx playwright install --with-deps webkit > /tmp/pw-install.log 2>&1; then
-            echo "::error title=WebKit install failed::$(tail -c 900 /tmp/pw-install.log | tr '\n\r' '  ')"
-            exit 1
-          fi
-          echo "::notice title=WebKit install::took $(( $(date +%s) - start )) seconds"
+          for attempt in 1 2; do
+            if timeout 210 npx playwright install --with-deps webkit > /tmp/pw-install.log 2>&1; then
+              echo "::notice title=WebKit install::attempt $attempt took $(( $(date +%s) - start )) seconds"
+              exit 0
+            fi
+            echo "::warning title=WebKit install attempt $attempt::$(tail -c 400 /tmp/pw-install.log | tr '\n\r' '  ')"
+          done
+          echo "::error title=WebKit install failed::$(tail -c 900 /tmp/pw-install.log | tr '\n\r' '  ')"
+          exit 1
       - run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:browser
         env:
           TEST_DATABASE_URL: postgresql://postgres:ci-only-not-a-secret@127.0.0.1:5432/postgres
