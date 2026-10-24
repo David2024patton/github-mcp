@@ -1,3 +1,13 @@
+## 2026-10-23 — finish plan written (batch FIN), not built yet
+
+Chris asked for every remaining piece to be designed and planned so a lesser model (Sol 5.6, light/medium effort) can
+implement it, without building it yet. Written: `docs/designs/FINISH-PLAN.md` plus READY cards GOD-2, GOD-3, ENT-1,
+ACC-1, GOD-4, GQL-1, GOD-5, HARD-1 and `docs/pr-cards/SOL-GUIDE.md`. Decisions inside the cards: personal-account tools
+prefer the master token when it is added and fall back to today's credential (never refuse without it); extra places
+(GOD-5) start read-only and are ordinary account rows with `credential_kind='master'`; enterprise membership/identity
+mutations are refused by design (GQL-1 group 4); ENT-1 is time-boxed to the Enterprise trial on robinson-ai-scratch
+(ends about 2026-11-22). Publication (PUB-5) stays out.
+
 ## 2026-10-23 — sign-in rebuilt: GitHub once, one Approve page, no cookies, "My connection" page, real-browser tests
 
 Chris asked why the connector sign-in kept breaking and approved fixing it properly. Findings: the flow had grown to up to ten

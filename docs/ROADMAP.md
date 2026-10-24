@@ -95,15 +95,23 @@ Approach: one public GitHub App, opened gradually. Every item below is part of "
 
 - (Done 2026-10-23) Self-serve "delete my data" page for public people: sign in with GitHub, confirm once, everything stored is removed.
 
-## Owner-requested, not built yet (2026-10-23)
-- **God mode as ONE master token:** Chris's intent is a single classic GitHub token, typed on the God page (never into a chat), that unlocks everything the standard sign-in cannot: notifications, packages and every other classic-token-only operation — instead of today's separate "notifications token" / "package token" choices. Needs a design: one new credential kind that existing notification/package tools also accept, the token scopes to tell the person to tick, encrypted storage like the current keys, and tools for the remaining classic-only operations.
+## Owner-requested (2026-10-23) — status
+- (Done 2026-10-23, GOD-1) God mode as one master token. Remaining God-mode work is planned in FIN cards GOD-2..GOD-5
+  and ENT-1 (`docs/designs/FINISH-PLAN.md`).
+- (Historical note) **God mode as ONE master token:** Chris's intent is a single classic GitHub token, typed on the God page (never into a chat), that unlocks everything the standard sign-in cannot: notifications, packages and every other classic-token-only operation — instead of today's separate "notifications token" / "package token" choices. Needs a design: one new credential kind that existing notification/package tools also accept, the token scopes to tell the person to tick, encrypted storage like the current keys, and tools for the remaining classic-only operations.
 - **Linking a second, separate GitHub login** into one connection (security-sensitive: needs sign-in as both people). Today each GitHub person gets their own separate space.
 
 - Link a second, separate GitHub login (for example a client's or an older work login) into one connection. Needs proof of both logins and a careful look at tenant isolation. Not built; one login with its personal account and organizations is covered.
 
-## Found during the 2026-10-23 sign-in rebuild (not built)
+## Found during the 2026-10-23 sign-in rebuild (now planned: stateless/cap → HARD-1 A.1, one App key copy → HARD-1 A.2)
 - **Stateless sign-in steps:** every sign-in step is a database row under one global cap (200 open), so anyone opening many
   sign-in links could briefly fill it. Signing the step into the address itself (and recording only used ones) would remove the cap.
 - **One copy of the App keys:** each person's area keeps its own sealed copy of the App's keys, refreshed at their next
   sign-in. Reading the single shared copy instead would make a key change reach everyone at once.
 - **Second GitHub login in one connection** (above) would fit naturally on My connection once tenant merging is designed.
+
+## Planned 2026-10-23 (batch FIN, see docs/designs/FINISH-PLAN.md)
+GOD-2 personal tools on the master token · GOD-3 "what it unlocks" · ENT-1 enterprise tools (trial) · ACC-1 acceptance
+sweep · GOD-4 new master-token families · GQL-1 GraphQL write specs · GOD-5 extra places · HARD-1 hardening and tidy.
+Still NOT planned (stay here): PUB-5 directory listing (policy-blocked); linking a second, separate GitHub login into one
+connection; OAuth-app token management and App-manifest conversion (need an OAuth app's own secret).

@@ -30,6 +30,11 @@ tool, never returned, encrypted at rest with a context that binds it to tenant, 
 - God page: `src/tenancy/public-http.js` (`godPage`) and `src/tenancy/public-connect.js` (`godChoose`).
 
 ## Pieces (each a whole, usable outcome)
+
+Status 2026-10-23: GOD-1 MERGED (#334–#336). GOD-2/GOD-3 now have ready cards (`docs/pr-cards/GOD-2.md`, `GOD-3.md`);
+the old "GOD-2 purpose-built tools" idea below is now card GOD-4, and reaching places without the App is GOD-5
+(`docs/designs/FINISH-PLAN.md`).
+
 1. **GOD-1:** enroll `M` (link with all scopes pre-ticked, one-time page, same-person proof, scopes recorded), store/revoke,
    `github_whoami` shows it and its scopes, K/P tools fall back to it, `github_api_call` / `github_graphql_*` accept `cred:"M"`
    under the full guards, God page rewritten, tests (real Postgres, fake GitHub), docs.

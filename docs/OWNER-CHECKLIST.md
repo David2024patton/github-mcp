@@ -42,8 +42,8 @@ Chris. Never mark a check passed without real observations. Results go in `docs/
 
 ## B3. Things that cannot be tested until you have them
 
-- [ ] **A GitHub Enterprise account or enterprise admin sign-in:** needed only to test enterprise-wide audit logs and
-      enterprise SAML/SCIM. Without it those stay untested; nothing else depends on them. Buying one is your call.
+- [x] **A GitHub Enterprise to test with:** the free Enterprise trial on `robinson-ai-scratch` (2026-10-23, ends about
+      2026-11-22) covers it for now. See the ENT-1 row below for the one thing you do.
 
 ## C. Decisions only you can make
 
@@ -100,3 +100,18 @@ app, delete your data. What remains is yours:
 - [ ] **Optional: try it once on your phone after "go".** Nice to have, not needed to prove it works.
 - Handled by the agent, nothing for you: time zones, read-only option, usage view, deleting a person's data (yours and theirs), key change procedure, the domain's HTTPS certificate, and the browser tests.
 - **When your registrar moves the nameservers to Vercel,** the DNS records must exist on the Vercel side too (including `github` and any email or website records). Tell the agent when the cutover is close and it will compare and add the missing records so nothing breaks.
+
+## Finish plan (written 2026-10-23; agents build it, these are the only parts that need you)
+The remaining work is planned in `docs/designs/FINISH-PLAN.md`. None of these blocks building.
+- [ ] **Before about 2026-11-22 (Enterprise trial end): replace your master token once, with enterprise permissions.**
+      After the ENT-1 tools are released, the agent tells you. Open My connection, press "Replace or remove it", and use
+      the link "Include enterprise permissions". Takes about a minute.
+- [ ] **Optional decision: "extra places" (GOD-5).** With your master token you will be able to add organizations or
+      repositories where the App is not installed. Planned default: each one starts **read-only** and you switch on
+      changes per place on My connection. Tell the agent if you want a different default. Nothing waits on this.
+- [ ] **One field in the GitHub App settings (HARD-1, when the agent asks):** Setup URL →
+      `https://github.robinsonaisystems.com/api/github/setup` → Save. The old address keeps working until then.
+- [ ] **Optional, for one acceptance test:** a second GitHub account you control (the collaborator-invite check);
+      already listed above, still optional.
+- Money decisions stay yours and stay untested until you choose: budgets deletion, paid runners, paid Copilot or
+  Sponsors actions.
