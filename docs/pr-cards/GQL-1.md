@@ -91,5 +91,12 @@ just stops counting them as missing. Add a unit test that every tool name in the
       10 refused on purpose with reasons (merge queue, revert, related-issue links, pending-review adds, suggestion
       apply/reject, clearing an issue field value). Test: `tests/unit/gql-1-issues.test.js` + new rows in
       `tests/unit/y2-graphql-specs.test.js`.
-- [ ] Group 3 (repository, environments, checks, deployments, branches)
-- [ ] Group 4 (refused / owner-gated; enterprise settings)
+- [x] Group 3 (repository, environments, checks, deployments, branches) — 40 mutations recorded as covered by existing tools
+      (refs, repositories, environments, checks, deployments, interaction limits, custom properties, follow, outside
+      collaborators, team repo access, package versions, vulnerability alerts, sponsorship start/cancel); 2 new specs
+      (`updateTopics`, `deleteDeployment`). Tests: `tests/unit/gql-1-repo.test.js`, new rows in `y2-graphql-specs`.
+- [~] Group 4 — refused / owner-gated part DONE in the same PR as group 3 (card group 3 and 4 refusals are small data
+      entries, so one PR: classic projects, enterprise membership/identity, migrations, IP allow lists, verifiable
+      domains, sponsor money moves, star lists and others, each with a plain reason in `REFUSED_MUTATIONS`).
+      REMAINING (named): the 16 `updateEnterprise*Setting` / `updateEnterpriseProfile` mutations need the new
+      `scope:'enterprise'` (credential M with admin:enterprise, `requireEnterprise`) — separate PR.
