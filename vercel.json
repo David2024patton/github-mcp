@@ -10,6 +10,10 @@
       "destination": "/api/index"
     },
     {
+      "source": "/connection",
+      "destination": "/api/oauth/authorize?manage=1"
+    },
+    {
       "source": "/.well-known/oauth-authorization-server",
       "destination": "/api/well-known/oauth-authorization-server"
     },

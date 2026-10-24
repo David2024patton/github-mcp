@@ -256,17 +256,23 @@ describe('CAP-3 browser POST rejects CSRF, forged Origin and raw-token output',(
     expect(res.headers['set-cookie']).toContain('HttpOnly');
     expect(res.headers['referrer-policy']).toBe('same-origin');
   });
-  it('does not call issuer on wrong Origin, missing cookie or mismatched CSRF',async()=>{
+  it('does not call issuer on wrong Origin, a mismatched cookie or a malformed form state',async()=>{
     const {page,enrollment}=make();
     for(const req of [
       {method:'POST',headers:{origin:'https://evil.example'},body:{csrf:'x'.repeat(43),value:token}},
-      {method:'POST',headers:{origin:env.PUBLIC_BASE_URL},body:{csrf:'x'.repeat(43),value:token}},
+      {method:'POST',headers:{origin:env.PUBLIC_BASE_URL},body:{csrf:'short',value:token}},
       {method:'POST',headers:{origin:env.PUBLIC_BASE_URL,cookie:'gh_tenant_optional_state='+'x'.repeat(43)},body:{csrf:'y'.repeat(43),value:token}}
     ]){
       const res=response();await page(req,res);expect(res.statusCode).toBe(403);
       expect(res.body).not.toContain(token);
     }
     expect(enrollment.finish).not.toHaveBeenCalled();
+  });
+  it('a browser that keeps no cookie still reaches the one-use server-side check (the form state is the guard)',async()=>{
+    const {page,enrollment}=make(),res=response();
+    await page({method:'POST',headers:{origin:env.PUBLIC_BASE_URL},body:{csrf:'x'.repeat(43),action:'save',value:token}},res);
+    expect(enrollment.finish).toHaveBeenCalledWith({state:'x'.repeat(43),action:'save',value:token});
+    expect(JSON.stringify(res)).not.toContain(token);
   });
   it('posts only to issuer and redirects to registered completion URI',async()=>{
     const {page,enrollment}=make(),res=response();

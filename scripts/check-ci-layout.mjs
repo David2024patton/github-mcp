@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-export const policy = {"gate": "ci", "parallel": ["check", "unit", "db", "shapes", "rtc"], "matrices": {"unit": 2}, "maxTimeouts": {"check": 10, "unit": 10, "db": 10, "shapes": 10, "rtc": 10, "ci": 5}, "timedJobs": ["unit", "db", "shapes", "rtc"]};
+export const policy = {"gate": "ci", "parallel": ["check", "unit", "db", "shapes", "rtc", "browser"], "matrices": {"unit": 2}, "maxTimeouts": {"check": 10, "unit": 10, "db": 10, "shapes": 10, "rtc": 10, "browser": 10, "ci": 5}, "timedJobs": ["unit", "db", "shapes", "rtc", "browser"]};
 
 export function checkLayout(source, expected = policy) {
   const body = source.split(/^jobs:\s*$/m)[1];

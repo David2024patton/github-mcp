@@ -5,7 +5,6 @@ import {createPrivateOptionalEnrollment} from '../../src/tenancy/optional-setup.
 import {TenantCapacityError} from '../../src/tenancy/runtime-limits.js';
 import {escapeHtml,paramsOf,publicOrigin,send} from '../../src/core/http.js';
 import {masterTokenLink} from '../../src/tenancy/master-credential.js';
-import {publicGodPost,clearGodCookie,publicFailure,renderPublicStep,handoff as publicHandoff} from '../../src/tenancy/public-http.js';
 
 const NAME='gh_tenant_optional_state';
 const CLEAR=NAME+'=; Max-Age=0; Path=/api/tenant/optional; HttpOnly; Secure; SameSite=Strict';
@@ -81,7 +80,7 @@ export function makePrivateOptionalPage({
     try{
       if(req.method==='GET'){
         if(['read-observed-at-enrollment','revoked-on-this-service'].includes(req.query?.github_mcp_optional))
-          return send(res,200,'<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GitHub setup</title><p>Return to your connected client and run github_check_permissions to verify the current credential status. This page alone is not proof of completion.</p></html>','text/html; charset=utf-8');
+          return send(res,200,'<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GitHub setup</title><style>body{font:16px system-ui,sans-serif;max-width:450px;margin:5vh auto;padding:20px}</style><h1 id="optional-done">'+(req.query.github_mcp_optional==='revoked-on-this-service'?'Removed':'Saved')+'</h1><p>'+(req.query.github_mcp_optional==='revoked-on-this-service'?'It is no longer stored here. Also delete it in your GitHub settings if you will not use it again.':'Your assistant can use it straight away; no reconnecting needed.')+'</p><p><a href="/connection">Back to My connection</a></p></html>','text/html; charset=utf-8');
         // GOD-1: a one-use link from github_master_token_link (add the master token any time, no reconnecting).
         if(typeof req.query?.master_link==='string')
           return renderOptionalForm(res,await enrollment.startMasterLink(req.query.master_link));
@@ -89,24 +88,18 @@ export function makePrivateOptionalPage({
         return renderOptionalForm(res,result);
       }
       const p=paramsOf(req),observed=cookie(req);
-      // PUB-6 (dark): the God-mode page posts here. Its own cookie, handle and checks live in public-http.js.
-      if(p.connect_god==='1'){
-        try{
-          const chosen=await publicGodPost(req,{env});
-          if(chosen.install||chosen.god)return renderPublicStep(res,chosen);
-          if(chosen.redirect)return publicHandoff(res,chosen.redirect,[clearGodCookie()]);
-          return renderOptionalForm(res,chosen.optional,[clearGodCookie()]);
-        }catch(error){ res.setHeader('Set-Cookie',clearGodCookie()); return publicFailure(res,error); }
-      }
-      if(String(req.headers?.origin||'')!==publicOrigin(env) ||
-        !observed || typeof p.csrf!=='string' ||
-        p.csrf.length!==observed.length ||
-        !timingSafeEqual(Buffer.from(p.csrf),Buffer.from(observed)))
+      // The one-use state inside the form is the guard: it exists only in the page this person was given. The cookie is
+      // optional (some in-app browsers keep none); when one is present it must match. A form naming another site is refused.
+      const origin=String(req.headers?.origin||'');
+      if(!(origin===''||origin==='null'||origin===publicOrigin(env)) ||
+        typeof p.csrf!=='string' || !/^[A-Za-z0-9_-]{43}$/.test(p.csrf) ||
+        (observed && (p.csrf.length!==observed.length ||
+        !timingSafeEqual(Buffer.from(p.csrf),Buffer.from(observed)))))
         return send(res,403,{error:'credential_setup_denied',
           description:'This private browser step expired. Restart from your connection.'});
       res.setHeader('Set-Cookie',CLEAR);
       const result=await enrollment.finish({
-        state:observed,action:p.action,value:p.value});
+        state:p.csrf,action:p.action,value:p.value});
       res.setHeader('Location',result.destination);
       return res.status(303).end();
     }catch(error){

@@ -76,6 +76,8 @@ async function whoami(args, ctx) {
     default_account: ctx.connection.default_account, api_version: GITHUB_API_VERSION,
     credential_types: { I: 'installation token (or fine-grained token)', U: 'your sign-in for personal settings', K: 'notifications-only classic token', P: 'package-only classic token', ...(master ? { M: 'your master token (everything your GitHub login can do, used only when the App cannot)' } : {}) },
     ...(master ? { master_token: master.enrolled ? { added: true, permissions: master.scopes, ...masterExpiry(master.expires_at) } : { added: false, how_to_add: 'Ask the assistant to run github_master_token_link; it gives you a private link.' } } : {}),
+    // Public sign-ins have a page where the person adds accounts, the master token, read-only, time zone, or disconnects.
+    ...(String(ctx.connection.client_id ?? '').startsWith('pcl_') ? (() => { try { return { my_connection_page: publicOrigin() + '/connection' }; } catch { return {}; } })() : {}),
     accounts: pick(accounts, args.fields)
   };
 }
