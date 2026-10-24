@@ -115,12 +115,11 @@ const stargazers = defineRead({
   required: ['owner', 'repo'],
   handler: (args, ctx) => plain(async () => {
     const c = await client(args, ctx);
-    await publicRepo(c, args);
+    const repo = await publicRepo(c, args);
     const base = { owner: args.owner, repo: args.repo };
-    const total = await publicGet(c, 'GET /repos/{owner}/{repo}/stargazers/count', base);
     const rows = await publicGet(c, 'GET /repos/{owner}/{repo}/stargazers', { ...base, per_page: args.max ?? 30, page: args.page ?? 1,
       ...(args.withDates ? { headers: { accept: 'application/vnd.github.star+json' } } : {}) });
-    return { total: typeof total === 'number' ? total : Number(total?.count ?? rows.length), page: args.page ?? 1,
+    return { total: Number(repo.stargazers_count ?? rows.length), page: args.page ?? 1,
       items: rows.map((row) => { const u = row.user ?? row; return { login: u.login, type: u.type, ...(args.withDates ? { starred_at: row.starred_at ?? null } : {}) }; }) };
   })
 });

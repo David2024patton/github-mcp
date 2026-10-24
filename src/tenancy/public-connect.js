@@ -402,7 +402,9 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     if (choice === 'add') {
       // Another place of theirs (an organization or account without the App): go to GitHub's install screen aimed at it, then
       // come back through the normal silent sign-in to this same Approve page, now listing the new account too.
-      const offer = (flow.offers ?? []).find((o) => o.login === value);
+      // "*" = the always-present "Install on another organization or account" button: GitHub's own picker lists every place the
+      // person owns, so it works even when our own lookup of their organizations came back empty.
+      const offer = value === '*' ? { id: undefined } : (flow.offers ?? []).find((o) => o.login === value);
       if (!offer) throw refused('r25');
       const client = await loadClient(flow.clientId, flow.redirectUri);
       return { go: (await installUrl({ client, flow: { redirectUri: flow.redirectUri, clientState: flow.clientState, codeChallenge: flow.codeChallenge } }))(offer.id) };
@@ -468,7 +470,12 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       accountLogin: signedInAs.toLowerCase(), offers: offers?.length ? offers : null }, MANAGE_SECONDS);
     const all = await db.listAccounts();
     const accounts = all.filter((a) => a.credential_kind !== 'master').map((a) => ({ login: a.login, organization: a.account_type === 'Organization',
-      changes: a.production_enabled === true, active: a.installation_status === 'active' }));
+      changes: a.production_enabled === true, active: a.installation_status === 'active',
+      // GitHub's own page for this installation, where the person can change its repositories or uninstall it. Only the page
+      // address is built here; this server never uninstalls anything.
+      githubUrl: Number.isSafeInteger(Number(a.installation_id)) && Number(a.installation_id) > 0 && LOGIN.test(String(a.login))
+        ? (a.account_type === 'Organization' ? `https://github.com/organizations/${a.login}/settings/installations/${Number(a.installation_id)}` : `https://github.com/settings/installations/${Number(a.installation_id)}`)
+        : null }));
     const places = all.filter((a) => a.credential_kind === 'master').map((a) => ({ login: a.login, organization: a.account_type === 'Organization',
       changes: a.allow_changes === true, repos: a.allowed_repos ?? null }));
     // Refresh-aware: an app whose one-hour access lapsed but can still renew it is listed (and can be disconnected).
@@ -524,7 +531,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       return { manage: await view('Disconnected ' + (target.client_name ?? 'that app') + '. To use it again, connect from the app.') };
     }
     if (action === 'add') {
-      const offer = (flow.offers ?? []).find((o) => o.login === value);
+      const offer = value === '*' ? { id: undefined } : (flow.offers ?? []).find((o) => o.login === value);
       if (!offer) throw refused('r37');
       const client = await builtInClient(MANAGE_CLIENT, 'My connection');
       const url = (await installUrl({ client, flow: { redirectUri: manageUrl(), clientState: null, codeChallenge: random(32), purpose: 'manage' } }))(offer.id);

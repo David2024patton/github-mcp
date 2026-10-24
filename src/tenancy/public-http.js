@@ -127,6 +127,8 @@ function approvePage(res, a) {
     `<form method="post" action="${STEP}">${hidden('step', 'approve')}${hidden('handle', a.handle)}${hidden('choice', 'cancel')}<button type="submit" class="plain" id="cancel">Cancel</button></form>` +
     (a.others.length ? '<p><small>The App is not installed on these other places of yours yet. Add one now and you come straight back here:</small></p>' +
       a.others.map((o) => `<form method="post" action="${STEP}">${hidden('step', 'approve')}${hidden('handle', a.handle)}${hidden('choice', 'add')}${hidden('value', o)}<button type="submit" class="plain" id="add-${h(o)}">Add ${h(o)}</button></form>`).join('') : '') +
+    (/marketplace_account=/.test(String(a.manageUrl)) ? '' : '<p><small>Want the App on another organization or account of yours? GitHub shows every place you can install it:</small></p>' +
+      `<form method="post" action="${STEP}">${hidden('step', 'approve')}${hidden('handle', a.handle)}${hidden('choice', 'add')}${hidden('value', '*')}<button type="submit" class="plain" id="add-another">Install on another organization or account</button></form>`) +
     `<p><small>Only approve if you just started connecting from that app. You can change all of this later at <a href="${h(a.manageUrl)}">My connection</a>.</small></p>`);
 }
 function installPage(res, i) {
@@ -153,9 +155,12 @@ function managePage(res, m) {
     (m.notice ? `<p class="notice">${h(m.notice)}</p>` : '') +
     `<p>Signed in as <strong>${h(m.signedInAs)}</strong>.</p>` +
     (m.usage ? `<p id="used-today">Used today: <strong>${h(Number(m.usage.used).toLocaleString('en-US'))}</strong> of ${h(Number(m.usage.limit).toLocaleString('en-US'))} free calls. <small>Resets at midnight UTC. <a href="/limits">See the limits</a>.</small></p>` : '') +
-    '<h2>Accounts</h2>' + (m.accounts.length ? m.accounts.map((a) => `<div class="row"><span>${h(a.login)} <span class="tag">${a.organization ? 'organization' : 'your account'}</span></span><span class="tag">${a.active ? 'connected' : 'App removed'}</span></div>`).join('') : '<p class="muted">None yet.</p>') +
+    '<h2>Accounts</h2>' + (m.accounts.length ? m.accounts.map((a) => `<div class="row"><span>${h(a.login)} <span class="tag">${a.organization ? 'organization' : 'your account'}</span></span><span class="tag">${a.active ? 'App installed' : 'App removed'}</span></div>` +
+      (a.githubUrl ? `<p class="muted"><small><a id="github-${h(a.login)}" href="${h(a.githubUrl)}">Change repositories or uninstall the App for ${h(a.login)} on GitHub</a></small></p>` : '')).join('') : '<p class="muted">None yet.</p>') +
     m.offers.map((o) => act('add', `Add ${h(o.login)}`, { value: o.login, id: 'add-' + o.login })).join('') +
     (m.offers.length ? '<p><small>Adding opens GitHub to install the App there, then brings you back. Your apps get the new account straight away.</small></p>' : '') +
+    (m.marketplaceAccountId ? '' : act('add', 'Install on another organization or account', { value: '*', plain: true, id: 'add-another' }) +
+      '<p><small>Opens GitHub, which lists every organization and account you can install the App on, then brings you back.</small></p>') +
     '<h2>Apps using your GitHub</h2>' + (m.connections.length ? m.connections.map((c) => `<div class="row"><span>${h(c.name)} <span class="tag">${label(c)}</span></span></div>` +
       act('disconnect', `Disconnect ${h(c.name)}`, { value: c.clientId, plain: true, id: 'disconnect-' + c.clientId })).join('') : '<p class="muted">No app is connected right now.</p>') +
     (m.connections.length ? (anyChanges ? act('read_only', 'Make all my apps read-only', { plain: true }) : act('allow_changes', 'Let my apps make changes again', { plain: true })) : '') +

@@ -154,6 +154,11 @@ describe('PAR-1 docs search', () => {
     expect(url.search).not.toMatch(/[ #]/);
     expect([...url.searchParams.keys()].sort()).toEqual(['language', 'query', 'size', 'version']);
   });
+  it('turns the site-relative links GitHub really returns into full docs.github.com links', async () => {
+    const fetch = docsFetch(() => reply({ meta: { found: { value: 2 } }, hits: [hit({ url: '/en/rest/branches/branch-protection' }), hit({ url: '//evil.example/x' }), hit({ url: 'javascript:alert(1)' })] }));
+    const out = await searchDocs({ query: 'branch', max: 5, fetch });
+    expect(out.items.map((i) => i.url)).toEqual(['https://docs.github.com/en/rest/branches/branch-protection']);
+  });
   it('strips tags, drops non-docs links, sends no credentials, and refuses redirects', async () => {
     const seen = [];
     const fetch = docsFetch((url, init) => { seen.push({ url: String(url), init }); return reply({ meta: { found: { value: 42 } }, hits: [hit(), hit({ url: 'https://evil.example/x' })] }); });
@@ -248,8 +253,7 @@ describe('PAR-1 bulk project edits', () => {
 describe('PAR-1 stargazers', () => {
   const REPO = 'GET /repos/{owner}/{repo}';
   const arrange = (w) => {
-    w.gh.when(REPO).reply(200, { id: 1, name: 'hello', private: false, visibility: 'public' });
-    w.gh.when('GET /repos/{owner}/{repo}/stargazers/count').reply(200, { count: 42 });
+    w.gh.when(REPO).reply(200, { id: 1, name: 'hello', private: false, visibility: 'public', stargazers_count: 42 });
     w.gh.when('GET /repos/{owner}/{repo}/stargazers').reply(200, (req) => (/star\+json/.test(req.headers.accept ?? '')
       ? [{ starred_at: '2026-10-01T00:00:00Z', user: { login: 'ann', type: 'User' } }] : [{ login: 'ann', type: 'User' }, { login: 'bo', type: 'User' }]));
   };
