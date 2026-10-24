@@ -150,6 +150,94 @@ const contentPushFiles = defineGithubWrite(overridable({
   present: ({ response }) => ({ commit: response?.data?.createCommitOnBranch?.commit?.oid, url: response?.data?.createCommitOnBranch?.commit?.url })
 }, { branchOf: (args) => args.branch }));
 
+// ---- small edits to several files in one commit (send only what changes, not whole files) ----
+const MAX_EDIT_CHARS = 20_000;
+const EDIT_ITEM = { type: 'object', properties: { find: { type: 'string', minLength: 1, maxLength: MAX_EDIT_CHARS, description: 'Exact text to find (must appear once unless all is true)' },
+  replace: { type: 'string', maxLength: MAX_EDIT_CHARS, description: 'Text to put in its place (empty removes it)' }, all: { type: 'boolean', description: 'Replace every occurrence' } },
+required: ['find', 'replace'], additionalProperties: false };
+const EDIT_FILE_ITEM = { type: 'object', properties: { path: { type: 'string', minLength: 1, maxLength: 1000 }, edits: { type: 'array', items: EDIT_ITEM, minItems: 1, maxItems: 50 } }, required: ['path', 'edits'], additionalProperties: false };
+
+function checkEditFiles(files) {
+  const seen = new Set();
+  let total = 0;
+  for (const f of files) {
+    const path = cleanPath(f.path);
+    if (seen.has(path)) throw new TypeError(`${path} is listed twice.`);
+    seen.add(path);
+    for (const e of f.edits) total += e.find.length + e.replace.length;
+  }
+  if (total > MAX_TOTAL_CHARS) throw new TypeError('Those edits are too large for one commit through this tool (500,000 characters).');
+}
+const snippet = (text) => JSON.stringify(text.length > 60 ? text.slice(0, 57) + '...' : text);
+/** Applies one file's edits in order. Plain text matching (no patterns); the text to find must be there, and unique unless `all`. */
+export function applyEdits(text, edits, path) {
+  let out = text;
+  const problems = [];
+  for (const e of edits) {
+    const parts = out.split(e.find);
+    const count = parts.length - 1;
+    if (count === 0) { problems.push(`${path}: the text ${snippet(e.find)} was not found`); continue; }
+    if (count > 1 && e.all !== true) { problems.push(`${path}: the text ${snippet(e.find)} appears ${count} times; add more surrounding text or set all: true`); continue; }
+    out = parts.join(e.replace);
+  }
+  return { text: out, problems };
+}
+const planEdits = (args, before) => {
+  const changes = [], problems = [];
+  for (const f of args.files) {
+    const path = cleanPath(f.path);
+    const have = before.files.find((x) => x.path === path);
+    if (!have || have.text === null) { problems.push(have ? `${path} is not a text file this tool can edit` : `${path} could not be read`); continue; }
+    const r = applyEdits(have.text, f.edits, path);
+    problems.push(...r.problems);
+    if (!r.problems.length && r.text === have.text) problems.push(`${path}: the edits change nothing`);
+    if (!r.problems.length && r.text !== have.text) changes.push({ path, text: r.text, before: have.text.length });
+  }
+  return { changes, problems };
+};
+
+const contentEditFiles = defineGithubWrite(overridable({
+  name: 'github_content_edit_files', area: 'content', audience: ['B'],
+  description: 'Edit files by find-and-replace and commit on a named branch, signed by GitHub. Send only the changed text, not whole files.',
+  properties: { owner: OWNER, repo: REPO, branch: BRANCH, message: MESSAGE, files: { type: 'array', items: EDIT_FILE_ITEM, minItems: 1, maxItems: 20 },
+    expectedHead: { type: 'string', minLength: 40, maxLength: 40, description: 'The branch head shown in the preview; the commit is refused if the branch has moved' }, ...OUTSIDE_PROJECT },
+  required: ['repo', 'branch', 'message', 'files'],
+  declarations: { production: 'when-target' },
+  target: (args, ctx) => { checkEditFiles(args.files); return branchTarget(args, ctx); },
+  // Reads every file at the branch head it saw, so the edits and the commit's expected head describe the same state.
+  read: async (args, ctx, target) => {
+    const head = await headOf(ctx, target, args.branch);
+    if (!head) return null;
+    const files = [];
+    for (const f of args.files) {
+      const path = cleanPath(f.path);
+      files.push({ path, text: decodedText(await readFile(ctx, target, path, head)) });
+    }
+    return { head, files };
+  },
+  classify: ({ ctx, target }) => productionOf(ctx, target).then((production) => ({ production })),
+  summarize: ({ args, before, target }) => {
+    if (!before) return `${args.branch} does not exist in ${slug(target.owner, target.repo)}`;
+    const { changes, problems } = planEdits(args, before);
+    if (problems.length) return `Cannot apply these edits to ${slug(target.owner, target.repo)} on ${args.branch}: ${problems.join('; ')}`;
+    return `Edit ${changes.length} file(s) in ${slug(target.owner, target.repo)} on ${args.branch} (head now ${short(before.head)}; pass expectedHead: ${before.head} to refuse if it moves): ${changes.map((c) => `${c.path} (${c.before} -> ${c.text.length} characters)`).join(', ')}`;
+  },
+  apply: async ({ args, ctx, before, target }) => {
+    if (!before) throw refusal(`The branch ${args.branch} does not exist.`, 404);
+    const { changes, problems } = planEdits(args, before);
+    if (problems.length) throw refusal(`Nothing was changed. ${problems.join('; ')}`, 422);
+    const octokit = await octo(ctx, target.owner);
+    const [headline, ...rest] = args.message.split('\n');
+    const data = await graphql(octokit, COMMIT, { input: { branch: { repositoryNameWithOwner: slug(target.owner, target.repo), branchName: args.branch },
+      message: { headline: headline.slice(0, 250), ...(rest.join('\n').trim() ? { body: rest.join('\n').trim() } : {}) }, expectedHeadOid: args.expectedHead ?? before.head,
+      fileChanges: { additions: changes.map((c) => ({ path: c.path, contents: b64(c.text) })) } } });
+    return { data };
+  },
+  readAfter: ({ args, ctx, target }) => headOf(ctx, target, args.branch),
+  verify: ({ before, after, response }) => !!after && after !== before?.head && after === response?.data?.createCommitOnBranch?.commit?.oid,
+  present: ({ response }) => ({ commit: response?.data?.createCommitOnBranch?.commit?.oid, url: response?.data?.createCommitOnBranch?.commit?.url })
+}, { branchOf: (args) => args.branch }));
+
 // ---- comment on a commit ----
 const commitComment = defineGithubWrite({
   name: 'github_commit_comment', area: 'commit', audience: ['B'],
@@ -217,6 +305,6 @@ const gitUpdateRef = defineGithubWrite(overridable({
   present: ({ args, after }) => ({ ref: args.ref, now_at: after })
 }, { branchOf: (_args, target) => (target.kind === 'tag' ? null : target.ref) }));
 
-const all = [contentPutFile, contentDeleteFile, contentPushFiles, commitComment, gitUpdateRef];
+const all = [contentPutFile, contentDeleteFile, contentPushFiles, contentEditFiles, commitComment, gitUpdateRef];
 export const tools = all.map((d) => d.tool);
 export const handlers = Object.fromEntries(all.map((d) => [d.tool.name, d.handler]));

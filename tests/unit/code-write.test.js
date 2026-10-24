@@ -51,6 +51,16 @@ runWriteContract({
 });
 
 runWriteContract({
+  label: 'github_content_edit_files (default branch)', definition: def('github_content_edit_files'), args: { ...R, branch: 'main', message: 'Fix', files: [{ path: 'docs/a.md', edits: [{ find: 'old', replace: 'new text' }] }] }, needsConfirm: true, production: true,
+  arrange(gh, outcome) {
+    mainIsDefault(gh);
+    gh.when(CONTENTS).reply(200, file('old'));
+    seq(gh, 'GET /repos/{owner}/{repo}/branches/{branch}', [[200, { commit: { sha: A } }], [200, { commit: { sha: outcome === 'ok' ? B : A } }]]);
+    gh.when('POST /graphql').reply(200, { data: { createCommitOnBranch: { commit: { oid: B, url: 'u' } } } });
+  }
+});
+
+runWriteContract({
   label: 'github_commit_comment', definition: def('github_commit_comment'), args: { ...R, sha: A, body: 'Thanks @outside-person' }, needsConfirm: true, notifies: ['outside-person'], conveyor: true,
   gatesFor: ({ protectedLevel }) => (protectedLevel ? [protectionGate(protectedLevel === 'pr-only' ? 'none' : protectedLevel)] : []),
   arrange(gh, outcome) {
@@ -166,6 +176,44 @@ describe('file and ref changes: extra checks (BATCH-D §4 D-2)', () => {
     const w = await makeWorld();
     expect((await call('github_content_push_files', w, { ...R, branch: 'dev', message: 'x', files: [{ path: 'a', content: 'x' }, { path: 'a', content: 'y' }] })).error).toContain('listed twice');
     expect((await call('github_content_push_files', w, { ...R, branch: 'dev', message: 'x', files: [{ path: 'a', content: 'x', delete: true }] })).error).toContain('either content');
+  });
+
+  describe('edit_files', () => {
+    const EDIT = (edits, extra = {}) => ({ ...R, branch: 'dev', message: 'Fix\n\nwhy', files: [{ path: 'docs/a.md', edits }], ...extra });
+    const arrangeEdit = (w, text) => {
+      featureBranch(w.gh);
+      w.gh.when(CONTENTS).reply(200, file(text));
+      seq(w.gh, 'GET /repos/{owner}/{repo}/branches/{branch}', [[200, { protected: false, commit: { sha: A } }], [200, { commit: { sha: B } }]]);
+      w.gh.when('POST /graphql').reply(200, { data: { createCommitOnBranch: { commit: { oid: B, url: 'u' } } } });
+    };
+    it('sends only the edited file with the changed text and the head it read', async () => {
+      const w = await makeWorld();
+      arrangeEdit(w, 'one two two three');
+      const out = await call('github_content_edit_files', w, EDIT([{ find: 'one', replace: '1' }, { find: 'two', replace: '2', all: true }]));
+      expect(out).toMatchObject({ status: 'applied', result: { commit: B } });
+      const input = w.gh.graphql[0].variables.input;
+      expect(input).toMatchObject({ expectedHeadOid: A, message: { headline: 'Fix', body: 'why' }, fileChanges: { additions: [{ path: 'docs/a.md', contents: b64('1 2 2 three') }] } });
+      expect(w.gh.invalid).toEqual([]);
+    });
+    it('refuses text that is missing or ambiguous and changes nothing', async () => {
+      for (const [edits, words] of [[[{ find: 'zzz', replace: 'x' }], 'was not found'], [[{ find: 'two', replace: 'x' }], 'appears 2 times'], [[{ find: 'one', replace: 'one' }], 'change nothing']]) {
+        const w = await makeWorld();
+        arrangeEdit(w, 'one two two');
+        const out = await call('github_content_edit_files', w, EDIT(edits));
+        expect(JSON.stringify(out)).toContain(words);
+        expect(w.gh.graphql).toEqual([]);
+      }
+    });
+    it('refuses a path listed twice', async () => {
+      const w = await makeWorld();
+      const dup = EDIT([{ find: 'a', replace: 'b' }]);
+      dup.files.push(dup.files[0]);
+      expect((await call('github_content_edit_files', w, dup)).error).toContain('listed twice');
+    });
+    it('applyEdits is plain-text (no patterns) and applies edits in order', () => {
+      expect(code.applyEdits('a.c abc', [{ find: 'a.c', replace: 'X' }], 'f').text).toBe('X abc');
+      expect(code.applyEdits('a b', [{ find: 'a', replace: 'b' }, { find: 'b b', replace: 'c' }], 'f').text).toBe('c');
+    });
   });
 
   describe('moving a ref', () => {

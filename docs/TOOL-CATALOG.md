@@ -90,7 +90,7 @@ Card(s): D-1.
 | `github_repo_set_custom_properties` | Set custom property values on a repository | P | N | I | O | F | D-1 built #29 |
 | `github_repo_star` | Star or unstar a repository as Chris (uses your master token when added) | P | C | U | Op | E | D-1 built #29 |
 
-## Files, commits and git data (`github_content_*, github_commit_*, github_git_*`) — 15
+## Files, commits and git data (`github_content_*, github_commit_*, github_git_*`) — 16
 
 Card(s): D-2.
 
@@ -101,6 +101,7 @@ Card(s): D-2.
 | `github_content_put_file` | Create or update one file with a commit (checks the file's current version first) | P·Prod* | F | I | B | E | D-2 built #32 |
 | `github_content_delete_file` | Delete one file with a commit | C·Prod* | C | I | B | E | D-2 built #32 |
 | `github_content_push_files` | Commit several file changes at once on a branch, signed by GitHub (GraphQL `createCommitOnBranch`, expected head checked) | P·Prod* | N | I | B | E | D-2 built #32 |
+| `github_content_edit_files` | Edit files by find-and-replace (text must match exactly once unless `all`) and commit on a branch, signed by GitHub; sends only the changed text | P·Prod* | N | I | B | E | D-2 follow-up built |
 | `github_content_get_archive_link` | Short-lived download link for a tarball or zipball of a ref | — | N | I | B | R | D-2 built #30 |
 | `github_content_check_codeowners` | Problems GitHub found in a CODEOWNERS file on a branch (bad lines, unknown users or teams), in plain words | — | C | I | B,O | R | D-2 built #30 |
 | `github_commit_list` | Commits on a branch or path, by author or date | — | C | I | B,Op | R | D-2 built #30 |
@@ -834,7 +835,7 @@ Card(s): GOD-4 (part B). Every tool here uses your master token (the permission 
 
 ## Totals
 
-**Totals:** 463 tools: 457 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 464 tools: 458 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 154, everyday adds 81
 (everyday lists 234), full adds 112 (full lists 389). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
@@ -844,7 +845,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | --- | --- |
 | Server about itself | 23 |
 | Repositories | 22 |
-| Files, commits and git data | 15 |
+| Files, commits and git data | 16 |
 | Branches and tags | 9 |
 | Pull requests | 15 |
 | Reviews and review threads | 9 |
@@ -884,7 +885,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Batch Y-9d financial and Copilot operations | 17 |
 | GitHub Enterprise | 13 |
 | Master-token families: Copilot Spaces, Classroom, Marketplace and more | 17 |
-| **Total** | **463** |
+| **Total** | **464** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 
