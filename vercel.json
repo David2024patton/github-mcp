@@ -50,6 +50,10 @@
       "destination": "/api/index?brand_icon=64"
     },
     {
+      "source": "/favicon.ico",
+      "destination": "/api/index?brand_icon=64"
+    },
+    {
       "source": "/favicon.png",
       "destination": "/api/index?brand_icon=64"
     },

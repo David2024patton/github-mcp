@@ -40,4 +40,7 @@ describe('public informational root route', () => {
     expect(publicInfo('malformed')).toMatchObject({deployed_source_sha: null});
     expect(publicInfo('ghp_FAKE_not_a_sha')).toMatchObject({deployed_source_sha: null});
   });
+  it('serves /favicon.ico from the existing 64px brand icon route', () => {
+    expect(rewrites).toContainEqual({source: '/favicon.ico', destination: '/api/index?brand_icon=64'});
+  });
 });

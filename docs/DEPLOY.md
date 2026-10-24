@@ -116,7 +116,7 @@ the server's profiles and guards decide when it actually does.
   user blocking, custom properties; read only — administration, custom organization roles, plan.
 - **Your account (personal) permissions:** none yet. They are added with the personal-settings tools (Batch O) after being tested
   against real GitHub.
-- **Webhook:** `<your address>/api/github/webhook`, signed. The server listens only for the App being installed, changed,
+- **Webhook:** `<your address>/api/github/webhook`, signed. Live address: `https://github.robinsonaisystems.com/api/github/webhook` (set on the GitHub App 2026-10-24; the old `github-mcp-chris-projects-de6cd1bf.vercel.app` address stays as an alias). Setup URL: `https://github.robinsonaisystems.com/api/github/setup` (owner row in OWNER-CHECKLIST). The server listens only for the App being installed, changed,
   suspended, removed, and for you revoking your sign-in.
 
 Seven of these names appear in GitHub's documentation data but not in its machine-readable API description. They have not been

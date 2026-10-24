@@ -8,26 +8,7 @@ GOD-2 + GOD-3 (one PR) → ENT-1 (before the Enterprise trial ends ~2026-11-22) 
 GOD-4 → GQL-1 → GOD-5 → LAUNCH-1 → AUTH-1 → INV-1 → HARD-1. Cards are written for Sol 5.6 at light/medium effort; see
 [SOL-GUIDE](pr-cards/SOL-GUIDE.md). Everything below this section is history kept for reference.
 
-## Gateway dependency correction — 2026-10-12
-
-RTC interface work and authorized nonproduction Hub route acceptance are independent of K-3 package adoption.
-Follow current STATUS/index and service isolation/owner gates. Optional reuse must not block provider capability
-or require replacing service-owned dispatch/state. Hub's H-1–H-3 work belongs in its repository.
-
-Written 2026-10-10 for an empty repository. [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds acceptance.
-
-## What is next
-
-**Owner-approved maximum authority expansion (2026-10-21):** [MAXIMUM-AUTHORITY](designs/MAXIMUM-AUTHORITY.md) registers CAP-1..CAP-5 as approved; CAP-1 inventory merged #272; CAP-2 ordinary Full/profile recovery source reviewed under PR #273 (final gates required; no live/provider permission claim): operation inventory, Standard Full access, additional credential enrollment, advanced capability gaps and independent acceptance. Full is available without God Mode; extra credentials only unlock genuinely credential-dependent authority. Existing acceptance/PUB-4 retain priority; publication-only PUB-5 does not block CAP. 98.3% is not a functional coverage measure. GitHub Models is retired, not planned.
-
-**Private-first public-scale expansion (owner 2026-10-18):** PUB-1 and PUB-2 are MERGED, PUB-3 is source-complete in PR #267 pending final exact-head CI/review/merge, and PUB-4 is APPROVED, NOT IMPLEMENTED in `docs/pr-cards/work-index.json`, while PUB-5 is **BLOCKED** pending third-party publication eligibility and explicit owner publication approval. The existing 57-row real-world acceptance queue still takes priority under SESSION-START. Follow `docs/designs/PUBLIC-SCALE.md` and write one JIT card before implementing each PUB unit, bundling related completed cards. OpenAI's current Plugin Directory guidelines do not approve primarily unofficial third-party connectors, so **do not assume this GitHub MCP can be publicly listed under any name**. Private/workspace distribution and standalone MCP use remain the safe engineering target while authorized alternatives are evaluated.
-
-
-
-**Next after Y-9 (#233) is merged:** Batch Y approved engineering is complete (Y-1–Y-9), while provider/RTC and owner-run real-account acceptance remains open. Required work includes the real-account read-only smoke report (`scripts/smoke-readonly.mjs`), installing/upgrading GitHub App permissions (IN-15 and Y-9d additions), user U authorization, OAuth-connected scratch writes and authorized cleanup, per-account production activation, and independently deployed direct RTC1 provider conformance using its own service-issued grant; Hub-owned discovery, relay and Sandbox routes are optional integration evidence, not provider completion gates. Also continue the separate `docs/END-USER-AUTHORITY.md` product-wide audit: previous developer-only limits may still affect older feature paths. These items must not be silently marked passed from synthetic CI or from this source merge. `npm run session:status` prints the live queue.
-
-A-1 (repository, fake GitHub, CI, checks) merged in PR #1; A-2 (foundation schema) in PR #7; A-3 (connector login) in PRs #8 and #9; A-4 (GitHub client) in PR #10; A-5a (credential store) in PR #11; A-5b (setup page) in PR #12; A-5c (webhook, `github_whoami`, `github_list_accounts`) in PR #13; A-6 (`docs/DEPLOY.md`) in PR #15; B-1 (write safety layer) in PR #16; B-2 (production guard and switch) in PR #18; B-3 (protected list and project ownership) in PR #19; B-4 (people and spend guards) in PR #20; B-5 (errors and result shaping) in PR #21; B-6 (profiles and downscoped tokens) in PR #22. Plan approved by Chris
-(IN-00, 2026-10-10).
+Older planning paragraphs (2026-10-12 to 2026-10-21) are kept in `docs/archive/STATUS-before-2026-10-20.md`.
 
 ## Order and why
 
