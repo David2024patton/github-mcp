@@ -546,3 +546,10 @@ where `bypass_rules` may be sent, on GitHub's background merge), and the change 
 person may skip the rules. A per-person switch on My connection ("Allow overriding branch rules", on by default) turns it
 off. Agents building this project never use it on Chris's real repositories.
 
+
+## 2026-10-24 — The product does not control what users spend (Chris)
+Chris: "we will not control their ability to spend". There is no default spend cap, no product-wide spending ceiling and no
+refusal of a paid action on cost grounds for end users. Users still get the honest cost notice and the confirmation step
+before a paid or unknown-price action, and a cap or pass limit a user chooses for themselves still works. Usage limits for
+free users (calls per day, changes per hour) are about running cost to the service, not user spending, and stay as built;
+what free users get after monetization is undecided and is not a task. Nobody adds a default spend cap without a new owner decision.
