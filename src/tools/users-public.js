@@ -2,6 +2,7 @@
 import { defineRead } from './define-read.js';
 import { cap, publicGet, readerClient, actorOf, shapeAccount, shapeRepo, LOGIN, REPO_NAME, MAX, NOT_FOUND } from './public-read.js';
 import { plain } from './github-read.js';
+import { githubFor } from '../github/client.js';
 
 const AS = { ...LOGIN, description: 'Which of your connected accounts reads (default account)' };
 const USERNAME = { ...LOGIN, description: 'Any public GitHub user or organization' };
@@ -117,8 +118,19 @@ const stargazers = defineRead({
     const c = await client(args, ctx);
     const repo = await publicRepo(c, args);
     const base = { owner: args.owner, repo: args.repo };
-    const rows = await publicGet(c, 'GET /repos/{owner}/{repo}/stargazers', { ...base, per_page: args.max ?? 30, page: args.page ?? 1,
-      ...(args.withDates ? { headers: { accept: 'application/vnd.github.star+json' } } : {}) });
+    // The repository was just confirmed public, so a refusal here is not "private": say what GitHub answered, and try the
+    // installation credential once if the person's own sign-in was refused.
+    const route = 'GET /repos/{owner}/{repo}/stargazers';
+    const params = { ...base, per_page: args.max ?? 30, page: args.page ?? 1, ...(args.withDates ? { headers: { accept: 'application/vnd.github.star+json' } } : {}) };
+    let rows;
+    try { rows = await publicGet(c, route, params); } catch (first) {
+      if (first?.message !== NOT_FOUND) throw first;
+      try { rows = await publicGet(await githubFor(ctx, { owner: actorOf(args, ctx), cred: 'I' }), route, params); } catch (second) {
+        if (second?.message !== NOT_FOUND) throw second;
+        rows = null;
+      }
+      if (rows === null) throw new TypeError(`GitHub would not list the people who starred ${args.owner}/${args.repo} (it refused both the sign-in and the App credential). The star total is ${repo.stargazers_count ?? 'unknown'}.`);
+    }
     return { total: Number(repo.stargazers_count ?? rows.length), page: args.page ?? 1,
       items: rows.map((row) => { const u = row.user ?? row; return { login: u.login, type: u.type, ...(args.withDates ? { starred_at: row.starred_at ?? null } : {}) }; }) };
   })
