@@ -5,7 +5,7 @@
 **Everything left to finish the product is in [FINISH-PLAN](designs/FINISH-PLAN.md)**, with one ready-to-implement card
 per piece (batch FIN in `docs/pr-cards/work-index.json`), in this order:
 GOD-2 + GOD-3 (one PR) → ENT-1 (before the Enterprise trial ends ~2026-11-22) → ACC-1 (repeatable, alongside) →
-GOD-4 → GQL-1 → GOD-5 → HARD-1. Cards are written for Sol 5.6 at light/medium effort; see
+GOD-4 → GQL-1 → GOD-5 → LAUNCH-1 → AUTH-1 → INV-1 → HARD-1. Cards are written for Sol 5.6 at light/medium effort; see
 [SOL-GUIDE](pr-cards/SOL-GUIDE.md). Everything below this section is history kept for reference.
 
 ## Gateway dependency correction — 2026-10-12

@@ -9,3 +9,9 @@ implement it at light/medium effort, without building it yet. Added:
   AGENTS.md ("Start here", "Lessons") and SESSION-START point at the plan.
 Time-sensitive: ENT-1 must be released and tested before the Enterprise trial on robinson-ai-scratch ends (~2026-11-22).
 Next: GOD-2 + GOD-3 in one PR.
+
+Follow-up the same evening (Chris asked whether the plan covers ALL remaining work): compared against ROADMAP, the
+end-user authority audit, REMAINING-WORK and the capability report. Added cards LAUNCH-1 (launch readiness, including a
+real gap: App uninstall does not clean up public people's stored state), AUTH-1 (end-user authority audit) and INV-1
+(inventory credential decisions), plus a docs-only CI fast path and small polish in HARD-1 and fine-grained-token places
+in GOD-5. FIN now has 11 cards.

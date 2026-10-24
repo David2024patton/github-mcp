@@ -2,7 +2,7 @@
 
 **Batch FIN · Design:** `docs/designs/FINISH-PLAN.md` §4, `docs/ROADMAP.md` "Found during the 2026-10-23 sign-in
 rebuild" · **Prerequisites:** none (best done last) · **Effort:** light–medium · **Split:** PR A = sign-in steps +
-App key copy (code); PR B = App URLs + documentation tidy (docs, one owner click).
+App key copy (code); PR B = App URLs, documentation tidy, docs-only CI fast path, small polish.
 
 ## Outcome
 No global cap can block everyone's sign-in; a replaced App key reaches every person at once; the GitHub App's Setup and
@@ -63,6 +63,24 @@ Fix:
    pointing at `docs/DECISIONS.md` 2026-10-23 entries (already done for PUBLIC-SCALE).
 4. `docs/OWNER-GUIDE.md`: add "My connection" (`/connection`) and the master token in plain words.
 5. Run `python3 docs/pr-cards/validate-index.py` (checks links) and `npm run check`.
+
+## PR B.3 — documents-only pull requests finish in a minute or two
+Today every PR runs unit (2 shards), db, shapes, rtc and browser (~10–15 minutes) even when only `docs/` or `*.md`
+changed. Keep every job (the CI layout guard `scripts/check-ci-layout.mjs` requires them and forbids job-level `if:false`)
+but let each heavy job finish fast:
+1. In each of `unit`, `db`, `shapes`, `rtc`, `browser` add a first step `id: scope` that, on `pull_request` only, runs
+   `git fetch --depth=1 origin ${{ github.event.pull_request.base.sha }}` and
+   `git diff --name-only ${{ github.event.pull_request.base.sha }} HEAD | grep -vE '^(docs/|.*\.md$)' | head -1` and
+   writes `code=true|false` to `$GITHUB_OUTPUT` (`code=true` on any other event, and if the diff command fails).
+   Checkout needs `fetch-depth: 0` or the explicit fetch above.
+2. Add `if: steps.scope.outputs.code == 'true'` to every later step of those jobs (step level, allowed). The job then
+   succeeds quickly for docs-only PRs; `check` always runs in full (it validates docs and links).
+3. Update `scripts/check-ci-layout.mjs` only if its parser objects; add a test in `scripts/check-ci-layout.test.mjs`
+   that the scope step exists in every timed job. Pushes to `main` always run everything.
+
+## PR B.4 — small polish
+- Self-host the brand fonts (pages use system fonts today) only if they are freely licensed; otherwise keep system fonts
+  and close the item. Serve a `favicon.ico` (rewrite `/favicon.ico` → the existing 64px PNG route).
 
 ## Done when
 - [ ] PR A merged with tests; PR B merged; webhook deliveries succeed on the new address; owner row for Setup URL added.

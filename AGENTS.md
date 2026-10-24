@@ -10,7 +10,7 @@ The repo, not chat history, is the memory.
 
 The remaining work to finish the product is planned in **`docs/designs/FINISH-PLAN.md`** as ready cards (batch FIN in
 `docs/pr-cards/work-index.json`): GOD-2+GOD-3 → ENT-1 (Enterprise trial ends ~2026-11-22) → ACC-1 (alongside) → GOD-4 →
-GQL-1 → GOD-5 → HARD-1. Smaller models: follow **`docs/pr-cards/SOL-GUIDE.md`** step by step. Live service:
+GQL-1 → GOD-5 → LAUNCH-1 → AUTH-1 → INV-1 → HARD-1. Smaller models: follow **`docs/pr-cards/SOL-GUIDE.md`** step by step. Live service:
 `https://github.robinsonaisystems.com` (old `github-mcp-chris-projects-de6cd1bf.vercel.app` is an alias).
 
 ## What this is
