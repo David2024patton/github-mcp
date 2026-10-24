@@ -1,16 +1,19 @@
-# Security — DRAFT for the owner to approve (not legal advice, not published)
+# Security — DRAFT for owner review
 
-Status: draft written 2026-10-24 from what the server actually does. Items in [brackets] need the owner's choice.
+Status: proposed 2026-10-24. Not approved for publication as a final statement.
 
-**Reporting a problem.** If you think you have found a security problem in Robinson GitHub MCP, email [support email] with what you saw and how to repeat it. Please do not test against other people's accounts or data. We will answer, fix real problems and tell you when it is fixed.
+## Reporting a problem
+Email [support email] with a description and safe reproduction steps. Do not include passwords, tokens or private keys. Do not test against another person's accounts or data. We review reports and prioritize fixes according to their impact; no guaranteed response time or paid bug bounty is offered.
 
-## How your access is protected
-- **No passwords.** You sign in with GitHub. We never see or store your GitHub password.
-- **Encrypted at rest.** Sign-in grants and any optional extra keys are stored encrypted. Extra keys are typed only on a protected page, never into a chat or through an assistant.
-- **Each person is separate.** Your data lives in its own private area. Another person's connection cannot read it.
-- **You stay in charge.** You can choose a read-only connection, see and change your connections at "My connection", and delete everything yourself.
-- **Changes are shown first.** Each change your assistant makes is previewed and confirmed unless a safety rule says otherwise, and every change is recorded.
-- **Limits.** The service slows down unusual bursts so one connection cannot crowd out others (see the Limits page).
+## Controls implemented by the service
+- GitHub handles your GitHub sign-in; we do not collect your GitHub password.
+- Stored provider access credentials are encrypted and are kept out of assistant tool results.
+- Customer connection data is isolated. An authenticated connection is checked against its permitted accounts and current authorization.
+- Read-only options, scoped permissions, previews, confirmation controls and change records help users control operations.
+- Usage limits and burst controls help protect service capacity.
+- Marketplace connections have separate enrollment and cancellation state so cancellation does not erase independent direct connections.
 
-## What we ask of you
-Keep your GitHub account secure (two-factor sign-in), and only connect accounts you own or administer.
+## Limits and user responsibilities
+These controls reduce risk; they do not guarantee that an assistant's instructions or changes are safe. Broad permissions can allow consequential or destructive actions. Choose permissions deliberately, review important operations, maintain backups, keep your GitHub account secure and use two-factor authentication.
+
+No independent security audit, SOC 2, ISO 27001 or regulatory compliance certification is claimed. This service is a hosted integration; users choose their own assistant, and its separate security and data practices also apply.
