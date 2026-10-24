@@ -83,6 +83,11 @@ describe('connecting from an assistant app', () => {
       const who = await mcpTool(world, tokens.access_token, 'github_whoami');
       expect(who.content.accounts.map((a) => a.login)).toEqual([p.login]);
       expect(who.content.mode).toBe('PREVIEW');
+      expect(who.content.profile).toBe('read_only');
+      // Read-only refuses even a small, non-production change (review finding on #337)
+      const write = await mcpTool(world, tokens.access_token, 'github_branch_create', { owner: p.login, repo: 'demo', branch: 'x', fromRef: 'main' });
+      expect(write.isError).toBe(true);
+      expect(JSON.stringify(write.content)).toMatch(/unknown|unavailable|read_only|cannot/i);
       await b.context.close();
     });
   }
@@ -218,10 +223,12 @@ describe('My connection', () => {
     await fitsScreen(b.page);
     await b.page.click('#read_only');
     await b.page.waitForSelector('.notice');
-    expect((await mcpTool(world, tokens.access_token, 'github_whoami')).content.mode).toBe('PREVIEW');
+    let who = (await mcpTool(world, tokens.access_token, 'github_whoami')).content;
+    expect([who.mode, who.profile]).toEqual(['PREVIEW', 'read_only']);
     await b.page.click('#allow_changes');
     await b.page.waitForSelector('#read_only');
-    expect((await mcpTool(world, tokens.access_token, 'github_whoami')).content.mode).toBe('PRODUCTION');
+    who = (await mcpTool(world, tokens.access_token, 'github_whoami')).content;
+    expect([who.mode, who.profile]).toEqual(['PRODUCTION', 'full']);
 
     await b.page.selectOption('select[name=value]', 'America/Denver');
     await b.page.click('#save-zone');
@@ -236,8 +243,8 @@ describe('My connection', () => {
     await b.page.click('button[type=submit]');
     await b.page.waitForSelector('#optional-done');
     await fitsScreen(b.page);
-    const who = await mcpTool(world, tokens.access_token, 'github_whoami');
-    expect(who.content.master_token.added).toBe(true);
+    who = (await mcpTool(world, tokens.access_token, 'github_whoami')).content;
+    expect(who.master_token.added).toBe(true);
 
     await b.page.click('text=Back to My connection');
     await b.page.click('#manage-sign-in');

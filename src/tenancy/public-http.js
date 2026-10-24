@@ -87,7 +87,7 @@ function approvePage(res, a) {
     `<p>Signed in to GitHub as <strong>${h(a.signedInAs)}</strong>.</p>` +
     `<p>Let ${who} use these GitHub accounts?</p><p>${accounts}</p>` +
     `<form method="post" action="${STEP}">${hidden('step', 'approve')}${hidden('handle', a.handle)}${hidden('choice', 'approve')}` +
-    '<div class="choice"><input type="checkbox" id="ro" name="read_only" value="yes"><label for="ro"><strong>Read-only</strong><small>Your assistant can look and preview but cannot change anything. Leave unticked and it can make changes, each one shown to you first.</small></label></div>' +
+    '<div class="choice"><input type="checkbox" id="ro" name="read_only" value="yes"><label for="ro"><strong>Read-only</strong><small>Your assistant can look but cannot change anything. Leave unticked and it can make changes, each one shown to you first.</small></label></div>' +
     '<button type="submit" id="approve">Approve</button></form>' +
     `<form method="post" action="${STEP}">${hidden('step', 'approve')}${hidden('handle', a.handle)}${hidden('choice', 'cancel')}<button type="submit" class="plain" id="cancel">Cancel</button></form>` +
     (a.others.length ? `<p><small>${list(a.others)} can be added later from <a href="${h(a.manageUrl)}">My connection</a> (the App is not installed there yet).</small></p>` : '') +
@@ -112,13 +112,14 @@ function managePage(res, m) {
   if (m.none) return page(res, 200, 'Nothing connected yet', `<p>Signed in as <strong>${h(m.signedInAs)}</strong>, but no app has connected to your GitHub through us yet. Add Robinson GitHub MCP in your assistant (ChatGPT, Claude, …) and connect from there first.</p>`);
   const act = (action, text, { value = '', plain = false, id = action } = {}) => `<form method="post" action="${MANAGE_PATH}">${hidden('handle', m.handle)}${hidden('action', action)}${hidden('value', value)}<button type="submit" id="${h(id)}"${plain ? ' class="plain"' : ''}>${text}</button></form>`;
   const anyChanges = m.connections.some((c) => !c.readOnly);
+  const label = (c) => c.readOnly ? 'read-only' : c.canChange ? 'can make changes' : 'preview only (changes are off for an account)';
   return page(res, 200, 'My connection',
     (m.notice ? `<p class="notice">${h(m.notice)}</p>` : '') +
     `<p>Signed in as <strong>${h(m.signedInAs)}</strong>.</p>` +
     '<h2>Accounts</h2>' + (m.accounts.length ? m.accounts.map((a) => `<div class="row"><span>${h(a.login)} <span class="tag">${a.organization ? 'organization' : 'your account'}</span></span><span class="tag">${a.active ? 'connected' : 'App removed'}</span></div>`).join('') : '<p class="muted">None yet.</p>') +
     m.offers.map((o) => act('add', `Add ${h(o.login)}`, { value: o.login, id: 'add-' + o.login })).join('') +
     (m.offers.length ? '<p><small>Adding opens GitHub to install the App there, then brings you back. Your apps get the new account straight away.</small></p>' : '') +
-    '<h2>Apps using your GitHub</h2>' + (m.connections.length ? m.connections.map((c) => `<div class="row"><span>${h(c.name)} <span class="tag">${c.readOnly ? 'read-only' : 'can make changes'}</span></span></div>` +
+    '<h2>Apps using your GitHub</h2>' + (m.connections.length ? m.connections.map((c) => `<div class="row"><span>${h(c.name)} <span class="tag">${label(c)}</span></span></div>` +
       act('disconnect', `Disconnect ${h(c.name)}`, { value: c.clientId, plain: true, id: 'disconnect-' + c.clientId })).join('') : '<p class="muted">No app is connected right now.</p>') +
     (m.connections.length ? (anyChanges ? act('read_only', 'Make all my apps read-only', { plain: true }) : act('allow_changes', 'Let my apps make changes again', { plain: true })) : '') +
     '<h2>Master token (optional)</h2>' + (m.master.added

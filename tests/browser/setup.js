@@ -128,7 +128,9 @@ export async function mcpTool(world, accessToken, name, args = {}) {
   const text = res.text.includes('data:') ? res.text.split('\n').filter((l) => l.startsWith('data:')).map((l) => l.slice(5)).join('') : res.text;
   const msg = JSON.parse(text);
   if (msg.error) throw new Error('MCP error ' + JSON.stringify(msg.error));
-  const content = msg.result?.structuredContent ?? JSON.parse(msg.result?.content?.[0]?.text ?? 'null');
+  const toolText = msg.result?.content?.[0]?.text ?? 'null';
+  let content = msg.result?.structuredContent;
+  if (content === undefined) { try { content = JSON.parse(toolText); } catch { content = toolText; } }
   return { isError: msg.result?.isError === true, content };
 }
 

@@ -18,3 +18,7 @@ Next: CI on the PR, merge, then the daily release carries it.
 Follow-up (same PR): the browser check on GitHub's Chrome found a real phone bug: the master-token page was wider than
 the screen (paste box and Continue button off the right edge). It now uses the same Robinson look as the other pages and
 fits; the browser tests now check that every page fits the screen.
+
+Review fixes (same PR, from the organization's automatic reviewer): (1) "Read-only" now uses the read_only profile, so
+every change tool is refused, not only production changes; this also fixes the old sign-in's Read-only box, which had the
+same gap. (2) My connection lists and can disconnect an app whose one-hour access lapsed but can still be renewed.

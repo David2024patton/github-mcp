@@ -369,7 +369,8 @@ describe('PUB-6 letting the assistant make changes', () => {
     expect(grantOn.mode).toBe('production');
     for (const login of grantOn.accounts) expect((await routedOn.db.getAccount(login)).production_enabled).toBe(true);
     const tokenOff = await tokenFor(c, client, 'alice', { readOnly: true });
-    expect((await (await gateFor(tokenOff)).db.getAccessToken(tokenOff.access_token)).mode).toBe('preview');
+    // Read-only is the read_only profile (every change tool refused), not only preview mode (review finding on #337)
+    expect((await (await gateFor(tokenOff)).db.getAccessToken(tokenOff.access_token))).toMatchObject({ mode: 'preview', profile: 'read_only' });
   });
 });
 
@@ -419,17 +420,33 @@ describe('My connection', () => {
     const alice = await tokenFor(c, client, 'alice'), bob = await tokenFor(c, client, 'bob');
     let page = (await manageSignIn(c, 'alice')).manage;
     page = (await c.manageAction({ handle: page.handle, action: 'read_only' })).manage;
-    expect(page.notice).toMatch(/look and preview/);
-    expect((await (await gateFor(alice)).db.getAccessToken(alice.access_token)).mode).toBe('preview');
-    expect((await (await gateFor(bob)).db.getAccessToken(bob.access_token)).mode).toBe('production');
+    expect(page.notice).toMatch(/can now look, but not change anything/);
+    expect(await (await gateFor(alice)).db.getAccessToken(alice.access_token)).toMatchObject({ mode: 'preview', profile: 'read_only' });
+    expect(await (await gateFor(bob)).db.getAccessToken(bob.access_token)).toMatchObject({ mode: 'production', profile: 'full' });
+    // the switch still covers an app whose one-hour access lapsed but can renew it, and refresh keeps the choice
+    const aliceDb = (await gateFor(alice)).db;
+    const refreshed = await call((req, res) => privateTenantToken(req, res, { env, rootSqlFactory, tenantSqlFactory }),
+      request('POST', { grant_type: 'refresh_token', client_id: client.client_id, client_secret: client.client_secret, refresh_token: alice.refresh_token, resource: ORIGIN + '/api/mcp' }));
+    expect(refreshed.statusCode).toBe(200);
+    const alice2 = json(refreshed);
+    expect(await aliceDb.getAccessToken(alice2.access_token)).toMatchObject({ mode: 'preview', profile: 'read_only' });
     page = (await c.manageAction({ handle: page.handle, action: 'allow_changes' })).manage;
-    expect((await (await gateFor(alice)).db.getAccessToken(alice.access_token)).mode).toBe('production');
+    expect(await (await gateFor(alice2)).db.getAccessToken(alice2.access_token)).toMatchObject({ mode: 'production', profile: 'full' });
+    Object.assign(alice, alice2);
     await expect(c.manageAction({ handle: page.handle, action: 'time_zone', value: 'Mars/Base' })).rejects.toThrow();
     page = (await manageSignIn(c, 'alice')).manage;
     page = (await c.manageAction({ handle: page.handle, action: 'time_zone', value: 'America/Denver' })).manage;
     expect(page.timeZone).toBe('America/Denver');
     expect(await (await gateFor(alice)).db.getSetting('time_zone')).toBe('America/Denver');
     expect(await (await gateFor(bob)).db.getSetting('time_zone')).toBeNull();
+    // an app whose one-hour access has lapsed (but can still renew) is still listed and can be disconnected (review finding on #337)
+    const sel = parsePublicCode(codeOf(await approved(c, client, 'alice')));
+    const tdb = await tenantOf(sel);
+    await (await import('../../src/tenancy/directory.js')).openAuthorizedTenantDb({ directory, tenantId: sel.tenantId, verifiedIdentityId: sel.identityId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory })
+      .then(({ sql }) => sql`UPDATE oauth_tokens SET expires_at = now() - interval '1 minute' WHERE kind = 'connector'`);
+    expect((await tdb.listConnections()).filter((x) => x.kind === 'connector')).toEqual([]);
+    page = (await manageSignIn(c, 'alice')).manage;
+    expect(page.connections.map((x) => x.name)).toContain('ChatGPT');
     // only this person's own apps can be disconnected; another value is refused
     await expect(c.manageAction({ handle: page.handle, action: 'disconnect', value: 'pcl_not_mine_at_all_000000000000' })).rejects.toThrow();
     page = (await manageSignIn(c, 'alice')).manage;

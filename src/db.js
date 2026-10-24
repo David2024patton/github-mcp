@@ -829,20 +829,22 @@ export function createDb(sql = productionSql()) {
       }
       return changed;
     },
-    /** "Read-only" switch for all of this store's live connector logins. 'preview' always applies; 'production' applies
-     * only to connections whose every account has changes switched on. Returns how many logins now have that mode. */
-    async setConnectionsMode(mode) {
-      if (mode === 'preview') {
-        const rows = await sql`UPDATE oauth_tokens SET mode = 'preview'
+    /** "Read-only" switch for all of this store's live connector logins (refreshable ones included).
+     * Read-only uses the read_only profile, which refuses every change tool, plus preview mode. Allowing changes again
+     * restores the full profile; production mode returns only where every account has changes switched on.
+     * Returns how many logins changed. */
+    async setConnectionsReadOnly(readOnly) {
+      if (readOnly === true) {
+        const rows = await sql`UPDATE oauth_tokens SET mode = 'preview', profile = 'read_only'
           WHERE kind = 'connector' AND revoked_at IS NULL AND (expires_at > now() OR refresh_hash IS NOT NULL) RETURNING token_hash`;
         return rows.length;
       }
-      if (mode !== 'production') return 0;
-      const rows = await sql`UPDATE oauth_tokens t SET mode = 'production'
+      if (readOnly !== false) return 0;
+      const rows = await sql`UPDATE oauth_tokens t SET profile = 'full',
+          mode = CASE WHEN cardinality(t.accounts) > 0 AND NOT EXISTS (SELECT 1 FROM unnest(t.accounts) acct WHERE NOT EXISTS (
+            SELECT 1 FROM gh_accounts a WHERE lower(a.login) = lower(acct) AND a.production_enabled = TRUE AND a.installation_status = 'active'))
+            THEN 'production' ELSE 'preview' END
         WHERE t.kind = 'connector' AND t.revoked_at IS NULL AND (t.expires_at > now() OR t.refresh_hash IS NOT NULL)
-          AND cardinality(t.accounts) > 0
-          AND NOT EXISTS (SELECT 1 FROM unnest(t.accounts) acct WHERE NOT EXISTS (SELECT 1 FROM gh_accounts a
-            WHERE lower(a.login) = lower(acct) AND a.production_enabled = TRUE AND a.installation_status = 'active'))
         RETURNING token_hash`;
       return rows.length;
     },

@@ -321,10 +321,10 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     if (!live || live.membershipRevision !== tenant.membershipRevision) throw refused('r24');
     return { dir, db, sql };
   }
-  async function mintCode({ db, tenantId, identityId, logins, flow, mode }) {
+  async function mintCode({ db, tenantId, identityId, logins, flow, mode, profile = 'full' }) {
     const code = publicAuthCode(tenantId, identityId);
     await db.createAuthCode({ code, clientId: flow.clientId, redirectUri: flow.redirectUri, codeChallenge: flow.codeChallenge,
-      codeChallengeMethod: 'S256', defaultAccount: logins[0], accounts: logins, mode, profile: 'full', listing: 'compact' });
+      codeChallengeMethod: 'S256', defaultAccount: logins[0], accounts: logins, mode, profile, listing: 'compact' });
     const url = new URL(flow.redirectUri);
     url.searchParams.set('code', code);
     if (flow.clientState !== null && flow.clientState !== undefined) url.searchParams.set('state', flow.clientState);
@@ -354,9 +354,11 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       rows.push(row);
     }
     // Changes only when not read-only AND every connected account really has them on; otherwise safe preview.
+    // Read-only means the read_only profile (every change tool refused), not only preview mode.
     const mode = readOnly !== true && env.VERCEL_ENV === 'production' && rows.every((r) => r.production_enabled === true) ? 'production' : 'preview';
     return { redirect: await mintCode({ db, tenantId: flow.tenantId, identityId: flow.identityId, logins,
-      flow: { clientId: flow.clientId, redirectUri: flow.redirectUri, codeChallenge: flow.codeChallenge, clientState: flow.clientState }, mode }) };
+      flow: { clientId: flow.clientId, redirectUri: flow.redirectUri, codeChallenge: flow.codeChallenge, clientState: flow.clientState },
+      mode, profile: readOnly === true ? 'read_only' : 'full' }) };
   }
 
   // ---------------------------------------------------------------- My connection
@@ -391,9 +393,11 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       accountLogin: signedInAs.toLowerCase(), offers: offers?.length ? offers : null }, MANAGE_SECONDS);
     const accounts = (await db.listAccounts()).map((a) => ({ login: a.login, organization: a.account_type === 'Organization',
       changes: a.production_enabled === true, active: a.installation_status === 'active' }));
-    const connections = (await db.listConnections()).filter((c) => c.kind === 'connector' && c.client_id !== MANAGE_CLIENT)
-      .map((c) => ({ clientId: c.client_id, name: c.client_name ?? 'An app', readOnly: c.mode !== 'production', accounts: c.accounts,
-        lastUsed: c.last_used_at ?? null }));
+    // Refresh-aware: an app whose one-hour access lapsed but can still renew it is listed (and can be disconnected).
+    const seen = new Set();
+    const connections = (await db.listUpgradeableConnections()).filter((c) => c.client_id !== MANAGE_CLIENT && !seen.has(c.client_id) && seen.add(c.client_id))
+      .map((c) => ({ clientId: c.client_id, name: c.client_name ?? 'An app', readOnly: c.profile === 'read_only', canChange: c.profile !== 'read_only' && c.mode === 'production',
+        accounts: c.accounts }));
     const master = await directory().getPilotOptionalCredential({ tenantId, identityId, accountLogin: MASTER_HANDLE, kind: 'M' }).catch(() => null);
     return { handle, signedInAs, accounts, connections, offers: offers ?? [], timeZone: (await db.getSetting(ZONE_SETTING)) ?? 'UTC',
       master: master ? { added: true, expiresAt: master.expires_at ?? null } : { added: false }, notice };
@@ -408,12 +412,12 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const { db, dir } = await scopeOf(flow);
     const view = (notice) => manageView({ tenantId: flow.tenantId, identityId: flow.identityId, signedInAs: flow.accountLogin, offers: flow.offers, db, notice });
     if (action === 'read_only') {
-      const n = await db.setConnectionsMode('preview');
-      return { manage: await view(n ? 'Done. Your apps can now look and preview, but not change anything.' : 'No app is connected yet.') };
+      const n = await db.setConnectionsReadOnly(true);
+      return { manage: await view(n ? 'Done. Your apps can now look, but not change anything.' : 'No app is connected yet.') };
     }
     if (action === 'allow_changes') {
-      const n = await db.setConnectionsMode('production');
-      return { manage: await view(n ? 'Done. Your apps can make changes again (each one is still shown to you first).' : 'Nothing changed: no app is connected, or an account has changes switched off.') };
+      const n = await db.setConnectionsReadOnly(false);
+      return { manage: await view(n ? 'Done. Your apps can make changes again (each one is still shown to you first).' : 'No app is connected yet.') };
     }
     if (action === 'time_zone') {
       const zone = validZone(String(value ?? ''));
@@ -422,7 +426,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       return { manage: await view('Saved. Times are shown in ' + zone + '.') };
     }
     if (action === 'disconnect') {
-      const target = (await db.listConnections()).find((c) => c.kind === 'connector' && c.client_id === value && c.client_id !== MANAGE_CLIENT);
+      const target = (await db.listUpgradeableConnections()).find((c) => c.client_id === value && c.client_id !== MANAGE_CLIENT);
       if (!target) throw refused('r36');
       await db.revokeConnection(target.client_id);
       return { manage: await view('Disconnected ' + (target.client_name ?? 'that app') + '. To use it again, connect from the app.') };
