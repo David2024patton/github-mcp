@@ -1,0 +1,2 @@
+# 2026-10-24 — GOD-5 live check: nothing to add
+Chris tried to add robinson-ai-scratch as an extra place on My connection. The page said it is already connected with the GitHub App and changed nothing. That is the designed behavior (extra places are for accounts without the App). The live GOD-5 row is recorded as unverified (no account without the App exists); tests cover it. The owner row is dropped.

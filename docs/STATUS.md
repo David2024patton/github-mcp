@@ -1032,9 +1032,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/ACC-1.md",
     "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "Adding a place is done on the My connection page, which needs Chris's own sign-in in a browser, so the agent cannot add one. Unit and database tests cover it (tests/db/pub-6-public-connect.test.js GOD-5).",
-    "nextAction": "Owner checklist row: add robinson-ai-scratch as an extra place on My connection, then the agent runs read, refused write and remove."
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-24 06:24 MDT on live cb0ced6: Chris tried to add robinson-ai-scratch as an extra place on My connection; the page correctly answered 'already connected with the GitHub App, which is the better way. Nothing was changed.' An extra place is only for an account WITHOUT the App, and both of Chris's accounts have it. UNVERIFIED live (no suitable account exists; owner rule 2026-10-24: untested, not a blocker). Covered by unit and database tests (tests/db/pub-6-public-connect.test.js GOD-5) and this refusal is itself the correct live behavior.",
+    "nextAction": "If an account without the App ever exists (another organization or a friend's account), add it as an extra place on My connection and run read, refused write and remove."
   },
   {
     "id": "GITHUB-GQL1-GROUPS",
