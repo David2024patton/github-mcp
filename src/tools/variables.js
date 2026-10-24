@@ -33,7 +33,7 @@ const varRoute = (pl) => ({
   one: pl.level === 'org' ? '/orgs/{org}/actions/variables/{name}' : pl.level === 'environment' ? '/repos/{owner}/{repo}/environments/{environment_name}/variables/{name}' : '/repos/{owner}/{repo}/actions/variables/{name}'
 });
 const varParams = (pl) => (pl.level === 'org' ? { org: pl.owner } : pl.level === 'environment' ? { owner: pl.owner, repo: pl.repo, environment_name: pl.environment } : { owner: pl.owner, repo: pl.repo });
-export const targetOf = (pl) => ({ owner: pl.owner, ...(pl.repo ? { repo: pl.repo } : {}), ...(pl.environment ? { environment: pl.environment } : {}), scope: pl.level === 'org' ? 'org' : 'repo' });
+export const targetOf = (pl) => ({ owner: pl.owner, ...(pl.repo ? { repo: pl.repo } : {}), ...(pl.environment ? { environment: pl.environment } : {}), scope: pl.level === 'org' ? 'org' : pl.level === 'user' ? 'user' : 'repo' });
 // Which credential a secret kind needs: Codespaces secrets belong to the person's own account (master token, GOD-2); the rest use the App.
 export const secretCred = async (ctx, kind) => ((kind ?? 'actions') === 'codespaces' ? personalCred(ctx, 'codespace') : 'I');
 const getVar = (ctx, pl, name) => missing(async () => (await (await octo(ctx, pl.owner)).request(`GET ${varRoute(pl).one}`, { ...varParams(pl), name })).data);

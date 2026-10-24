@@ -2,7 +2,6 @@
 import { describe, expect, it } from 'vitest';
 import sodium from 'libsodium-wrappers';
 import { runWriteContract, makeWorld, parse } from '../../test/helpers/write-contract.js';
-import { protectionGate } from '../../test/helpers/fixture-gates.js';
 import * as secrets from '../../src/tools/secrets.js';
 import { secretRoutes } from '../../src/github/secret-seal.js';
 
@@ -18,8 +17,7 @@ const withMaster = (scopes = ['codespace']) => async (w) => {
 };
 const P = 'user/codespaces/secrets';
 const S = (updated_at, extra = {}) => ({ name: 'DEV_KEY', updated_at, ...extra });
-const gatesFor = ({ protectedLevel }) => (protectedLevel ? [protectionGate(protectedLevel === 'pr-only' ? 'none' : protectedLevel)] : []);
-const opts = { profile: 'full', needsConfirm: true, prepare: withMaster(), gatesFor, conveyor: true };
+const opts = { profile: 'full', needsConfirm: true, production: true, prepare: withMaster() };
 const ARGS = { level: 'user', kind: 'codespaces', name: 'DEV_KEY' };
 
 runWriteContract({
@@ -39,6 +37,17 @@ runWriteContract({
 });
 
 describe('GOD-4 personal Codespaces secrets', () => {
+  it('a personal secret change is a production change: a preview connection is refused', async () => {
+    const w = await makeWorld({ profile: 'full', mode: 'preview' });
+    await withMaster()(w);
+    w.gh.when(`GET /${P}/{secret_name}`).reply(404, { message: 'Not Found' });
+    const out = parse(await secrets.handlers.github_secret_set({ ...ARGS, valueFrom: 'generate', confirm: true }, w.ctx));
+    expect(out.status).toBe('refused_by_guard');
+    expect(w.gh.calls.filter((c) => c.method !== 'GET')).toEqual([]);
+  });
+  it('github_secret_set_repo_access accepts level user in its schema', () => {
+    expect(secrets.tools.find((t) => t.name === 'github_secret_set_repo_access').inputSchema.properties.level).toMatchObject({ enum: ['user'] });
+  });
   it('has the three personal paths and no owner parameter', () => {
     expect(secretRoutes({ kind: 'codespaces', level: 'user', name: 'X' })).toMatchObject({ key: 'GET /user/codespaces/secrets/public-key', one: '/user/codespaces/secrets/{secret_name}', params: {} });
   });

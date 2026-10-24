@@ -8,7 +8,7 @@ import { plain } from './github-read.js';
 import { personalCred } from '../github/personal-cred.js';
 
 const ID = { type: 'integer', minimum: 1 };
-const REPO_NAME = { type: 'string', minLength: 1, maxLength: 100, pattern: '^[A-Za-z0-9._-]+$' };
+const REPO_NAME = { type: 'string', minLength: 1, maxLength: 140, pattern: '^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)?$' };
 const STARTED = ['pending', 'exporting', 'exported'];
 const userTarget = (ctx) => ({ owner: ctx.connection.default_account, scope: 'org', kind: 'account-export' });
 const client = async (ctx) => octo(ctx, ctx.connection.default_account, await personalCred(ctx, 'repo'));
@@ -18,7 +18,7 @@ const getOne = (ctx, id) => missing(async () => view((await (await client(ctx)).
 const exportStart = defineGithubWrite({
   name: 'github_account_export_start', area: 'account', audience: ['B', 'O'],
   description: 'Start exporting your own account\'s repositories to a downloadable archive (private data!). Repositories are never locked.',
-  properties: { repositories: { type: 'array', items: REPO_NAME, minItems: 1, maxItems: 100, description: 'Repository names (owner/name or name) to include' },
+  properties: { repositories: { type: 'array', items: REPO_NAME, minItems: 1, maxItems: 100, description: 'Repositories to include, as owner/name (a bare name means one of yours)' },
     excludeAttachments: { type: 'boolean' }, excludeReleases: { type: 'boolean' }, excludeMetadata: { type: 'boolean' }, excludeGitData: { type: 'boolean' } },
   required: ['repositories'],
   declarations: { production: 'always', confirm: 'always', cred: 'U', profiles: ['full'] },
@@ -29,7 +29,11 @@ const exportStart = defineGithubWrite({
     : `Export ${args.repositories.length} of your repositories to a downloadable archive. Repositories stay writable. The archive holds private code and data.`),
   apply: async ({ args, ctx, before }) => {
     if (before.running.length) throw refusal('An export is already running; wait for it to finish.');
-    return (await client(ctx)).request('POST /user/migrations', { repositories: args.repositories, lock_repositories: false,
+    const gh = await client(ctx);
+    const login = (await gh.request('GET /user')).data?.login;
+    if (!login) throw refusal('Your account name could not be read; nothing was sent.');
+    const repositories = args.repositories.map((r) => (r.includes('/') ? r : `${login}/${r}`));
+    return gh.request('POST /user/migrations', { repositories, lock_repositories: false,
       ...(args.excludeAttachments !== undefined ? { exclude_attachments: args.excludeAttachments } : {}), ...(args.excludeReleases !== undefined ? { exclude_releases: args.excludeReleases } : {}),
       ...(args.excludeMetadata !== undefined ? { exclude_metadata: args.excludeMetadata } : {}), ...(args.excludeGitData !== undefined ? { exclude_git_data: args.excludeGitData } : {}) });
   },

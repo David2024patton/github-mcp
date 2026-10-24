@@ -16,6 +16,7 @@ const opts = { profile: 'full', needsConfirm: true, production: true, prepare: w
 
 runWriteContract({ ...opts, label: 'github_account_export_start', definition: def('github_account_export_start'), args: { repositories: ['sample'] },
   arrange(gh, outcome) {
+    gh.when('GET /user').reply(200, { id: 1, login: 'example-owner', type: 'User' });
     gh.when('GET /user/migrations').reply(200, []);
     gh.when('POST /user/migrations').reply(201, M(7, 'pending'));
     gh.when('GET /user/migrations/{migration_id}').reply(200, M(7, outcome === 'ok' ? 'exporting' : 'failed'));
@@ -33,11 +34,14 @@ describe('GOD-4 account export and machines', () => {
   it('start never locks repositories', async () => {
     const w = await makeWorld({ profile: 'full', mode: 'production' });
     await withMaster(w);
+    w.gh.when('GET /user').reply(200, { id: 1, login: 'example-owner', type: 'User' });
     w.gh.when('GET /user/migrations').reply(200, []);
     w.gh.when('POST /user/migrations').reply(201, M(7, 'pending'));
     w.gh.when('GET /user/migrations/{migration_id}').reply(200, M(7, 'exporting'));
-    const out = parse(await exp.handlers.github_account_export_start({ repositories: ['sample'], confirm: true }, w.ctx));
+    const out = parse(await exp.handlers.github_account_export_start({ repositories: ['sample', 'example-org/widgets'], confirm: true }, w.ctx));
     expect(out.status).toBe('applied');
+    expect(w.gh.calls.find((c) => c.route === 'POST /user/migrations').body.repositories).toEqual(['example-owner/sample', 'example-org/widgets']);
+    expect(w.gh.invalid).toEqual([]);
     expect(w.gh.calls.find((c) => c.route === 'POST /user/migrations').body.lock_repositories).toBe(false);
     expect(Object.keys(exp.tools.find((t) => t.name === 'github_account_export_start').inputSchema.properties)).not.toContain('lockRepositories');
   });
