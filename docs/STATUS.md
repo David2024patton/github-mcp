@@ -1057,6 +1057,42 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "status": "PENDING",
     "lastEvidence": "Needs a real sign-in through the live public page (Chris's browser). Covered by DB and browser tests in CI.",
     "nextAction": "Owner checklist: next time a new person or app signs in, confirm it works; the agent reads the refusal log."
+  },
+  {
+    "id": "GITHUB-GOD6-ACT-AS",
+    "priority": 1,
+    "requiredRevision": "08fbc15d1433ec0abce15fe7ce5eefd5a783790a",
+    "task": "Act as me: with the master token on and the switch on, a write on a disposable scratch repo is sent as the person and the result says acting_as 'you'; an app-only call (check runs) stays on the app; switch off returns to the app; a read-only connection never uses the person's token.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture named rtc-acc1-<date>-<n> only; never overrideRules on a real repository; no spend.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Not run: live is at cb0ced6, which does not contain GOD-6 (3fae30b) or PUB-5 (4550c5d, 25fa159). Runs after the next daily release.",
+    "nextAction": "After the release that contains 08fbc15: run this row on live with the saved connector, record evidence, set PASSED or BLOCKED."
+  },
+  {
+    "id": "GITHUB-GOD6-RULE-OVERRIDE",
+    "priority": 1,
+    "requiredRevision": "08fbc15d1433ec0abce15fe7ce5eefd5a783790a",
+    "task": "Deliberate override on a disposable scratch repo with a rule: merge without overrideRules is refused while rules are unmet; with overrideRules and a reason the preview lists the skipped rules and needs confirmation; a repository on the protected list refuses the override. Scratch only.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture named rtc-acc1-<date>-<n> only; never overrideRules on a real repository; no spend.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Not run: live is at cb0ced6, which does not contain GOD-6 (3fae30b) or PUB-5 (4550c5d, 25fa159). Runs after the next daily release.",
+    "nextAction": "After the release that contains 08fbc15: run this row on live with the saved connector, record evidence, set PASSED or BLOCKED."
+  },
+  {
+    "id": "GITHUB-PUB5-HEADERS-LIMITS",
+    "priority": 1,
+    "requiredRevision": "08fbc15d1433ec0abce15fe7ce5eefd5a783790a",
+    "task": "Public launch protections on the live site: pages send CSP, nosniff and referrer headers; sign-in rejects non-S256 PKCE; a throwaway client's refresh token reused after rotation is refused and the family revoked; owner usage page shows per-person counts.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture named rtc-acc1-<date>-<n> only; never overrideRules on a real repository; no spend.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Not run: live is at cb0ced6, which does not contain GOD-6 (3fae30b) or PUB-5 (4550c5d, 25fa159). Runs after the next daily release.",
+    "nextAction": "After the release that contains 08fbc15: run this row on live with the saved connector, record evidence, set PASSED or BLOCKED."
   }
 ]
 ```
