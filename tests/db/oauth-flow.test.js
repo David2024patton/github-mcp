@@ -65,6 +65,9 @@ describe('connector login end to end on throwaway Postgres', () => {
     expect(await gate(first.access_token)).toBeNull();
     // PUB-5 C: a used refresh token shown again is refused AND ends the whole sign-in (real database)
     expect((await refresh(first.refresh_token)).statusCode).toBe(400);
+    expect(await gate(second.access_token)).toEqual(expected); // two refreshes racing inside a minute: refused, sign-in lives
+    await rawQuery("UPDATE oauth_tokens SET rotated_at = now() - interval '5 minutes'");
+    expect((await refresh(first.refresh_token)).statusCode).toBe(400);
     expect(await gate(second.access_token)).toBeNull();
     expect((await refresh(second.refresh_token)).statusCode).toBe(400);
   });

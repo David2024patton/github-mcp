@@ -45,7 +45,7 @@ describe('connector login store on throwaway Postgres only', () => {
   it('fails if oauth_codes or oauth_tokens gain a column that is neither a connection setting nor a listed non-setting (so a new setting cannot be dropped on refresh)', async () => {
     const NON_SETTINGS = {
       oauth_codes: ['code', 'client_id', 'data', 'expires_at'],
-      oauth_tokens: ['token_hash', 'client_id', 'refresh_hash', 'kind', 'expires_at', 'last_used_at', 'revoked_at', 'created_at']
+      oauth_tokens: ['token_hash', 'client_id', 'refresh_hash', 'kind', 'expires_at', 'last_used_at', 'revoked_at', 'created_at', 'prev_refresh_hash', 'rotated_at']
     };
     for (const [table, allowed] of Object.entries(NON_SETTINGS)) {
       const columns = (await rawQuery('SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = $1', [table])).map((r) => r.column_name);

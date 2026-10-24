@@ -280,13 +280,14 @@ export function createFakeDb({ clock = Date.now } = {}) {
       const entry = [...tokens.entries()].find(([, t]) => t.refresh_hash === hash);
       if (!entry || !live(entry[1]) || entry[1].client_id !== clientId) {
         // a used refresh token shown again ends that sign-in (mirrors the real database)
-        for (const t of tokens.values()) if (t.prev_refresh_hash === hash && t.client_id === clientId && live(t)) t.revoked_at = clock();
+        for (const t of tokens.values()) if (t.prev_refresh_hash === hash && t.client_id === clientId && live(t) && t.rotated_at < clock() - 60_000) t.revoked_at = clock();
         return null;
       }
       const [oldKey, row] = entry; // no await between the check and the write: atomic like the real UPDATE
       tokens.delete(oldKey);
       row.token_hash = hashToken(accessToken);
       row.prev_refresh_hash = row.refresh_hash;
+      row.rotated_at = clock();
       row.refresh_hash = hashToken(newRefreshToken);
       row.expires_at = clock() + ttlSeconds * 1000;
       tokens.set(row.token_hash, row);
