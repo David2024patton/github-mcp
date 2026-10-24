@@ -1041,3 +1041,50 @@ describe('LAUNCH-1 uninstall clean-up and invite-only in REAL PostgreSQL', () =>
     expect(codeOf(await approved(open, await open.registerClient({ redirect_uris: [CB] }), 'ivan'))).toBeTruthy();
   });
 });
+
+describe('HARD-1 sign-in steps: no single app can fill the table for everyone', () => {
+  it('caps open sign-in steps per app (default 20); another app still works; a rejected step leaves no row', async () => {
+    const c = make();
+    const noisy = await c.registerClient({ redirect_uris: [CB] });
+    for (let i = 0; i < 20; i += 1) await c.begin(authorizeParams(noisy, { state: 'noisy-state-' + i }));
+    await expect(c.begin(authorizeParams(noisy, { state: 'noisy-state-21' }))).rejects.toMatchObject({ code: 'capacity' });
+    const quiet = await c.registerClient({ redirect_uris: [CB] });
+    expect((await c.begin(authorizeParams(quiet))).url).toMatch(/^https:\/\/github\.com\/login\/oauth\/authorize\?/);
+    const open = await admin.query('SELECT count(*)::int n FROM gh_public_flows WHERE client_id=$1 AND expires_at > now()', [noisy.client_id]);
+    expect(open.rows[0].n).toBe(20);
+  });
+  it('the per-app cap is a setting, expired steps never count, and the built-in pages have their own larger cap', async () => {
+    const c = make({ GITHUB_PUBLIC_MAX_OPEN_FLOWS_PER_CLIENT: '2' });
+    const app = await c.registerClient({ redirect_uris: [CB] });
+    await c.begin(authorizeParams(app, { state: 'cap-a' })); await c.begin(authorizeParams(app, { state: 'cap-b' }));
+    await expect(c.begin(authorizeParams(app, { state: 'cap-c' }))).rejects.toMatchObject({ code: 'capacity' });
+    await admin.query("UPDATE gh_public_flows SET expires_at = now() - interval '1 minute' WHERE client_id=$1", [app.client_id]);
+    expect((await c.begin(authorizeParams(app, { state: 'cap-d' }))).url).toBeTruthy();
+    expect((await admin.query('SELECT count(*)::int n FROM gh_public_flows WHERE client_id=$1', [app.client_id])).rows[0].n).toBe(1);
+    // the built-in My connection page is not held to the per-app cap of 2
+    for (let i = 0; i < 5; i += 1) expect((await c.startManage()).url).toBeTruthy();
+  });
+});
+
+describe('HARD-1 one shared copy of the App keys', () => {
+  it('a replaced App key reaches an already-connected person at once, without them signing in again', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const token = json(await exchange(client, codeOf(await approved(c, client, 'bob'))));
+    const before = await gateFor(token);
+    expect(before).not.toBeNull();
+    // The person's own copy still holds the old (fixture) key, which cannot sign anything.
+    await expect(before.credentials.appJwt(APP)).rejects.toThrow();
+    // The owner replaces the App key in the shared copy only.
+    const pair = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const pem = pair.privateKey.export({ type: 'pkcs1', format: 'pem' }).toString();
+    const sealed = encryptSecret(pem, { aad: `github-mcp/app/${APP}/private_key`, key: Buffer.from(env.TOKEN_ENCRYPTION_KEY, 'base64url') });
+    const current = await root.getApp(APP);
+    await root.saveApp({ id: APP, slug: current.slug, ownerLogin: current.owner_login, ownerType: current.owner_type, clientId: current.client_id,
+      clientSecretEnc: current.client_secret_enc, privateKeyEnc: sealed, webhookSecretEnc: current.webhook_secret_enc, permissions: current.permissions });
+    const after = await gateFor(token);
+    const jwt = await after.credentials.appJwt(APP);
+    const [head, body, signature] = jwt.split('.');
+    expect(crypto.verify('RSA-SHA256', Buffer.from(head + '.' + body), pair.publicKey, Buffer.from(signature, 'base64url'))).toBe(true);
+  });
+});

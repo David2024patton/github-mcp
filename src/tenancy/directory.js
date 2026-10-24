@@ -916,7 +916,7 @@ export function createTenantDirectory(sql) {
     /** Returns false when too many sign-ins are already open (capacity guard). */
     async createPublicFlow({ stateHash, stage, clientId, redirectUri, clientState = null,
       codeChallenge, tier, accountLogin = null, allowChanges = false, timeZone = null, purpose = null, offers = null,
-      providerVerifier = null, afterInstall = false, tenantId = null, identityId = null, ttlSeconds = 600, maxOpen }) {
+      providerVerifier = null, afterInstall = false, tenantId = null, identityId = null, ttlSeconds = 600, maxOpen, maxOpenPerClient = 200 }) {
       if (!/^[a-f0-9]{64}$/.test(String(stateHash)) ||
           !['signin', 'install', 'god'].includes(stage) ||
           !['standard', 'god'].includes(tier) ||
@@ -929,7 +929,8 @@ export function createTenantDirectory(sql) {
           (offers !== null && !(Array.isArray(offers) && offers.length >= 1 && offers.length <= 8 && offers.every((o) =>
             /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(String(o?.login)) && Number.isSafeInteger(o?.id) && o.id > 0 && ['User', 'Organization'].includes(o?.type)))) ||
           !Number.isSafeInteger(ttlSeconds) || ttlSeconds < 60 || ttlSeconds > 1800 ||
-          !Number.isSafeInteger(maxOpen) || maxOpen < 1)
+          !Number.isSafeInteger(maxOpen) || maxOpen < 1 ||
+          !Number.isSafeInteger(maxOpenPerClient) || maxOpenPerClient < 1)
         throw new TypeError('Invalid public connection state.');
       const t = tenantId === null ? null : validUuid(tenantId);
       const i = identityId === null ? null : validUuid(identityId);
@@ -941,8 +942,15 @@ export function createTenantDirectory(sql) {
           ${tier},${accountLogin},${allowChanges === true},${afterInstall === true},${providerVerifier},
           ${t}::uuid,${i}::uuid,now() + (${ttlSeconds} * interval '1 second'),${timeZone},${purpose},${offers === null ? null : JSON.stringify(offers)}
         WHERE (SELECT count(*) FROM gh_public_flows WHERE expires_at > now()) < ${maxOpen}
+          AND (SELECT count(*) FROM gh_public_flows WHERE client_id = ${clientId} AND expires_at > now()) < ${maxOpenPerClient}
         RETURNING state_hash`;
       return rows.length === 1;
+    },
+    /** Cheap clean-up of ONE client's finished sign-in steps (HARD-1): expired rows never count towards a cap, this just keeps the table small. */
+    async purgeExpiredPublicFlows(clientId) {
+      if (typeof clientId !== 'string' || clientId.length > 80) return 0;
+      const rows = await sql`DELETE FROM gh_public_flows WHERE client_id = ${clientId} AND expires_at <= now() RETURNING state_hash`;
+      return rows.length;
     },
     /** Single use: the row is deleted as it is read. */
     async consumePublicFlow(stateHash, stage) {

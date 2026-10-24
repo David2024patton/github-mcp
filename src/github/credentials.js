@@ -43,7 +43,16 @@ export function signAppJwt({ appId, privateKey, now = Date.now }) {
  *   setup page uses. `cred`: `I` the account's main credential (App installation token, or its fine-grained token),
  *   `U` the owner's user authorization, `K` the notifications token, `P` the package-only classic token.
  */
-export function createCredentials({ db, env = process.env, fetch = globalThis.fetch, now = Date.now }) {
+/**
+ * @param {object} [options.rootApps] HARD-1: optional shared store of the App's sealed keys (`getApp(id)`). Per-person stores pass the
+ *   shared (root) one so a replaced App key reaches everyone at once; without it, or when it has no such App, the store's own copy is used.
+ */
+export function createCredentials({ db, env = process.env, fetch = globalThis.fetch, now = Date.now, rootApps = null }) {
+  const appStore = rootApps ? { async getApp(id) {
+    let shared = null;
+    try { shared = await rootApps.getApp(id); } catch { shared = null; }
+    return shared ?? db.getApp(id);
+  } } : db;
   let cachedKey = null;
   function key() {
     if (cachedKey) return cachedKey;
@@ -82,7 +91,7 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
   }
 
   async function appOf(row) {
-    const app = row.app_id == null ? null : await db.getApp(row.app_id);
+    const app = row.app_id == null ? null : await appStore.getApp(row.app_id);
     if (!app) throw missing(row.login, 'no GitHub App has been created for this account yet.');
     return app;
   }
@@ -255,17 +264,17 @@ export function createCredentials({ db, env = process.env, fetch = globalThis.fe
     },
     /** The App's webhook secret, for verifying `X-Hub-Signature-256` (A12) and nothing else. */
     async webhookSecret(appId) {
-      const app = await db.getApp(appId);
+      const app = await appStore.getApp(appId);
       return app ? open(app.webhook_secret_enc, contexts.webhookSecret(app.id)) : null;
     },
     /** The App's OAuth client id and secret, for the user-authorization exchange on the setup page (A-5b). */
     async clientCredentials(appId) {
-      const app = await db.getApp(appId);
+      const app = await appStore.getApp(appId);
       return app ? { clientId: app.client_id, clientSecret: open(app.client_secret_enc, contexts.clientSecret(app.id)) } : null;
     },
     /** A short-lived JWT for calls made as the App itself (`GET /app`, installation lookups). */
     async appJwt(appId) {
-      const app = await db.getApp(appId);
+      const app = await appStore.getApp(appId);
       if (!app) throw new GithubClientError('no_credentials', 'That GitHub App is not stored on this server.');
       return signAppJwt({ appId: app.id, privateKey: open(app.private_key_enc, contexts.privateKey(app.id)), now });
     },
