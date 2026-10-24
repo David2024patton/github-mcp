@@ -71,7 +71,7 @@ Before writing request bodies run `node scripts/openapi-find.mjs "copilot spaces
 | `github_marketplace_listing` | `/marketplace_listing/plans`, `/marketplace_listing/plans/{plan_id}/accounts`, `/marketplace_listing/accounts/{account_id}` | none (works only for a Marketplace App owner; explain otherwise) |
 | `github_user_hovercard` | `GET /users/{username}/hovercard` (`subject_type`, `subject_id` optional) | `repo` |
 | `github_project_view_create` | write: `POST /users/{user_id}/projectsV2/{project_number}/views` | `project` |
-| `github_credential_revoke` | write: `POST /credentials/revoke` with `{credentials:[...]}` — **refuse** unless every value is a GitHub token shape the person says was leaked; the token values never go in results or the change log (store only last 4). `confirm:'always'`. | none (endpoint is unauthenticated by design; send with no auth header? check `openapi-find`) |
+| `github_credential_revoke` | write-shaped but **no token in any argument** (AGENTS.md: secrets never pass through a tool) | `POST /credentials/revoke` | The tool takes no token. It returns a private one-use link (10 minutes) to a protected page, built exactly like the master-token page (`api/tenant/optional.js` `masterMarkup` + `createPrivateOptionalEnrollment` one-use state). The person pastes the leaked token(s) THERE; the server POSTs them to `/credentials/revoke` and shows only the last 4 characters and GitHub's answer. The change log stores only last-4 values. Test: the tool's input schema has no property that can carry a token, and its result never contains one. |
 
 ## Tests (named)
 For every tool: request-shape test against the fake GitHub; for every write: `runWriteContract` (nine checks);

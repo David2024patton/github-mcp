@@ -22,12 +22,16 @@ connection. All normal guards (preview, confirm, production classification, prot
    rebuild) so live app connections see it without reconnecting. Removing a place deletes the row and removes the login
    from every connector token's `accounts` (new db function `removeAccountFromConnections(login)`; default account falls
    back to `accounts[0]`).
-3. **Credentials.** In `src/tenancy/user-authorization.js` `token(args)`: if the account row has
-   `credential_kind === 'master'`, then for `cred` `I` or `U` return the master token (same decrypt as the `M` branch),
-   but ONLY when the connection profile is not `read_only` for writes — simpler rule: reads always allowed with the
-   master token; the write lifecycle (step 4) refuses writes when the place is read-only. If no master token is
-   enrolled → `optionalDenied()` with the message "This extra place needs your master token."
-   `authorizeOptionalRequest` is not involved (cred stays `I`/`U` at the call site).
+3. **Credentials — an extra place IS the master token, with all its limits.** In `src/github/client.js`
+   `credentialFor`, after `resolveAccount`, load the row once (`await ctx.db.getAccount(account)`); if
+   `row?.credential_kind === 'master'`, set `cred = 'M'` BEFORE the existing checks run. That makes every existing
+   master-token refusal apply unchanged: read-only connections, service passes, and narrowed requests
+   (`scope.repositories`/`scope.permissions`) are refused, and the request hook's `authorizeOptionalRequest` (api host
+   only) runs. Do NOT add a branch in `user-authorization.js` that hands out the master token under `I`/`U`.
+   Consequence (intended): read-only connections cannot use extra places at all; the place list on My connection says so.
+   If no master token is enrolled, the existing `currentMaster()` refusal applies; make its message "This extra place
+   needs your master token." Test: a pass connection and a narrowed scope are refused for an extra place exactly as
+   for `cred:'M'` (copy the existing `credentialFor` M tests).
 4. **Guards.** New gate in `src/tools/` next to `productionEnabledGate` (`src/tools/production-guard.js`):
    `extraPlaceGate()` → for ANY write whose `target.owner` row has `credential_kind === 'master'`:
    refuse with "Changes are off for <place>. Turn on 'allow changes' for it on My connection." unless `allow_changes`
@@ -72,7 +76,7 @@ connection. All normal guards (preview, confirm, production classification, prot
   add org place → row `credential_kind='master'`, `allow_changes=false`, live connection gains it; add repo place →
   `allowed_repos` set; non-member org refused; installed account refused; no master token refused; remove place →
   gone from row and from tokens.
-- `tests/unit/god-5-guards.test.js`: write on read-only place refused by `extraPlaceGate`; write allowed after
+- `tests/unit/god-5-guards.test.js`: extra place on a `read_only` connection, a pass, and a narrowed scope → refused by `credentialFor` (same as `cred:'M'`); write on read-only place refused by `extraPlaceGate`; write allowed after
   `allow_changes`; repo outside `allowed_repos` refused for write and for read (client hook); protected resource on an
   extra place still refused; read-only connection profile still refused.
 - Browser (`tests/browser/sign-in.test.js`): My connection → add "acme-co" place (fake GitHub membership route answers
