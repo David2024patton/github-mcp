@@ -195,3 +195,4 @@ listing modes and `github_search_tools`); anything needing git on the agent's ow
 
 - Docs search returned a total but no results, because GitHub's help search answers with site-relative links (`/en/rest/...`) and the filter only kept absolute ones. Links are now resolved against `https://docs.github.com` and anything pointing elsewhere is still dropped.
 - Stargazers took its total from a separate count endpoint that did not answer live. The total now comes from the repository's own star count, which the public-repo check already reads. One fewer GitHub call.
+- Approve page and My connection: a permanent "Install on another organization or account" button (value `*`) opens GitHub's install picker with no place pre-selected, so it does not depend on our own organization lookup.

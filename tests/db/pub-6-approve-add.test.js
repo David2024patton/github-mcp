@@ -110,6 +110,20 @@ describe('Approve page: install the App on another place', () => {
     } finally { people.dave.installs.pop(); }
   });
 
+  it('"Install on another organization or account" always shows and goes to GitHub\'s own picker (no place pre-selected)', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const second = await c.begin(authorizeParams(client));
+    const page = await call((req, res) => publicCallback(req, res, { env, connect: make() }), request('GET', { state: second.state, code: 'dave-fixture-code-1' }));
+    expect(page.body).toContain('id="add-another"');
+    expect(page.body).toContain('Install on another organization or account');
+    const first = (await start(c, client)).finished;
+    const added = await c.approve({ handle: first.approve.handle, choice: 'add', value: '*' });
+    const url = new URL(added.go);
+    expect(url.href).toMatch(/^https:\/\/github\.com\/apps\/public-connect-app\/installations\/new\?state=pc\./);
+    expect(url.searchParams.get('suggested_target_id')).toBeNull();
+  });
+
   it('the page shows the Add button and posting it redirects to GitHub (no cookie, same-site only)', async () => {
     const c = make();
     const client = await c.registerClient({ redirect_uris: [CB] });

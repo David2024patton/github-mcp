@@ -402,7 +402,9 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     if (choice === 'add') {
       // Another place of theirs (an organization or account without the App): go to GitHub's install screen aimed at it, then
       // come back through the normal silent sign-in to this same Approve page, now listing the new account too.
-      const offer = (flow.offers ?? []).find((o) => o.login === value);
+      // "*" = the always-present "Install on another organization or account" button: GitHub's own picker lists every place the
+      // person owns, so it works even when our own lookup of their organizations came back empty.
+      const offer = value === '*' ? { id: undefined } : (flow.offers ?? []).find((o) => o.login === value);
       if (!offer) throw refused('r25');
       const client = await loadClient(flow.clientId, flow.redirectUri);
       return { go: (await installUrl({ client, flow: { redirectUri: flow.redirectUri, clientState: flow.clientState, codeChallenge: flow.codeChallenge } }))(offer.id) };
@@ -524,7 +526,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       return { manage: await view('Disconnected ' + (target.client_name ?? 'that app') + '. To use it again, connect from the app.') };
     }
     if (action === 'add') {
-      const offer = (flow.offers ?? []).find((o) => o.login === value);
+      const offer = value === '*' ? { id: undefined } : (flow.offers ?? []).find((o) => o.login === value);
       if (!offer) throw refused('r37');
       const client = await builtInClient(MANAGE_CLIENT, 'My connection');
       const url = (await installUrl({ client, flow: { redirectUri: manageUrl(), clientState: null, codeChallenge: random(32), purpose: 'manage' } }))(offer.id);
