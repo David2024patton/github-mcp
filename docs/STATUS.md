@@ -1032,9 +1032,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/ACC-1.md",
     "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "Adding a place is done on the My connection page, which needs Chris's own sign-in in a browser, so the agent cannot add one. Unit and database tests cover it (tests/db/pub-6-public-connect.test.js GOD-5).",
-    "nextAction": "Owner checklist row: add robinson-ai-scratch as an extra place on My connection, then the agent runs read, refused write and remove."
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 06:30 MDT on live cb0ced6 (Vercel READY), custom service-issued MCP, PRODUCTION/full. Chris added Robinson-AI-Systems (an organization without the App) as an extra place on My connection (first tried robinson-ai-scratch, which the page correctly refused because the App is already installed there). github_whoami listed it: allow_changes=false, allowed_repos=whole account, production_enabled=false. Read OK: github_repo_list returned the organization's 15 repositories (private ones included). Write refused: github_repo_create confirm=true -> refused_by_guard by 'extra place': 'Changes are off for Robinson-AI-Systems. Turn on allow changes for it on My connection.' Nothing was created. Removal of the place is a button on My connection (covered by database tests); left to the owner."
   },
   {
     "id": "GITHUB-GQL1-GROUPS",
