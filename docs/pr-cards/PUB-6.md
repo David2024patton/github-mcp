@@ -35,3 +35,4 @@ A typed account name is only a request: access always comes from the installatio
 God mode on the public connector is one optional master token (kind `M`) instead of separate K/P pages, with a plain-steps page
 and `github_master_token_link` to add or remove it later without reconnecting. See `docs/designs/GOD-TOKEN.md`,
 `docs/status/2026-10-23-god-1-master-token.md`. Remaining: GOD-2 (tools only M can reach), GOD-3 (expiry reminders, summary).
+Follow-up 2026-10-23: master token lifetime is the person's own choice on GitHub (no cap of ours); whoami reminds within 14 days of expiry.

@@ -38,4 +38,4 @@ tool, never returned, encrypted at rest with a context that binds it to tenant, 
 3. **GOD-3:** expiry reminders and an owner-visible "what the God token can do right now" summary.
 
 Not decided / not done: how long a stored master token may live without a re-confirm (default proposed: follow GitHub's own
-expiry, and ask the person to re-confirm after 90 days).
+expiry, with no limit of our own; decided 2026-10-23: the person sets it).

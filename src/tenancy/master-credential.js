@@ -9,7 +9,6 @@ import {pilotOptionalAad} from './optional-credentials.js';
 const SUBJECT=/^[1-9][0-9]{0,18}$/;
 const denied=()=>new Error('The master token was not verified. Check that it is a classic token from your own GitHub login.');
 export const MASTER_HANDLE='master';
-export const MASTER_MAX_DAYS=90;
 // Every classic scope that is useful to an assistant. The person can untick any of them on GitHub; what is ticked is recorded.
 export const MASTER_SCOPES=Object.freeze(['repo','workflow','write:packages','delete:packages','admin:org',
   'admin:public_key','admin:repo_hook','admin:org_hook','gist','notifications','user','delete_repo',
@@ -48,9 +47,11 @@ export async function enrollMasterCredential({
     const scopes=[...new Set(String(response.headers?.get?.('x-oauth-scopes')??'')
       .split(',').map(x=>x.trim()).filter(Boolean))];
     if(scopes.length<1||scopes.length>60||!scopes.every(x=>/^[a-z_]+(?::[a-z_]+)*$/.test(x))) throw denied(); // classic only
-    const cap=now()+MASTER_MAX_DAYS*24*60*60*1000;
+    // The person chose the token's life on GitHub (30 days, a year, or never). We keep exactly that: no cap of our own.
+    // No expiry header means the token never expires; it then stays until the person removes it.
     const theirs=parseExpiry(response.headers?.get?.('github-authentication-token-expiration'));
-    const expiresAt=new Date(theirs&&theirs>now()?Math.min(theirs,cap):cap);
+    if(theirs!==null&&theirs<=now()) throw denied();
+    const expiresAt=theirs===null?null:new Date(theirs);
     const accessEnc=encryptSecret(bearer,{key:readEncryptionKey(env),aad:masterAad(tenant)});
     const fresh=await directory.authorizedPilotIdentity(tenant.tenantId,tenant.identityId);
     if(!fresh||fresh.membershipRevision!==tenant.membershipRevision||
@@ -61,7 +62,7 @@ export async function enrollMasterCredential({
       pilotRevision:tenant.pilotRevision,accessEnc,operation:'GET /user',resource:'user/'+subject,
       scopes,expiresAt,expectedFingerprint});
     if(!stored) throw denied();
-    return Object.freeze({status:'read-observed-at-enrollment',kind:'M',scopes,expiresAt:expiresAt.toISOString()});
+    return Object.freeze({status:'read-observed-at-enrollment',kind:'M',scopes,expiresAt:expiresAt?expiresAt.toISOString():null});
   }catch{ throw denied(); }
 }
 
@@ -73,7 +74,8 @@ export function currentMasterReadback({row,subject,now=Date.now()}={}){
       !Array.isArray(row.scopes)||row.scopes.length<1||
       typeof row.access_enc!=='string'||!row.access_enc.startsWith('v1.')||
       typeof row.cipher_fingerprint!=='string'||
-      !Number.isFinite(new Date(row.expires_at).getTime())||new Date(row.expires_at).getTime()<=now) return null;
+      (row.expires_at!==null&&row.expires_at!==undefined&&
+        (!Number.isFinite(new Date(row.expires_at).getTime())||new Date(row.expires_at).getTime()<=now))) return null;
   if(createHash('sha256').update(row.access_enc).digest('hex')!==row.cipher_fingerprint) return null;
-  return {scopes:[...row.scopes],expiresAt:new Date(row.expires_at).toISOString()};
+  return {scopes:[...row.scopes],expiresAt:row.expires_at?new Date(row.expires_at).toISOString():null};
 }
