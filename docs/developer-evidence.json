@@ -103,6 +103,22 @@
         "old merged working branches in the product repository remain (agent environment cannot delete them); on owner checklist",
         "2026-10-24: all acceptance fixtures (3 scratch repositories, 1 personal repository, gist, webhook, deploy key, enterprise configuration, secret, Space) deleted; export archive deletion accepted by GitHub but not readable back"
       ]
+    },
+    {
+      "layer": "provider",
+      "status": "verified",
+      "source": "custom_service",
+      "service": "robinson-github-mcp",
+      "origin": "https://github.robinsonaisystems.com",
+      "commit": "d96aab4a7a250ab844a9815b7230542cba4933f4",
+      "transport": "native_mcp",
+      "observations": [
+        "2026-10-24 13:15-13:30 MDT on live d96aab4 (Vercel READY dpl_HEneAvScytAxv3ofpG9jgFYUgKUA), PRODUCTION/full, master token on",
+        "github_whoami shows acting_as mode you; repo create, file write, branch, ruleset and PR create on disposable robinson-ai-scratch repo rtc-acc1-20261024-god6 report acting_as 'christcr2012 (you)'; steps the master token cannot do report 'some steps by the app'",
+        "merge without overrideRules refused while rule unmet (preview and confirmed attempt 409); with overrideRules the preview listed '1 required approval (0 given)'; first confirmed override merge left the PR open because GitHub did not let the login skip (no bypass actor) - GitHub decides; after granting bypass on the scratch ruleset the override merge completed (merged true, rules_overridden recorded)",
+        "protected-list refusal and app-only route behaviour not run live (covered by unit tests only)",
+        "cleanup: scratch repository deleted"
+      ]
     }
   ]
 }
