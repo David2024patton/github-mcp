@@ -31,6 +31,9 @@ const quiet = Object.freeze({ accessWidening: false, notifies: false, destructiv
 const notifying = Object.freeze({ accessWidening: false, notifies: true, destructive: false });
 const destructive = Object.freeze({ accessWidening: false, notifies: false, destructive: true });
 
+const restorable = (input, before, keys) => keys.some((k) => given(input, k)) && keys.every((k) => !given(input, k) || before?.[k] != null);
+const priorOf = (input, before, keys) => Object.fromEntries(keys.filter((k) => given(input, k)).map((k) => [k, before[k]]));
+
 /** @type {Map<string, object>} */
 export const WRITE_SPECS = new Map([
   ['pinIssue', {
@@ -189,22 +192,22 @@ export const WRITE_SPECS = new Map([
   }],
   // GQL-1 group 1: Projects v2 children and flags with no dedicated tool. Ownership: the project must belong to the enrolled account.
   ['updateProjectV2View', {
-    scope: 'org', primary: 'viewId', ids: { viewId: ['ProjectV2View'] }, changes: ['name', 'filter', 'layout', 'configuration'],
-    before: '... on ProjectV2View { name filter layout updatedAt }',
-    already: (i, b) => !given(i, 'configuration') && ['name', 'filter', 'layout'].every((k) => !given(i, k) || b?.[k] === i[k]),
-    verify: (i, a, b) => ['name', 'filter', 'layout'].every((k) => !given(i, k) || a?.[k] === i[k]) && (!given(i, 'configuration') || a?.updatedAt !== b?.updatedAt),
-    inverse: (i, b) => given(i, 'configuration') ? null : { mutation: 'updateProjectV2View', input: { viewId: i.viewId,
-      ...Object.fromEntries(['name', 'filter', 'layout'].filter((k) => given(i, k) && b?.[k] != null).map((k) => [k, b[k]])) } },
-    cls: quiet, undoHint: 'Changing which columns a view shows cannot be undone automatically. Set the columns again.'
+    scope: 'org', primary: 'viewId', ids: { viewId: ['ProjectV2View'] }, changes: ['name', 'filter', 'layout'],
+    before: '... on ProjectV2View { name filter layout }',
+    already: (i, b) => ['name', 'filter', 'layout'].every((k) => !given(i, k) || b?.[k] === i[k]),
+    verify: (i, a) => ['name', 'filter', 'layout'].every((k) => !given(i, k) || a?.[k] === i[k]),
+    // A value that was empty before cannot be put back (GitHub reads an empty input as "no change"), so there is no automatic undo then.
+    inverse: (i, b) => restorable(i, b, ['name', 'filter', 'layout']) ? { mutation: 'updateProjectV2View', input: { viewId: i.viewId, ...priorOf(i, b, ['name', 'filter', 'layout']) } } : null,
+    cls: quiet, undoHint: 'The earlier value was empty, so it cannot be restored automatically. Set the view again on github.com. (Which columns a view shows is not changed here.)'
   }],
   ['updateProjectV2StatusUpdate', {
     scope: 'org', primary: 'statusUpdateId', ids: { statusUpdateId: ['ProjectV2StatusUpdate'] }, changes: ['body', 'status', 'startDate', 'targetDate'],
     before: '... on ProjectV2StatusUpdate { body status startDate targetDate }',
     already: (i, b) => ['body', 'status', 'startDate', 'targetDate'].every((k) => !given(i, k) || b?.[k] === i[k]),
     verify: (i, a) => ['body', 'status', 'startDate', 'targetDate'].every((k) => !given(i, k) || a?.[k] === i[k]),
-    inverse: (i, b) => ({ mutation: 'updateProjectV2StatusUpdate', input: { statusUpdateId: i.statusUpdateId,
-      ...Object.fromEntries(['body', 'status', 'startDate', 'targetDate'].filter((k) => given(i, k) && b?.[k] != null).map((k) => [k, b[k]])) } }),
-    cls: notifying
+    inverse: (i, b) => restorable(i, b, ['body', 'status', 'startDate', 'targetDate'])
+      ? { mutation: 'updateProjectV2StatusUpdate', input: { statusUpdateId: i.statusUpdateId, ...priorOf(i, b, ['body', 'status', 'startDate', 'targetDate']) } } : null,
+    cls: notifying, undoHint: 'A value that was empty before cannot be put back automatically. Edit the status update again.'
   }],
   ['deleteProjectV2StatusUpdate', {
     scope: 'org', primary: 'statusUpdateId', ids: { statusUpdateId: ['ProjectV2StatusUpdate'] }, changes: [],
@@ -231,8 +234,8 @@ export const WRITE_SPECS = new Map([
     before: '... on DraftIssue { title body }',
     already: (i, b) => ['title', 'body'].every((k) => !given(i, k) || b?.[k] === i[k]),
     verify: (i, a) => ['title', 'body'].every((k) => !given(i, k) || a?.[k] === i[k]),
-    inverse: (i, b) => ({ mutation: 'updateProjectV2DraftIssue', input: { draftIssueId: i.draftIssueId,
-      ...Object.fromEntries(['title', 'body'].filter((k) => given(i, k) && b?.[k] != null).map((k) => [k, b[k]])) } }),
+    inverse: (i, b) => restorable(i, b, ['title', 'body'])
+      ? { mutation: 'updateProjectV2DraftIssue', input: { draftIssueId: i.draftIssueId, ...priorOf(i, b, ['title', 'body']) } } : null,
     cls: quiet
   }]
 ]);

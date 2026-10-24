@@ -46,4 +46,21 @@ describe('GQL-1 Projects v2 coverage', () => {
     const project = inv.operations.filter((r) => r.interface === 'graphql' && r.operation?.root === 'mutation' && /ProjectV2/.test(r.operation.field));
     expect(project.filter((r) => r.state === 'missing')).toEqual([]);
   });
+
+  it('undo restores every changed value, and offers none when a value was empty before (review finding)', () => {
+    const status = WRITE_SPECS.get('updateProjectV2StatusUpdate');
+    const prior = { body: 'old', status: 'ON_TRACK', startDate: null, targetDate: '2026-11-01' };
+    expect(status.inverse({ statusUpdateId: 'S1', body: 'new', targetDate: '2026-12-01' }, prior)).toEqual({
+      mutation: 'updateProjectV2StatusUpdate', input: { statusUpdateId: 'S1', body: 'old', targetDate: '2026-11-01' } });
+    expect(status.inverse({ statusUpdateId: 'S1', body: 'new', startDate: '2026-12-01' }, prior)).toBeNull(); // startDate was empty
+    expect(status.inverse({ statusUpdateId: 'S1', startDate: '2026-12-01' }, prior)).toBeNull();
+    const view = WRITE_SPECS.get('updateProjectV2View');
+    expect(view.inverse({ viewId: 'V1', filter: 'is:open' }, { name: 'a', filter: null, layout: 'TABLE_LAYOUT' })).toBeNull();
+    expect(view.inverse({ viewId: 'V1', name: 'b' }, { name: 'a', filter: null, layout: 'TABLE_LAYOUT' })).toEqual({
+      mutation: 'updateProjectV2View', input: { viewId: 'V1', name: 'a' } });
+  });
+
+  it('a view configuration (visible columns) is not accepted by the view spec', () => {
+    expect(WRITE_SPECS.get('updateProjectV2View').changes).toEqual(['name', 'filter', 'layout']);
+  });
 });

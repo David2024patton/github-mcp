@@ -77,7 +77,7 @@ just stops counting them as missing. Add a unit test that every tool name in the
 ## Progress
 - [x] Group 1 (Projects v2) — 25 mutations mapped to existing `github_project_*` tools (`curated` map in
       `src/github/mutation-classes.js`, which also stops the generic route bypassing those tools); 7 new reviewed specs
-      (`updateProjectV2View`, `updateProjectV2StatusUpdate`, `deleteProjectV2StatusUpdate`, `deleteProjectV2Workflow`,
+      (`updateProjectV2View` (name, filter, layout; visible columns refused), `updateProjectV2StatusUpdate`, `deleteProjectV2StatusUpdate`, `deleteProjectV2Workflow`,
       `mark/unmarkProjectV2AsTemplate`, `updateProjectV2DraftIssue`); 2 refused on purpose
       (`updateProjectV2Collaborators`, `createProjectV2IssueField`) via the new `REFUSED_MUTATIONS` map and inventory
       state `refused-by-design`. Org-scope ownership now accepts a project (and its views, status updates, workflows,
