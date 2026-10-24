@@ -527,3 +527,14 @@ reaches a set amount (existing people keep working), clean-up of long-inactive s
 Per-person daily usage is measured so it can be priced later; no billing is built. The display name moves to lead with
 Chris's own brand ("Robinson MCP for GitHub" by default) with a "not affiliated with or endorsed by GitHub" line. Card:
 `docs/pr-cards/PUB-5.md`.
+
+## 2026-10-24 — God mode "act as me" (Chris)
+With a master token added, every GitHub call is made with the person's own token so GitHub records the person (not the
+Robinson GitHub MCP bot) as the one who acted. Exceptions use the bot automatically: requests only a GitHub App may make
+(check runs and suites, /app and /installation routes), read-only connections, service passes and tools that ask for a
+narrowed token. Every result says who it acted as. An expired, removed or rejected token falls back to the bot on its own;
+a rejected write is never repeated. Because an admin's own token may be allowed to skip branch rules, merges refuse while
+GitHub says the rules are not met, and direct writes to a protected branch go through the bot. On by default; a switch on
+My connection turns it off. Consequence: checks that only accept Chris (for example appliance-desk's extra testing build)
+also accept agents using his God-mode connection. Card: `docs/pr-cards/GOD-6.md`.
+

@@ -2082,6 +2082,24 @@
       ]
     },
     {
+      "id": "GOD-6",
+      "title": "Act as me: with a master token every GitHub call is made as the person (App-only requests stay on the bot)",
+      "batch": "FIN",
+      "design": "docs/pr-cards/GOD-6.md",
+      "dependencies": [
+        "GOD-5"
+      ],
+      "card": "docs/pr-cards/GOD-6.md",
+      "status": "APPROVED",
+      "migration": "additive change_log column acted_as; per-person settings act_as_me, master_login, master_rejected_at",
+      "budget": 0,
+      "units": [
+        "GOD-6"
+      ],
+      "readiness": "READY",
+      "ownerInputs": []
+    },
+    {
       "id": "LAUNCH-1",
       "title": "Public launch readiness: uninstall clean-up for public people, invite-only, load test, cost view, trust pages, App permission review",
       "batch": "FIN",

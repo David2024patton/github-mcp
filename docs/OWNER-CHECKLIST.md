@@ -137,3 +137,8 @@ Defaults in brackets are what the agents build; change any by telling the agent.
 - [ ] **Move the GitHub App to your Robinson-AI-Systems organization** (GitHub → the App's settings → Advanced → Transfer ownership). Recommended before the Marketplace listing, which shows the owner's name; today it shows `robinson-ai-scratch`.
 - [ ] **After PR D:** paste the connect button from `docs/website/` into your website (or ask the website's agent to); publish to the official MCP Registry (one DNS record + one command; steps in the PR D status note); submit the free GitHub Marketplace listing from `docs/marketplace/` as organization owner.
 
+## God mode "act as me" (GOD-6, planned 2026-10-24)
+- [ ] Nothing to do. When it is built, your master token makes GitHub show **you** instead of the bot. If you ever want the
+      bot back, use the "Act as me" switch on My connection. Note: anything that only accepts you (like appliance-desk's
+      extra testing build) will then also accept your agents, because GitHub sees you.
+
