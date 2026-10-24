@@ -54,6 +54,22 @@ describe('github_whoami', () => {
     for (const shape of SECRET_SHAPES) expect(result.content[0].text).not.toMatch(shape);
   });
 
+  it('shows the master token without ever showing it, and warns within 14 days of its expiry', async () => {
+    const t = await build();
+    const soon = new Date(Date.now() + 5 * 86400000).toISOString(), far = new Date(Date.now() + 200 * 86400000).toISOString();
+    const withMaster = (status) => createDispatch({ env: ENV, credentials: { masterStatus: async () => status } });
+    const ask = async (status) => data(await withMaster(status)({ registry, name: 'github_whoami', args: {}, connection: t.connection, db: t.db })).master_token;
+    const near = await ask({ enrolled: true, scopes: ['repo', 'gist'], expires_at: soon });
+    expect(near).toMatchObject({ added: true, permissions: ['repo', 'gist'], expires_in_days: 5 });
+    expect(near.reminder).toMatch(/runs out in 5 days/);
+    const distant = await ask({ enrolled: true, scopes: ['repo'], expires_at: far });
+    expect(distant.reminder).toBeUndefined();
+    const never = await ask({ enrolled: true, scopes: ['repo'], expires_at: null });
+    expect(never.expires_at).toMatch(/never/);
+    expect(never.reminder).toBeUndefined();
+    expect((await ask({ enrolled: false })).added).toBe(false);
+  });
+
   it('shows more with detail=full and only the named fields with fields', async () => {
     const t = await build();
     const full = data(await t.run('github_whoami', { detail: 'full' }));

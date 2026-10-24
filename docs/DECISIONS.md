@@ -449,6 +449,6 @@ Update (same day): the offer is a page shown after the connection exists (button
 ## 2026-10-23 — God mode is ONE optional master token (GOD-1)
 Chris: God mode is one master token that unlocks everything the normal sign-in cannot, with tools built on top; it must be
 explainable in plain steps and addable at any time without disconnecting. Built as credential kind `M` (classic token, same
-GitHub person, 90-day cap, encrypted, revocable), a four-step page, and `github_master_token_link` (private one-use link).
+GitHub person, lifetime chosen by the person on GitHub, no cap of ours, encrypted, revocable), a four-step page, and `github_master_token_link` (private one-use link).
 K/P fall back to it for their own exact reads; `cred:"M"` works in the universal REST/GraphQL tools under all existing guards,
 never for read-only connections, passes, narrowed scopes or any host except api.github.com.

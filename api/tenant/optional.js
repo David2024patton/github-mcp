@@ -22,7 +22,7 @@ const masterMarkup=details=>'<!doctype html><html lang="en"><head><meta charset=
   '<ol><li>Tap the button below. GitHub opens a page with every permission already ticked. Sign in to GitHub if it asks.</li>'+
   '<li>Scroll down and tap <strong>Generate token</strong>.</li>'+
   '<li>Copy the long code GitHub shows you. GitHub only shows it once.</li>'+
-  '<li>Come back to this page, paste the code in the box and tap Continue.</li></ol>'+
+  '<li>Come back to this page, paste the code in the box and tap Continue.</li></ol><p><small>Tip: on GitHub you pick how long the token lasts. We use whatever you choose.</small></p>'+
   '<p><a class="big" href="'+escapeHtml(masterTokenLink())+'" target="_blank" rel="noopener noreferrer">Create my master token on GitHub</a></p>'+
   '<form method="post" action="/api/tenant/optional">'+
   '<input type="hidden" name="csrf" value="'+escapeHtml(details.state)+'">'+
@@ -31,7 +31,7 @@ const masterMarkup=details=>'<!doctype html><html lang="en"><head><meta charset=
   (details.oauth?'':'<option value="revoke">Remove my stored master token (paste the token to prove it is you)</option>')+
   '</select></label><button type="submit">Continue</button></form>'+
   '<p>Paste it here only, never into a chat. We check it belongs to your own GitHub login and store it encrypted. '+
-  'It is never shown again. It expires in 90 days or sooner if GitHub says so. '+
+  'It is never shown again. It lasts as long as you set it to last on GitHub (30 days, a year, or never). '+
   'Removing it here does not delete it at GitHub; do that in your GitHub settings too.</p></body></html>';
 const markup=details=>details.kind==='M'?masterMarkup(details):standardMarkup(details);
 const standardMarkup=details=>'<!doctype html><html lang="en"><head><meta charset="utf-8">'+

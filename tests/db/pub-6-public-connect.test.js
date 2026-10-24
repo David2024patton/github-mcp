@@ -710,3 +710,37 @@ describe('GOD-1 the master token (one classic token, kind M)', () => {
     expect(typeof optional).toBe('function');
   });
 });
+
+describe('GOD-1 the master token lasts exactly as long as the person set it on GitHub', () => {
+  it('keeps no limit of ours: no expiry header means it never expires; a dated one is kept as given; an already-expired one is refused', async () => {
+    const { createPrivateOptionalEnrollment } = await import('../../src/tenancy/optional-setup.js');
+    const { openAuthorizedTenantDb } = await import('../../src/tenancy/directory.js');
+    const withHeaders = (extra) => async (url, opts) => {
+      const out = await fetchImpl(url, opts);
+      if (url !== 'https://api.github.com/user') return out;
+      return { ...out, headers: { get: (n) => ({ 'x-oauth-scopes': 'repo, gist', ...extra })[String(n).toLowerCase()] ?? null } };
+    };
+    const enroll = (fetchFn) => createPrivateOptionalEnrollment({ env, fetchImpl: fetchFn, directoryFactory: () => createTenantDirectory(rootSqlFactory()),
+      tenantAccess: (dir, claim) => openAuthorizedTenantDb({ directory: dir, tenantId: claim.tenantId, verifiedIdentityId: claim.identityId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory }) });
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    let finished = await (await signIn(c, client, 'bob', { tier: 'standard' })).finished;
+    if (finished.accounts) finished = await c.godChoose({ handle: finished.accounts.handle, browserCsrf: finished.accounts.handle, choice: 'continue' });
+    const bearer = json(await exchange(client, new URL(finished.redirect).searchParams.get('code'))).access_token;
+    const routed = await resolvePrivateTenantMcpBearer({ authorization: 'Bearer ' + bearer, env, fetchImpl, rootSqlFactory, tenantSqlFactory });
+    const save = async (fetchFn) => {
+      const link = await routed.credentials.masterLink({ clientId: client.client_id, redirectUri: CB });
+      const form = await enroll(fetchFn).startMasterLink(new URL(link.url).searchParams.get('master_link'));
+      return enroll(fetchFn).finish({ state: form.state, action: 'save', value: people.bob.token });
+    };
+    await expect(save(withHeaders({ 'github-authentication-token-expiration': '2020-01-01 00:00:00 UTC' }))).rejects.toThrow();
+    expect((await routed.credentials.masterStatus()).enrolled).toBe(false);
+    await save(withHeaders({ 'github-authentication-token-expiration': '2031-05-06 07:08:09 UTC' }));
+    expect((await routed.credentials.masterStatus()).expires_at ?? (await routed.credentials.masterStatus()).expiresAt).toBe('2031-05-06T07:08:09.000Z');
+    await save(withHeaders({}));   // "never expires": GitHub sends no expiry header
+    const never = await routed.credentials.masterStatus();
+    expect(never.enrolled).toBe(true);
+    expect(never.expires_at).toBeNull();
+    expect(await routed.credentials.token({ account: 'bob-test', cred: 'M' })).toBe(people.bob.token);
+  });
+});

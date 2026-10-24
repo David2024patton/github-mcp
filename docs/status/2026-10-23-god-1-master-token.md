@@ -5,7 +5,7 @@
 **What changed (plain English):**
 - God mode is now **one optional master token** (a classic GitHub token with every permission ticked), not a menu of keys.
 - Credential kind `M`: checked to be the same GitHub person who signed in, classic tokens only, permissions recorded,
-  encrypted, expires in 90 days or sooner if GitHub says so, revocable.
+  encrypted, lasts exactly as long as the person set it on GitHub (no limit of ours), revocable.
 - The God page walks through four plain steps (create on GitHub with all boxes pre-ticked, copy, paste, continue).
 - **Add or remove any time without reconnecting:** new tool `github_master_token_link` returns a private one-use,
   10-minute link to the same page.
@@ -20,3 +20,7 @@ fine-grained refused, one-use links, fallback limits, host limit, read-only refu
 
 **Not done / next:** GOD-2 (purpose-built tools for things only the master token can reach), GOD-3 (expiry reminders,
 "what can it do" summary), multi-organization install picker on the sign-in page (currently one at a time, repeating).
+
+**Follow-up (same day, owner request):** no 90-day limit of ours. The token lasts exactly as long as the person set it on
+GitHub; a token with no expiry date never expires on our side. `github_whoami` shows days left and, within 14 days, a plain
+reminder to replace it with `github_master_token_link`. Already-expired tokens are refused.
