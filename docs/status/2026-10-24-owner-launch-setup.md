@@ -1,36 +1,41 @@
 # Owner launch setup — 2026-10-24
 
-Scope: the owner's Vercel exemption, website connect button, MCP Registry listing, GitHub App ownership/Marketplace setup, and hosting spend alerts. The owner explicitly paused Marketplace publication while other agents make fixes. No Marketplace publication or plan activation is authorized until that hold is lifted.
+The owner clarified that “finish the work” lifted the earlier Marketplace publication hold. Publication is authorized, subject to GitHub's technical requirements and action-time confirmation of legal agreements. Do not ask the owner to lift the hold again.
 
 ## Verified external setup
 
-- Production `PUBLIC_UNLIMITED_SUBJECTS` is `227716942`; it was saved before the verified READY production redeploy. No secret values were read or disclosed.
-- The public company website serves the GitHub connection guide/button at `https://www.robinsonaisystems.com/tools/github`.
-- Official MCP Registry: `com.robinsonaisystems/github`, version `0.1.0`, active; remote URL matches `server.json`.
-- Vercel has an active $200 team budget, with alerts at 50%, 75%, and 100%. Existing budget and pause settings were preserved.
-- Neon organization billing shows an enabled $20 email spending notification; checked after the owner signed in.
-- GitHub confirms the public `robinson-github-mcp` App was successfully transferred from scratch to Robinson-AI-Systems. Its public URL and registration identity were retained.
-- Post-installation Setup URL was saved as `https://github.robinsonaisystems.com/api/github/setup`; both existing callback URLs were preserved.
-- A repository read through GitHub by Robinson AI Systems succeeded after transfer. It is the owner's requested default GitHub connector.
-- The publisher organization's public email is `hello@robinsonaisystems.com`, matching the company website; the custom connector independently read back the change.
+- Production `PUBLIC_UNLIMITED_SUBJECTS=227716942` was saved before the verified READY production redeploy. No secret values were disclosed.
+- The company website serves the connection guide/button at https://www.robinsonaisystems.com/tools/github.
+- Official MCP Registry `com.robinsonaisystems/github`, version `0.1.0`, is active and matches `server.json`.
+- Vercel has an active $200 team budget with alerts at 50%, 75%, and 100%; existing pause settings were preserved.
+- Neon billing shows an enabled $20 email spending notification, verified after owner sign-in.
+- GitHub confirmed transfer of the public `robinson-github-mcp` App from scratch to Robinson-AI-Systems; its registration identity and public URL were retained.
+- Setup URL is https://github.robinsonaisystems.com/api/github/setup; both existing callback URLs remain unchanged.
+- A repository read through GitHub by Robinson AI Systems succeeded after transfer. It is the owner's default GitHub connector.
+- Public publisher email is hello@robinsonaisystems.com, matching the company website. The connector independently read back the change. GitHub's verification email was requested; dashboard still shows verification pending.
 
-## Marketplace draft and publication hold
+## Marketplace submission progress
 
-Draft: `https://github.com/marketplace/robinson-mcp-for-github/edit`.
+Draft: https://github.com/marketplace/robinson-mcp-for-github/edit.
 
-The draft has business contact information, naming/categories/product links, introductory and detailed descriptions, the existing company logo, product screenshots, and a Free draft plan. This is preparation, not Marketplace publication. The free plan has not been activated, no agreement was accepted, and no publish request was sent. Re-read the dashboard before submission; do not assume every section is complete.
+Contact information and listing description are marked complete by GitHub. Saved content includes product links, introductory/detailed descriptions, existing company logo, branded background and two captioned product screenshots. GitHub has now confirmed “Your plan has been published” for the Free plan; plans/pricing is marked complete. The overall listing is still a draft: no Developer Agreement was accepted and no publish request was sent.
 
-GitHub's security/compliance form returned its own server-error page on save and on refresh. Trader self-certification was deliberately left undecided; no legal classification or independent certification was invented. Legal pages remain DRAFT. The owner must approve the applicable declarations/agreement at publication time.
+Security/compliance returned a server-error page on the earlier save; its form is accessible again after the ownership transfer, but the fields were not persisted. Trader self-certification remains undecided; no legal classification or certification was invented. Trust pages remain DRAFT. Owner confirmation of applicable declarations and action-time agreement acceptance remain necessary.
 
-### Engineering prerequisite found while configuring the Marketplace webhook
+## Marketplace engineering prerequisite (not solved by the listing pack)
 
-The existing `src/github/webhook.js` handles only `ping`, `installation`, `installation_repositories`, and `github_app_authorization`. It verifies a per-App secret selected by the App installation-target header. It is not a Marketplace purchase handler; do not point the Marketplace form at it and claim acceptance.
+`src/github/webhook.js` handles only ping, installation, installation_repositories and github_app_authorization. It verifies the per-App signing secret selected by the App installation-target header. It is not a Marketplace purchase handler. Do not configure the Marketplace form to use it and claim acceptance.
 
-GitHub's current requirements apply to free plans too: new-purchase and cancellation events must be processed. Before submission, implement or verify a dedicated authenticated `marketplace_purchase` route with a separately and securely enrolled signing secret; validate the actual Marketplace header/payload contract, delivery deduplication, purchased/cancelled behavior for a free service, and invalid-signature/replay cases. Preserve independent direct-MCP connections: cancelling a free Marketplace subscription must not silently revoke separately authorized direct connections without an approved product rule. Configure the Marketplace hook only after its route and secret exist, then prove a signed delivery and readback. Do not retrieve or print the existing App secret.
+Verified GitHub requirements apply even to a free plan:
+- Purchase flow: after OAuth, provision the customer and verify the subscription via GET /user/marketplace_purchases.
+- Cancellation: deactivate the Marketplace customer, revoke the relevant OAuth authorization, and remove customer data within 30 days.
+- Handle marketplace_purchase through a verified-signature endpoint with durable delivery deduplication, meaningful purchased/cancelled behavior, and denial/replay/recovery tests. Merely logging receipts is insufficient.
 
-References:
+Current direct-MCP identity/grant storage is shared. Marketplace lifecycle/provenance must be isolated so cancellation does not revoke or erase unrelated direct ChatGPT/Claude connections. This adds customer-lifecycle product work beyond PUB-5's original listing-pack scope; obtain the owner's scope/design decision before treating this as routine form completion. Secrets remain encrypted/server-owned; never read or print the App signing secret.
+
+Primary references, checked 2026-10-24:
 - https://docs.github.com/en/apps/github-marketplace/creating-apps-for-github-marketplace/requirements-for-listing-an-app
-- https://docs.github.com/en/apps/github-marketplace/listing-an-app-on-github-marketplace/setting-pricing-plans-for-your-listing
-- https://docs.github.com/en/apps/github-marketplace/listing-an-app-on-github-marketplace/configuring-a-webhook-to-notify-you-of-plan-changes
+- https://docs.github.com/en/apps/github-marketplace/using-the-github-marketplace-api-in-your-app/handling-new-purchases-and-free-trials
+- https://docs.github.com/en/apps/github-marketplace/using-the-github-marketplace-api-in-your-app/handling-plan-cancellations
 
-Next: finish the Marketplace-only webhook prerequisite in the normal reviewed implementation flow, reconcile the draft's remaining fields, obtain the owner's legal declarations and explicit removal of the publication hold, then activate the Free plan and submit for GitHub review. No new release was triggered by this handoff.
+PR #383 passed ci and release-policy at its original head. Merge was refused because main requires the App identity and this connector has no App installation for Robinson-AI-Systems. No branch-rule override or manual installation was attempted; preserve the owner's requirement to test installation through initial sign-in. The publication hold is lifted; the merge/technical/legal prerequisites are separate. No extra release was triggered.
