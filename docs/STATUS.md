@@ -1032,9 +1032,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/ACC-1.md",
     "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-24 06:30 MDT on live cb0ced6 (Vercel READY), custom service-issued MCP, PRODUCTION/full. Chris added Robinson-AI-Systems (an organization without the App) as an extra place on My connection (first tried robinson-ai-scratch, which the page correctly refused because the App is already installed there). github_whoami listed it: allow_changes=false, allowed_repos=whole account, production_enabled=false. Read OK: github_repo_list returned the organization's 15 repositories (private ones included). Write refused: github_repo_create confirm=true -> refused_by_guard by 'extra place': 'Changes are off for Robinson-AI-Systems. Turn on allow changes for it on My connection.' Nothing was created. Then Chris switched 'allow changes' on for the place (06:29 MDT): github_repo_create dry run, confirm applied (private empty repo rtc-acc1-20261024-6), github_repo_delete applied (deleted); nothing left behind.",
-    "nextAction": "Remove: Chris presses Remove on My connection for Robinson-AI-Systems (or tells the agent he removed it); then the agent reads back that github_whoami no longer lists it and that a read of that organization is refused. Read, refusal and write-with-changes-on already passed."
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 06:30-06:48 MDT on live cb0ced6 (Vercel READY), custom service-issued MCP, PRODUCTION/full. Chris added Robinson-AI-Systems (no App) as an extra place on My connection (robinson-ai-scratch was correctly refused: App already installed). whoami showed allow_changes=false, whole account. Read OK: github_repo_list returned 15 repositories. Write refused: github_repo_create -> refused_by_guard 'extra place' (nothing created). After Chris allowed changes: create then delete of empty repo rtc-acc1-20261024-6 applied. After Chris pressed Remove: whoami no longer lists it and a read is refused (client:outside_scope). Full lifecycle done."
   },
   {
     "id": "GITHUB-GQL1-GROUPS",
