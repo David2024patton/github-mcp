@@ -63,9 +63,10 @@ describe('connector login end to end on throwaway Postgres', () => {
     const second = json(await refresh(first.refresh_token));
     expect(await gate(second.access_token)).toEqual(expected);
     expect(await gate(first.access_token)).toBeNull();
+    // PUB-5 C: a used refresh token shown again is refused AND ends the whole sign-in (real database)
     expect((await refresh(first.refresh_token)).statusCode).toBe(400);
-    const third = json(await refresh(second.refresh_token));
-    expect(await gate(third.access_token)).toEqual(expected);
+    expect(await gate(second.access_token)).toBeNull();
+    expect((await refresh(second.refresh_token)).statusCode).toBe(400);
   });
 
   it('requires explicit renewed owner consent for Full while older Everyday and refresh credentials stay narrow',async()=>{

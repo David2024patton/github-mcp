@@ -27,6 +27,15 @@ async function open(profile, { cookies = true } = {}) {
   const page = await context.newPage();
   return { context, page };
 }
+/** PUB-5 C: every public page forbids framing and scripts, and sends no sniffing or referrer leaks. */
+function sendsSecurityHeaders(response, where) {
+  const h = response.headers();
+  expect(h['content-security-policy'], 'CSP on ' + where).toContain("default-src 'none'");
+  expect(h['content-security-policy'], 'framing on ' + where).toContain("frame-ancestors 'none'");
+  expect(h['content-security-policy'], 'no scripts on ' + where).not.toMatch(/script-src|'unsafe-eval'/);
+  expect(h['x-content-type-options'], 'nosniff on ' + where).toBe('nosniff');
+  expect(h['referrer-policy'], 'referrer policy on ' + where).toMatch(/^(no-referrer|same-origin)$/);
+}
 const arrived = (from) => world.app.received.slice(from);
 /** Nothing on our pages may be wider than the screen (a phone would have to scroll sideways, and buttons get covered). */
 async function fitsScreen(page) {
@@ -390,13 +399,15 @@ describe('My connection', () => {
     const b = await open(PROFILES[0], { cookies: false });
     if (!b) return;
     for (const [path, title] of [['/privacy', 'Privacy notice'], ['/terms', 'Terms of use'], ['/security', 'Security'], ['/support', 'Support']]) {
-      await b.page.goto(ORIGIN + path);
+      sendsSecurityHeaders(await b.page.goto(ORIGIN + path), path);
       expect(await b.page.title()).toBe(title);
       const text = await b.page.textContent('main');
       expect(text).toContain('DRAFT');
       expect(text).toContain('support email coming soon');
       await fitsScreen(b.page);
     }
+    sendsSecurityHeaders(await b.page.goto(ORIGIN + '/connection'), '/connection');
+    sendsSecurityHeaders(await b.page.goto(ORIGIN + '/limits'), '/limits');
     await b.page.goto(ORIGIN + '/connection');
     await b.page.click('footer a[href="/privacy"]');
     expect(await b.page.title()).toBe('Privacy notice');
