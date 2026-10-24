@@ -363,8 +363,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/H-2.md",
     "gates": "Exact READY live ancestry of implementation; approved isolated scratch owner/run, service OAuth with legitimate provider permissions; preview/production and independent owner write/cleanup approvals preserved",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Authenticated custom webhook listing works; no isolated hook or receiver signature fixture exists. Next: Approved receiver/HMAC fixture plus independent production write and disposal authority. Obtain exact fixture approval, then verify receiver signatures without publishing secrets.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:30 MDT on live 8ed877a, custom service-issued MCP, PRODUCTION/full. On private fixture rtc-acc1-20261024-1: github_webhook_save created inactive push hook #702526394 to https://example.com/acc1 (server-generated secret, one-time reveal link returned, link not opened); github_webhook_rotate_secret rotated it (new one-time link); github_webhook_list read back active=false, events=[push], host example.com; github_webhook_delete removed it. Receiver HMAC signature proof NOT done (optional owner checklist item). Cleanup: hook and fixture repository deleted.",
     "nextAction": "Owned non-sensitive receiver/HMAC fixture plus exact signer/webhook production write, delivery and cleanup authorization; no receiver/secret transmission is inferred."
   },
   {
@@ -375,8 +375,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/H-3.md",
     "gates": "Checked READY deployment contains merged H-3 source; scratch-only, explicit owner authority and fixture safeguards, no production settings or spend activation without independent approval",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Actual collaborator list complete with one existing admin, no invitations; deploy keys empty and complete. Next: Named consenting principal/public key and independent access-change/cleanup approval. Owner supplies exact isolated access fixture; never invite or grant from reconnect alone.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:30 MDT on live 8ed877a, custom service-issued MCP, PRODUCTION/full. Created private fixture robinson-ai-scratch/rtc-acc1-20261024-1; github_deploykey_add dry run OK (read-only key, fingerprint shown), confirmed add refused by GitHub HTTP 422 'Deploy keys are disabled for this repository' (organization policy on the scratch org). Not changed: turning that policy on would widen access and is an owner decision. Cleanup: fixture repository deleted (readback deleted=true). Re-entry: owner enables deploy keys for the scratch org, or run on another disposable repo. RETRY 2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. After Chris enabled deploy keys: fixture robinson-ai-scratch/rtc-acc1-20261024-3: github_deploykey_add (read-only, fingerprint ec13a876...) applied, github_deploykey_list read back it (verified, read_only), github_deploykey_delete applied, list read back empty. Private half of the key was discarded at creation. Cleanup: fixture deleted. Collaborator invite not run (needs a second GitHub account; optional).",
     "nextAction": "Exact disposable collaborator/key principal and independent access-widening, production and cleanup approval; no outside invitations or new keys inferred."
   },
   {
@@ -749,8 +749,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Read-only PREVIEW/full scratch account; independently verified deployed SHA/READY; required hosted-runner read App permissions IN-15 and an eligible org plan. No create, capacity change, static-IP activation or billable request.",
     "dependsOn": [],
     "status": "BLOCKED",
-    "lastEvidence": "2026-10-18 actual custom MCP PREVIEW/full at independently READY 20389ae0 with new App grants: hosted runner list returns provider 404, message GitHub hosted runners are not supported for this organization. Organization GET independently reports plan free. No runner creation, capacity or plan change.",
-    "nextAction": "Provider now explicitly says hosted runners unsupported for this organization (404); existing plan is free. Use already eligible entitlement, without purchasing an upgrade."
+    "lastEvidence": "2026-10-18 actual custom MCP PREVIEW/full at independently READY 20389ae0 with new App grants: hosted runner list returns provider 404, message GitHub hosted runners are not supported for this organization. Organization GET independently reports plan free. No runner creation, capacity or plan change. Re-tried 2026-10-24 04:35 MDT on live 8ed877a: github_hosted_runner_list for robinson-ai-scratch still returns HTTP 404 'GitHub hosted runners are not supported for this organization' (Enterprise trial does not enable it). Stays BLOCKED: plan/entitlement.",
+    "nextAction": "UNVERIFIED, needs a paid plan or upgrade (owner rule 2026-10-24: recorded as untested, not a completion blocker). Provider now explicitly says hosted runners unsupported for this organization (404); existing plan is free. Use already eligible entitlement, without purchasing an upgrade."
   },
   {
     "id": "GITHUB-Y9D-COPILOT-ORG-READ",
@@ -772,8 +772,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/Y-9.md; docs/designs/BATCH-Y.md; docs/END-USER-AUTHORITY.md",
     "gates": "Reviewed source in READY live, actual GitHub U token granted by the owner to exact paying account, known approved recipient and complete sponsor tier inventory. No paid mutation or token capture.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-18 real custom github_sponsor_get on owned scratch with recipient christcr2012 failed NOT_FOUND because one document queries both user and organization roots. Independent custom universal explicit U organization-only relationship query succeeds, totalCount=0, nodes=[], hasNextPage=false. This proves valid payer U, not completed curated Sponsors acceptance. Corrective source 098fdb8d43ed5fd7591aeecb2a86559d98bb0397 selects verified entity roots, handles an explicitly absent listing, and preserves financial/privacy guards; exact-head CI and scheduled deployment required. No payment or preference mutation.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:25 MDT on live 8ed877a (contains 098fdb8), custom service-issued MCP, PRODUCTION/full. github_sponsor_get recipient christcr2012 as payer christcr2012 -> payer/recipient identity matches, active=null, sponsors_listing_available=false, tiers=[] (valid empty relationship, no NOT_FOUND). No payment or preference change. Cleanup: none needed.",
     "nextAction": "After the scheduled release includes 098fdb8d43ed5fd7591aeecb2a86559d98bb0397, rerun curated read for the same owned non-sensitive actor. Capture exact payer/recipient type, complete relationship and listing availability; a published tier fixture is separately needed to prove nonempty prices. Do not repeat valid OAuth or move money."
   },
   {
@@ -868,8 +868,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Read-only eligible scratch repository, existing authenticated GitHub entitlement, original private visibility, no purchased plan, no active paid feature toggle or deployment outside scheduled release.",
     "dependsOn": [],
     "status": "BLOCKED",
-    "lastEvidence": "2026-10-17 READY d49aebd6: real custom PREVIEW/full I. Private scratch repo security-settings read refused incomplete; GET private code-scanning default setup 403 'Advanced Security must be enabled' on Free organization. Public scratch security settings complete and GET default setup 200 not-configured. GET org code-security configs 200 one recommended config id 17, GET defaults 200 [], GET repositories for id17 200 [] (complete empty fixture). PREVIEW/full paid private advanced_security enable (dryRun:true) and public feature disable both refused_by_guard production mode, no provider mutation or spend. Cannot verify paid PRIVATE inventory/100-entry completeness with current plan. 2026-10-18 minimum source pin reconciled to reviewed Y-7 provider permission/refusal truth at c552ab89, already on main but absent from verified live 20389ae0. No pre-fix retest can accept corrected behavior.",
-    "nextAction": "Release corrected provider refusal/cursor behavior c552ab8 and use legitimately eligible security fixture; do not treat private-feature 403 as consent or buy eligibility."
+    "lastEvidence": "Earlier (2026-10-18): free-plan private security reads refused by GitHub with the plan reason; no purchase suggested. 2026-10-24 04:45 MDT on live 8ed877a, PRODUCTION/full, scratch org on the Enterprise trial, private fixture rtc-acc1-20261024-2: github_security_get_settings returned the full private security inventory (all disabled); github_security_list_alerts kind=code refused truthfully (HTTP 403 'Code Security must be enabled', names security events read), kind=dependabot without a repo refused locally. Fixture deleted. Not exercised: organization security attachments and the 100-entry case (needs paid-flagged organization configurations).",
+    "nextAction": "UNVERIFIED, needs a paid plan or upgrade (owner rule 2026-10-24: recorded as untested, not a completion blocker). Remainder only: organization security attachments and 100-entry case. Release corrected provider refusal/cursor behavior c552ab8 and use legitimately eligible security fixture; do not treat private-feature 403 as consent or buy eligibility."
   },
   {
     "id": "GITHUB-Y7-AUTH-PRIVATE-PAID-WRITE",
@@ -939,12 +939,124 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "id": "GITHUB-PRIVATE-USER-PASS-SCOPE",
     "priority": 1,
     "requiredRevision": "3df082605de3a91f3e32affd385e88ba90df95d2",
-    "status": "PENDING",
+    "status": "BLOCKED",
     "task": "On source-bearing deployed custom MCP verify repository/permission-limited private-member I and owner/member U requests refuse before user-bearer acquisition; ordinary own-user reads and authorized owner I installation downscoping still work.",
     "procedure": "docs/pr-cards/PUB-2.md \u2014 2026-10-21 restricted private-user passes correction; tests/unit/private-user-pass-downscope.test.js for source cases.",
     "gates": "Verified READY implementation ancestry; genuine already-authorized private developer fixture and service-owned grant, exact existing restricted pass and ordinary connection. No public tenant activation, new real credential, access expansion, production write or spend is inferred.",
     "dependsOn": [],
-    "lastEvidence": "PR #275 source correction at 3df0826: required CI 39673862507 and release policy 39673862589 passed, including 151 disposable PostgreSQL tests; focused credential/RTC regressions 37 passed. Current live 315a3259 lacks source. No real pass-scope denial/readback acceptance performed."
+    "lastEvidence": "Superseded 2026-10-24: the private-pilot sign-in was retired on 2026-10-23 (PUB-6 rebuild); public tenants are covered by tests/db/pub-6-public-connect.test.js and tests/unit/private-user-pass-downscope.test.js. No live run needed."
+  },
+  {
+    "id": "GITHUB-GOD2-PERSONAL-M",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Gist create/read-back/delete with the master token (secret gist on christcr2012).",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. github_gist_save created secret gist 33d6defc... (verified, 1 file); github_gist_delete removed it (deleted=true). Cleanup: none left."
+  },
+  {
+    "id": "GITHUB-GOD3-UNLOCKS",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "github_whoami lists which areas the master token unlocks.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. github_whoami returned master_token.unlocks with 14 areas (Gists, Notifications, Packages, SSH keys, GPG, Profile, Stars, Classroom/Marketplace, Copilot Spaces, Codespaces, Account export, Org admin extras, Projects, Enterprise ENT-1), all unlocked:true."
+  },
+  {
+    "id": "GITHUB-ENT1-READS",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Enterprise reads on the trial enterprise robinson-ai-systems.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. github_enterprise_list (1 enterprise), github_enterprise_overview (admin yes, 1 org), github_enterprise_security_configs (1 GitHub recommended config + defaults), github_enterprise_dependabot (alerts empty) all returned. github_enterprise_actions_settings returned HTTP 402 'valid payment method required': UNVERIFIED, needs a payment method or paid plan (owner rule 2026-10-24, not a blocker)."
+  },
+  {
+    "id": "GITHUB-ENT1-CONFIG-LIFECYCLE",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Enterprise code-security configuration create and delete, free settings only.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. github_enterprise_security_config_save dry run, then create 'acc1-throwaway' (id 286906, dependency graph on, unenforced, paid=false); github_enterprise_security_config_delete removed it (deleted=286906). Attached to nothing. Cleanup: none left. Other ENT write tools (policy_set, profile_set, actions_settings_set, dependabot_access_set, config_apply) not run."
+  },
+  {
+    "id": "GITHUB-GOD4-CODESPACES-SECRETS",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Personal Codespaces secret created with a generated value, listed, deleted.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. github_secret_set level user kind codespaces ACC1_THROWAWAY valueFrom generate (value hidden); github_secret_list showed it (value never shown); github_secret_delete removed it."
+  },
+  {
+    "id": "GITHUB-GOD4-EXPORT",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Account export of one disposable repository, status, private link, archive delete.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. Org repository refused by GitHub for a personal export (422). Disposable empty private repo christcr2012/rtc-acc1-20261024-4 created, github_account_export_start applied (id 14960475), status went pending then exported, github_account_export_link returned a short-lived private address (not opened, not stored); github_account_export_delete was accepted by GitHub but the readback could not confirm the archive is gone (reported 'unconfirmed'; status still says exported). Repo deleted. Open item: archive deletion unconfirmed; it expires on its own (about 2 days)."
+  },
+  {
+    "id": "GITHUB-GOD4-SPACES",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Copilot Space create, list, delete.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY, dpl_8A5smrwyMzGnsuaLgv8MS4JDsQZE), custom service-issued MCP, PRODUCTION/full. github_copilot_space_save created Space #1 'acc1-throwaway' (base_role no_access); github_copilot_space_list read it back; github_copilot_space_delete removed it (deleted=1)."
+  },
+  {
+    "id": "GITHUB-GOD5-PLACE",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Add a read-only extra place with the master token, read OK, write refused, remove.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Adding a place is done on the My connection page, which needs Chris's own sign-in in a browser, so the agent cannot add one. Unit and database tests cover it (tests/db/pub-6-public-connect.test.js GOD-5).",
+    "nextAction": "Owner checklist row: add robinson-ai-scratch as an extra place on My connection, then the agent runs read, refused write and remove."
+  },
+  {
+    "id": "GITHUB-GQL1-GROUPS",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "One representative GraphQL mutation per group on a scratch fixture.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:55 MDT on live b555df1 (Vercel READY), PRODUCTION/full, fixture robinson-ai-scratch/rtc-acc1-20261024-5 (auto-init, 1 issue). github_graphql_write pinIssue (specced, repo scope): dry run, confirm, independent read isPinned=true; unpinIssue inverse isPinned=false. createRef and addReaction were refused by the universal door ('no independently verifiable readback ... use the specialized guarded tool') because curated tools own them: correct by design. Fixture deleted. Only one representative specced mutation was run; the other groups are covered by source and shape tests."
+  },
+  {
+    "id": "GITHUB-HARD1-SIGNIN-NO-CAP",
+    "priority": 1,
+    "requiredRevision": "b555df19ff79dac90f720ff92d2c4ec8b05f92ec",
+    "task": "Sign-in still works after the per-app cap change.",
+    "procedure": "docs/pr-cards/ACC-1.md",
+    "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Needs a real sign-in through the live public page (Chris's browser). Covered by DB and browser tests in CI.",
+    "nextAction": "Owner checklist: next time a new person or app signs in, confirm it works; the agent reads the refusal log."
   }
 ]
 ```

@@ -510,3 +510,7 @@ kept on the row. Where the description enables Apps but the lists omit the opera
 unknown with the reason written down; only a live call can decide it. Classic-token and OAuth-app support is recorded only from the operation's own
 text. Nothing is inferred from another credential type or from the family name. Reason: an honest unknown is better than a wrong "supported".
 
+
+
+## 2026-10-24 — Paid-upgrade-only checks are "unverified", not blockers (Chris)
+A check that cannot run without a paid plan or upgrade is recorded once as UNVERIFIED (needs paid plan) with the exact feature. It is not a blocker, does not hold any merge or release, and nobody buys anything to clear it. Ledger status stays BLOCKED only because the ledger has no other word; read it as "untested".
