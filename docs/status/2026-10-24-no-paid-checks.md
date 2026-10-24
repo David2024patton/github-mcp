@@ -1,0 +1,2 @@
+# 2026-10-24 — paid-plan checks dropped for good (owner decision)
+Chris will not buy any upgrade. All checks that need one are recorded as untested and are not part of "finished". See `docs/DECISIONS.md` 2026-10-24. Remaining non-paid open items: export archive expiry re-check (~2026-10-26), HARD-1 live sign-in (Chris's next real sign-in), PUB-4 phone/desktop acceptance (Chris's devices), RTC pass and revocation tests (need Chris), and owner decisions (public go-live, legal text, support email, pricing, auto-delete branches setting).
