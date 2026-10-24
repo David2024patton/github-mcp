@@ -80,8 +80,9 @@ For every tool: request-shape test against the fake GitHub; for every write: `ru
 
 ## Done when
 - [x] PR A merged (#343): Codespaces secrets (user level + `M`), machines, account export (4 tools).
-- [x] PR B (in review): Copilot Spaces (10 tools), small reads/writes (7 of 8; `github_credential_revoke` moves to its own PR — protected token page).
-- [ ] `python3 scripts/count-catalog.py` and `node scripts/check-writes.mjs` green; `MASTER_AREAS` lists them.
+- [x] PR B merged: Copilot Spaces (10 tools), small reads/writes (7 of 8).
+- [x] PR C (this PR): `github_credential_revoke` — returns a one-use protected page link (the tool takes no arguments, so no token can pass through it); the token is typed on the page and revoked there.
+- [x] `python3 scripts/count-catalog.py` (463 tools) and `node scripts/check-writes.mjs` green; `MASTER_AREAS` lists them.
 - [ ] ACC-1 gets live rows: list machines, export start/status/link/delete on Chris's account (export of ONE
       disposable scratch repo only), Copilot Space create/delete (disposable), Classroom/Marketplace reads (expect an
       honest "not available for this account" answer).
