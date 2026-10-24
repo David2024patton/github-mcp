@@ -112,7 +112,7 @@ const reposOf = async (octokit, scope) => {
 
 const secretSetRepoAccess = defineGithubWrite({
   name: 'github_secret_set_repo_access', area: 'secret', audience: ['O'],
-  description: 'Choose exactly which repositories may use an organization secret, or one of your personal Codespaces secrets with level user (the secret must already be limited to selected repositories).',
+  description: 'Choose which repositories may use an organization secret or (level user) a personal Codespaces secret already limited to selected repositories.',
   properties: { owner: OWNER, kind: KIND, name: NAME, repositoryIds: { type: 'array', maxItems: 100, items: { type: 'integer', minimum: 1 }, description: 'The full list; repositories not listed lose access' }, ...OUTSIDE_PROJECT },
   required: ['name', 'repositoryIds'],
   declarations: { production: 'always', accessWidening: true, confirm: 'always', profiles: ['full'] },
