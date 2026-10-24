@@ -538,3 +538,11 @@ GitHub says the rules are not met, and direct writes to a protected branch go th
 My connection turns it off. Consequence: checks that only accept Chris (for example appliance-desk's extra testing build)
 also accept agents using his God-mode connection. Card: `docs/pr-cards/GOD-6.md`.
 
+## 2026-10-24 — Owners and admins can override branch rules on purpose (Chris)
+Chris: "the owner or the admin a lot of times needs to override those rules". GOD-6 keeps rules from being skipped
+silently when acting as the person, and adds a deliberate override: the call says `overrideRules: true` with a reason, the
+preview lists exactly which rules will be skipped, the change needs confirmation, it is sent as the person (the only case
+where `bypass_rules` may be sent, on GitHub's background merge), and the change log records it. GitHub decides whether that
+person may skip the rules. A per-person switch on My connection ("Allow overriding branch rules", on by default) turns it
+off. Agents building this project never use it on Chris's real repositories.
+

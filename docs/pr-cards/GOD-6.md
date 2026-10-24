@@ -2,8 +2,8 @@
 
 **Batch FIN · Design:** this card · **Prerequisites:** GOD-1 (master token), GOD-2 (`personalCred`), GOD-5 (extra
 places), all merged · **Effort:** medium–high (credentials, guards; read `docs/AI-PR-READ-FIRST.md`) · **Split:** one
-PR. Reason: routing as the person and the rule-bypass guard (step 6) must ship together; routing without the guard
-would let an admin's token skip branch rules. **Expected agent time:** 5–7 h.
+PR. Reason: routing as the person, the branch-rule guard and the deliberate override (step 6) must ship together;
+routing without the guard would let an admin's token skip branch rules silently. **Expected agent time:** 6–8 h.
 
 ## Owner decision (Chris, 2026-10-24) — already made
 
@@ -15,6 +15,12 @@ would let an admin's token skip branch rules. **Expected agent time:** 5–7 h.
 - The few things only an App may do go through the bot automatically. Every result says who it acted as.
 - The token expiring, being removed or being rejected switches back to the bot on its own and says so. No reconnecting.
 - On by default once a master token is added; a switch on My connection turns it off ("Act as me").
+- **Owners and admins must be able to override branch rules** (Chris, 2026-10-24: "the owner or the admin a lot of
+  times needs to override those rules"). So rules are never skipped *silently*, but a person whom GitHub allows to
+  skip them can do so *deliberately*: the call says `overrideRules: true` with a reason, the preview lists exactly
+  which rules will be skipped, and the change needs confirmation. GitHub itself decides whether this person may skip
+  them (bypass list, admin rights); the server never pretends someone has that right. A second switch on My
+  connection, "Allow overriding branch rules" (on by default), turns the override off for that person.
 
 **Consequence to state in the PR and the status note:** a check such as appliance-desk's "only Chris may start an
 extra testing build" will accept any agent that uses Chris's God-mode connection, because GitHub sees Chris. That is
@@ -25,8 +31,9 @@ the requested behaviour; it means such checks no longer tell Chris and his agent
 With a master token and "Act as me" on, every tool call is made as the person, except App-only requests, read-only
 connections and passes, which keep using the bot. Each result carries `acting_as`. `github_whoami` shows the mode,
 the reason when the bot is used, and the person's own GitHub request allowance. A token that expires or is rejected
-puts the connection back on the bot without an error loop, and a write is never silently repeated. Branch rules still
-hold when the person is an admin who could skip them.
+puts the connection back on the bot without an error loop, and a write is never silently repeated. Branch rules hold
+by default even for admins; an owner or admin can override them on purpose, one confirmed change at a time, with the
+skipped rules shown first and recorded.
 
 ## How it works today (read these, nothing else)
 
@@ -189,10 +196,11 @@ message built by `rateLimited` (`src/github/rate.js`), show "your own GitHub log
   `currentMasterReadback`), with `scope.db`: `setSetting('master_login.<subject>', login)` and
   `setSetting('master_rejected_at.<subject>', '')`.
 
-### 6. Branch rules still hold for admins (the safety part)
+### 6. Branch rules: held by default, overridden only on purpose
 
-An admin's personal token may be allowed by GitHub to skip branch protection or rulesets that the app cannot skip.
-The server never sends `bypass_rules`; the change of credential must not become a bypass either.
+**6a. Default — rules hold.** An admin's personal token may be allowed by GitHub to skip branch protection or
+rulesets that the app cannot skip. Without an explicit override (6b), the change of credential must not become a
+silent bypass.
 `async function mustUseAppForBranch(...)` in `act-as.js`, called from the hook only when the request would be `M`:
 - **Always the app** (no read needed): tags and releases (`POST`/`PATCH .../releases…`, any git ref outside
   `refs/heads/`, `POST .../git/tags`), and the GraphQL mutations `mergePullRequest`, `mergeBranch`,
@@ -217,6 +225,54 @@ The server never sends `bypass_rules`; the change of credential must not become 
   required review). Acting as you could skip them, so it is not merged." (`workflows-merge.js` merges through
   `github_pr_merge` via `callTool`, so it needs no change.) When the merge does go ahead on a branch with rules, the
   hook sends it with the app anyway; that is intended: rules are enforced exactly as for the app.
+
+**6b. Deliberate override by an owner or admin.**
+- **New optional arguments** (shared helper `OVERRIDE_ARGS` in `act-as.js`, added to each tool's input schema):
+  `overrideRules: boolean` and `overrideReason: string` (10–200 characters, required when `overrideRules` is true).
+  Tools: `github_pr_merge`, `github_pr_merge_async` (`src/tools/pulls-merge.js`), `github_content_put_file`,
+  `github_content_delete_file`, `github_content_push_files`, `github_git_update_ref` (`src/tools/code-write.js`),
+  `github_branch_merge`, `github_branch_delete` (`src/tools/branches.js`). Others (tags, branch rename, update
+  branch, universal tools) stay rule-bound; listed in ROADMAP.
+- **Allowed only when ALL hold**, checked in `export async function overrideAllowed(ctx, args)` (in `act-as.js`), in
+  this order, each with a plain refusal: `overrideReason` present → "Say why you are overriding the rules
+  (overrideReason)"; `actAsFor(ctx,{cred:'I'}).on` → "Only your own GitHub login can skip branch rules; add your
+  master token and turn Act as me on" (the app is never on a bypass list, so this is exact); setting
+  `rule_override.<subject>` is not `'off'` → "Overriding branch rules is off on My connection"; connection mode is
+  `production` → "Overriding rules needs a production connection". (Read-only connections and passes already fail
+  `actAsFor`.) The production guard already classifies these branches as production, so `confirm: true` is required
+  as usual; nothing new is needed for that.
+- **Preview** (the `preview()` of each tool, before confirmation): read with the app
+  `GET /repos/{owner}/{repo}/rules/branches/{branch}` and `GET /repos/{owner}/{repo}/branches/{branch}/protection`
+  (a 404 means none; a 403 means the app may not read it: list "branch protection: could not be read") and, for merges, the existing `ciState`. List what will be skipped in plain words, for example:
+  "Overrides on main: 1 required approval (0 given); required check 'ci' (failing). GitHub will record christcr2012 as
+  skipping them. Reason: hotfix for outage." If nothing would be skipped, say "No rules would be skipped; the override
+  is not needed" and proceed normally.
+- **Merges with an override:** keep refusing a changed head (`expectedHeadSha`), a closed or merged pull request and
+  conflicts (`mergeable === false`); turn "required checks not green" and the 6a `mergeable_state` refusal into
+  preview lines instead. Send `PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge-async` with
+  `{ sha: expectedHeadSha, merge_method, merge_action: 'direct_merge', bypass_rules: true }` (GitHub's own explicit
+  bypass field; check the pinned description with `node scripts/openapi-find.mjs "merge a pull request
+  asynchronously"`), as the person, with `request: { robinsonAs: 'me' }`. `github_pr_merge` with an override uses the
+  same request and reports merged or pending like `github_pr_merge_async`. This is the ONLY place the server may send
+  `bypass_rules`.
+- **Direct branch writes with an override:** send as the person with `request: { robinsonAs: 'me' }`, which makes
+  the hook skip `mustUseAppForBranch` for that one request (`robinsonAs: 'me'` is honoured only when `personal` is
+  set; otherwise refuse as above). GitHub then applies its own rule for that person.
+- **GitHub says no:** a 403/405/409/422 whose message mentions rules, protection or bypass → "GitHub does not let you
+  skip the rules on <branch> (you are not on its bypass list, or the rule cannot be bypassed). Nothing was changed."
+  Never repeat the write and never retry as the app.
+- **Record it:** the change-log summary starts `OVERRIDE (<reason>):`, `acted_as = 'you'`, and the result has
+  `rules_overridden: [<the preview list>]`.
+- **Docs to change in the same PR:** `AGENTS.md` engineering rule "Never send `bypass_rules`" becomes "Never send
+  `bypass_rules` except GOD-6's deliberate override (`overrideRules` with a reason, previewed, confirmed, as the
+  person). Agents building this project never set `overrideRules` on Chris's real repositories; scratch only.";
+  `docs/AI-PR-READ-FIRST.md` item 10 the same; the header comment and descriptions in `src/tools/pulls-merge.js`
+  ("Rules are never bypassed" → "Rules are not bypassed unless you ask with overrideRules"); the test that greps
+  the fake-GitHub log for `bypass_rules` now allows exactly the override merge request and nothing else.
+- **My connection:** a second switch under Act as me, "Allow overriding branch rules: on/off" (action
+  `rule_override`, setting `rule_override.<subject>`, default on), with the line "When on, your assistant can skip a
+  branch's rules for one change at a time, only when it asks to, shows you which rules, and you confirm. GitHub still
+  decides whether you may."
 
 ### 7. Show who acted — results, `github_whoami`, the change log
 
@@ -271,6 +327,16 @@ The server never sends `bypass_rules`; the change of credential must not become 
 13. Contents `PUT` as you: unprotected branch with no rules → master token; protected branch → app; rules non-empty →
     app; rules read fails → app. Release create and a `createCommitOnBranch` mutation → always app. Extra place with
     a protected branch → refused with the "app is not installed" message.
+14a. Override merge: as you, `overrideRules: true` with a reason, failing checks and `mergeable_state: 'blocked'` →
+    preview lists the skipped rules; confirm sends exactly one `merge-async` request with `bypass_rules: true` and the
+    exact `sha`, carrying the master token; change log summary starts `OVERRIDE (`.
+14b. Override refused: no reason; Act as me off (app); `rule_override.<subject> = 'off'`; preview-mode connection;
+    each gives its message and sends no write.
+14c. Override on a direct write: `github_content_put_file` to a protected branch with `overrideRules` → sent with the
+    master token (not the app); without it → the app (6a).
+14d. GitHub refuses the override (fake answers 403 "bypass not allowed") → plain message, exactly one write request,
+    no app retry.
+14e. The fake-GitHub log contains `bypass_rules` only in the 14a request across the whole suite.
 14. Pagination: page 2 of an `/app/installations` list (absolute URL) is still recognised as app-only.
 15. `github_workflow_merge_when_green` (nested `callTool`) result carries `acting_as` from its inner merge.
 16. `github_whoami` shows `acting_as` (mode, login, personal_rate).
@@ -279,7 +345,7 @@ fits the phone (`fitsScreen`). Write-contract suites (`runWriteContract`) stay g
 app path).
 
 ## Done when
-- [ ] All 16 unit cases and the browser case pass; `npm run check`, `npm run test:db`, `npm run test:shapes`,
+- [ ] All unit cases (1–16, 14a–14e) and the browser case pass; `npm run check`, `npm run test:db`, `npm run test:shapes`,
       `npm run test:browser` green; `ci` and `release-policy` green at the exact head.
 - [ ] `node scripts/build-app-only-routes.mjs` output committed and its in-sync test passes.
 - [ ] Self-review records each `docs/AI-PR-READ-FIRST.md` constraint, in particular: no token in results or logs
