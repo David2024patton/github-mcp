@@ -1362,7 +1362,7 @@ describe('Installed organization saved earlier as an extra place',()=>{
     const result=await c.finish({state:start.state,code:'caseowner-fixture-code-2'});
     expect(result.manage.accounts).toContainEqual(expect.objectContaining({login:'Client-Co',active:true,changes:true}));
     expect(result.manage.places.some(p=>p.login.toLowerCase()==='client-co')).toBe(false);
-    expect((await scope.db.listAccounts()).filter(a=>Number(a.account_id)===51001)).toHaveLength(1);
+    expect(await scope.sql`SELECT account_id FROM gh_accounts WHERE account_id=${51001}`).toHaveLength(1);
     expect(await scope.db.getAccount('client-co')).toMatchObject({login:'Client-Co',credential_kind:'app',installation_id:41091});
     expect(await gateFor(original)).not.toBeNull();
   });
