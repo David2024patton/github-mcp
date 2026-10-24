@@ -2,7 +2,7 @@
 
 **Batch FIN · Design:** `docs/designs/FINISH-PLAN.md` §4 · **Prerequisites:** GOD-2, GOD-3 (needs `personalCred`,
 `scopeCovered`, `masterTokenLink({enterprise:true})`) · **Effort:** medium · **Deadline:** merged and released by
-**2026-11-10** so ACC-1 can test before the trial ends. If it slips, ship the read tools first (split PR).
+**2026-11-10** (Chris's instruction 2026-10-23: merged, released and accepted before about 2026-11-15) so ACC-1 can test before the trial ends. If it slips, ship the read tools first (split PR).
 
 ## Outcome
 A person who administers a GitHub Enterprise and has a master token with `admin:enterprise` (or `read:enterprise` for

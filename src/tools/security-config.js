@@ -17,7 +17,7 @@ const SETTING_KEYS = ['code_security', 'dependency_graph', 'dependency_graph_aut
 const PAID = new Set(['code_security', 'secret_protection', 'secret_scanning', 'secret_scanning_push_protection', 'secret_scanning_validity_checks', 'secret_scanning_non_provider_patterns',
   'secret_scanning_generic_secrets', 'secret_scanning_extended_metadata', 'secret_scanning_delegated_bypass', 'secret_scanning_delegated_alert_dismissal', 'code_scanning_default_setup', 'code_scanning_delegated_alert_dismissal']);
 const settingProps = Object.fromEntries(SETTING_KEYS.map((k) => [k, THREE]));
-const SETTINGS = {
+export const SETTINGS = {
   type: 'object', additionalProperties: false, minProperties: 1, maxProperties: 30,
   properties: { ...settingProps, advanced_security: { type: 'string', enum: ['enabled', 'disabled', 'code_security', 'secret_protection'] }, enforcement: { type: 'string', enum: ['enforced', 'unenforced'] },
     code_scanning_default_setup_options: { type: 'object', additionalProperties: false, properties: { runner_type: { type: 'string', enum: ['standard', 'labeled', 'not_set'] }, runner_label: { type: 'string', maxLength: 100 } } },
@@ -39,7 +39,7 @@ export const shapeConfig = (c) => (c ? {
 } : null);
 // Match explicitly requested nested properties; the provider may add defaults,
 // but must not ignore an explicitly requested security or enforcement change.
-function requestedMatches(expected,actual){
+export function requestedMatches(expected,actual){
   if(Array.isArray(expected))
     return Array.isArray(actual)&&expected.length===actual.length&&
       expected.every((v,i)=>requestedMatches(v,actual[i]));

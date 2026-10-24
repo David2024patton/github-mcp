@@ -115,3 +115,11 @@ GOD-2 personal tools on the master token · GOD-3 "what it unlocks" · ENT-1 ent
 sweep · GOD-4 new master-token families · GQL-1 GraphQL write specs · GOD-5 extra places · HARD-1 hardening and tidy.
 Still NOT planned (stay here): PUB-5 directory listing (policy-blocked); linking a second, separate GitHub login into one
 connection; OAuth-app token management and App-manifest conversion (need an OAuth app's own secret).
+
+## Found while building ENT-1 (2026-10-23)
+- **Copilot coding-agent policy for an enterprise** (`PUT /enterprises/{enterprise}/copilot/policies/coding_agent` and
+  `POST|DELETE .../coding_agent/organizations`): not a dedicated tool, because the pinned GitHub description has no operation
+  that reads the policy back, so a change could not be verified. Still reachable through the universal REST tool (preview and
+  confirm apply; read-back is not possible). Re-open when GitHub adds a read operation.
+- **Enterprise membership changes** (invite or remove admins and members, create organizations, GraphQL) stay out of ENT-1 on
+  purpose (access changes at enterprise scale); GQL-1 may add them with Chris's say-so.
