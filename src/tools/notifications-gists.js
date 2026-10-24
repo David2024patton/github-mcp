@@ -1,6 +1,7 @@
 // O-7: optional K-credential notification inbox + U-authorized gist lifecycle.
 // Never enroll an optional classic token automatically or infer success from HTTP 202.
 import {githubFor,listAll} from '../github/client.js';
+import {personalCred} from '../github/personal-cred.js';
 import {defineRead} from './define-read.js';
 import {defineGithubWrite} from './define-github-write.js';
 import {plain} from './github-read.js';
@@ -130,7 +131,7 @@ const readSpecs=[
     description:'List a bounded set of the authorized user’s gists without downloading contents or claiming truncated lists complete.',
     properties:{owner:OWNER,max:MAX},
     handler:(a,c)=>plain(async()=>{
-      const t=ownerTarget(a,c),{gh,principal}=await auth(c,t,'U');
+      const t=ownerTarget(a,c),{gh,principal}=await auth(c,t,await personalCred(c,'gist'));
       const d=await collection(gh,'GET /gists',{},a.max??100);
       return {principal,gists:d.items.map(gid),complete:d.complete};
     })}),
@@ -138,7 +139,7 @@ const readSpecs=[
     description:'Read exact gist metadata and safely size-capped file contents, including per-file truncation and owner details.',
     properties:{owner:OWNER,gistId:ID},required:['gistId'],
     handler:(a,c)=>plain(async()=>{
-      const t=ownerTarget(a,c),{gh}=await auth(c,t,'U');
+      const t=ownerTarget(a,c),{gh}=await auth(c,t,await personalCred(c,'gist'));
       const x=await gist(gh,a.gistId);
       if(!x)throw refusal('Gist not found or not readable by authorized user.');
       return {gist:gid(x),files:fileList(x),
@@ -266,7 +267,7 @@ const save=defineGithubWrite({
     if(!a.gistId&&(a.public===undefined||!Object.keys(files).length||
        Object.values(files).some(x=>x===null)))
       throw refusal('New gists require explicit public/private choice and non-null files.');
-    const {gh,principal}=await auth(c,t,'U');
+    const {gh,principal}=await auth(c,t,await personalCred(c,'gist'));
     const before=a.gistId?await gist(gh,a.gistId):null;
     if(a.gistId&&(!before||before.owner?.id!==principal.id))
       throw refusal('Only a verified user-owned gist may be updated.');
@@ -283,7 +284,7 @@ const save=defineGithubWrite({
     '; visibility '+(a.gistId?(b.prior?.public?'public':'secret'):(a.public?'public':'secret'))+
     '; files '+Object.keys(b.files).join(', '),
   apply:async({args:a,ctx:c,target:t,before:b})=>{
-    const {gh,principal}=await auth(c,t,'U');
+    const {gh,principal}=await auth(c,t,await personalCred(c,'gist'));
     if(principal.id!==b.principal.id)throw refusal('Authenticated gist owner changed.');
     if(a.gistId&&!b.prior||a.gistId&&b.prior.id!==a.gistId)
       throw refusal('Gist ownership or ID not verified.');
@@ -293,7 +294,7 @@ const save=defineGithubWrite({
         ...(a.description!==undefined?{description:a.description}:{})});
   },
   readAfter:async({args:a,ctx:c,target:t,response:r})=>{
-    const {gh,principal}=await auth(c,t,'U');
+    const {gh,principal}=await auth(c,t,await personalCred(c,'gist'));
     const id=a.gistId??r?.data?.id;
     return {principal,current:id?await gist(gh,id):null};
   },
@@ -318,7 +319,7 @@ const del=defineGithubWrite({
   declarations:{production:'always',confirm:'always',cred:'U',profiles:['full']},
   target:ownerTarget,
   read:async(a,c,t)=>{
-    const {gh,principal}=await auth(c,t,'U');
+    const {gh,principal}=await auth(c,t,await personalCred(c,'gist'));
     const g=await gist(gh,a.gistId);
     return {principal,prior:g&&g.owner?.id===principal.id?gid(g):null};
   },
@@ -329,12 +330,12 @@ const del=defineGithubWrite({
   apply:async({args:a,ctx:c,target:t,before:b})=>{
     if(!b.prior||b.prior.id!==a.gistId)
       throw refusal('Exact owned gist no longer exists; no deletion sent.');
-    const {gh,principal}=await auth(c,t,'U');
+    const {gh,principal}=await auth(c,t,await personalCred(c,'gist'));
     if(principal.id!==b.principal.id)throw refusal('Authenticated gist owner changed.');
     return gh.request('DELETE /gists/{gist_id}',{gist_id:a.gistId});
   },
   readAfter:async({args:a,ctx:c,target:t})=>{
-    const {gh,principal}=await auth(c,t,'U');
+    const {gh,principal}=await auth(c,t,await personalCred(c,'gist'));
     return {principal,current:await gist(gh,a.gistId)};
   },
   verify:({before:b,after:x})=>x.principal.id===b.principal.id&&

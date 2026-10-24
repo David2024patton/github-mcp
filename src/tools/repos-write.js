@@ -3,6 +3,7 @@
 // request is sent through `githubFor`, and the result is read back and compared with the intent.
 import { defineGithubWrite } from './define-github-write.js';
 import { missing, octo, ownerOf, refusal, slug } from './github-write.js';
+import { personalCred } from '../github/personal-cred.js';
 import { productionReason } from './production-guard.js';
 
 const OWNER = { type: 'string', maxLength: 39, description: 'GitHub account (default: the connection\'s default account)' };
@@ -305,11 +306,11 @@ const repoStar = defineGithubWrite({
   required: ['repo_owner', 'repo'],
   declarations: { production: 'never', cred: 'U' },
   target: (args, ctx) => ({ owner: ownerOf(args, ctx), scope: 'user' }),
-  read: async (args, ctx, target) => (await missing(async () => (await (await octo(ctx, target.owner, 'U')).request('GET /user/starred/{owner}/{repo}', { owner: args.repo_owner, repo: args.repo })).status)) === 204,
+  read: async (args, ctx, target) => (await missing(async () => (await (await octo(ctx, target.owner, await personalCred(ctx, 'repo'))).request('GET /user/starred/{owner}/{repo}', { owner: args.repo_owner, repo: args.repo })).status)) === 204,
   classify: () => ({}),
   summarize: ({ args, before }) => `${args.starred === false ? 'Unstar' : 'Star'} ${slug(args.repo_owner, args.repo)} (today ${before ? 'starred' : 'not starred'})`,
-  apply: async ({ args, ctx, target }) => (await octo(ctx, target.owner, 'U')).request(`${args.starred === false ? 'DELETE' : 'PUT'} /user/starred/{owner}/{repo}`, { owner: args.repo_owner, repo: args.repo }),
-  readAfter: async ({ args, ctx, target }) => (await missing(async () => (await (await octo(ctx, target.owner, 'U')).request('GET /user/starred/{owner}/{repo}', { owner: args.repo_owner, repo: args.repo })).status)) === 204,
+  apply: async ({ args, ctx, target }) => (await octo(ctx, target.owner, await personalCred(ctx, 'repo'))).request(`${args.starred === false ? 'DELETE' : 'PUT'} /user/starred/{owner}/{repo}`, { owner: args.repo_owner, repo: args.repo }),
+  readAfter: async ({ args, ctx, target }) => (await missing(async () => (await (await octo(ctx, target.owner, await personalCred(ctx, 'repo'))).request('GET /user/starred/{owner}/{repo}', { owner: args.repo_owner, repo: args.repo })).status)) === 204,
   verify: ({ args, after }) => after === (args.starred !== false),
   inverse: ({ args, target }) => ({ tool: 'github_repo_star', args: { owner: target.owner, repo_owner: args.repo_owner, repo: args.repo, starred: args.starred === false } }),
   present: ({ after }) => ({ starred: after })

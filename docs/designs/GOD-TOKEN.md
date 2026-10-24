@@ -31,7 +31,7 @@ tool, never returned, encrypted at rest with a context that binds it to tenant, 
 
 ## Pieces (each a whole, usable outcome)
 
-Status 2026-10-23: GOD-1 MERGED (#334–#336). GOD-2/GOD-3 now have ready cards (`docs/pr-cards/GOD-2.md`, `GOD-3.md`);
+Status 2026-10-23: GOD-1 MERGED (#334–#336). GOD-2 (personal-account tools prefer the master token) and GOD-3 (what the master token unlocks, on `github_whoami` and My connection) are built in one PR (see `docs/status/2026-10-23-god-2-3.md`). They had ready cards (`docs/pr-cards/GOD-2.md`, `GOD-3.md`);
 the old "GOD-2 purpose-built tools" idea below is now card GOD-4, and reaching places without the App is GOD-5
 (`docs/designs/FINISH-PLAN.md`).
 

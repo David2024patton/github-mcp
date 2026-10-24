@@ -123,7 +123,9 @@ function managePage(res, m) {
       act('disconnect', `Disconnect ${h(c.name)}`, { value: c.clientId, plain: true, id: 'disconnect-' + c.clientId })).join('') : '<p class="muted">No app is connected right now.</p>') +
     (m.connections.length ? (anyChanges ? act('read_only', 'Make all my apps read-only', { plain: true }) : act('allow_changes', 'Let my apps make changes again', { plain: true })) : '') +
     '<h2>Master token (optional)</h2>' + (m.master.added
-      ? `<p>Added${m.master.expiresAt ? ', runs out ' + h(when(m.master.expiresAt)) : ', never runs out'}. It unlocks what normal sign-in cannot (notifications, packages, gists, organization settings).</p>` + act('master', 'Replace or remove it', { plain: true })
+      ? `<p>Added${m.master.expiresAt ? ', runs out ' + h(when(m.master.expiresAt)) : ', never runs out'}. It unlocks what normal sign-in cannot (notifications, packages, gists, organization settings).</p>` +
+        (m.master.unlocks?.length ? '<div id="master-unlocks">' + m.master.unlocks.map((u) => `<div class="row"><span>${h(u.area)}</span><span class="tag">${u.unlocked ? 'unlocked' : 'locked — tick “' + h(u.needs) + '”'}</span></div>`).join('') + '</div>' : '') +
+        act('master', 'Replace or remove it', { plain: true })
       : '<p>Unlocks what normal sign-in cannot: notifications, packages, gists, organization settings and more. It has the power of your whole GitHub login, so only add it if you want that.</p>' + act('master', 'Add my master token')) +
     '<h2>Time zone</h2>' +
     `<form method="post" action="${MANAGE_PATH}">${hidden('handle', m.handle)}${hidden('action', 'time_zone')}<label>Show times in<select name="value">` +

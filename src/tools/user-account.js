@@ -7,6 +7,7 @@ import {defineGithubWrite} from './define-github-write.js';
 import {plain} from './github-read.js';
 import {ownerOf,refusal} from './github-write.js';
 import {accessChange} from './people-guard.js';
+import {personalCred} from '../github/personal-cred.js';
 
 const OWNER={type:'string',minLength:1,maxLength:39};
 const MAX={type:'integer',minimum:1,maximum:500};
@@ -18,8 +19,10 @@ const TYPE={type:'string',enum:['ssh','signing','gpg']};
 const KEY={type:'string',minLength:40,maxLength:16384};
 const accountTarget=(a,c)=>({owner:ownerOf(a,c),scope:'user',kind:'user-settings'});
 const api=(gh,route,params={})=>gh.request(route,params).then(x=>x.data);
-const self=async(c,t)=>{
-  const gh=await githubFor(c,{owner:t.owner,cred:'U'});
+// GOD-2: the master token acts on the person's own account when it is added and covers `scope`; otherwise U as before.
+const keyScope=k=>k==='gpg'?'admin:gpg_key':k==='signing'?'admin:ssh_signing_key':'admin:public_key';
+const self=async(c,t,scope='user')=>{
+  const gh=await githubFor(c,{owner:t.owner,cred:await personalCred(c,scope)});
   const user=await api(gh,'GET /user');
   if(!user?.id||!user?.login||user.type&&user.type!=='User')
     throw refusal('User authorization identity is not verified. Authorize the GitHub App as yourself on the setup page.');
@@ -101,7 +104,7 @@ const specs=[
     description:'Read the user-authorized personal profile, plan, email verification, organizations, blocks and two-factor state.',
     properties:{owner:OWNER,max:MAX},
     handler:(a,c)=>plain(async()=>{
-      const t=accountTarget(a,c),{gh,raw}=await self(c,t),max=a.max??100;
+      const t=accountTarget(a,c),{gh,raw}=await self(c,t,'user'),max=a.max??100;
       const email=await tryList(()=>inventory(gh,'GET /user/emails',{},max),safeEmail);
       const orgs=await tryList(()=>inventory(gh,'GET /user/orgs',{},max),
         x=>({login:x.login,id:x.id}));
@@ -114,7 +117,7 @@ const specs=[
     description:'List public Git SSH, SSH signing and GPG key fingerprints and creation dates, never private or full public key material.',
     properties:{owner:OWNER,max:MAX},
     handler:(a,c)=>plain(async()=>{
-      const t=accountTarget(a,c),{gh,user}=await self(c,t),max=a.max??100;
+      const t=accountTarget(a,c),{gh,user}=await self(c,t,'admin:public_key'),max=a.max??100;
       const keys={};
       for(const kind of Object.keys(routes))
         keys[kind]=await tryList(()=>getKeys(gh,kind,max),x=>safeKey(x,kind));
@@ -124,7 +127,7 @@ const specs=[
     description:'List pending repository invitations for the authorized personal account with exact IDs and repository identities.',
     properties:{owner:OWNER,max:MAX},
     handler:(a,c)=>plain(async()=>{
-      const t=accountTarget(a,c),{gh,user}=await self(c,t);
+      const t=accountTarget(a,c),{gh,user}=await self(c,t,'user');
       const x=await invites(gh);
       return {principal:user,invitations:x.items.slice(0,a.max??100).map(safeInvite),
         complete:x.complete&&x.items.length<=(a.max??100)};
@@ -143,7 +146,7 @@ const profile=defineGithubWrite({
     production:'always',confirm:'always',cred:'U',profiles:['full']},
   target:accountTarget,
   read:async(a,c,t)=>{
-    const user=await self(c,t);
+    const user=await self(c,t,'user');
     if(!Object.keys(requestedFields(a)).length)
       throw refusal('Specify at least one profile field to change.');
     return {user:user.user,fields:safeProfile(user.raw)};
@@ -152,12 +155,12 @@ const profile=defineGithubWrite({
   summarize:({before:b,args:a})=>'UPDATE GitHub profile of '+b.user.login+
     '; fields '+Object.keys(requestedFields(a)).join(', ')+' (empty string clears a value)',
   apply:async({args:a,ctx:c,target:t,before:b})=>{
-    const {gh,user}=await self(c,t);
+    const {gh,user}=await self(c,t,'user');
     if(user.id!==b.user.id)throw refusal('Authenticated user identity changed.');
     return gh.request('PATCH /user',requestedFields(a));
   },
   readAfter:async({ctx:c,target:t})=>{
-    const x=await self(c,t);return {user:x.user,fields:safeProfile(x.raw)};
+    const x=await self(c,t,'user');return {user:x.user,fields:safeProfile(x.raw)};
   },
   verify:({args:a,before:b,after:x})=>x.user.id===b.user.id&&
     Object.entries(requestedFields(a)).every(([key,v])=>x.fields[key]===v),
@@ -175,7 +178,7 @@ const emailChange=defineGithubWrite({
     if(a.action==='visibility'&&(a.email!==undefined||!a.visibility)||
       a.action!=='visibility'&&(!a.email||a.visibility!==undefined))
       throw refusal('Add/remove requires only email; visibility requires public/private and no email.');
-    const {gh,user}=await self(c,t),x=await emails(gh);
+    const {gh,user}=await self(c,t,'user'),x=await emails(gh);
     return {user,items:demand(x,'Email').map(safeEmail)};
   },
   classify:({args:a,before:b})=>({
@@ -189,7 +192,7 @@ const emailChange=defineGithubWrite({
     ' account email for '+b.user.login+
     (a.action==='visibility'?' visibility '+a.visibility:' '+a.email),
   apply:async({args:a,ctx:c,target:t,before:b})=>{
-    const {gh,user}=await self(c,t);
+    const {gh,user}=await self(c,t,'user');
     if(user.id!==b.user.id)throw refusal('Account principal changed.');
     if(a.action==='add'){
       if(b.items.some(x=>x.email.toLowerCase()===a.email.toLowerCase()))
@@ -207,7 +210,7 @@ const emailChange=defineGithubWrite({
     return gh.request('PATCH /user/email/visibility',{visibility:a.visibility});
   },
   readAfter:async({ctx:c,target:t})=>{
-    const {gh,user}=await self(c,t),x=await emails(gh);
+    const {gh,user}=await self(c,t,'user'),x=await emails(gh);
     return {user,items:demand(x,'Email').map(safeEmail)};
   },
   verify:({args:a,before:b,after:x})=>{
@@ -233,7 +236,7 @@ const addKey=defineGithubWrite({
   target:accountTarget,
   read:async(a,c,t)=>{
     sanitizePublic(a.kind,a.publicKey);
-    const {gh,user}=await self(c,t),x=await getKeys(gh,a.kind);
+    const {gh,user}=await self(c,t,keyScope(a.kind)),x=await getKeys(gh,a.kind);
     const items=demand(x,'Account public key');
     if(a.kind!=='gpg'&&items.some(k=>k.key===a.publicKey))
       throw refusal('The public key is already enrolled.');
@@ -247,14 +250,14 @@ const addKey=defineGithubWrite({
   summarize:({args:a,before:b})=>'ADD '+a.kind+' PUBLIC KEY to '+b.user.login+
     '; fingerprint '+fingerprint(a.publicKey),
   apply:async({args:a,ctx:c,target:t,before:b})=>{
-    const {gh,user}=await self(c,t);
+    const {gh,user}=await self(c,t,keyScope(a.kind));
     if(user.id!==b.user.id)throw refusal('Account principal changed.');
     return gh.request(keyAdd(a.kind),a.kind==='gpg'?
       {armored_public_key:a.publicKey,...(a.title?{name:a.title}:{})}:
       {key:a.publicKey,...(a.title?{title:a.title}:{})});
   },
   readAfter:async({args:a,ctx:c,target:t,response:r})=>{
-    const {gh,user}=await self(c,t),id=r?.data?.id;
+    const {gh,user}=await self(c,t,keyScope(a.kind)),id=r?.data?.id;
     return {user,id,key:Number.isInteger(id)?await getExact(gh,a.kind,id):null};
   },
   verify:({args:a,before:b,after:x})=>x.user.id===b.user.id&&
@@ -270,7 +273,7 @@ const deleteKey=defineGithubWrite({
   declarations:{production:'always',confirm:'always',cred:'U',profiles:['full']},
   target:accountTarget,
   read:async(a,c,t)=>{
-    const {gh,user}=await self(c,t);
+    const {gh,user}=await self(c,t,keyScope(a.kind));
     return {user,key:await getExact(gh,a.kind,a.keyId)};
   },
   classify:()=>({production:'removes a personal account authentication or signing key'}),
@@ -279,13 +282,13 @@ const deleteKey=defineGithubWrite({
   apply:async({args:a,ctx:c,target:t,before:b})=>{
     if(!b.key||b.key.id!==a.keyId)
       throw refusal('No matching public key exists; nothing to remove.');
-    const {gh,user}=await self(c,t);
+    const {gh,user}=await self(c,t,keyScope(a.kind));
     if(user.id!==b.user.id)throw refusal('Account principal changed.');
     const [route,params]=keyDelete(a.kind,a.keyId);
     return gh.request(route,params);
   },
   readAfter:async({args:a,ctx:c,target:t})=>{
-    const {gh,user}=await self(c,t);
+    const {gh,user}=await self(c,t,keyScope(a.kind));
     return {user,key:await getExact(gh,a.kind,a.keyId)};
   },
   verify:({before:b,after:x})=>!!b.key&&x.user.id===b.user.id&&x.key===null,
@@ -299,7 +302,7 @@ const setBlocked=defineGithubWrite({
   declarations:{production:'always',confirm:'always',cred:'U',profiles:['full']},
   target:accountTarget,
   read:async(a,c,t)=>{
-    const {gh,user}=await self(c,t);
+    const {gh,user}=await self(c,t,'user');
     if(user.login.toLowerCase()===a.username.toLowerCase())
       throw refusal('Cannot block your own user account.');
     return {user,blocked:await isBlocked(gh,a.username)};
@@ -309,13 +312,13 @@ const setBlocked=defineGithubWrite({
     ' for '+b.user.login+'; currently '+(b.blocked?'blocked':'not blocked'),
   apply:async({args:a,ctx:c,target:t,before:b})=>{
     if(b.blocked===a.blocked)throw refusal('Block state already equals requested state.');
-    const {gh,user}=await self(c,t);
+    const {gh,user}=await self(c,t,'user');
     if(user.id!==b.user.id)throw refusal('Account principal changed.');
     return gh.request((a.blocked?'PUT ':'DELETE ')+
       '/user/blocks/{username}',{username:a.username});
   },
   readAfter:async({args:a,ctx:c,target:t})=>{
-    const {gh,user}=await self(c,t);
+    const {gh,user}=await self(c,t,'user');
     return {user,blocked:await isBlocked(gh,a.username)};
   },
   verify:({args:a,before:b,after:x})=>x.user.id===b.user.id&&
@@ -331,7 +334,7 @@ const respondInvite=defineGithubWrite({
     cred:'U',profiles:['full']},
   target:accountTarget,
   read:async(a,c,t)=>{
-    const {gh,user}=await self(c,t),x=await invites(gh),items=demand(x,'Invitation');
+    const {gh,user}=await self(c,t,'user'),x=await invites(gh),items=demand(x,'Invitation');
     return {user,invitation:safeInvite(items.find(i=>i.id===a.invitationId)??{})};
   },
   classify:({args:a,before:b})=>({
@@ -346,13 +349,13 @@ const respondInvite=defineGithubWrite({
     const invite=b.invitation;
     if(!invite?.id||!invite?.repository||!invite?.repository_id)
       throw refusal('No exact pending invitation/repository identity to '+a.action+'.');
-    const {gh,user}=await self(c,t);
+    const {gh,user}=await self(c,t,'user');
     if(user.id!==b.user.id)throw refusal('Account principal changed.');
     return gh.request((a.action==='accept'?'PATCH ':'DELETE ')+
       '/user/repository_invitations/{invitation_id}',{invitation_id:a.invitationId});
   },
   readAfter:async({args:a,ctx:c,target:t,before:b})=>{
-    const {gh,user}=await self(c,t),pending=await invites(gh);
+    const {gh,user}=await self(c,t,'user'),pending=await invites(gh);
     let joined=null;
     if(a.action==='accept'&&b.invitation?.repository){
       const [owner,repo]=b.invitation.repository.split('/');
@@ -385,7 +388,7 @@ const statusView=s=>s?{emoji:s.emoji??null,message:s.message??null,
 const sameTime=(a,b)=>(a??null)===(b??null)||
   (a&&b&&Date.parse(a)===Date.parse(b));
 const viewerStatus=async(c,t)=>{
-  const gh=await githubFor(c,{owner:t.owner,cred:'U'});
+  const gh=await githubFor(c,{owner:t.owner,cred:await personalCred(c,'user')});
   const x=(await graphql(gh,statusQuery)).viewer;
   if(!x?.id||!x?.login)
     throw refusal('User authorization identity is not verified. Authorize the GitHub App as yourself on the setup page.');

@@ -642,6 +642,7 @@ describe('GOD-1 the master token (one classic token, kind M)', () => {
     // My connection shows it is there (never the token)
     const page = await c.finish({ state: (await c.startManage()).state, code: 'alice-fixture-code-1' });
     expect(page.manage.master).toMatchObject({ added: true });
+    expect(page.manage.master.unlocks).toContainEqual({ area: 'Gists', unlocked: true });
     expect(JSON.stringify(page)).not.toContain(people.alice.token);
     // another person's connection has none
     const bobRouted = await gateFor(await tokenFor(c, client, 'bob'));

@@ -13,8 +13,11 @@ export const MASTER_HANDLE='master';
 export const MASTER_SCOPES=Object.freeze(['repo','workflow','write:packages','delete:packages','admin:org',
   'admin:public_key','admin:repo_hook','admin:org_hook','gist','notifications','user','delete_repo',
   'write:discussion','admin:gpg_key','admin:ssh_signing_key','codespace','project','audit_log','copilot']);
-export const masterTokenLink=()=>'https://github.com/settings/tokens/new?description='+
-  encodeURIComponent('Robinson GitHub MCP master token')+'&scopes='+MASTER_SCOPES.map(encodeURIComponent).join(',');
+// GOD-3: `enterprise` adds the optional GitHub Enterprise permissions (only for people who administer an enterprise).
+export const ENTERPRISE_SCOPES=Object.freeze(['admin:enterprise','manage_billing:enterprise','read:enterprise','scim:enterprise']);
+export const masterTokenLink=({enterprise=false}={})=>'https://github.com/settings/tokens/new?description='+
+  encodeURIComponent('Robinson GitHub MCP master token')+'&scopes='+
+  [...MASTER_SCOPES,...(enterprise?ENTERPRISE_SCOPES.filter(x=>!MASTER_SCOPES.includes(x)):[])].map(encodeURIComponent).join(',');
 export const masterAad=({tenantId,identityId})=>pilotOptionalAad({tenantId,identityId,accountLogin:MASTER_HANDLE,kind:'M'});
 const parseExpiry=value=>{
   const text=String(value??'').trim();

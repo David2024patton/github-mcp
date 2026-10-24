@@ -12,6 +12,7 @@ import { spendStatus } from './spend-guard.js';
 import { oneTimeStore } from '../dev/forwarders.js';
 import { validateGrant } from '../rtc/pass-scope.js';
 import { RULES, capText, fitToBudget, listKeyOf, pageOfBody, projectFields } from '../core/result-rules.js';
+import { MASTER_AREAS, masterUnlocks } from '../github/master-areas.js';
 
 const DETAIL = { type: 'string', enum: ['brief', 'full'], description: 'brief (default) or full' };
 const FIELDS = { type: 'array', items: { type: 'string', maxLength: 64 }, maxItems: 20, description: 'Only these fields of each account' };
@@ -75,7 +76,7 @@ async function whoami(args, ctx) {
     mode: ctx.connection.mode.toUpperCase(), profile: ctx.connection.profile, listing: ctx.connection.listing,
     default_account: ctx.connection.default_account, api_version: GITHUB_API_VERSION,
     credential_types: { I: 'installation token (or fine-grained token)', U: 'your sign-in for personal settings', K: 'notifications-only classic token', P: 'package-only classic token', ...(master ? { M: 'your master token (everything your GitHub login can do, used only when the App cannot)' } : {}) },
-    ...(master ? { master_token: master.enrolled ? { added: true, permissions: master.scopes, ...masterExpiry(master.expires_at) } : { added: false, how_to_add: 'Ask the assistant to run github_master_token_link; it gives you a private link.' } } : {}),
+    ...(master ? { master_token: master.enrolled ? { added: true, permissions: master.scopes, ...masterExpiry(master.expires_at), unlocks: masterUnlocks(master.scopes ?? []) } : { added: false, how_to_add: 'Ask the assistant to run github_master_token_link; it gives you a private link.', would_unlock: MASTER_AREAS.map((a) => a.area) } } : {}),
     // Public sign-ins have a page where the person adds accounts, the master token, read-only, time zone, or disconnects.
     ...(String(ctx.connection.client_id ?? '').startsWith('pcl_') ? (() => { try { return { my_connection_page: publicOrigin() + '/connection' }; } catch { return {}; } })() : {}),
     accounts: pick(accounts, args.fields)

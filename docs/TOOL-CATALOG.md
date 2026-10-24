@@ -87,7 +87,7 @@ Card(s): D-1.
 | `github_repo_sync_fork` | Bring a fork's branch up to date with its upstream | P·Prod* | C | I | B | E | D-1 built #29 |
 | `github_repo_get_custom_properties` | Custom property values on a repository | — | N | I | O | R | D-1 built #27 |
 | `github_repo_set_custom_properties` | Set custom property values on a repository | P | N | I | O | F | D-1 built #29 |
-| `github_repo_star` | Star or unstar a repository as Chris | P | C | U | Op | E | D-1 built #29 |
+| `github_repo_star` | Star or unstar a repository as Chris (uses your master token when added) | P | C | U | Op | E | D-1 built #29 |
 
 ## Files, commits and git data (`github_content_*, github_commit_*, github_git_*`) — 15
 
@@ -446,10 +446,10 @@ Card(s): O-4. The developer's $0/production-OFF TEST rule does not limit an end 
 | `github_copilot_get_billing` | Copilot plan, seat counts and seat assignments with last activity | — | C built #201 | I | O | R | O-4 built #201 |
 | `github_copilot_add_seats` | Assign Copilot seats with a verified plan price, or disclose unknown recurring pricing under user delegation | C·$·A·M·Prod | F built #201 | I | O | F | O-4 built #201 |
 | `github_copilot_remove_seats` | Remove Copilot seats at cycle end even if the provider plan's price is not published | C·Prod | C built #201 | I | O | F | O-4 built #201 |
-| `github_codespace_list` | Codespaces of the user or org with machine, state and who pays | — | C built #201 | I,U | O,B | R | O-4 built #201 |
-| `github_codespace_create` | Create a codespace for a repo and branch (hourly compute plus storage) | C·$·Prod | C built #201 | U | O,B | F | O-4 built #201 |
-| `github_codespace_set_state` | Start (billed) or stop (saves money) a codespace | C·$*·Prod* | C built #201 | U | O,B | F | O-4 built #201 |
-| `github_codespace_delete` | Delete a codespace (unpushed work is lost) | C·D·Prod | C built #201 | U | O,B | F | O-4 built #201 |
+| `github_codespace_list` | Codespaces of the user or org with machine, state and who pays (uses your master token when added) | — | C built #201 | I,U | O,B | R | O-4 built #201 |
+| `github_codespace_create` | Create a codespace for a repo and branch (hourly compute plus storage) (uses your master token when added) | C·$·Prod | C built #201 | U | O,B | F | O-4 built #201 |
+| `github_codespace_set_state` | Start (billed) or stop (saves money) a codespace (uses your master token when added) | C·$*·Prod* | C built #201 | U | O,B | F | O-4 built #201 |
+| `github_codespace_delete` | Delete a codespace (unpushed work is lost) (uses your master token when added) | C·D·Prod | C built #201 | U | O,B | F | O-4 built #201 |
 | `github_codespace_set_org_access` | PUT organization-paid Codespaces access with exact selected-user membership, user-chosen budget enforcement, and explicit UNCONFIRMED 204 until owner UI verifies saved policy | C·A·$*·Prod | N built #201 | I | O | F | O-4 built #201; authority repair pending |
 
 ## Owner: apps and fine-grained tokens (`github_app_*, github_tokenpolicy_*`) — 7
@@ -472,16 +472,16 @@ Card(s): O-6. Source built in PR #204 with verified user-auth principal, real pr
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `github_account_get` | Chris's profile, plan, organizations, emails (primary/verified/visibility) and two-factor state | — | C | U | O | R | O-6 built #204 |
-| `github_account_update_profile` | Name, bio, company, blog, location, hireable, social handle | C·Prod | N | U | O | F | O-6 built #204 |
-| `github_account_manage_email` | Add or remove an email address, or set primary email visibility | C·Prod·A*·M* | N | U | O | F | O-6 built #204 |
-| `github_account_list_keys` | SSH authentication keys, SSH signing keys and GPG keys (fingerprints only) | — | N | U | O | R | O-6 built #204 |
-| `github_account_add_key` | Add an SSH, signing or GPG public key | C·Prod·A | N | U | O | F | O-6 built #204 |
-| `github_account_delete_key` | Delete an SSH, signing or GPG key | C·Prod | N | U | O | F | O-6 built #204 |
-| `github_account_set_blocked` | Block or unblock a user; list blocked users | C·Prod | N | U | O | F | O-6 built #204 |
-| `github_account_list_invitations` | Repository invitations waiting for Chris | — | N | U | O | R | O-6 built #204 |
-| `github_account_respond_invitation` | Accept or decline a repository invitation | C·Prod·A* | N | U | O | F | O-6 built #204 |
-| `github_account_set_status` | Set or clear your profile status: emoji, message (80 characters), expiry and busy indicator; read back field by field | C | N | U | O | F | Y-1 built #227 |
+| `github_account_get` | Chris's profile, plan, organizations, emails (primary/verified/visibility) and two-factor state (uses your master token when added) | — | C | U | O | R | O-6 built #204 |
+| `github_account_update_profile` | Name, bio, company, blog, location, hireable, social handle (uses your master token when added) | C·Prod | N | U | O | F | O-6 built #204 |
+| `github_account_manage_email` | Add or remove an email address, or set primary email visibility (uses your master token when added) | C·Prod·A*·M* | N | U | O | F | O-6 built #204 |
+| `github_account_list_keys` | SSH authentication keys, SSH signing keys and GPG keys (fingerprints only) (uses your master token when added) | — | N | U | O | R | O-6 built #204 |
+| `github_account_add_key` | Add an SSH, signing or GPG public key (uses your master token when added) | C·Prod·A | N | U | O | F | O-6 built #204 |
+| `github_account_delete_key` | Delete an SSH, signing or GPG key (uses your master token when added) | C·Prod | N | U | O | F | O-6 built #204 |
+| `github_account_set_blocked` | Block or unblock a user; list blocked users (uses your master token when added) | C·Prod | N | U | O | F | O-6 built #204 |
+| `github_account_list_invitations` | Repository invitations waiting for Chris (uses your master token when added) | — | N | U | O | R | O-6 built #204 |
+| `github_account_respond_invitation` | Accept or decline a repository invitation (uses your master token when added) | C·Prod·A* | N | U | O | F | O-6 built #204 |
+| `github_account_set_status` | Set or clear your profile status: emoji, message (80 characters), expiry and busy indicator; read back field by field (uses your master token when added) | C | N | U | O | F | Y-1 built #227 |
 
 ## Owner: notifications and gists (`github_notify_*, github_gist_*`) — 7
 
@@ -492,10 +492,10 @@ Card(s): O-7. Source built in PR #205. Notifications require optional classic to
 | `github_notify_list` | Unread (or all) notifications, by repository and reason | — | C | K | Op | R | O-7 built #205; CAP-3 private notifications OAuth reauthorization candidate #274 (live acceptance open) |
 | `github_notify_mark` | Mark one thread, a repository or everything as read or done | C·Prod | C | K | Op | E | O-7 built #205 |
 | `github_notify_set_subscription` | Watch, ignore or unsubscribe from a thread or repository | C·Prod | C | K | Op | E | O-7 built #205 |
-| `github_gist_list` | Chris's gists | — | C | U | B | R | O-7 built #205 |
-| `github_gist_get` | One gist's files (size-capped) | — | C | U | B | R | O-7 built #205 |
-| `github_gist_save` | Create or update a gist (public gists are access-widening) | C·Prod·A* | C | U | B | E | O-7 built #205 |
-| `github_gist_delete` | Delete a gist | C·Prod | C | U | B | F | O-7 built #205 |
+| `github_gist_list` | Chris's gists (uses your master token when added) | — | C | U | B | R | O-7 built #205 |
+| `github_gist_get` | One gist's files (size-capped) (uses your master token when added) | — | C | U | B | R | O-7 built #205 |
+| `github_gist_save` | Create or update a gist (public gists are access-widening) (uses your master token when added) | C·Prod·A* | C | U | B | E | O-7 built #205 |
+| `github_gist_delete` | Delete a gist (uses your master token when added) | C·Prod | C | U | B | F | O-7 built #205 |
 
 ## Owner and administration: guided settings (`github_admin_*`) — 3
 
@@ -567,11 +567,11 @@ Card(s): Y-3. Reads are GET-only through an allowlist, use the user sign-in when
 | `github_user_list_following` | People a user publicly follows | — | N | I,U | B,O,Op | R | Y-3 |
 | `github_public_repo_get` | A public repository of any account with a capped README excerpt | — | N | I,U | B,O,Op | R | Y-3 |
 | `github_public_repo_list` | Contents, releases, issues or pull requests of any public repository (untrusted text) | — | N | I,U | B,O,Op | R | Y-3 |
-| `github_star_list_get` | Your own star lists with their repositories | — | N | U | Op,O | R | Y-3 |
-| `github_user_follow` | Follow or unfollow a user or organization as you | P·M* | N | U | Op,O | E | Y-3 |
-| `github_repo_watch` | Watch, ignore or stop watching a repository as you | P | N | U | Op | E | Y-3 |
-| `github_user_set_social` | Add or remove https links on your public profile (max 4) | C·Prod·A | N | U | O | F | Y-3 |
-| `github_star_list_manage` | Create, edit or delete a star list, or put a repository into lists | C·D | N | U | Op,O | F | Y-3 |
+| `github_star_list_get` | Your own star lists with their repositories (uses your master token when added) | — | N | U | Op,O | R | Y-3 |
+| `github_user_follow` | Follow or unfollow a user or organization as you (uses your master token when added) | P·M* | N | U | Op,O | E | Y-3 |
+| `github_repo_watch` | Watch, ignore or stop watching a repository as you (uses your master token when added) | P | N | U | Op | E | Y-3 |
+| `github_user_set_social` | Add or remove https links on your public profile (max 4) (uses your master token when added) | C·Prod·A | N | U | O | F | Y-3 |
+| `github_star_list_manage` | Create, edit or delete a star list, or put a repository into lists (uses your master token when added) | C·D | N | U | Op,O | F | Y-3 |
 
 ## Project profiles (`github_profile_*`) — 3
 
@@ -757,8 +757,8 @@ Card(s): Y-9 (WU-Y9a). Organization-level, so every write is production-class an
 | `github_org_security_manager_set` | Give a team the organization security manager role, or remove it | C·Prod·A | N | I | O | F | Y-9 |
 | `github_org_network_config_list` | List fully paginated hosted-compute network configurations (Enterprise Cloud); preserve exact GitHub permission/plan errors | — | N | I | O,Op | R | Y-9 |
 | `github_org_network_config_save` | Create or edit a hosted-compute network configuration, verifying primary and failover resource IDs after a guarded write | C·Prod | N | I | O | F | Y-9 |
-| `github_org_migration_start` | Start exporting organization repositories (locking is opt-in) | C·Prod | N | I | O | F | Y-9 |
-| `github_org_migration_status` | State of an organization migration and where to download the archive | — | N | I | O,Op | R | Y-9 |
+| `github_org_migration_start` | Start exporting organization repositories (locking is opt-in) (uses your master token when added) | C·Prod | N | I | O | F | Y-9 |
+| `github_org_migration_status` | State of an organization migration and where to download the archive (uses your master token when added) | — | N | I | O,Op | R | Y-9 |
 
 ## CAP-4 governed organization and App JWT lifecycle (`github_org_audit_read, github_org_scim_*, github_org_saml_*, github_app_*`) — 15
 

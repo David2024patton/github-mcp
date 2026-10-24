@@ -3,6 +3,7 @@
 import {defineRead} from './define-read.js';
 import {readerFor,plain} from './github-read.js';
 import {githubFor} from '../github/client.js';
+import {personalCred} from '../github/personal-cred.js';
 import {PRICES} from '../github/prices.js';
 
 const OWNER={type:'string',maxLength:39};
@@ -10,9 +11,9 @@ const MAX={type:'integer',minimum:1,maximum:500};
 const DATE={type:'integer',minimum:1,maximum:31};
 const MONTH={type:'integer',minimum:1,maximum:12};
 const YEAR={type:'integer',minimum:2020,maximum:2100};
-const userCred=async(a,c)=>{
+const userCred=async(a,c,scope)=>{
   const owner=a.owner??c.connection.default_account;
-  const gh=await githubFor(c,{owner,cred:'U'});
+  const gh=await githubFor(c,{owner,cred:scope?await personalCred(c,scope):'U'});
   const user=(await gh.request('GET /user')).data;
   if(!user?.login)throw new TypeError('User credential identity could not be verified.');
   return {gh,owner,user:user.login};
@@ -174,7 +175,7 @@ export const codespaces=defineRead({
   description:'List bounded organization or user Codespaces with exact state, cores, repository and billable owner.',
   properties:{owner:OWNER,scope:{type:'string',enum:['organization','user']},max:MAX},
   handler:(a,c)=>plain(async()=>{
-    const who=a.scope==='user'?await userCred(a,c):await orgCred(a,c);
+    const who=a.scope==='user'?await userCred(a,c,'codespace'):await orgCred(a,c);
     const {gh,owner}=who,max=a.max??100;
     const base=a.scope==='user'?'GET /user/codespaces':
       'GET /orgs/{org}/codespaces';

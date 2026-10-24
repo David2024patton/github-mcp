@@ -25,6 +25,7 @@ const masterMarkup=details=>'<!doctype html><html lang="en"><head><meta charset=
   '<li>Copy the long code GitHub shows you. GitHub only shows it once.</li>'+
   '<li>Come back to this page, paste the code in the box and tap Continue.</li></ol><p><small>Tip: on GitHub you pick how long the token lasts. We use whatever you choose.</small></p>'+
   '<p><a class="big" href="'+escapeHtml(masterTokenLink())+'" target="_blank" rel="noopener noreferrer">Create my master token on GitHub</a></p>'+
+  '<p><small><a href="'+escapeHtml(masterTokenLink({enterprise:true}))+'" target="_blank" rel="noopener noreferrer">Include enterprise permissions</a> (only if you administer a GitHub Enterprise)</small></p>'+
   '<form method="post" action="/api/tenant/optional">'+
   '<input type="hidden" name="csrf" value="'+escapeHtml(details.state)+'">'+
   '<label>Paste the token here<input type="password" name="value" required minlength="8" maxlength="4096" autocomplete="off"></label>'+
