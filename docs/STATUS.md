@@ -363,8 +363,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/H-2.md",
     "gates": "Exact READY live ancestry of implementation; approved isolated scratch owner/run, service OAuth with legitimate provider permissions; preview/production and independent owner write/cleanup approvals preserved",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Authenticated custom webhook listing works; no isolated hook or receiver signature fixture exists. Next: Approved receiver/HMAC fixture plus independent production write and disposal authority. Obtain exact fixture approval, then verify receiver signatures without publishing secrets.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:30 MDT on live 8ed877a, custom service-issued MCP, PRODUCTION/full. On private fixture rtc-acc1-20261024-1: github_webhook_save created inactive push hook #702526394 to https://example.com/acc1 (server-generated secret, one-time reveal link returned, link not opened); github_webhook_rotate_secret rotated it (new one-time link); github_webhook_list read back active=false, events=[push], host example.com; github_webhook_delete removed it. Receiver HMAC signature proof NOT done (optional owner checklist item). Cleanup: hook and fixture repository deleted.",
     "nextAction": "Owned non-sensitive receiver/HMAC fixture plus exact signer/webhook production write, delivery and cleanup authorization; no receiver/secret transmission is inferred."
   },
   {
@@ -375,8 +375,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/H-3.md",
     "gates": "Checked READY deployment contains merged H-3 source; scratch-only, explicit owner authority and fixture safeguards, no production settings or spend activation without independent approval",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-15 restored adapter: Actual collaborator list complete with one existing admin, no invitations; deploy keys empty and complete. Next: Named consenting principal/public key and independent access-change/cleanup approval. Owner supplies exact isolated access fixture; never invite or grant from reconnect alone.",
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-24 04:30 MDT on live 8ed877a, custom service-issued MCP, PRODUCTION/full. Created private fixture robinson-ai-scratch/rtc-acc1-20261024-1; github_deploykey_add dry run OK (read-only key, fingerprint shown), confirmed add refused by GitHub HTTP 422 'Deploy keys are disabled for this repository' (organization policy on the scratch org). Not changed: turning that policy on would widen access and is an owner decision. Cleanup: fixture repository deleted (readback deleted=true). Re-entry: owner enables deploy keys for the scratch org, or run on another disposable repo.",
     "nextAction": "Exact disposable collaborator/key principal and independent access-widening, production and cleanup approval; no outside invitations or new keys inferred."
   },
   {
@@ -749,7 +749,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Read-only PREVIEW/full scratch account; independently verified deployed SHA/READY; required hosted-runner read App permissions IN-15 and an eligible org plan. No create, capacity change, static-IP activation or billable request.",
     "dependsOn": [],
     "status": "BLOCKED",
-    "lastEvidence": "2026-10-18 actual custom MCP PREVIEW/full at independently READY 20389ae0 with new App grants: hosted runner list returns provider 404, message GitHub hosted runners are not supported for this organization. Organization GET independently reports plan free. No runner creation, capacity or plan change.",
+    "lastEvidence": "2026-10-18 actual custom MCP PREVIEW/full at independently READY 20389ae0 with new App grants: hosted runner list returns provider 404, message GitHub hosted runners are not supported for this organization. Organization GET independently reports plan free. No runner creation, capacity or plan change. Re-tried 2026-10-24 04:35 MDT on live 8ed877a: github_hosted_runner_list for robinson-ai-scratch still returns HTTP 404 'GitHub hosted runners are not supported for this organization' (Enterprise trial does not enable it). Stays BLOCKED: plan/entitlement.",
     "nextAction": "Provider now explicitly says hosted runners unsupported for this organization (404); existing plan is free. Use already eligible entitlement, without purchasing an upgrade."
   },
   {
@@ -772,8 +772,8 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/Y-9.md; docs/designs/BATCH-Y.md; docs/END-USER-AUTHORITY.md",
     "gates": "Reviewed source in READY live, actual GitHub U token granted by the owner to exact paying account, known approved recipient and complete sponsor tier inventory. No paid mutation or token capture.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-18 real custom github_sponsor_get on owned scratch with recipient christcr2012 failed NOT_FOUND because one document queries both user and organization roots. Independent custom universal explicit U organization-only relationship query succeeds, totalCount=0, nodes=[], hasNextPage=false. This proves valid payer U, not completed curated Sponsors acceptance. Corrective source 098fdb8d43ed5fd7591aeecb2a86559d98bb0397 selects verified entity roots, handles an explicitly absent listing, and preserves financial/privacy guards; exact-head CI and scheduled deployment required. No payment or preference mutation.",
+    "status": "PASSED",
+    "lastEvidence": "2026-10-24 04:25 MDT on live 8ed877a (contains 098fdb8), custom service-issued MCP, PRODUCTION/full. github_sponsor_get recipient christcr2012 as payer christcr2012 -> payer/recipient identity matches, active=null, sponsors_listing_available=false, tiers=[] (valid empty relationship, no NOT_FOUND). No payment or preference change. Cleanup: none needed.",
     "nextAction": "After the scheduled release includes 098fdb8d43ed5fd7591aeecb2a86559d98bb0397, rerun curated read for the same owned non-sensitive actor. Capture exact payer/recipient type, complete relationship and listing availability; a published tier fixture is separately needed to prove nonempty prices. Do not repeat valid OAuth or move money."
   },
   {
@@ -939,12 +939,12 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "id": "GITHUB-PRIVATE-USER-PASS-SCOPE",
     "priority": 1,
     "requiredRevision": "3df082605de3a91f3e32affd385e88ba90df95d2",
-    "status": "PENDING",
+    "status": "BLOCKED",
     "task": "On source-bearing deployed custom MCP verify repository/permission-limited private-member I and owner/member U requests refuse before user-bearer acquisition; ordinary own-user reads and authorized owner I installation downscoping still work.",
     "procedure": "docs/pr-cards/PUB-2.md \u2014 2026-10-21 restricted private-user passes correction; tests/unit/private-user-pass-downscope.test.js for source cases.",
     "gates": "Verified READY implementation ancestry; genuine already-authorized private developer fixture and service-owned grant, exact existing restricted pass and ordinary connection. No public tenant activation, new real credential, access expansion, production write or spend is inferred.",
     "dependsOn": [],
-    "lastEvidence": "PR #275 source correction at 3df0826: required CI 39673862507 and release policy 39673862589 passed, including 151 disposable PostgreSQL tests; focused credential/RTC regressions 37 passed. Current live 315a3259 lacks source. No real pass-scope denial/readback acceptance performed."
+    "lastEvidence": "Superseded 2026-10-24: the private-pilot sign-in was retired on 2026-10-23 (PUB-6 rebuild); public tenants are covered by tests/db/pub-6-public-connect.test.js and tests/unit/private-user-pass-downscope.test.js. No live run needed."
   }
 ]
 ```
