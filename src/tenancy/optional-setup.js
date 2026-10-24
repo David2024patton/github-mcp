@@ -9,6 +9,7 @@ import {verifyGithubBearerIdentity} from './github-identity.js';
 import {enrollVerifiedPilotOptionalCredential,currentPilotOptionalReadback}
   from './optional-credentials.js';
 import {enrollMasterCredential,currentMasterReadback,MASTER_HANDLE} from './master-credential.js';
+import {bareOctokit} from '../github/client.js';
 import {publicOrigin} from '../core/http.js';
 import {validRedirectUri} from '../core/oauth.js';
 import {admitTenantOAuth} from './runtime-limits.js';
@@ -245,12 +246,11 @@ export function createPrivateOptionalEnrollment({
     if(!flow||flow.purpose!=='revoke_form'||!flow.tenantId||!flow.identityId)throw denied();
     await scoped(flow.clientId,{tenantId:flow.tenantId,identityId:flow.identityId});
     let status=0;
+    // The shared client (pinned API version, user agent). No token is attached: this endpoint must stay unauthenticated.
     try{
-      const res=await fetchImpl('https://api.github.com/credentials/revoke',{method:'POST',redirect:'error',
-        headers:{accept:'application/vnd.github+json','content-type':'application/json','x-github-api-version':'2026-03-10','user-agent':'robinson-github-mcp'},
-        body:JSON.stringify({credentials:tokens})});
+      const res=await bareOctokit({fetch:fetchImpl}).request('POST /credentials/revoke',{credentials:tokens});
       status=res.status;
-    }catch{status=0;}
+    }catch(error){status=Number.isInteger(error?.status)?error.status:0;}
     return Object.freeze({accepted:status===202,status,count:tokens.length,last4:Object.freeze(tokens.map(t=>t.slice(-4)))});
   }
   return {start,startOAuth,startMasterLink,startRevokeLink,revokeLeaked,finish};

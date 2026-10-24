@@ -730,7 +730,7 @@ describe('GOD-1 the master token lasts exactly as long as the person set it on G
 describe('GOD-4 cancelling leaked tokens (github_credential_revoke)', () => {
   const revokeCalls = [];
   const fetchRevoke = (status = 202) => async (url, opts) => {
-    if (url === 'https://api.github.com/credentials/revoke') { revokeCalls.push(JSON.parse(opts.body)); return { status, ok: status < 300, headers: { get: () => null }, json: async () => ({}), text: async () => '' }; }
+    if (url === 'https://api.github.com/credentials/revoke') { revokeCalls.push(JSON.parse(opts.body)); return new Response('{}', { status, headers: { 'content-type': 'application/json' } }); }
     return fetchImpl(url, opts);
   };
   const enrollmentWith = async (fetchFn) => {
