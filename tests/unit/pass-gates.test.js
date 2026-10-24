@@ -48,7 +48,7 @@ describe('pass gates', () => {
     expect(await run({ client_id: 'login', accounts: ['example-org'] }, 500)).toMatchObject({ confirm: expect.any(String) });
   });
   it('is part of the standard gate list, first', () => {
-    expect(createGates()).toHaveLength(5);
+    expect(createGates()).toHaveLength(6);
   });
 });
 

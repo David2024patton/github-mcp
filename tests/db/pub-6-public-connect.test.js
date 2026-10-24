@@ -905,7 +905,6 @@ describe('GOD-5 extra places (master token) in REAL PostgreSQL', () => {
 
   it('refuses a place the master token cannot see, an organization the person has not joined, a connected account, and bad input', async () => {
     const c = withFetch();
-    const s = await session(c, 'alice');
     await addMaster(c, 'alice');
     const s2 = await session(c, 'alice');
     const before = (await s2.page.places).length;
