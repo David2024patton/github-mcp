@@ -498,6 +498,8 @@ change the same way even on a path that skips the gate. A repository place reach
 production, spend and people gates still run after it. Adding verifies with the master token that the person can really see the
 place (active organization membership, or read access to the repository) and refuses a connected (App) account, an account
 the token cannot see, and another person's whole account. The token is used only for those checks, through the shared client.
-Deliberately not built: fine-grained-token places (the card's optional extension) and a way to give a place a different
-production switch (production writes still need the account's production switch, which an extra place never has on).
+For an extra place the person's "allow changes" IS the production authorization (the production switch is not separate);
+classification, confirmation, protected-resource and spend checks still apply to every change. Switching all apps read-only
+and back never stops a connection from returning to production because of an extra place.
+Deliberately not built: fine-grained-token places (the card's optional extension).
 

@@ -893,6 +893,15 @@ describe('GOD-5 extra places (master token) in REAL PostgreSQL', () => {
     await s.act('place_changes', 'side-co:off');
     expect((await db.getAccount('side-co')).allow_changes).toBe(false);
 
+    // read-only and back: an extra place never stops the connection from returning to production mode
+    await db.setProductionEnabled('alice-dev', true); await db.setProductionEnabled('client-co', true);
+    await db.setConnectionsReadOnly(true);
+    await db.setConnectionsReadOnly(false);
+    const restored = await db.getAccessToken(token.access_token);
+    expect(restored.accounts).toEqual(expect.arrayContaining(['alice-dev', 'side-co']));
+    expect(restored).toMatchObject({ profile: 'full', mode: 'production' });
+    await db.setProductionEnabled('alice-dev', false); await db.setProductionEnabled('client-co', false);
+
     // removing a repository removes the place when its list empties; removing the whole place leaves every connection
     await s.act('remove_place', 'outsider-co/public-site');
     expect(await db.getAccount('outsider-co')).toBeNull();

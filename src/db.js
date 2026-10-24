@@ -849,7 +849,7 @@ export function createDb(sql = productionSql()) {
       if (readOnly !== false) return 0;
       const rows = await sql`UPDATE oauth_tokens t SET profile = 'full',
           mode = CASE WHEN cardinality(t.accounts) > 0 AND NOT EXISTS (SELECT 1 FROM unnest(t.accounts) acct WHERE NOT EXISTS (
-            SELECT 1 FROM gh_accounts a WHERE lower(a.login) = lower(acct) AND a.production_enabled = TRUE AND a.installation_status = 'active'))
+            SELECT 1 FROM gh_accounts a WHERE lower(a.login) = lower(acct) AND (a.credential_kind = 'master' OR (a.production_enabled = TRUE AND a.installation_status = 'active'))))
             THEN 'production' ELSE 'preview' END
         WHERE t.kind = 'connector' AND t.revoked_at IS NULL AND (t.expires_at > now() OR t.refresh_hash IS NOT NULL)
         RETURNING token_hash`;

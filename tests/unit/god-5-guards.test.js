@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { githubFor, credentialFor } from '../../src/github/client.js';
 import { createGates } from '../../src/tools/gates.js';
 import { extraPlaceGate } from '../../src/tools/extra-place-guard.js';
+import { productionEnabledGate } from '../../src/tools/production-guard.js';
 import { createFakeDb } from '../../test/helpers/fake-db.js';
 import { makeFakeGitHub } from '../../test/helpers/fake-github.js';
 
@@ -121,3 +122,17 @@ describe('the extra-place gate', () => {
     expect(verdict).toMatchObject({ by: 'protected resource' });
   });
 });
+
+describe('production changes on an extra place', () => {
+  const prod = async (db, target) => productionEnabledGate()({ ctx: { db, connection: { mode: 'production' } }, target, classification: { production: 'it changes the default branch' } });
+  it('are authorized by the person allowing changes for that place, and by nothing else', async () => {
+    const { db } = await setup(); await addPlace(db);
+    // changes are off: the extra-place gate refuses first; the production gate alone would also refuse
+    expect(await prod(db, { owner: PLACE, repo: 'website' })).toMatchObject({ by: 'production switch' });
+    await db.setPlaceChanges(PLACE, true);
+    expect(await prod(db, { owner: PLACE, repo: 'website' })).toBeNull();
+    // a connected account still needs its own production switch
+    expect(await prod(db, { owner: 'example-org', repo: 'x' })).toMatchObject({ by: 'production switch' });
+  });
+});
+
