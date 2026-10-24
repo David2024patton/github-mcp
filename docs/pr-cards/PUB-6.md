@@ -77,3 +77,9 @@ Real-client results, all against the live service `https://github.robinsonaisyst
   session could not reach Chris's computer), ChatGPT on iPhone, and revoking a grant from a device (revocation layer stays
   `unverified`; disconnect is covered by browser tests only).
 Card status set to MERGED: all engineering merged (#268, #337); remaining device items are optional owner-checklist rows.
+
+## Follow-up 2026-10-24 — install the App from the Approve page
+Chris: signing in or adding an organization must install the App, not only mention it. The Approve page now has an "Add <place>"
+button per owned place without the App (opens GitHub's install screen, returns to Approve with it listed); adding an extra place
+that is an organization now says how to install the App there. Test: `tests/db/pub-6-public-connect.test.js`
+("the Approve page can install the App on another place…").
