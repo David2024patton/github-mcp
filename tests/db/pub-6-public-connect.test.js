@@ -1088,3 +1088,29 @@ describe('HARD-1 one shared copy of the App keys', () => {
     expect(crypto.verify('RSA-SHA256', Buffer.from(head + '.' + body), pair.publicKey, Buffer.from(signature, 'base64url'))).toBe(true);
   });
 });
+
+describe('HARD-2 people who signed in before a release get its new columns', () => {
+  it('a tenant created before accounts.allow_changes existed is upgraded the first time it is opened', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const token = json(await exchange(client, codeOf(await approved(c, client, 'carol'))));
+    const first = await gateFor(token);
+    expect(first).not.toBeNull();
+    const sel = { tenant_id: first.tenant.tenantId, identity_id: first.tenant.identityId };
+    expect(sel.tenant_id).toBeTruthy();
+    const schema = tenantSchemaName(sel.tenant_id);
+    // Make this person look like someone who signed in before GOD-5: the two columns are not there.
+    await admin.query(`ALTER TABLE "${schema}".gh_accounts DROP COLUMN IF EXISTS allow_changes, DROP COLUMN IF EXISTS allowed_repos`);
+    const before = await admin.query(`SELECT 1 FROM information_schema.columns WHERE table_schema = $1 AND table_name = 'gh_accounts' AND column_name = 'allow_changes'`, [schema]);
+    expect(before.rows.length).toBe(0);
+    const directoryMod = await import('../../src/tenancy/directory.js');
+    directoryMod.forgetUpgradedTenantsForTests();
+    const gate = await gateFor(token);
+    expect(gate).not.toBeNull();
+    const after = await admin.query(`SELECT column_name FROM information_schema.columns WHERE table_schema = $1 AND table_name = 'gh_accounts' AND column_name IN ('allow_changes','allowed_repos')`, [schema]);
+    expect(after.rows.map((r) => r.column_name).sort()).toEqual(['allow_changes', 'allowed_repos']);
+    // The listing that github_whoami uses (it selects the new columns) works again.
+    const db = await tenantOf({ tenantId: sel.tenant_id, identityId: sel.identity_id });
+    await expect(db.listAccounts()).resolves.toBeInstanceOf(Array);
+  });
+});
