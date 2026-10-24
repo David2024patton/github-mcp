@@ -1,6 +1,8 @@
 import { registry } from '../src/tools/index.js';
 import { profileCounts } from '../src/core/registry.js';
 import { iconBytes } from '../src/brand/brand.js';
+import { HOME_CSP, renderHome } from '../src/brand/home-page.js';
+import { publicOrigin } from '../src/core/http.js';
 
 // The anonymous root proves that this process can answer HTTP only.
 // No public endpoint may infer owner setup, OAuth consent, provider access or acceptance.
@@ -17,6 +19,8 @@ export function publicInfo(buildSha = process.env.VERCEL_GIT_COMMIT_SHA) {
   };
 }
 
+const homeOrigin = () => { try { return publicOrigin(process.env); } catch { return 'https://github.robinsonaisystems.com'; } };
+
 export default function handler(req, res) {
   // The product icon (/brand/icon-256.png, /brand/icon-64.png) is served here too: one function, no static folder.
   const icon = String(req.query?.brand_icon || '');
@@ -27,5 +31,13 @@ export default function handler(req, res) {
     return res.status(200).send(iconBytes(Number(icon)));
   }
   res.setHeader('Cache-Control', 'no-store');
+  // People opening the address in a browser get the home page; programs (health checks, scripts) keep the plain JSON.
+  if (/\btext\/html\b/.test(String(req.headers?.accept ?? ''))) {
+    res.setHeader('Content-Security-Policy', HOME_CSP);
+    res.setHeader('Referrer-Policy', 'same-origin');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send(renderHome(homeOrigin()));
+  }
   return res.status(200).json(publicInfo());
 }

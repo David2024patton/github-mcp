@@ -47,8 +47,8 @@ export default async function privateTenantAuthorize(req,res,{env=process.env,
       const fields=hidden.map(k=>'<input type="hidden" name="'+k+'" value="'+escapeHtml(p[k]??'')+'">').join('');
       const modes=env.VERCEL_ENV==='production' && inspected.productionAllowed?['preview','production']:['preview'];
       const html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
-        '<title>Connect GitHub by Robinson AI Systems</title><style>body{font:16px system-ui,sans-serif;max-width:430px;margin:6vh auto;padding:20px}form{display:grid;gap:14px}input,select,button{font:inherit;padding:10px}p{line-height:1.5}</style></head><body>'+
-        '<h1>Connect GitHub by Robinson AI Systems</h1>'+
+        '<title>Connect Robinson MCP for GitHub</title><style>body{font:16px system-ui,sans-serif;max-width:430px;margin:6vh auto;padding:20px}form{display:grid;gap:14px}input,select,button{font:inherit;padding:10px}p{line-height:1.5}</style></head><body>'+
+        '<h1>Connect Robinson MCP for GitHub</h1>'+
         '<p>This is a private pilot connection. You will sign in through GitHub. Only your approved installation can be used.</p>'+
         '<form method="post" action="/api/tenant/oauth/authorize">'+fields+
         '<input type="hidden" name="form_csrf" value="'+csrf+'">'+
