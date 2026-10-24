@@ -46,3 +46,10 @@ the guide and mark the row "provider UI only" in the audit and in `docs/TOOL-CAT
       <date> (PRs …)" item by item.
 - [ ] Changed tools pass their nine checks and the three money tests; `node scripts/check-writes.mjs` green.
 - [ ] ACC-1 row: one paid-capable tool previewed live on scratch showing the honest cost line (no real purchase).
+
+## Progress
+- Built as ONE PR (A and B together; the reason: B's only finding was a stale guide sentence, a sliver on its own). Audit report
+  `docs/audits/END-USER-AUTHORITY-2026-10.md`, read-only script `scripts/authority-audit.mjs`, registry-wide test
+  `tests/unit/end-user-authority.test.js`, dashboard-map correction (project workflows), catalog note (Marketplace purchase is provider UI only),
+  END-USER-AUTHORITY.md OPEN section marked done item by item. No tool needed to change: the product already performed every item.
+- The ACC-1 live row (one paid-capable tool previewed on scratch) stays for ACC-1.

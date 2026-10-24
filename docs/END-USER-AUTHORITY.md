@@ -17,7 +17,9 @@
 - Where GitHub exposes the API, implement the action. A non-mutating website guide is acceptable as a *documented missing capability* or a genuinely unavoidable provider UI step, never a false completed substitute for an implementable tool.
 - Hub integration is optional; native GitHub MCP remains fully usable directly and must not rely on another service to grant authority.
 
-## Concrete code and test audit (OPEN work; not completed by this document)
+## Concrete code and test audit (done on 2026-10-24, AUTH-1; see `docs/audits/END-USER-AUTHORITY-2026-10.md`)
+
+Item-by-item result: 1 done (explicit user limit only), 2 done (unknown price is its own confirmed state), 3 done (unreviewed routes are unknown cost, not banned), 4 done (Sponsors, hosted runners, Copilot seats and agent tasks are real writes), 5 done (13 provider-UI-only settings confirmed against GitHub's API descriptions; project-workflow guide text corrected), 6 done (`tests/unit/end-user-authority.test.js` runs the spend checks over every money-capable tool). The original items follow for reference.
 
 1. `src/tools/spend-guard.js` currently treats a database default $0 limit as a product-wide refusal. Separate developer sandbox caps from **explicit end-user spending preferences**. Do not silently discard a historical user's intentionally configured budget; provide a clear transition/onboarding path.
 2. `src/core/write.js` currently rejects every paid change with a non-computable price. Design an explicit unknown/metered-spend exposure and authorization state, distinct from both $0 cost and a verified numerical price, with dedicated journal/confirmation tests.
