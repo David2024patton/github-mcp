@@ -31,6 +31,7 @@ const quiet = Object.freeze({ accessWidening: false, notifies: false, destructiv
 const notifying = Object.freeze({ accessWidening: false, notifies: true, destructive: false });
 const destructive = Object.freeze({ accessWidening: false, notifies: false, destructive: true });
 
+const closingIds = (node) => new Set((node?.closedByPullRequestsReferences?.nodes ?? []).map((n) => n?.id));
 const restorable = (input, before, keys) => keys.some((k) => given(input, k)) && keys.every((k) => !given(input, k) || before?.[k] != null);
 const priorOf = (input, before, keys) => Object.fromEntries(keys.filter((k) => given(input, k)).map((k) => [k, before[k]]));
 
@@ -277,7 +278,8 @@ export const WRITE_SPECS = new Map([
   ['unmarkFileAsViewed', {
     scope: 'repo', primary: 'pullRequestId', ids: { pullRequestId: ['PullRequest'] }, changes: ['path'],
     before: '... on PullRequest { files(first: 100) { nodes { path viewerViewedState } } }',
-    already: (i, b) => (b?.files?.nodes ?? []).find((f) => f?.path === i.path)?.viewerViewedState !== 'VIEWED',
+    // A file missing from the first 100 is unknown (large pull request), never "already unviewed".
+    already: (i, b) => { const f = (b?.files?.nodes ?? []).find((x) => x?.path === i.path); return Boolean(f) && f.viewerViewedState !== 'VIEWED'; },
     verify: (i, a) => { const f = (a?.files?.nodes ?? []).find((x) => x?.path === i.path); return Boolean(f) && f.viewerViewedState !== 'VIEWED'; },
     inverse: (i) => ({ mutation: 'markFileAsViewed', input: { pullRequestId: i.pullRequestId, path: i.path } }), cls: quiet
   }],
@@ -286,14 +288,18 @@ export const WRITE_SPECS = new Map([
     before: '... on Issue { closedByPullRequestsReferences(first: 50, includeClosedPrs: true) { nodes { id } } }',
     already: (i, b) => { const have = new Set((b?.closedByPullRequestsReferences?.nodes ?? []).map((n) => n?.id)); return (i.pullRequestIds ?? []).every((id) => have.has(id)); },
     verify: (i, a) => { const have = new Set((a?.closedByPullRequestsReferences?.nodes ?? []).map((n) => n?.id)); return (i.pullRequestIds ?? []).every((id) => have.has(id)); },
-    inverse: (i) => ({ mutation: 'removeCloseIssueReferences', input: { issueId: i.issueId, pullRequestIds: i.pullRequestIds } }), cls: quiet
+    // Undo removes only the links this call created, never ones that were already there.
+    inverse: (i, b) => { const had = closingIds(b), added = (i.pullRequestIds ?? []).filter((id) => !had.has(id));
+      return added.length ? { mutation: 'removeCloseIssueReferences', input: { issueId: i.issueId, pullRequestIds: added } } : null; }, cls: quiet
   }],
   ['removeCloseIssueReferences', {
     scope: 'repo', primary: 'issueId', ids: { issueId: ['Issue'], pullRequestIds: ['PullRequest'] }, changes: [],
     before: '... on Issue { closedByPullRequestsReferences(first: 50, includeClosedPrs: true) { nodes { id } } }',
     already: (i, b) => { const have = new Set((b?.closedByPullRequestsReferences?.nodes ?? []).map((n) => n?.id)); return (i.pullRequestIds ?? []).every((id) => !have.has(id)); },
     verify: (i, a) => { const have = new Set((a?.closedByPullRequestsReferences?.nodes ?? []).map((n) => n?.id)); return (i.pullRequestIds ?? []).every((id) => !have.has(id)); },
-    inverse: (i) => ({ mutation: 'addCloseIssueReferences', input: { issueId: i.issueId, pullRequestIds: i.pullRequestIds } }), cls: quiet
+    // Undo adds back only the links this call removed.
+    inverse: (i, b) => { const had = closingIds(b), removed = (i.pullRequestIds ?? []).filter((id) => had.has(id));
+      return removed.length ? { mutation: 'addCloseIssueReferences', input: { issueId: i.issueId, pullRequestIds: removed } } : null; }, cls: quiet
   }],
   ['unmarkIssueAsDuplicate', {
     scope: 'repo', primary: 'duplicateId', ids: { duplicateId: ['Issue'], canonicalId: ['Issue'] }, changes: [],

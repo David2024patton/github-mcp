@@ -49,4 +49,18 @@ describe('GQL-1 group 2: issues, labels, reviews, reactions, discussions', () =>
     for (const m of [...GROUP2, ...REFUSED_MUTATIONS.keys(), 'addUpvote', 'addDiscussionPollVote', 'markFileAsViewed', 'unmarkIssueAsDuplicate'])
       expect(missing.has(m), m).toBe(false);
   });
+
+  it('closing-reference undo touches only what the call changed (review finding)', () => {
+    const add = WRITE_SPECS.get('addCloseIssueReferences'), remove = WRITE_SPECS.get('removeCloseIssueReferences');
+    const before = { closedByPullRequestsReferences: { nodes: [{ id: 'PR1' }] } };
+    expect(add.inverse({ issueId: 'I1', pullRequestIds: ['PR1', 'PR2'] }, before)).toEqual({ mutation: 'removeCloseIssueReferences', input: { issueId: 'I1', pullRequestIds: ['PR2'] } });
+    expect(add.inverse({ issueId: 'I1', pullRequestIds: ['PR1'] }, before)).toBeNull();
+    expect(remove.inverse({ issueId: 'I1', pullRequestIds: ['PR1', 'PR2'] }, before)).toEqual({ mutation: 'addCloseIssueReferences', input: { issueId: 'I1', pullRequestIds: ['PR1'] } });
+  });
+  it('a file missing from the first page of a large pull request is unknown, not already unviewed (review finding)', () => {
+    const unmark = WRITE_SPECS.get('unmarkFileAsViewed');
+    expect(unmark.already({ path: 'big.js' }, { files: { nodes: [] } })).toBe(false);
+    expect(unmark.already({ path: 'a.js' }, { files: { nodes: [{ path: 'a.js', viewerViewedState: 'UNVIEWED' }] } })).toBe(true);
+    expect(unmark.verify({ path: 'big.js' }, { files: { nodes: [] } })).toBe(false);
+  });
 });
