@@ -1,9 +1,13 @@
 // Robinson AI Systems look for the pages this server shows people (tokens copied from robinsonaisystems.com/assets/brand.css:
 // charcoal surfaces, emerald-to-teal gradient, Mist White text). System fonts only, so no outside font request is made.
+import { createRequire } from 'node:module';
 import { ICON_256_PNG_BASE64, ICON_64_PNG_BASE64 } from './assets.js';
 
+// One version number for the package, the MCP server info and server.json.
+export const VERSION = createRequire(import.meta.url)('../../package.json').version;
+
 export const BRAND = Object.freeze({
-  name: 'Robinson AI Systems', product: 'GitHub by Robinson AI Systems', website: 'https://www.robinsonaisystems.com',
+  name: 'Robinson AI Systems', product: 'Robinson MCP for GitHub', website: 'https://www.robinsonaisystems.com',
   tagline: 'Practical software. More capable AI.',
   emerald: '#00B67A', teal: '#00E3C2', charcoal: '#0C0C0C', graphite: '#1E1E1E', mist: '#F8FAF8', grey: '#9FA5A3'
 });
@@ -23,11 +27,11 @@ button{font:600 16px Inter,-apple-system,'Segoe UI',sans-serif;color:#fff;backgr
 footer{margin-top:28px;color:var(--muted);font-size:14px}a{color:var(--teal)}`;
 
 export const brandHeader = () => `<header class="brand"><img src="${ICON_PATH}" alt="" width="44" height="44"><div><b>${BRAND.product}</b><small>${BRAND.tagline}</small></div></header>`;
-export const brandFooter = () => `<footer>Operated by <a href="${BRAND.website}" rel="noopener noreferrer">${BRAND.name}</a>. We never ask for your GitHub password here. <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/security">Security</a> · <a href="/support">Support</a></footer>`;
+export const brandFooter = () => `<footer>Operated by <a href="${BRAND.website}" rel="noopener noreferrer">${BRAND.name}</a>. Not affiliated with or endorsed by GitHub. We never ask for your GitHub password here. <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/security">Security</a> · <a href="/support">Support</a></footer>`;
 /** MCP server icons: shown by apps next to the connection. */
 export const serverIcons = (origin) => [
   { src: `${origin}${ICON_PATH}`, mimeType: 'image/png', sizes: ['256x256'] },
   { src: `${origin}/brand/icon-64.png`, mimeType: 'image/png', sizes: ['64x64'] }
 ];
-export const serverInfo = (origin) => ({ name: 'robinson-github-mcp', title: BRAND.product, version: '0.1.0',
+export const serverInfo = (origin) => ({ name: 'robinson-github-mcp', title: BRAND.product, version: VERSION,
   websiteUrl: BRAND.website, description: 'Operate GitHub accounts safely from your AI assistant.', ...(origin ? { icons: serverIcons(origin) } : {}) });

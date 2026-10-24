@@ -130,12 +130,19 @@ The remaining work is planned in `docs/designs/FINISH-PLAN.md`. None of these bl
 Defaults in brackets are what the agents build; change any by telling the agent.
 - [ ] **Name shown to people** [Robinson MCP for GitHub, with "Not affiliated with or endorsed by GitHub" on every page]. Leading with your own brand keeps clear of GitHub's trademark.
 - [ ] **Free daily limit per person** [5,000 assistant calls a day, 300 changes an hour]. Stops one heavy user from running up your bill. Your own GitHub account is exempt (the agent fills in its number for you; you add it as a setting) so your agents are never slowed.
+      Your GitHub number (found 2026-10-24 with the connector, not a secret): **227716942** (user christcr2012). In Vercel (Settings → Environment Variables, Production) add `PUBLIC_UNLIMITED_SUBJECTS` = `227716942`, then redeploy. Several people: separate numbers with commas.
 - [ ] **Pause new sign-ups automatically when the estimated monthly cost reaches** [$50]. People already connected keep working. You can also pause by hand.
 - [ ] **Sign people out after this long without use** [180 days]. They just sign in again; it keeps fewer stored keys and costs less.
 - [ ] **Turn on spend alerts in Vercel and Neon** (their own settings pages, free): Vercel → Settings → Billing → Spend Management; Neon → Billing. Those emails are how you hear about cost, so the server needs no email system.
 - [ ] **Launch with the trust pages still marked DRAFT?** [yes]. When ready: set `LEGAL_APPROVED=yes` and `PUBLIC_SUPPORT_EMAIL`.
 - [ ] **Move the GitHub App to your Robinson-AI-Systems organization** (GitHub → the App's settings → Advanced → Transfer ownership). Recommended before the Marketplace listing, which shows the owner's name; today it shows `robinson-ai-scratch`.
-- [ ] **After PR D:** paste the connect button from `docs/website/` into your website (or ask the website's agent to); publish to the official MCP Registry (one DNS record + one command; steps in the PR D status note); submit the free GitHub Marketplace listing from `docs/marketplace/` as organization owner.
+- [ ] **Put the connect button on your website:** open `docs/website/connect-button.html`, paste it into the page on robinsonaisystems.com where the product belongs (or ask for it in the website repository's own session). No scripts, no tracking.
+- [ ] **Publish to the official MCP Registry** (free, one DNS record and one command; the file `server.json` is ready). Steps, from https://modelcontextprotocol.io/registry/authentication.md (checked 2026-10-24):
+      1. On your computer: `openssl genpkey -algorithm Ed25519 -out key.pem` (keep `key.pem` private; never send it to anyone, including an agent).
+      2. `PUBLIC_KEY="$(openssl pkey -in key.pem -pubout -outform DER | tail -c 32 | base64)"` then `echo "robinsonaisystems.com. IN TXT \"v=MCPv1; k=ed25519; p=${PUBLIC_KEY}\""`.
+      3. Add that as a TXT record on robinsonaisystems.com at your DNS provider; wait a few minutes.
+      4. `PRIVATE_KEY="$(openssl pkey -in key.pem -noout -text | grep -A3 "priv:" | tail -n +2 | tr -d ' :\n')"` then `mcp-publisher login dns --domain robinsonaisystems.com --private-key "${PRIVATE_KEY}"` and, in the repository folder, `mcp-publisher publish`.
+- [ ] **GitHub Marketplace listing:** after the App is moved to Robinson-AI-Systems, submit the listing in `docs/marketplace/LISTING.md` (screenshots are in that folder) as organization owner and accept the Marketplace Developer Agreement. Free plan only.
 
 ## God mode "act as me" (GOD-6, planned 2026-10-24)
 - [ ] Nothing to do. When it is built, your master token makes GitHub show **you** instead of the bot. If you ever want the

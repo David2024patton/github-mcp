@@ -223,15 +223,15 @@ Read `docs/AI-PR-READ-FIRST.md` and record each constraint in the PR's self-revi
 
 ## Done when
 
-- [ ] A, B, C, D merged with green `ci` and `release-policy`; status note per PR in `docs/status/`.
+- [x] A (#370), B (#372), C (#373), D merged with green `ci` and `release-policy`; status note per PR in `docs/status/` (pub-5a-scale, pub-5b-fair-use, pub-5c-security-review, pub-5d-front-door).
 - [x] No people cap in code or docs; 500-person load test and uninstall timing recorded (PR A note). Evidence: docs/status/2026-10-24-pub-5a-scale.md.
 - [x] Fair-use limits, cost auto-pause, manual pause, inactive clean-up and owner usage page proven by the PR B tests. Evidence: docs/status/2026-10-24-pub-5b-fair-use.md.
-- [ ] Security review file has a test reference (or a named fix) for all 12 threats; `npm audit` result recorded.
-- [ ] Home page, rename, website pack, `server.json` and Marketplace pack merged; each owner step is a row in
-      `docs/OWNER-CHECKLIST.md` "PUB-5 launch" with plain-English instructions.
-- [ ] After release: ACC-1 checks `/` and `/limits` on the live service and one public sign-in end to end; result in
+- [x] Security review file has a test reference (or a named fix) for all 12 threats; `npm audit` result recorded.
+- [x] Home page, rename, website pack, `server.json` and Marketplace pack merged; each owner step is a row in
+      `docs/OWNER-CHECKLIST.md` "PUB-5 launch" with plain-English instructions. Evidence: tests/unit/pub-5d-front-door.test.js, tests/browser/home-page.test.js, docs/status/2026-10-24-pub-5d-front-door.md.
+- [ ] (waits for the next release; ACC-1 row, not a blocker) After release: ACC-1 checks `/` and `/limits` on the live service and one public sign-in end to end; result in
       `docs/developer-evidence.json`. Paid-plan-only checks are not part of this card.
-- [ ] `work-index.json` PUB-5 → `MERGED`; this card's boxes ticked with evidence.
+- [x] `work-index.json` PUB-5 → `MERGED`; this card's boxes ticked with evidence.
 
 ## Not in this card (recorded in `docs/ROADMAP.md`)
 
