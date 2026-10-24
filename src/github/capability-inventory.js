@@ -8,6 +8,34 @@ import {curatedGraphqlMutation} from './mutation-classes.js';
 import {WRITE_SPECS, REFUSED_MUTATIONS} from './graphql-writes.js';
 import {reviewedRestEvidence} from './capability-evidence.js';
 
+/** GQL-1: GraphQL mutations whose job an existing hand-built tool already does. Coverage bookkeeping only: unlike the
+ *  `curated` map in mutation-classes.js this does NOT stop `github_graphql_write` from running the mutation. */
+export const COVERED_BY_TOOL = new Map([
+  ['addProjectV2DraftIssue', 'github_project_add_draft'],
+  ['archiveProjectV2Item', 'github_project_archive_item'],
+  ['unarchiveProjectV2Item', 'github_project_archive_item'],
+  ['clearProjectV2ItemFieldValue', 'github_project_clear_field'],
+  ['convertProjectV2DraftIssueItemToIssue', 'github_project_convert_draft'],
+  ['copyProjectV2', 'github_project_copy'],
+  ['createProjectV2', 'github_project_create'],
+  ['createProjectV2Field', 'github_project_field_save'],
+  ['updateProjectV2Field', 'github_project_field_save'],
+  ['deleteProjectV2Field', 'github_project_field_delete'],
+  ['createProjectV2StatusUpdate', 'github_project_status_update'],
+  ['createProjectV2View', 'github_project_view_save'],
+  ['deleteProjectV2View', 'github_project_view_save'],
+  ['deleteProjectV2', 'github_project_delete'],
+  ['deleteProjectV2Item', 'github_project_delete_item'],
+  ['linkProjectV2ToRepository', 'github_project_link'],
+  ['unlinkProjectV2FromRepository', 'github_project_link'],
+  ['linkProjectV2ToTeam', 'github_project_link'],
+  ['unlinkProjectV2FromTeam', 'github_project_link'],
+  ['updateProjectV2', 'github_project_update'],
+  ['updateProjectV2ItemPosition', 'github_project_move_item'],
+  ['addProjectV2ItemById', 'github_project_set_item'],
+  ['updateProjectV2ItemFieldValue', 'github_project_set_item']
+]);
+
 export const SOURCE = Object.freeze({
   checked: '2026-10-21',
   rest: Object.freeze({
@@ -236,6 +264,14 @@ function gqlRecord(root, field, names) {
       } else {
         rec.implementation.reason = 'Orphan curated tool mapping: ' + curated;
       }
+    } else if (COVERED_BY_TOOL.has(field.name) && names.has(COVERED_BY_TOOL.get(field.name))) {
+      rec.implementation.route = 'curated';
+      rec.implementation.tool = COVERED_BY_TOOL.get(field.name);
+      rec.implementation.source = 'src/github/capability-inventory.js';
+      rec.implementation.status = 'implemented-unverified';
+      rec.state = 'implemented-unverified';
+      rec.implementation.reason = 'A dedicated tool already performs this mutation';
+      rec.delivery.nextAction = 'Verify the dedicated tool against a real account';
     } else if (REFUSED_MUTATIONS.has(field.name)) {
       rec.implementation.route = 'refused-by-design';
       rec.implementation.status = 'refused-by-design';

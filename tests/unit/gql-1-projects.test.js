@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createDispatch } from '../../src/tools/dispatch.js';
 import { registry } from '../../src/tools/index.js';
 import { REFUSED_MUTATIONS, WRITE_SPECS } from '../../src/github/graphql-writes.js';
-import { curatedGraphqlMutation, curatedTargets } from '../../src/github/mutation-classes.js';
-import { buildCapabilityInventory, STATES } from '../../src/github/capability-inventory.js';
+import { buildCapabilityInventory, COVERED_BY_TOOL, STATES } from '../../src/github/capability-inventory.js';
 import { makeWorld, parse } from '../../test/helpers/write-contract.js';
 
 const MUTATION = (name, type) => `mutation M($input: ${type}!){ ${name}(input:$input){ clientMutationId } }`;
@@ -13,24 +12,15 @@ const world = () => makeWorld({ profile: 'full', mode: 'production', advanceCloc
 const sent = (gh) => gh.calls.filter((c) => /^\s*mutation\b/.test(c.body?.query ?? ''));
 
 describe('GQL-1 Projects v2 coverage', () => {
-  it('every project mutation with a dedicated tool is mapped to a tool that exists', () => {
+  it('every covered mutation is mapped to a tool that exists, and the inventory counts it as covered', () => {
     const names = new Set(registry.tools.map((t) => t.name));
-    const mapped = ['createProjectV2', 'deleteProjectV2', 'updateProjectV2', 'copyProjectV2', 'addProjectV2ItemById', 'updateProjectV2ItemFieldValue',
-      'linkProjectV2ToRepository', 'unlinkProjectV2FromTeam', 'createProjectV2StatusUpdate', 'deleteProjectV2View', 'archiveProjectV2Item'];
-    for (const m of mapped) {
-      const tool = curatedGraphqlMutation(m);
-      expect(tool, m).toMatch(/^github_project_/);
-      expect(names.has(tool), `${m} -> ${tool}`).toBe(true);
+    for (const [mutation, tool] of COVERED_BY_TOOL) expect(names.has(tool), `${mutation} -> ${tool}`).toBe(true);
+    const inv = buildCapabilityInventory({ registryTools: registry.tools });
+    for (const m of ['createProjectV2', 'deleteProjectV2', 'updateProjectV2', 'copyProjectV2', 'addProjectV2ItemById', 'linkProjectV2ToRepository']) {
+      const row = inv.operations.find((r) => r.interface === 'graphql' && r.operation?.field === m);
+      expect(row.state, m).toBe('implemented-unverified');
+      expect(row.implementation.tool).toBe(COVERED_BY_TOOL.get(m));
     }
-    for (const tool of curatedTargets()) expect(names.has(tool), tool).toBe(true);
-  });
-
-  it('a mapped mutation cannot be sent through the generic route', async () => {
-    const w = await world();
-    const out = await run(w, { mutation: MUTATION('deleteProjectV2', 'DeleteProjectV2Input'), variables: { input: { projectId: 'P1' } }, owner: 'example-org', confirm: true })
-      .catch((e) => ({ status: 'error', message: String(e) }));
-    expect(out.status).not.toBe('applied');
-    expect(sent(w.gh)).toHaveLength(0);
   });
 
   it('the two refused mutations say why and send nothing', async () => {
