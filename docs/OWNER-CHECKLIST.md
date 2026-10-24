@@ -141,4 +141,6 @@ Defaults in brackets are what the agents build; change any by telling the agent.
 - [ ] Nothing to do. When it is built, your master token makes GitHub show **you** instead of the bot. If you ever want the
       bot back, use the "Act as me" switch on My connection. Note: anything that only accepts you (like appliance-desk's
       extra testing build) will then also accept your agents, because GitHub sees you.
+      Overriding branch rules (for example merging without the required review) works when you ask for it: the assistant
+      shows which rules it would skip and you confirm each time. A second switch on My connection turns that off.
 

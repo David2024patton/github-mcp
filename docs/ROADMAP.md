@@ -136,5 +136,6 @@ Nothing here is built. PUB-5 measures each person's daily calls and changes so a
 
 ## Later options for GOD-6 "act as me" (not built)
 A per-call "as the bot this once" choice; acting as the person for tools that narrow their token per call (needs a
-URL-inside-target check like GOD-5's); fine-grained personal tokens as the "me" credential.
+URL-inside-target check like GOD-5's); fine-grained personal tokens as the "me" credential; the deliberate rule override on more tools (tags, branch rename,
+update branch, universal tools).
 
