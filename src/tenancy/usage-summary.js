@@ -1,41 +1,48 @@
-// Owner-only, read-only summary of public sign-in usage. Aggregate numbers only: how many people are connected and how
-// many assistant calls ran in the last day and week, by result. No names, tokens, repository text or client ids ever
-// appear. Each person's counts live in that person's own store, so this adds them up one store at a time (a hard cap
-// keeps one page load small). It changes nothing and charges nobody: it exists so the owner can see how the service is used.
-import { createTenantDirectory, createTenantSql } from './directory.js';
+// Owner-only, read-only summary of public sign-in usage, for the protected setup page. PUB-5 B: every number comes from ONE source,
+// the shared usage tables (numbers per person per day), so it is a handful of cheap queries however many people there are.
+// Only for the ten heaviest people this week it reads their GitHub name from their own store (to prevent abuse and control cost);
+// the shared level keeps no names. It changes nothing and charges nobody.
+import { createDb } from '../db.js';
+import { createTenantSql } from './directory.js';
+import { publicUsageLimits } from './public-usage.js';
+import { estimatePublicCost, publicSignupState } from './usage-cost.js';
 
-const PAGE = 200;
-const TIME_BUDGET_MS = 8000;
-const empty = () => ({ calls: 0, ok: 0, refused: 0, throttled: 0, errors: 0 });
+const TOP = 10;
 
-/** PUB-5 A: no ceiling on people. Public people are read in pages of 200 (keyset paging). After a time budget of 8 seconds it
- *  stops and says `partial: true` with how many were counted, never a wrong total.
- *  @param {Function} rootSql the shared database, tagged-template style
- *  @param {{connectionString:string, sqlFactory?:Function, timeBudgetMs?:number}} options */
-export async function publicUsageSummary(rootSql, { connectionString, sqlFactory, timeBudgetMs = TIME_BUDGET_MS }) {
-  const directory = createTenantDirectory(rootSql);
-  const started = Date.now();
-  const day = empty(), week = empty();
-  let counted = 0, unreadable = 0, partial = false;
-  scan: for (let last = null, ids = await directory.publicTenantPage(null, PAGE); ids.length; ids = await directory.publicTenantPage(last, PAGE)) {
-    for (const tenantId of ids) {
-      if (Date.now() - started > timeBudgetMs) { partial = true; break scan; }
-      last = tenantId;
-      try {
-        const sql = createTenantSql(connectionString, tenantId, sqlFactory);
-        const rows = await sql`SELECT outcome,
-            COALESCE(SUM(count) FILTER (WHERE hour >= now() - interval '1 day'),0)::bigint AS day,
-            COALESCE(SUM(count) FILTER (WHERE hour >= now() - interval '7 days'),0)::bigint AS week
-          FROM gh_tenant_runtime_metrics WHERE event='mcp' GROUP BY outcome`;
-        for (const r of rows) {
-          const key = r.outcome === 'error' ? 'errors' : r.outcome;
-          if (!(key in day)) continue;
-          day[key] += Number(r.day); week[key] += Number(r.week);
-          day.calls += Number(r.day); week.calls += Number(r.week);
-        }
-      } catch { unreadable += 1; }
-      counted += 1;
-    }
+/** @param {Function} rootSql the shared database, tagged-template style
+ *  @param {{connectionString:string, sqlFactory?:Function, env?:Record<string,string|undefined>, now?:()=>number}} options */
+export async function publicUsageSummary(rootSql, { connectionString, sqlFactory, env = process.env, now = Date.now }) {
+  const [people] = await rootSql`SELECT count(*)::int AS n FROM gh_tenant_pilot_bootstraps WHERE account_login = 'public-connect'`;
+  const [t] = await rootSql`SELECT
+      COALESCE(SUM(calls)  FILTER (WHERE day = d), 0)::bigint AS calls_day,
+      COALESCE(SUM(writes) FILTER (WHERE day = d), 0)::bigint AS writes_day,
+      COALESCE(SUM(errors) FILTER (WHERE day = d), 0)::bigint AS errors_day,
+      COUNT(DISTINCT tenant_id) FILTER (WHERE day = d)::int AS active_day,
+      COALESCE(SUM(calls), 0)::bigint AS calls_week, COALESCE(SUM(writes), 0)::bigint AS writes_week,
+      COALESCE(SUM(errors), 0)::bigint AS errors_week, COUNT(DISTINCT tenant_id)::int AS active_week
+    FROM gh_public_usage_daily, (SELECT (now() AT TIME ZONE 'UTC')::date AS d) today
+    WHERE day > d - 7`;
+  const heaviest = await rootSql`SELECT tenant_id, SUM(calls)::bigint AS calls, SUM(writes)::bigint AS writes
+    FROM gh_public_usage_daily WHERE day > (now() AT TIME ZONE 'UTC')::date - 7
+    GROUP BY tenant_id ORDER BY 2 DESC, tenant_id LIMIT ${TOP}`;
+  const top = [];
+  let unreadable = 0;
+  for (const row of heaviest) {
+    let login = null;
+    try {
+      const sql = createTenantSql(connectionString, String(row.tenant_id), sqlFactory);
+      const found = await sql`SELECT login FROM gh_accounts WHERE account_type = 'User' ORDER BY is_default DESC, login LIMIT 1`;
+      login = found[0]?.login ?? null;
+    } catch { unreadable += 1; }
+    top.push({ login, calls: Number(row.calls), writes: Number(row.writes) });
   }
-  return { peopleConnected: counted, partial, moreThanShown: partial, unreadable, lastDay: day, lastWeek: week };
+  const limits = publicUsageLimits(env);
+  const lastWeek = { calls: Number(t.calls_week), writes: Number(t.writes_week), errors: Number(t.errors_week) };
+  const signups = await publicSignupState({ rootSql, root: createDb(rootSql), env, limits, now }).catch(() => null);
+  return {
+    peopleConnected: people.n, partial: false, moreThanShown: false, unreadable,
+    activeToday: t.active_day, activeThisWeek: t.active_week,
+    lastDay: { calls: Number(t.calls_day), writes: Number(t.writes_day), errors: Number(t.errors_day) }, lastWeek,
+    cost: estimatePublicCost({ lastWeek }, env), signups, top, limits: { callsPerDay: limits.callsPerDay, writesPerHour: limits.writesPerHour }
+  };
 }

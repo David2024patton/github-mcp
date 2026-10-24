@@ -224,8 +224,8 @@ Read `docs/AI-PR-READ-FIRST.md` and record each constraint in the PR's self-revi
 ## Done when
 
 - [ ] A, B, C, D merged with green `ci` and `release-policy`; status note per PR in `docs/status/`.
-- [ ] No people cap in code or docs; 500-person load test and uninstall timing recorded (PR A note).
-- [ ] Fair-use limits, cost auto-pause, manual pause, inactive clean-up and owner usage page proven by the PR B tests.
+- [x] No people cap in code or docs; 500-person load test and uninstall timing recorded (PR A note). Evidence: docs/status/2026-10-24-pub-5a-scale.md.
+- [x] Fair-use limits, cost auto-pause, manual pause, inactive clean-up and owner usage page proven by the PR B tests. Evidence: docs/status/2026-10-24-pub-5b-fair-use.md.
 - [ ] Security review file has a test reference (or a named fix) for all 12 threats; `npm audit` result recorded.
 - [ ] Home page, rename, website pack, `server.json` and Marketplace pack merged; each owner step is a row in
       `docs/OWNER-CHECKLIST.md` "PUB-5 launch" with plain-English instructions.

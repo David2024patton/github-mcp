@@ -38,7 +38,24 @@ function accountCard(a) {
  */
 /** One plain sentence on the estimated monthly hosting cost, with a warning line once it passes the owner's alert level. */
 const publicCostLine = (c) => !c ? '' : `<p>Estimated hosting cost at this rate: about ${h(c.estimate_display)} a month (${h(String(c.monthCalls))} calls). This is a rough estimate from call counts, not a bill; your real charges are on Vercel and Neon.</p>` +
-  (c.overAlert ? `<p class="notice"><strong>Heads up:</strong> the estimate is at or above your alert level of ${h(c.alert_display)} a month. Check Vercel and Neon usage, or lower the sign-up cap.</p>` : '');
+  (c.overAlert ? `<p class="notice"><strong>Heads up:</strong> the estimate is at or above your alert level of ${h(c.alert_display)} a month. Check Vercel and Neon usage, or pause new sign-ups.</p>` : '');
+
+const dollarsOf = (cents) => `$${(Number(cents) / 100).toFixed(2)}`;
+const num = (n) => Number(n ?? 0).toLocaleString('en-US');
+/** PUB-5 B: the owner's one page of numbers. Counts, plus the GitHub name of the ten heaviest people this week (to prevent abuse and control cost). */
+const publicUsageSection = (u) => {
+  const sign = u.signups;
+  const signLine = !sign ? '' : sign.paused
+    ? `<p class="notice"><strong>New sign-ups: paused</strong> (${h(sign.reason ?? 'paused')}). People who are already connected keep working. To open them again, ${sign.manual ? 'remove GITHUB_PUBLIC_NEW_SIGNUPS or set it to open' : 'wait for usage to fall, or raise PUBLIC_COST_PAUSE_CENTS'}.</p>`
+    : `<p>New sign-ups: <strong>open</strong>. They pause on their own if the estimated monthly cost reaches ${h(dollarsOf(sign.pauseCents))}. To pause by hand, set GITHUB_PUBLIC_NEW_SIGNUPS=paused.</p>`;
+  const top = (u.top ?? []).length ? '<p><small>Heaviest users this week (calls, changes): ' +
+    u.top.map((t) => `${h(t.login ?? 'name not available')} (${h(num(t.calls))}, ${h(num(t.writes))})`).join('; ') + '.</small></p>' : '';
+  return `<h2>Public usage</h2><p>People connected through the public sign-in: ${h(num(u.peopleConnected))}. Active today: ${h(num(u.activeToday ?? 0))}; active this week: ${h(num(u.activeThisWeek ?? 0))}. ` +
+    `Assistant calls today: ${h(num(u.lastDay.calls))} (${h(num(u.lastDay.writes ?? 0))} real changes, ${h(num(u.lastDay.errors))} errors). Last 7 days: ${h(num(u.lastWeek.calls))} calls.` +
+    `${u.unreadable ? ` ${h(String(u.unreadable))} names could not be read.` : ''} ` +
+    'The owner sees each person\'s daily counts, and the GitHub name of the ten heaviest users, to prevent abuse and control cost. Nothing else about anyone is shown here.</p>' +
+    publicCostLine(u.cost) + signLine + top;
+};
 
 export function renderSetup({ csrf, result = '', revealed = null, show = '', accounts = null, manifestForm = null, installLink = null, blocked = '', keyHelp = '', productionNames = null, protectedList = null, spendLimits = null, ownPeopleExtra = null, secretEntry = null, oauthReadiness = null, connections = null, publicUsage = null, publicInvites = null }) {
   const form = (action, inner, button, extra = '') => `<form method="post" action="#setup-feedback" autocomplete="off">${hidden('csrf', csrf)}${hidden('action', action)}${extra}${inner}${passphrase}<button type="submit">${h(button)}</button></form>`;
@@ -125,7 +142,7 @@ export function renderSetup({ csrf, result = '', revealed = null, show = '', acc
     '<h2>Your own people</h2><p>Comments, reviews and assignments that only reach your own people need no confirmation. These always count: your connected accounts, their organization members, github-actions[bot] and this server\'s own App bots. Add other GitHub names here, separated by commas. Saving replaces this extra list.</p>' +
     (ownPeopleExtra ? `<p><small>Extra names: ${h(ownPeopleExtra.join(', ') || 'none')}</small></p>` : '') +
     form('set-own-people', '<label>Extra names<input name="logins" maxlength="1000" autocomplete="off"></label>', 'Save own people') +
-    (publicUsage && publicUsage.peopleConnected > 0 ? `<h2>Public usage</h2><p>People connected through the public sign-in: ${h(String(publicUsage.peopleConnected))}${publicUsage.moreThanShown ? ' or more' : ''}. Assistant calls in the last day: ${h(String(publicUsage.lastDay.calls))} (${h(String(publicUsage.lastDay.refused))} refused, ${h(String(publicUsage.lastDay.throttled))} slowed down, ${h(String(publicUsage.lastDay.errors))} errors). Last 7 days: ${h(String(publicUsage.lastWeek.calls))}.${publicUsage.unreadable ? ` ${h(String(publicUsage.unreadable))} could not be read.` : ''} Counts only: no names or content.</p>${publicCostLine(publicUsage.cost)}` : '') +
+    (publicUsage && publicUsage.peopleConnected > 0 ? publicUsageSection(publicUsage) : '') +
     (publicInvites ? `<h2>Invite list</h2><p>${publicInvites.on ? '<strong>Invite-only is ON.</strong> A new person can connect only if their GitHub name is below.' : 'Invite-only is OFF: anyone can connect. To turn it on, set GITHUB_PUBLIC_INVITE_ONLY=enabled for the production deployment.'} People who already connected are never locked out.</p>` +
       `<p><small>Invited: ${h(publicInvites.logins.join(', ') || 'nobody yet')}</small></p>` +
       form('add-invites', '<label>GitHub names to invite (separated by commas)<input name="logins" required maxlength="1000" autocomplete="off"></label>', 'Add to the invite list') +

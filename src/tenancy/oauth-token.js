@@ -74,6 +74,8 @@ export async function privateTenantToken(req, res, {
     });
     const result=await handlers.token(req, res);
     outcome=res.statusCode>=400?'refused':'ok';
+    // PUB-5 B: remember (at most once a day) that this app registration is in use, so unused registrations can be cleaned away.
+    if (publicClient && outcome==='ok') await directory.touchPublicClient(params.client_id).catch(()=>{});
     note('done');
     return result;
   } catch (error) {

@@ -7,6 +7,7 @@ import { TenantCapacityError, TENANT_RUNTIME_LIMITS as LIMITS } from './runtime-
 import { escapeHtml as h, paramsOf, publicOrigin, send } from '../core/http.js';
 import { COMMON_ZONES } from '../core/time-zone.js';
 import { renderTrustBody, TRUST_PAGES } from './trust-pages.js';
+import { publicUsageLimits } from './public-usage.js';
 import { BRAND_CSS, brandHeader, brandFooter } from '../brand/brand.js';
 
 const CSP = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self' https://github.com; base-uri 'none'; frame-ancestors 'none'";
@@ -33,8 +34,10 @@ function failure(res, error, where = '') {
     res.setHeader('Retry-After', String(error.retryAfterSeconds));
     return page(res, 429, 'Busy right now', '<p>This connection is temporarily busy. Please try again in a minute.</p>');
   }
-  if (error instanceof PublicConnectError && error.code !== 'refused')
-    return page(res, error.code === 'capacity' ? 503 : 403, error.code === 'capacity' ? 'Not available right now' : 'Could not connect', `<p>${h(error.message)}</p>`);
+  if (error instanceof PublicConnectError && error.code !== 'refused') {
+    const unavailable = error.code === 'capacity' || error.code === 'paused';
+    return page(res, unavailable ? 503 : 403, unavailable ? 'Not available right now' : 'Could not connect', `<p>${h(error.message)}</p>`);
+  }
   return page(res, 403, 'This step has expired', '<p>Each page of the sign-in works once and only for a few minutes. Go back to your app and start connecting again. If you were already connected, you still are.</p>');
 }
 /** The last step back to the person's app: a small page that ends the redirect chain on our site, then sends them on.
@@ -65,13 +68,15 @@ export async function publicRegister(req, res, { env = process.env, ...deps } = 
     return send(res, 201, await make(env, deps).registerClient(paramsOf(req)));
   } catch (error) {
     if (error instanceof PublicConnectError && error.code === 'invalid_client_metadata') return send(res, 400, { error: 'invalid_client_metadata', error_description: error.message });
-    if (error instanceof PublicConnectError && error.code === 'capacity') return send(res, 503, { error: 'temporarily_unavailable', error_description: error.message });
+    if (error instanceof PublicConnectError && (error.code === 'capacity' || error.code === 'paused')) return send(res, 503, { error: 'temporarily_unavailable', error_description: error.message });
     return send(res, 503, { error: 'temporarily_unavailable' });
   }
 }
 
 /** /limits: the working limits in plain words. Read-only, no sign-in, nothing personal. Numbers come from the same settings the server enforces. */
 export async function publicLimits(req, res, { env = process.env } = {}) {
+  const FAIR = publicUsageLimits(env);
+  const group = (n) => Number(n).toLocaleString('en-US');
   res.setHeader('Cache-Control', 'no-store');
   if (!publicConnectEnabled(env)) return off(res);
   if (req.method !== 'GET') { res.setHeader('Allow', 'GET'); return send(res, 405, { error: 'method_not_allowed' }); }
@@ -79,6 +84,8 @@ export async function publicLimits(req, res, { env = process.env } = {}) {
   const hours = Math.round(LIMITS.resultMaxTtlSeconds / 3600);
   return page(res, 200, 'Limits', '<p>These limits keep the service fast and fair for everyone. Normal use never gets near them. When one is reached your assistant is told to wait a moment; nothing is lost or changed.</p>' +
     `<div class="row"><span><strong>Assistant calls</strong><br><small>How fast your assistants can use GitHub through us.</small></span><span>${LIMITS.mcpClientPerMinute} a minute per app, ${LIMITS.mcpTenantPerMinute} a minute in total</span></div>` +
+    `<div class="row"><span><strong>Free daily use</strong><br><small>Calls your assistants make in a day (midnight to midnight UTC). Looking things up and previews count as calls; there is no limit on how many people can join.</small></span><span>${group(FAIR.callsPerDay)} calls a day per person</span></div>` +
+    `<div class="row"><span><strong>Real changes</strong><br><small>Changes made on GitHub in an hour. Reading and previews keep working when this is reached.</small></span><span>${group(FAIR.writesPerHour)} an hour per person</span></div>` +
     `<div class="row"><span><strong>Sign-in attempts</strong><br><small>Connecting or reconnecting an app.</small></span><span>${LIMITS.oauthClientPerMinute} a minute per app</span></div>` +
     `<div class="row"><span><strong>Saved results</strong><br><small>Long answers we keep so your assistant can fetch them.</small></span><span>kept up to ${hours} hours; each up to ${Math.round(LIMITS.resultMaxBytes / 1024)} KB; ${mb(LIMITS.resultsTenantBytesPerDay)} a day</span></div>` +
     `<div class="row"><span><strong>Background jobs</strong><br><small>Longer tasks that finish later.</small></span><span>${LIMITS.jobsTenantPending} waiting at once, ${LIMITS.jobsTenantPerDay} a day</span></div>` +
@@ -144,6 +151,7 @@ function managePage(res, m) {
   return page(res, 200, 'My connection',
     (m.notice ? `<p class="notice">${h(m.notice)}</p>` : '') +
     `<p>Signed in as <strong>${h(m.signedInAs)}</strong>.</p>` +
+    (m.usage ? `<p id="used-today">Used today: <strong>${h(Number(m.usage.used).toLocaleString('en-US'))}</strong> of ${h(Number(m.usage.limit).toLocaleString('en-US'))} free calls. <small>Resets at midnight UTC. <a href="/limits">See the limits</a>.</small></p>` : '') +
     '<h2>Accounts</h2>' + (m.accounts.length ? m.accounts.map((a) => `<div class="row"><span>${h(a.login)} <span class="tag">${a.organization ? 'organization' : 'your account'}</span></span><span class="tag">${a.active ? 'connected' : 'App removed'}</span></div>`).join('') : '<p class="muted">None yet.</p>') +
     m.offers.map((o) => act('add', `Add ${h(o.login)}`, { value: o.login, id: 'add-' + o.login })).join('') +
     (m.offers.length ? '<p><small>Adding opens GitHub to install the App there, then brings you back. Your apps get the new account straight away.</small></p>' : '') +
