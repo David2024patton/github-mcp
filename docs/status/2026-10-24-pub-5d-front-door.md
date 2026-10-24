@@ -8,7 +8,7 @@
 - **`docs/website/`** button (paste-ready, no scripts) and **`docs/marketplace/`** listing text plus three Playwright screenshots (home, Approve, My connection; fake data; `npm run marketplace:screenshots`).
 - Your GitHub number (227716942) is on the checklist for the "free daily limit" exemption.
 
-**Client steps** were checked against each client's own documentation on 2026-10-24 (pages cited in the HTML comment on the home page). Not verifiable from docs: adding a connector on the Claude phone app; the page says the apps use your connectors list "when your version offers it".
+**Client steps** were checked against each client's own documentation on 2026-10-24 (pages cited in the HTML comment on the home page). Adding a connector on the Claude phone app was confirmed by Chris on 2026-10-24; the page now says so.
 
 **Registry crawlers:** `/api/mcp` answers 401 to everyone without a sign-in, `initialize` and `tools/list` included. Sign-in was not weakened; a directory that cannot sign in will not list the tools.
 
