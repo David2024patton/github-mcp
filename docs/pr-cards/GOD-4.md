@@ -79,8 +79,8 @@ For every tool: request-shape test against the fake GitHub; for every write: `ru
 `docs/TOOL-CATALOG.md` (credential column `U`, note "uses your master token") and to `MASTER_AREAS`.
 
 ## Done when
-- [x] PR A (in review): Codespaces secrets (user level + `M`), machines, account export (4 tools).
-- [ ] PR B merged: Copilot Spaces (10 tools), small reads/writes (8 tools).
+- [x] PR A merged (#343): Codespaces secrets (user level + `M`), machines, account export (4 tools).
+- [x] PR B (in review): Copilot Spaces (10 tools), small reads/writes (7 of 8; `github_credential_revoke` moves to its own PR — protected token page).
 - [ ] `python3 scripts/count-catalog.py` and `node scripts/check-writes.mjs` green; `MASTER_AREAS` lists them.
 - [ ] ACC-1 gets live rows: list machines, export start/status/link/delete on Chris's account (export of ONE
       disposable scratch repo only), Copilot Space create/delete (disposable), Classroom/Marketplace reads (expect an
