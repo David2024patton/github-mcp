@@ -7,6 +7,7 @@ import { defineGithubWrite } from './define-github-write.js';
 import { refusal, ownerOf } from './github-write.js';
 import { requireEnterprise, ENTERPRISE_SLUG } from '../github/enterprise-access.js';
 import { graphql } from '../github/client.js';
+import { protectedInside } from './enterprise-write.js';
 
 const E = ENTERPRISE_SLUG;
 const ON_OFF = ['ENABLED', 'DISABLED', 'NO_POLICY'];
@@ -24,6 +25,9 @@ export const POLICIES = {
   default_repository_permission: { mutation: 'updateEnterpriseDefaultRepositoryPermissionSetting', read: 'defaultRepositoryPermissionSetting', values: ['NONE', 'READ', 'WRITE', 'ADMIN', 'NO_POLICY'], widensAbove: ['WRITE', 'ADMIN'], what: 'the default permission every member gets on organization repositories' }
 };
 const KEYS = Object.keys(POLICIES);
+// These three do not change what anyone can do inside a repository; every other policy does, so it is refused while a
+// protected repository sits inside the enterprise (same fail-closed rule as attaching a security configuration to everything).
+const NOT_REPO_ACCESS = new Set(['organization_projects', 'members_can_view_dependency_insights', 'members_can_make_purchases']);
 const FORKING = ['ENTERPRISE_ORGANIZATIONS', 'ENTERPRISE_ORGANIZATIONS_USER_ACCOUNTS', 'EVERYWHERE', 'SAME_ORGANIZATION', 'SAME_ORGANIZATION_USER_ACCOUNTS', 'USER_ACCOUNTS'];
 const PROFILE_FIELDS = ['name', 'description', 'location', 'websiteUrl', 'securityContactEmail'];
 
@@ -56,18 +60,26 @@ const policySet = defineGithubWrite({
     if (args.forkingPolicy && args.setting !== 'allow_private_repository_forking') throw new TypeError('forkingPolicy only applies to allow_private_repository_forking.');
     return entTarget(args, ctx);
   },
-  read: async (args, ctx, t) => readPolicies(await adminClient(ctx, t), t),
+  read: async (args, ctx, t) => {
+    const gh = await adminClient(ctx, t);
+    const state = await readPolicies(gh, t);
+    return { ...state, blocked: NOT_REPO_ACCESS.has(args.setting) ? null : await protectedInside(gh, ctx, t) };
+  },
   price: ({ args }) => (POLICIES[args.setting].spend && args.value === 'ENABLED' ? null : 0),
   classify: ({ args }) => {
     const p = POLICIES[args.setting];
     const widens = args.value === p.widens || p.widensAbove?.includes(args.value);
     return { production: `an enterprise-wide policy: ${p.what}; it applies to every organization in the enterprise`,
-      ...(widens ? { accessWidening: `${p.what}: set to ${args.value} for the whole enterprise` } : {}) };
+      ...(widens || args.forkingPolicy ? { accessWidening: `${p.what}: set to ${args.value}${args.forkingPolicy ? ` with forks allowed to: ${args.forkingPolicy}` : ''} for the whole enterprise` } : {}) };
   },
-  summarize: ({ args, target: t, before }) => `Set "${POLICIES[args.setting].what}" in ${t.enterprise} to ${args.value} (today: ${before[POLICIES[args.setting].read] ?? 'unknown'})`,
+  summarize: ({ args, target: t, before }) => (before.blocked
+    ? `Refused: ${before.blocked}. This policy would change access to protected resources.`
+    : `Set "${POLICIES[args.setting].what}" in ${t.enterprise} to ${args.value} (today: ${before[POLICIES[args.setting].read] ?? 'unknown'})`
+      + (args.forkingPolicy ? `; forks may go to ${args.forkingPolicy} (today: ${before.allowPrivateRepositoryForkingSettingPolicyValue ?? 'unset'})` : '')),
   apply: async ({ args, ctx, target: t, before }) => {
     const p = POLICIES[args.setting];
-    if (before[p.read] === args.value && !args.forkingPolicy) throw refusal(`That policy is already ${args.value}; nothing to do.`);
+    if (before.blocked) throw refusal(`${before.blocked}, so this policy will not be changed (it would change access to protected resources).`, 403);
+    if (before[p.read] === args.value && (!args.forkingPolicy || before.allowPrivateRepositoryForkingSettingPolicyValue === args.forkingPolicy)) throw refusal(`That policy is already ${args.value}; nothing to do.`);
     const gh = await adminClient(ctx, t);
     const doc = `mutation EnterprisePolicySet($input: ${p.mutation[0].toUpperCase()}${p.mutation.slice(1)}Input!) { ${p.mutation}(input: $input) { clientMutationId } }`;
     return graphql(gh, doc, { input: { enterpriseId: before.id, settingValue: args.value, ...(args.forkingPolicy ? { policyValue: args.forkingPolicy } : {}) } });

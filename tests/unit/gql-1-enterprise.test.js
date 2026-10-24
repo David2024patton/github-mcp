@@ -41,6 +41,7 @@ function arrange(gh, { policy = {}, profile = {}, flips = true, admin = [{ slug:
     }
     if (q.includes('EnterprisePolicies')) return { data: { enterprise: { id: 'E1', ownerInfo: { ...state.policy } } } };
     if (q.includes('EnterpriseProfile')) return { data: { enterprise: { id: 'E1', ...state.profile } } };
+    if (q.includes('organizations(first')) return { data: { enterprise: { organizations: { totalCount: 1, nodes: [{ login: 'robinson-ai-scratch' }] } } } };
     return { data: { viewer: { enterprises: { nodes: admin } } } };
   });
   return state;
@@ -88,6 +89,28 @@ describe('GQL-1 enterprise policies and profile', () => {
     const preview = parse(await call(w, 'github_enterprise_policy_set', { enterprise: SLUG, setting: 'default_repository_permission', value: 'ADMIN' }));
     expect(JSON.stringify(preview)).toMatch(/default permission/i);
     expect(preview.status).toBe('needs_confirmation');
+  });
+  it('a policy that changes repository access is refused while a protected repository sits in the enterprise; one that does not is allowed', async () => {
+    const w = withMaster(await makeWorld({ profile: 'full', mode: 'production' }));
+    const state = arrange(w.gh);
+    await w.db.seedProtectedResources([{ kind: 'repo', target: 'robinson-ai-scratch/guarded', level: 'locked', reason: 'test' }]);
+    const out = parse(await call(w, 'github_enterprise_policy_set', { enterprise: SLUG, setting: 'default_repository_permission', value: 'ADMIN', confirm: true }));
+    expect(out.status).not.toBe('applied');
+    expect(JSON.stringify(out)).toMatch(/guarded/);
+    expect(state.sent).toEqual([]);
+    const ok = parse(await call(w, 'github_enterprise_policy_set', { enterprise: SLUG, setting: 'organization_projects', value: 'DISABLED', confirm: true }));
+    expect(ok.status).toBe('applied');
+  });
+  it('the forking preview names the requested and current forking policy, and a same-value change with a new forking policy still goes ahead', async () => {
+    const w = withMaster(await makeWorld({ profile: 'full', mode: 'production' }));
+    const state = arrange(w.gh, { policy: { allowPrivateRepositoryForkingSetting: 'ENABLED', allowPrivateRepositoryForkingSettingPolicyValue: 'SAME_ORGANIZATION' } });
+    const args = { enterprise: SLUG, setting: 'allow_private_repository_forking', value: 'ENABLED', forkingPolicy: 'EVERYWHERE' };
+    const preview = parse(await call(w, 'github_enterprise_policy_set', args));
+    expect(JSON.stringify(preview)).toMatch(/EVERYWHERE/);
+    expect(JSON.stringify(preview)).toMatch(/SAME_ORGANIZATION/);
+    const done = parse(await call(w, 'github_enterprise_policy_set', { ...args, confirm: true }));
+    expect(done.status).toBe('applied');
+    expect(state.sent).toEqual([{ enterpriseId: 'E1', settingValue: 'ENABLED', policyValue: 'EVERYWHERE' }]);
   });
   it('an enterprise the person does not administer is refused and nothing is sent', async () => {
     const w = withMaster(await makeWorld({ profile: 'full', mode: 'production' }));
