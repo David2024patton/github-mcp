@@ -122,10 +122,21 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
-      - run: npx playwright install --with-deps chromium webkit
+      # Chromium: the runner's own Google Chrome (nothing to download). WebKit: Playwright's build plus its system libraries.
+      # A slow or stuck install fails within 6 minutes and leaves its last output as an annotation on the check.
+      - name: Install the WebKit engine
+        timeout-minutes: 7
+        run: |
+          start=$(date +%s)
+          if ! timeout 360 npx playwright install --with-deps webkit > /tmp/pw-install.log 2>&1; then
+            echo "::error title=WebKit install failed::$(tail -c 900 /tmp/pw-install.log | tr '\n\r' '  ')"
+            exit 1
+          fi
+          echo "::notice title=WebKit install::took $(( $(date +%s) - start )) seconds"
       - run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:browser
         env:
           TEST_DATABASE_URL: postgresql://postgres:ci-only-not-a-secret@127.0.0.1:5432/postgres
+          BROWSER_CHROMIUM_PATH: /usr/bin/google-chrome
           REQUIRE_ALL_BROWSERS: '1'
 
   ci:
