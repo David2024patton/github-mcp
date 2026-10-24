@@ -41,8 +41,22 @@ recorded resolution. 2026-10-23 report: 1,176 unclassified, 65 conflict rows.
    that conflicts unresolved = 0 and that every `unknown` row carries a `reason`.
 
 ## Done when
-- [ ] Every row has a decision backed by endpoint-specific evidence, OR stays `unknown` with the reason "no
+- [x] Every row has a decision backed by endpoint-specific evidence, OR stays `unknown` with the reason "no
       endpoint-specific authentication evidence" (an honest unknown is better than a wrong decision; never fill gaps by
       inference). 0 unresolved conflicts; each decision has evidence (source + date or pinned sha).
-- [ ] A unit test proves `GET /app/hook/config` is recorded as JWT-only (not classic token).
-- [ ] No coverage percentage is printed (unchanged rule); "verified" still means real-account evidence only.
+- [x] A unit test proves `GET /app/hook/config` is recorded as JWT-only (not classic token).
+- [x] No coverage percentage is printed (unchanged rule); "verified" still means real-account evidence only.
+
+## Progress
+- Built (one PR). Source of the decisions: GitHub's own per-operation token lists (github/docs `src/github-apps/data/fpt-2026-03-10`, commit
+  `02c25d16`, vendored as `vendor/github-app-permissions/fpt-2026-03-10.json`, regenerate with `scripts/vendor-app-permissions.mjs`) plus each
+  operation's own text in the pinned REST description (`src/github/credential-derivation.js`). Hand-reviewed rows keep priority and a test proves
+  the derived decisions never contradict them.
+- Result (`node scripts/capability-inventory.mjs --report`): unresolved conflict rows 65 -> 0 (227 rows now carry a written resolution);
+  1,232 of 1,232 REST operations have at least one credential type decided from official evidence; GraphQL stays unknown with a reason
+  (no field-level evidence exists); every unknown carries `reason`.
+- Design choice (docs/DECISIONS.md 2026-10-24): where the pinned description flag says "not for GitHub Apps" but GitHub's per-operation list includes
+  the operation (149 rows), the list wins and both statements are kept; where the description enables Apps but the lists omit the operation
+  (51 rows), the answer stays unknown with the reason written down.
+- Step 4 (MASTER_AREAS): no whole family is newly master-token-only. `classroom` is already listed; `agent-tasks` and `credentials` have no
+  classic-token evidence, so they stay unknown.

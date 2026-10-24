@@ -10,7 +10,7 @@ export function printSummary(catalog, {maxFamilies = 80} = {}) {
     'Operation keys: ' + s.totalOperations,
     'Implementation: ' + Object.entries(s.byState).map(([k,v]) => k + '=' + v).join(', '),
     'Unresolved credential decisions: ' + s.unknownCredentialDecisions,
-    'Officially reviewed operation/credential decisions: ' + s.reviewedCredentialDecisions,
+    'Officially reviewed operation/credential decisions: ' + s.reviewedCredentialDecisions + ' (hand-reviewed); derived from official lists: ' + s.derivedCredentialDecisions,
     'Host/version applicability requiring verification: ' + s.unverifiedHostApplicability,
     'Operations with unresolved official-source conflicts: ' + s.unresolvedConflictRows,
     'Functional coverage percentage: NOT COMPUTED (no proven denominator/numerator).',
@@ -41,7 +41,8 @@ export function printReport(catalog) {
     '- Not yet classified: ' + of(s.byState.unresolved),
     '- Provider-retired: ' + of(s.byState['provider-retired']) + '; provider-UI-only: ' + of(s.byState['provider-UI-only']),
     '- Refused on purpose (reason recorded per row): ' + of(s.byState['refused-by-design']),
-    '- Rows with unresolved official-source conflicts: ' + of(s.unresolvedConflictRows),
+    '- Rows with unresolved official-source conflicts: ' + of(s.unresolvedConflictRows) + '; rows whose conflict has a written resolution: ' + of(s.resolvedConflictRows),
+    '- Operations with at least one credential type decided from official evidence: ' + of(s.operationsWithADecision) + ' (what GitHub documents, not what a connection can do); individual credential decisions left unknown, each with its reason: ' + s.unknownCredentialDecisions,
     'Categories overlap (a row can be unclassified and a universal candidate), so they do not sum to the denominator.',
     'Coverage percentage: not stated; no proven numerator exists until live verification records rows as verified.'
   ].join('\n') + '\n';

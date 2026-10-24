@@ -503,3 +503,10 @@ classification, confirmation, protected-resource and spend checks still apply to
 and back never stops a connection from returning to production because of an extra place.
 Deliberately not built: fine-grained-token places (the card's optional extension).
 
+## 2026-10-24 — INV-1: which official source wins when GitHub's own sources differ
+GitHub's pinned REST description marks 232 operations "not enabled for GitHub Apps", but GitHub's published per-operation token lists include 149 of
+them. Decision: the per-operation list (newer, more specific, generated from the permission data GitHub enforces) wins and both statements are
+kept on the row. Where the description enables Apps but the lists omit the operation (51 rows), neither source is stronger, so the credential stays
+unknown with the reason written down; only a live call can decide it. Classic-token and OAuth-app support is recorded only from the operation's own
+text. Nothing is inferred from another credential type or from the family name. Reason: an honest unknown is better than a wrong "supported".
+

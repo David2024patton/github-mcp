@@ -72,8 +72,8 @@ again (GitHub itself refuses the installation token, so this is stale state, not
    `tests/browser/` case "a key change does not sign people out"; no production rotation.
 
 ## Done when
-- [ ] A (done), B (in review), C merged; owner rows added: invite-only switch, cost alert amount, support email, legal approval, permission change.
-- [ ] Load-test numbers and the cost estimate recorded in a status note.
+- [x] A, B, C merged (#351, #352, #353); owner rows added: invite-only switch, cost alert amount, support email and legal approval, permission list.
+- [x] Load-test numbers and the cost estimate recorded in a status note (`docs/status/2026-10-24-launch-1b.md`).
 
 ## Progress
 - PR A (built; invite-only default OFF, Chris decides when to switch on): uninstall/suspend/revoke clean-up for public people

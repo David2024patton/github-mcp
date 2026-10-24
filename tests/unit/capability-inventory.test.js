@@ -99,7 +99,7 @@ describe('CAP-1 source inventory: no fabricated functional coverage', () => {
     expect(mutate(c => c.summary.totalOperations += 1)).toThrow(/summary/);
   });
 
-  it('retains the precise enterprise-audit and Packages documentation conflicts rather than granting unsupported access', () => {
+  it('keeps the unresolved enterprise-audit conflict visible and records the Packages conflict as resolved by the per-operation lists', () => {
     const rest = [
       {route: 'GET /enterprises/{enterprise}/audit-log', method: 'GET',
         path: '/enterprises/{enterprise}/audit-log', category: 'enterprise-admin',
@@ -114,10 +114,12 @@ describe('CAP-1 source inventory: no fabricated functional coverage', () => {
     const packages = get(inventory.operations, 'rest:github.com@2026-03-10:GET /orgs/');
     expect(audit.evidence.conflicts[0].id).toBe('enterprise-audit-token-contradiction');
     expect(packages.evidence.conflicts[0].id).toBe('packages-rest-token-contradiction');
-    expect(inventory.summary.unresolvedConflictRows).toBe(2);
+    expect(packages.evidence.conflicts[0].status).toBe('resolved');
+    expect(packages.evidence.conflicts[0].resolution).toContain('per-operation statements win');
+    expect(inventory.summary.unresolvedConflictRows).toBe(1);
     expect(audit.credentialSupport.app_user.disposition).toBe('unknown');
-    expect(packages.credentialSupport.app_installation.disposition).toBe('unknown');
-    expect(validateCapabilityInventory(inventory, options).unresolvedConflictRows).toBe(2);
+    expect(packages.credentialSupport.app_installation.disposition).toBe('supported');
+    expect(validateCapabilityInventory(inventory, options).unresolvedConflictRows).toBe(1);
     const amended = structuredClone(inventory);
     get(amended.operations, 'rest:github.com@2026-03-10:GET /orgs/').evidence.conflicts = [];
     expect(() => validateCapabilityInventory(amended, options)).toThrow(/Missing official credential conflict/);
@@ -131,7 +133,7 @@ describe('CAP-1 source inventory: no fabricated functional coverage', () => {
       key: audit.key, credential: 'app_user', disposition: 'supported',
       evidence: 'https://docs.github.com/en/rest/enterprise-admin/audit-log'
     }]})).toThrow(/Unresolved credential conflict/);
-    expect(printSummary(inventory)).toContain('Operations with unresolved official-source conflicts: 2');
+    expect(printSummary(inventory)).toContain('Operations with unresolved official-source conflicts: 1');
   });
 
   it('records operation-specific official credential rights without suggesting a live connection has them', () => {
