@@ -84,6 +84,12 @@ just stops counting them as missing. Add a unit test that every tool name in the
       draft issues) owned by the enrolled account. Tests: `tests/unit/gql-1-projects.test.js` and the new rows in
       `tests/unit/y2-graphql-specs.test.js`. Note: the card said to add a new `COVERED_BY_TOOL` map; the existing
       `curated` map already does exactly this, so it was extended instead.
-- [ ] Group 2 (issues, labels, reviews, discussions, reactions)
+- [x] Group 2 (issues, labels, reviews, discussions, reactions) — 43 mutations mapped to existing tools (assignees,
+      dependencies, sub-issues, labels, reactions, close/reopen/transfer, comments, review create/submit/dismiss/reply/
+      resolve/request, review comment edit/delete, auto-merge, branch update, issue types and fields, field values);
+      10 new specs (upvotes, poll vote, review edit/delete, viewed files, closing references, unmark duplicate);
+      10 refused on purpose with reasons (merge queue, revert, related-issue links, pending-review adds, suggestion
+      apply/reject, clearing an issue field value). Test: `tests/unit/gql-1-issues.test.js` + new rows in
+      `tests/unit/y2-graphql-specs.test.js`.
 - [ ] Group 3 (repository, environments, checks, deployments, branches)
 - [ ] Group 4 (refused / owner-gated; enterprise settings)

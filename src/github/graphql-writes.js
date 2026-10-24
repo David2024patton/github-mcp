@@ -237,6 +237,69 @@ export const WRITE_SPECS = new Map([
     inverse: (i, b) => restorable(i, b, ['title', 'body'])
       ? { mutation: 'updateProjectV2DraftIssue', input: { draftIssueId: i.draftIssueId, ...priorOf(i, b, ['title', 'body']) } } : null,
     cls: quiet
+  }],
+  // GQL-1 group 2: discussion votes, review edits, viewed files, closing references, duplicates.
+  ['addUpvote', {
+    scope: 'repo', primary: 'subjectId', ids: { subjectId: ['Discussion', 'DiscussionComment'] }, changes: [],
+    before: '... on Votable { viewerHasUpvoted upvoteCount }',
+    already: (_i, b) => b?.viewerHasUpvoted === true, verify: (_i, a) => a?.viewerHasUpvoted === true,
+    inverse: (i) => ({ mutation: 'removeUpvote', input: { subjectId: i.subjectId } }), cls: quiet
+  }],
+  ['removeUpvote', {
+    scope: 'repo', primary: 'subjectId', ids: { subjectId: ['Discussion', 'DiscussionComment'] }, changes: [],
+    before: '... on Votable { viewerHasUpvoted upvoteCount }',
+    already: (_i, b) => b?.viewerHasUpvoted !== true, verify: (_i, a) => a?.viewerHasUpvoted === false,
+    inverse: (i) => ({ mutation: 'addUpvote', input: { subjectId: i.subjectId } }), cls: quiet
+  }],
+  ['addDiscussionPollVote', {
+    scope: 'repo', primary: 'pollOptionId', ids: { pollOptionId: ['DiscussionPollOption'] }, changes: [],
+    before: '... on DiscussionPollOption { viewerHasVoted totalVoteCount }',
+    already: (_i, b) => b?.viewerHasVoted === true, verify: (_i, a) => a?.viewerHasVoted === true, inverse: null, cls: quiet,
+    undoHint: 'GitHub has no way to take back a poll vote through the API. Change the vote on github.com.'
+  }],
+  ['updatePullRequestReview', {
+    scope: 'repo', primary: 'pullRequestReviewId', ids: { pullRequestReviewId: ['PullRequestReview'] }, changes: ['body'],
+    before: '... on PullRequestReview { body }', already: (i, b) => b?.body === i.body, verify: (i, a) => a?.body === i.body,
+    inverse: (i, b) => ({ mutation: 'updatePullRequestReview', input: { pullRequestReviewId: i.pullRequestReviewId, body: b?.body ?? '' } }), cls: notifying
+  }],
+  ['deletePullRequestReview', {
+    scope: 'repo', primary: 'pullRequestReviewId', ids: { pullRequestReviewId: ['PullRequestReview'] }, changes: [],
+    before: '... on PullRequestReview { body state }', deleted: true, verify: (_i, a) => a === null, inverse: null, cls: destructive,
+    undoHint: 'A deleted pending review cannot be restored. Write it again with github_review_create.'
+  }],
+  ['markFileAsViewed', {
+    scope: 'repo', primary: 'pullRequestId', ids: { pullRequestId: ['PullRequest'] }, changes: ['path'],
+    before: '... on PullRequest { files(first: 100) { nodes { path viewerViewedState } } }',
+    already: (i, b) => (b?.files?.nodes ?? []).find((f) => f?.path === i.path)?.viewerViewedState === 'VIEWED',
+    verify: (i, a) => (a?.files?.nodes ?? []).find((f) => f?.path === i.path)?.viewerViewedState === 'VIEWED',
+    inverse: (i) => ({ mutation: 'unmarkFileAsViewed', input: { pullRequestId: i.pullRequestId, path: i.path } }), cls: quiet
+  }],
+  ['unmarkFileAsViewed', {
+    scope: 'repo', primary: 'pullRequestId', ids: { pullRequestId: ['PullRequest'] }, changes: ['path'],
+    before: '... on PullRequest { files(first: 100) { nodes { path viewerViewedState } } }',
+    already: (i, b) => (b?.files?.nodes ?? []).find((f) => f?.path === i.path)?.viewerViewedState !== 'VIEWED',
+    verify: (i, a) => { const f = (a?.files?.nodes ?? []).find((x) => x?.path === i.path); return Boolean(f) && f.viewerViewedState !== 'VIEWED'; },
+    inverse: (i) => ({ mutation: 'markFileAsViewed', input: { pullRequestId: i.pullRequestId, path: i.path } }), cls: quiet
+  }],
+  ['addCloseIssueReferences', {
+    scope: 'repo', primary: 'issueId', ids: { issueId: ['Issue'], pullRequestIds: ['PullRequest'] }, changes: [],
+    before: '... on Issue { closedByPullRequestsReferences(first: 50, includeClosedPrs: true) { nodes { id } } }',
+    already: (i, b) => { const have = new Set((b?.closedByPullRequestsReferences?.nodes ?? []).map((n) => n?.id)); return (i.pullRequestIds ?? []).every((id) => have.has(id)); },
+    verify: (i, a) => { const have = new Set((a?.closedByPullRequestsReferences?.nodes ?? []).map((n) => n?.id)); return (i.pullRequestIds ?? []).every((id) => have.has(id)); },
+    inverse: (i) => ({ mutation: 'removeCloseIssueReferences', input: { issueId: i.issueId, pullRequestIds: i.pullRequestIds } }), cls: quiet
+  }],
+  ['removeCloseIssueReferences', {
+    scope: 'repo', primary: 'issueId', ids: { issueId: ['Issue'], pullRequestIds: ['PullRequest'] }, changes: [],
+    before: '... on Issue { closedByPullRequestsReferences(first: 50, includeClosedPrs: true) { nodes { id } } }',
+    already: (i, b) => { const have = new Set((b?.closedByPullRequestsReferences?.nodes ?? []).map((n) => n?.id)); return (i.pullRequestIds ?? []).every((id) => !have.has(id)); },
+    verify: (i, a) => { const have = new Set((a?.closedByPullRequestsReferences?.nodes ?? []).map((n) => n?.id)); return (i.pullRequestIds ?? []).every((id) => !have.has(id)); },
+    inverse: (i) => ({ mutation: 'addCloseIssueReferences', input: { issueId: i.issueId, pullRequestIds: i.pullRequestIds } }), cls: quiet
+  }],
+  ['unmarkIssueAsDuplicate', {
+    scope: 'repo', primary: 'duplicateId', ids: { duplicateId: ['Issue'], canonicalId: ['Issue'] }, changes: [],
+    before: '... on Issue { duplicateOf { id } }',
+    already: (i, b) => b?.duplicateOf?.id !== i.canonicalId, verify: (i, a) => a?.duplicateOf?.id !== i.canonicalId, inverse: null, cls: notifying,
+    undoHint: 'To mark it as a duplicate again, close the issue as a duplicate with github_issue_update (state closed, stateReason duplicate, duplicateIssueId).'
   }]
 ]);
 
@@ -244,7 +307,17 @@ export const WRITE_SPECS = new Map([
  *  `refused-by-design`; `github_graphql_write` names the reason. Nothing here is a gap to be filled later. */
 export const REFUSED_MUTATIONS = new Map([
   ['updateProjectV2Collaborators', 'It replaces the whole collaborator list of a project, which can silently remove or widen access. Change who can see a project on github.com.'],
-  ['createProjectV2IssueField', 'The new field cannot be proven to belong to your account by a read before it is created.']
+  ['createProjectV2IssueField', 'The new field cannot be proven to belong to your account by a read before it is created.'],
+  ['deleteIssueFieldValue', 'Clearing a value is not offered: the field belongs to the organization and cannot be proven yours by a read. Set a new value with github_issue_set_fields.'],
+  ['addRelatesTo', 'GitHub offers no way to read related-issue links back, so the change could not be confirmed. Mention the issue in a comment instead.'],
+  ['removeRelatesTo', 'GitHub offers no way to read related-issue links back, so the change could not be confirmed.'],
+  ['enqueuePullRequest', 'Merging goes only through github_pr_merge at an exact, checked head commit; the merge queue cannot be used to skip that.'],
+  ['dequeuePullRequest', 'GitHub offers no merge-queue read for a pull request, so removal could not be confirmed. Use github_pr_set_auto_merge or close the pull request.'],
+  ['revertPullRequest', 'It creates a new branch and pull request whose owner cannot be proven beforehand. Revert with github_content_push_files, then github_pr_create.'],
+  ['applyPendingIssueSuggestions', 'It applies suggested issue edits chosen by an actor id. Make the edits yourself with github_issue_update, github_issue_set_labels or github_issue_set_assignees.'],
+  ['rejectPendingIssueSuggestions', 'It discards suggested issue edits chosen by an actor id and cannot be read back. Edit the issue directly instead.'],
+  ['addPullRequestReviewComment', 'It adds to a pending review that is not readable first. Put the comments in one github_review_create call.'],
+  ['addPullRequestReviewThread', 'It adds to a pending review that is not readable first. Put the comments in one github_review_create call.']
 ]);
 
 export const writeSpec = (mutation) => WRITE_SPECS.get(mutation) ?? null;

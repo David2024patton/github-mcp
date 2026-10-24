@@ -49,7 +49,22 @@ const ROWS = [
   ['deleteProjectV2Workflow', { workflowId: 'W1' }, { W1: 'ProjectV2Workflow' }, { name: 'Auto-add', enabled: true }, null],
   ['markProjectV2AsTemplate', { projectId: 'PJ1' }, { PJ1: 'ProjectV2' }, { template: false }, { template: true }],
   ['unmarkProjectV2AsTemplate', { projectId: 'PJ1' }, { PJ1: 'ProjectV2' }, { template: true }, { template: false }],
-  ['updateProjectV2DraftIssue', { draftIssueId: 'DI1', title: 'New' }, { DI1: 'DraftIssue' }, { title: 'Old', body: 'b' }, { title: 'New', body: 'b' }]
+  ['updateProjectV2DraftIssue', { draftIssueId: 'DI1', title: 'New' }, { DI1: 'DraftIssue' }, { title: 'Old', body: 'b' }, { title: 'New', body: 'b' }],
+  // GQL-1 group 2: discussion votes, review edits, viewed files, closing references, duplicates
+  ['addUpvote', { subjectId: 'D1' }, { D1: 'Discussion' }, { viewerHasUpvoted: false, upvoteCount: 0 }, { viewerHasUpvoted: true, upvoteCount: 1 }],
+  ['removeUpvote', { subjectId: 'DC1' }, { DC1: 'DiscussionComment' }, { viewerHasUpvoted: true, upvoteCount: 1 }, { viewerHasUpvoted: false, upvoteCount: 0 }],
+  ['addDiscussionPollVote', { pollOptionId: 'PO1' }, { PO1: 'DiscussionPollOption' }, { viewerHasVoted: false, totalVoteCount: 0 }, { viewerHasVoted: true, totalVoteCount: 1 }],
+  ['updatePullRequestReview', { pullRequestReviewId: 'RV1', body: 'new' }, { RV1: 'PullRequestReview' }, { body: 'old' }, { body: 'new' }],
+  ['deletePullRequestReview', { pullRequestReviewId: 'RV1' }, { RV1: 'PullRequestReview' }, { body: 'x', state: 'PENDING' }, null],
+  ['markFileAsViewed', { pullRequestId: 'PR1', path: 'a.js' }, { PR1: 'PullRequest' },
+    { files: { nodes: [{ path: 'a.js', viewerViewedState: 'UNVIEWED' }] } }, { files: { nodes: [{ path: 'a.js', viewerViewedState: 'VIEWED' }] } }],
+  ['unmarkFileAsViewed', { pullRequestId: 'PR1', path: 'a.js' }, { PR1: 'PullRequest' },
+    { files: { nodes: [{ path: 'a.js', viewerViewedState: 'VIEWED' }] } }, { files: { nodes: [{ path: 'a.js', viewerViewedState: 'UNVIEWED' }] } }],
+  ['addCloseIssueReferences', { issueId: 'I1', pullRequestIds: ['PR1'] }, { I1: 'Issue', PR1: 'PullRequest' },
+    { closedByPullRequestsReferences: { nodes: [] } }, { closedByPullRequestsReferences: { nodes: [{ id: 'PR1' }] } }],
+  ['removeCloseIssueReferences', { issueId: 'I1', pullRequestIds: ['PR1'] }, { I1: 'Issue', PR1: 'PullRequest' },
+    { closedByPullRequestsReferences: { nodes: [{ id: 'PR1' }] } }, { closedByPullRequestsReferences: { nodes: [] } }],
+  ['unmarkIssueAsDuplicate', { duplicateId: 'I1', canonicalId: 'I2' }, { I1: 'Issue', I2: 'Issue' }, { duplicateOf: { id: 'I2' } }, { duplicateOf: null }]
 ];
 
 const scopeNode = (id, type, repo = REPO) => {
