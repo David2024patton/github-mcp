@@ -83,8 +83,8 @@ but let each heavy job finish fast:
   and close the item. Serve a `favicon.ico` (rewrite `/favicon.ico` → the existing 64px PNG route).
 
 ## Done when
-- [ ] PR A merged with tests; PR B merged; webhook deliveries succeed on the new address; owner row for Setup URL added.
-- [ ] `wc -l docs/STATUS.md` under 400; `npm run session:status` still works.
+- [x] PR A (#356) merged with tests; PR B (#357) merged; owner row for Setup URL added. Webhook address changed and read back; first real delivery from the new address not yet seen (acceptance row).
+- [~] STATUS.md cut to ~950 lines (not 400: the acceptance block the scripts read is ~740 lines); `npm run session:status` still works.
 
 ## Progress
 - PR A built (sign-in steps without a global row cap; one shared copy of the App keys): see `docs/status/2026-10-24-hard-1a.md`.
