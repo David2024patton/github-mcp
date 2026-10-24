@@ -269,6 +269,14 @@ describe('PAR-1 stargazers', () => {
     expect(star.headers.accept).toMatch(/star\+json/);
     expect(w.gh.invalid).toEqual([]);
   });
+  it('when GitHub refuses the listing of a public repository, says so plainly with the star total instead of "not found"', async () => {
+    const w = await makeWorld({ profile: 'read_only' });
+    w.gh.when(REPO).reply(200, { id: 1, name: 'hello', private: false, visibility: 'public', stargazers_count: 7 });
+    w.gh.when('GET /repos/{owner}/{repo}/stargazers').reply(403, { message: 'nope' });
+    const out = await call(w, 'github_repo_list_stargazers', { owner: 'someone', repo: 'hello' });
+    expect(JSON.stringify(out)).toMatch(/would not list the people who starred someone\/hello/);
+    expect(JSON.stringify(out)).toMatch(/total is 7/);
+  });
   it('a private repository gets the one not-found answer', async () => {
     const w = await makeWorld({ profile: 'read_only' });
     w.gh.when(REPO).reply(200, { id: 1, name: 'hello', private: true, visibility: 'private' });
