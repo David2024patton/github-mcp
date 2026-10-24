@@ -976,6 +976,15 @@ export function createDb(sql = productionSql()) {
      * credentials and the default flag of an existing account are never touched here. The first account becomes the default.
      */
     async upsertAccount({ login, accountId, accountType, label, credentialKind = 'app', appId = null, isScratch = false }) {
+      // The same GitHub account may already be stored with different capital letters (an extra place added with a master token
+      // as "Acme-Co", now connecting through the App as "acme-co"). One account is one row: update that row in place and keep its
+      // stored spelling, instead of failing on the unique account number. A genuinely different name is still refused.
+      const same = await sql`SELECT login FROM gh_accounts WHERE account_id = ${accountId} AND login <> ${login} AND lower(login) = lower(${login}) LIMIT 1`;
+      if (same[0]) {
+        await sql`UPDATE gh_accounts SET account_type = ${accountType}, label = ${label}, credential_kind = ${credentialKind},
+          app_id = COALESCE(${appId}, app_id) WHERE login = ${same[0].login}`;
+        return;
+      }
       await sql`INSERT INTO gh_accounts (login, account_id, account_type, label, credential_kind, app_id, is_scratch, is_default)
         VALUES (${login}, ${accountId}, ${accountType}, ${label}, ${credentialKind}, ${appId}, ${isScratch},
           NOT EXISTS (SELECT 1 FROM gh_accounts WHERE is_default))

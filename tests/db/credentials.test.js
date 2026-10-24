@@ -37,6 +37,17 @@ describe('GitHub credential store on throwaway Postgres only', () => {
   });
 });
 
+describe('one GitHub account is one row, whatever the spelling of its name', () => {
+  it('connecting through the App an account already added as an extra place (master token) updates that row instead of failing', async () => {
+    await db.upsertExtraPlace({ login: 'Acme-Co', accountId: 777, accountType: 'Organization' });
+    await db.upsertAccount({ login: 'acme-co', accountId: 777, accountType: 'Organization', label: 'acme-co', credentialKind: 'app', appId: 5 });
+    expect(await db.setInstallation('acme-co', { installationId: 9, repositorySelection: 'all', permissions: {}, status: 'active' })).toBe(true);
+    const rows = await rawQuery('SELECT login, credential_kind, installation_id::int AS iid FROM gh_accounts WHERE account_id = 777');
+    expect(rows).toEqual([{ login: 'Acme-Co', credential_kind: 'app', iid: 9 }]);
+    expect((await db.getAccount('ACME-co')).credential_kind).toBe('app');
+  });
+});
+
 describe('CAP-3 owner optional grant metadata CAS and rollback safety', () => {
   const proof=(fingerprint,extra={})=>({version:1,kind:'P',host:'github.com',
     actorId:4001,accountId:901,scope:'legacy-owner',fingerprint,
