@@ -91,3 +91,19 @@ Owner decision: PUB-4 covers **both** Claude and ChatGPT clients, and **desktop 
   robinson-ai-scratch and the correct mode. See `docs/status/2026-10-22-acceptance-org-reads-and-phone.md`.
   Still open and owner-timed: a native desktop app test, and reconnect/refresh/revoke on a device. These sit on `docs/OWNER-CHECKLIST.md`
   and do not block anything. Criterion text above stays the full target; nothing is relabelled as passed.
+
+## 2026-10-24 acceptance closeout (Chris asked an agent to do the phone/desktop checks for him)
+
+Real-client results, all against the live service `https://github.robinsonaisystems.com` at `live=cb0ced613e2eb77f525733ccc007e5607ac16cba`:
+- **Claude app** (this check, 2026-10-24): connected through the new public sign-in (whoami returns the My connection page,
+  which only public connections get). PRODUCTION/full; accounts christcr2012 and robinson-ai-scratch; real reads returned
+  data; a create returned a preview that needs confirmation (no write made); an account outside the connection was refused
+  before reaching GitHub with a plain explanation. Earlier: Claude phone app 2026-10-22.
+- **ChatGPT**: Android works (Chris, 2026-10-23); custom server reached as robinson-ai-scratch, read-only preview (2026-10-22).
+- **Writes, read-back and clean-up** on scratch were recorded by ACC-1 on 2026-10-24 (`docs/developer-evidence.json`
+  provider and cleanup layers). Pages on phone and desktop screens are covered by `npm run test:browser` (Android Chrome,
+  iPhone Safari engine, desktop Chrome) on every PR.
+- **Recorded as untested, not blockers (owner decision 2026-10-22):** the native Claude/ChatGPT *desktop* apps (this
+  session could not reach Chris's computer), ChatGPT on iPhone, and revoking a grant from a device (revocation layer stays
+  `unverified`; disconnect is covered by browser tests only).
+Card status set to MERGED: all engineering merged (#268, #337); remaining device items are optional owner-checklist rows.

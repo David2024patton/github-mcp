@@ -45,7 +45,8 @@
         "tools_list",
         "github_whoami",
         "2026_10_23_github_call_and_github_get_result_used_throughout_acceptance_on_this_commit",
-        "2026-10-24: github_whoami, deploy key, webhook, gist, Enterprise, Codespaces secret, export and Copilot Space calls ran through the saved service-issued connection on the live origin"
+        "2026-10-24: github_whoami, deploy key, webhook, gist, Enterprise, Codespaces secret, export and Copilot Space calls ran through the saved service-issued connection on the live origin",
+        "2026-10-24 PUB-4/PUB-6: Claude client on public sign-in connection (My connection page present) at live cb0ced61 via github.robinsonaisystems.com: whoami PRODUCTION/full, accounts christcr2012 + robinson-ai-scratch, master token listed; reads (repo list, PR list with untrusted marking) returned real data; repo create returned a preview needing confirmation (no write); account outside the connection refused before reaching GitHub (client:outside_scope); OAuth metadata issuer is the new domain"
       ]
     },
     {
