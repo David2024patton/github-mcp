@@ -6,7 +6,7 @@ import sodium from 'libsodium-wrappers';
 
 export const SECRET_KINDS = Object.freeze(['actions', 'dependabot', 'codespaces', 'agents']);
 
-/** The three API paths for a secret's place. `scope` is `{ kind, level: 'repo'|'environment'|'org', owner, repo?, environment?, name? }`. */
+/** The three API paths for a secret's place. `scope` is `{ kind, level: 'repo'|'environment'|'org'|'user', owner, repo?, environment?, name? }`. */
 export function secretRoutes(scope) {
   const { kind = 'actions', level } = scope;
   if (!SECRET_KINDS.includes(kind)) throw new TypeError(`Unknown secret kind "${kind}".`);
@@ -14,6 +14,11 @@ export function secretRoutes(scope) {
     if (kind !== 'actions') throw new TypeError('Only Actions secrets exist per environment.');
     const base = '/repos/{owner}/{repo}/environments/{environment_name}/secrets';
     return { key: `GET ${base}/public-key`, one: `${base}/{secret_name}`, params: { owner: scope.owner, repo: scope.repo, environment_name: scope.environment } };
+  }
+  if (level === 'user') {
+    if (kind !== 'codespaces') throw new TypeError('Only Codespaces secrets exist on a personal account.');
+    const base = '/user/codespaces/secrets';
+    return { key: `GET ${base}/public-key`, one: `${base}/{secret_name}`, params: {}, repositories: `${base}/{secret_name}/repositories` };
   }
   if (level === 'org') {
     const base = `/orgs/{org}/${kind}/secrets`;
