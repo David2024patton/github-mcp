@@ -545,6 +545,28 @@ describe('PUB-6 owner usage summary', () => {
   });
 });
 
+describe('PUB-5 B hourly change allowance', () => {
+  it('parallel changes cannot pass the limit, and a handed-back slot can be used again', async () => {
+    const { createPublicUsage } = await import('../../src/tenancy/public-usage.js');
+    const { publicUsageLimits } = await import('../../src/tenancy/public-usage.js');
+    const limits = publicUsageLimits({ PUBLIC_FREE_WRITES_PER_HOUR: '10' });
+    const [{ tenant_id }] = (await admin.query('SELECT tenant_id FROM gh_tenant_pilot_bootstraps LIMIT 1')).rows;
+    const clientsN = await Promise.all([1, 2, 3, 4, 5].map(async () => connect(process.env.TEST_DATABASE_URL)));
+    for (const c of clientsN) await c.query('SET search_path TO "' + admin.ns + '"');
+    const usages = clientsN.map((c) => createPublicUsage(sqlFor(c), limits));
+    const results = await Promise.all(Array.from({ length: 40 }, (_, i) => usages[i % 5].reserveWrite(tenant_id)));
+    expect(results.filter((r) => r === null).length).toBe(10);
+    const refused = results.find((r) => r);
+    expect(refused.message).toContain('10');
+    expect(refused.retryAfterSeconds).toBeGreaterThan(0);
+    await usages[0].releaseWrite(tenant_id);
+    expect(await usages[1].reserveWrite(tenant_id)).toBeNull();
+    expect(await usages[2].reserveWrite(tenant_id)).not.toBeNull();
+    expect(await usages[3].reserveWrite(tenant_id, { exempt: true })).toBeNull(); // exempt people are never refused
+    await admin.query('DELETE FROM gh_public_usage_hourly');
+  });
+});
+
 describe('PUB-5 B inactive people', () => {
   it('signs out people unused for the set number of days; keeps recent, just-signed-in and unlimited people', async () => {
     const { removeInactivePeople } = await import('../../src/tenancy/public-inactive.js');

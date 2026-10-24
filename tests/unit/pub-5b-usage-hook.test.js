@@ -21,7 +21,7 @@ async function fixture({ status = 'applied', limited = false } = {}) {
     [batch.name]: async (args, { callTool }) => { for (let i = 0; i < (args.n ?? 3); i++) await callTool(write.name, { confirm: true }); return outcome('applied'); }
   };
   const registry = { tools: [write, read, batch], handlers };
-  const usage = { beforeWrite: async () => { log.push('before'); return limited ? { message: changeLimitText(300), retryAfterSeconds: 1234 } : null; }, afterWrite: async () => { log.push('after'); } };
+  const usage = { beforeWrite: async () => { log.push('before'); return limited ? { message: changeLimitText(300), retryAfterSeconds: 1234 } : null; }, afterWrite: async () => { log.push('after'); }, release: async () => { log.push('release'); } };
   const run = (name, args = {}, withUsage = true) => createDispatch({ ...(withUsage ? { usage } : {}) })({ registry, name, args, connection, db });
   return { run, log };
 }
@@ -36,6 +36,17 @@ describe('the dispatch usage hook', () => {
     expect(f.log).toEqual(['before', 'after', 'before', 'after', 'before', 'after']);
   });
 
+  it('hands the reserved slot back when the change throws, and does not reserve for a refused-by-limit call', async () => {
+    const f = await fixture();
+    const thrower = createDispatch({ usage: { beforeWrite: async () => { f.log.push('before'); return null; }, afterWrite: async () => f.log.push('after'), release: async () => f.log.push('release') } });
+    const db = createFakeDb(); await db.initSchema();
+    await thrower({ registry: { tools: [write], handlers: { [write.name]: async () => { throw new TypeError('boom'); } } }, name: write.name, args: { confirm: true }, connection, db });
+    expect(f.log).toEqual(['before', 'release']);
+    const g = await fixture({ limited: true });
+    await g.run(write.name, { confirm: true });
+    expect(g.log).toEqual(['before']); // nothing was reserved, so nothing to give back
+  });
+
   it('does not count a preview, a dry run, a refusal or a read', async () => {
     const f = await fixture();
     await f.run(write.name, { dryRun: true });
@@ -44,7 +55,7 @@ describe('the dispatch usage hook', () => {
     for (const status of ['preview', 'needs_confirmation', 'refused', 'blocked']) {
       const g = await fixture({ status });
       await g.run(write.name, { confirm: true });
-      expect(g.log).toEqual(['before']); // asked first, never counted afterwards
+      expect(g.log).toEqual(['before', 'release']); // slot reserved first, handed back, never counted
     }
   });
 

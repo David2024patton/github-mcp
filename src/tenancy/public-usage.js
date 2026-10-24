@@ -63,18 +63,23 @@ export function createPublicUsage(rootSql, limits, { random = Math.random, now =
       return rows.length === 1 ? { ok: true, used: Number(rows[0].calls), limit }
         : { ok: false, limit, retryAfterSeconds: secondsUntilNextUtcMidnight(now()), message: callLimitText(limit) };
     },
-    /** Reads this hour's counted changes; refuses when the free limit is reached. Reads and previews never come here. */
-    async checkWrite(tenantId, { exempt = false } = {}) {
-      if (exempt) return null;
-      const rows = await rootSql`SELECT writes FROM gh_public_usage_hourly WHERE tenant_id = ${tenantId}::uuid AND hour = date_trunc('hour', now())`;
-      if (rows.length === 1 && Number(rows[0].writes) >= limits.writesPerHour)
-        return { limit: limits.writesPerHour, retryAfterSeconds: secondsUntilNextHour(now()), message: changeLimitText(limits.writesPerHour) };
-      return null;
+    /** Reserves one real change for this hour unless the free limit is reached. One statement, so parallel calls cannot slip past
+     *  the limit. The slot is handed back with `releaseWrite` if the change turns out not to count. Reads and previews never come here. */
+    async reserveWrite(tenantId, { exempt = false } = {}) {
+      const limit = exempt ? 2147483647 : limits.writesPerHour;
+      const rows = await rootSql`INSERT INTO gh_public_usage_hourly (hour, tenant_id, writes) VALUES (date_trunc('hour', now()), ${tenantId}::uuid, 1)
+        ON CONFLICT (hour, tenant_id) DO UPDATE SET writes = gh_public_usage_hourly.writes + 1
+          WHERE gh_public_usage_hourly.writes + 1 <= ${limit}
+        RETURNING writes`;
+      return rows.length === 1 ? null
+        : { limit, retryAfterSeconds: secondsUntilNextHour(now()), message: changeLimitText(limit) };
     },
-    /** Counts one real change (applied, unconfirmed or uncertain), for the hour and for the day. */
+    async releaseWrite(tenantId) {
+      await rootSql`UPDATE gh_public_usage_hourly SET writes = writes - 1
+        WHERE hour = date_trunc('hour', now()) AND tenant_id = ${tenantId}::uuid AND writes > 0`;
+    },
+    /** Counts one confirmed real change for the day (the hour was already counted when it was reserved). */
     async recordWrite(tenantId) {
-      await rootSql`INSERT INTO gh_public_usage_hourly (hour, tenant_id, writes) VALUES (date_trunc('hour', now()), ${tenantId}::uuid, 1)
-        ON CONFLICT (hour, tenant_id) DO UPDATE SET writes = gh_public_usage_hourly.writes + 1`;
       await rootSql`INSERT INTO gh_public_usage_daily (day, tenant_id, writes) VALUES ((now() AT TIME ZONE 'UTC')::date, ${tenantId}::uuid, 1)
         ON CONFLICT (day, tenant_id) DO UPDATE SET writes = gh_public_usage_daily.writes + 1`;
     },
@@ -91,8 +96,9 @@ export function createPublicUsage(rootSql, limits, { random = Math.random, now =
     /** The hook `createDispatch` takes: counts real changes one by one, even inside a batch. */
     dispatchHook(tenantId, { exempt = false } = {}) {
       return Object.freeze({
-        beforeWrite: async () => await this.checkWrite(tenantId, { exempt }),
-        afterWrite: async () => { await this.recordWrite(tenantId); }
+        beforeWrite: async () => await this.reserveWrite(tenantId, { exempt }),
+        afterWrite: async () => { await this.recordWrite(tenantId); },
+        release: async () => { await this.releaseWrite(tenantId); }
       });
     },
     today
