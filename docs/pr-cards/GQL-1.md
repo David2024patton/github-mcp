@@ -70,7 +70,7 @@ just stops counting them as missing. Add a unit test that every tool name in the
       against the vendored schema); an extra input key is refused; a wrong node type is refused; `already` path refuses.
 
 ## Done when
-- [ ] Four PRs merged; `node scripts/capability-inventory.mjs --report` shows 0 rows "GraphQL mutations with no write
+- [x] Four PRs merged; `node scripts/capability-inventory.mjs --report` shows 0 rows "GraphQL mutations with no write
       specification"; refused ones are listed with reasons; TOOL-CATALOG unchanged (no new tools) except the
       universal tool's description if it mentions counts.
 
@@ -98,5 +98,10 @@ just stops counting them as missing. Add a unit test that every tool name in the
 - [~] Group 4 — refused / owner-gated part DONE in the same PR as group 3 (card group 3 and 4 refusals are small data
       entries, so one PR: classic projects, enterprise membership/identity, migrations, IP allow lists, verifiable
       domains, sponsor money moves, star lists and others, each with a plain reason in `REFUSED_MUTATIONS`).
-      REMAINING (named): the 16 `updateEnterprise*Setting` / `updateEnterpriseProfile` mutations need the new
-      `scope:'enterprise'` (credential M with admin:enterprise, `requireEnterprise`) — separate PR.
+      The 16 enterprise setting mutations are done in the last PR: 10 member policies and the profile through two new tools
+      (`github_enterprise_policy_set`, `github_enterprise_profile_set`, master token, enterprises the person administers,
+      read back, undo) instead of the card's `scope:'enterprise'` inside the generic GraphQL route (that would have
+      reworked the credential and gate pipeline of every GraphQL write for 16 rarely used settings); 5 refused on
+      purpose (two-factor requirement and methods can lock members out, deploy keys and repository projects cannot be
+      read back, repository-creation policy has five linked fields). Capability report shows 0 `missing`.
+- [x] All four groups done (PRs #345, #346, #347, and the enterprise PR).

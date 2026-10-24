@@ -16,7 +16,7 @@ export const MASTER_AREAS = Object.freeze([
   { area: 'Organization admin extras (migrations)', scope: 'admin:org', tools: ['github_org_migration_start', 'github_org_migration_status'] },
   { area: 'Projects', scope: 'project', tools: ['github_project_view_create'] },
   { area: 'Enterprise (ENT-1)', scope: 'admin:enterprise', tools: ['github_enterprise_list', 'github_enterprise_overview', 'github_enterprise_security_configs', 'github_enterprise_security_config_save', 'github_enterprise_security_config_delete',
-    'github_enterprise_security_config_apply', 'github_enterprise_dependabot', 'github_enterprise_dependabot_access_set', 'github_enterprise_copilot_metrics', 'github_enterprise_actions_settings', 'github_enterprise_actions_settings_set'] }
+    'github_enterprise_security_config_apply', 'github_enterprise_dependabot', 'github_enterprise_dependabot_access_set', 'github_enterprise_copilot_metrics', 'github_enterprise_actions_settings', 'github_enterprise_actions_settings_set', 'github_enterprise_policy_set', 'github_enterprise_profile_set'] }
 ]);
 
 /** [{area, unlocked, needs}] — `needs` is the permission to tick on GitHub when locked. Never includes the token. */

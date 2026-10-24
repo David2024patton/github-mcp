@@ -114,7 +114,18 @@ export const COVERED_BY_TOOL = new Map([
   ['createSponsorship', 'github_sponsor_set'],
   ['cancelSponsorship', 'github_sponsor_set'],
   ['updateOrganizationAllowPrivateRepositoryForkingSetting', 'github_org_update_settings'],
-  ['updateRepositoryWebCommitSignoffSetting', 'github_repo_update_settings']
+  ['updateRepositoryWebCommitSignoffSetting', 'github_repo_update_settings'],
+  ['updateEnterpriseAllowPrivateRepositoryForkingSetting', 'github_enterprise_policy_set'],
+  ['updateEnterpriseDefaultRepositoryPermissionSetting', 'github_enterprise_policy_set'],
+  ['updateEnterpriseMembersCanChangeRepositoryVisibilitySetting', 'github_enterprise_policy_set'],
+  ['updateEnterpriseMembersCanDeleteIssuesSetting', 'github_enterprise_policy_set'],
+  ['updateEnterpriseMembersCanDeleteRepositoriesSetting', 'github_enterprise_policy_set'],
+  ['updateEnterpriseMembersCanInviteCollaboratorsSetting', 'github_enterprise_policy_set'],
+  ['updateEnterpriseMembersCanMakePurchasesSetting', 'github_enterprise_policy_set'],
+  ['updateEnterpriseMembersCanUpdateProtectedBranchesSetting', 'github_enterprise_policy_set'],
+  ['updateEnterpriseMembersCanViewDependencyInsightsSetting', 'github_enterprise_policy_set'],
+  ['updateEnterpriseOrganizationProjectsSetting', 'github_enterprise_policy_set'],
+  ['updateEnterpriseProfile', 'github_enterprise_profile_set']
 ]);
 
 export const SOURCE = Object.freeze({
