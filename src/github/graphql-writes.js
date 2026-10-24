@@ -289,7 +289,7 @@ export const WRITE_SPECS = new Map([
     already: (i, b) => { const have = new Set((b?.closedByPullRequestsReferences?.nodes ?? []).map((n) => n?.id)); return (i.pullRequestIds ?? []).every((id) => have.has(id)); },
     verify: (i, a) => { const have = new Set((a?.closedByPullRequestsReferences?.nodes ?? []).map((n) => n?.id)); return (i.pullRequestIds ?? []).every((id) => have.has(id)); },
     // Undo removes only the links this call created, never ones that were already there.
-    inverse: (i, b) => { const had = closingIds(b), added = (i.pullRequestIds ?? []).filter((id) => !had.has(id));
+    inverse: (i, b) => { const had = closingIds(b), added = [].concat(i.pullRequestIds ?? []).filter((id) => !had.has(id));
       return added.length ? { mutation: 'removeCloseIssueReferences', input: { issueId: i.issueId, pullRequestIds: added } } : null; }, cls: quiet
   }],
   ['removeCloseIssueReferences', {
@@ -298,7 +298,7 @@ export const WRITE_SPECS = new Map([
     already: (i, b) => { const have = new Set((b?.closedByPullRequestsReferences?.nodes ?? []).map((n) => n?.id)); return (i.pullRequestIds ?? []).every((id) => !have.has(id)); },
     verify: (i, a) => { const have = new Set((a?.closedByPullRequestsReferences?.nodes ?? []).map((n) => n?.id)); return (i.pullRequestIds ?? []).every((id) => !have.has(id)); },
     // Undo adds back only the links this call removed.
-    inverse: (i, b) => { const had = closingIds(b), removed = (i.pullRequestIds ?? []).filter((id) => had.has(id));
+    inverse: (i, b) => { const had = closingIds(b), removed = [].concat(i.pullRequestIds ?? []).filter((id) => had.has(id));
       return removed.length ? { mutation: 'addCloseIssueReferences', input: { issueId: i.issueId, pullRequestIds: removed } } : null; }, cls: quiet
   }],
   ['unmarkIssueAsDuplicate', {
