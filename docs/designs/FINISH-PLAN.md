@@ -40,8 +40,11 @@ Nothing in this plan is built yet. Status of each card lives in `work-index.json
 | 1,176 operations have no credential decision and 65 have conflicting official information. | capability report | INV-1 |
 | (Done 2026-10-23) Documentation-only PRs now skip the heavy test jobs; unit tests split three ways. | CI | HARD-1 B.3 |
 
-**Stays out** (not part of "finished"): PUB-5 public directory listing (blocked by OpenAI policy on unofficial
-connectors and needs Chris's separate decision); GitHub Models (retired by GitHub); OAuth-app token management and
+**Added 2026-10-24 (Chris):** PUB-5 is now the public, free launch from Chris's website (no directory listing, no people
+cap): `docs/pr-cards/PUB-5.md`, 4 PRs, about 10–14 h, after the FIN cards.
+
+**Stays out** (not part of "finished"): ChatGPT/Claude directory listings (refused by policy for unofficial
+connectors); GitHub Models (retired by GitHub); OAuth-app token management and
 App-manifest conversion (need an OAuth app's own secret, not a person's token); linking a second, separate GitHub
 login into one connection (ROADMAP, needs its own security design).
 

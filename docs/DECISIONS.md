@@ -517,3 +517,13 @@ A check that cannot run without a paid plan or upgrade is recorded once as UNVER
 
 ## 2026-10-24 — No paid upgrade: those checks are dropped, not pending (Chris)
 Chris will not upgrade to a paid GitHub Enterprise or buy any plan or payment method. Every check that needs one (hosted runners, Enterprise Actions settings read, organization security attachments and the 100-entry case, private paid security writes, metered/paid writes, budget and Codespaces-policy writes, Copilot seats) is permanently recorded as untested and is NOT part of what "finished" means. No agent re-lists them as to-do, re-asks, or counts them as open. Their ledger status stays BLOCKED only because the ledger has no other word. This replaces the 2026-10-24 entry above ("unverified, not blockers") by making the drop permanent.
+
+## 2026-10-24 — Public, free launch from Chris's website; no directory listing; no people cap (Chris)
+The ChatGPT and Claude directories refuse unofficial third-party connectors, so the service is offered from Chris's website
+and to anyone who adds the connector address. It is free; not invite-only. The 25-person default was a build default, not
+Chris's choice, and is removed. Because every call runs on Chris's Vercel and Neon bill, the replacement protections are:
+per-person fair-use limits (calls a day, changes an hour), an automatic pause of NEW sign-ups when the estimated monthly cost
+reaches a set amount (existing people keep working), clean-up of long-inactive sign-ins, and Vercel/Neon's own spend alerts.
+Per-person daily usage is measured so it can be priced later; no billing is built. The display name moves to lead with
+Chris's own brand ("Robinson MCP for GitHub" by default) with a "not affiliated with or endorsed by GitHub" line. Card:
+`docs/pr-cards/PUB-5.md`.
