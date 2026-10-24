@@ -1,3 +1,5 @@
+> **Superseded in part (2026-10-24):** later owner decisions in `docs/DECISIONS.md` (2026-10-23 entries: public sign-in rebuilt, My connection, master token) replace the private-pilot parts of this handoff. Check DECISIONS first.
+
 # Sol 5.6 implementation handoff — universal permissions and identity
 
 Owner-requested implementation detail, 2026-10-21. **State: approved remaining work,
