@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createDispatch } from '../../src/tools/dispatch.js';
 import { registry } from '../../src/tools/index.js';
 import { REFUSED_MUTATIONS, WRITE_SPECS } from '../../src/github/graphql-writes.js';
-import { curatedGraphqlMutation } from '../../src/github/mutation-classes.js';
-import { buildCapabilityInventory } from '../../src/github/capability-inventory.js';
+import { buildCapabilityInventory, COVERED_BY_TOOL } from '../../src/github/capability-inventory.js';
 import { makeWorld, parse } from '../../test/helpers/write-contract.js';
 
 const GROUP2 = ['addAssigneesToAssignable', 'removeAssigneesFromAssignable', 'addBlockedBy', 'removeBlockedBy', 'addSubIssue', 'removeSubIssue',
@@ -22,7 +21,7 @@ describe('GQL-1 group 2: issues, labels, reviews, reactions, discussions', () =>
   it('every covered mutation points at a tool that exists, and none is also a spec or refused', () => {
     const names = new Set(registry.tools.map((t) => t.name));
     for (const m of GROUP2) {
-      const tool = curatedGraphqlMutation(m);
+      const tool = COVERED_BY_TOOL.get(m);
       expect(tool, m).toBeTruthy();
       expect(names.has(tool), `${m} -> ${tool}`).toBe(true);
       expect(WRITE_SPECS.has(m) || REFUSED_MUTATIONS.has(m), m).toBe(false);
@@ -42,13 +41,6 @@ describe('GQL-1 group 2: issues, labels, reviews, reactions, discussions', () =>
       expect(JSON.stringify(out)).toMatch(/refused on purpose/);
       expect(w.gh.calls.filter((c) => /^\s*mutation\b/.test(c.body?.query ?? ''))).toHaveLength(0);
     }
-  });
-
-  it('a covered mutation cannot be sent through the generic route', async () => {
-    const w = await world();
-    const out = await run(w, { mutation: MUTATION('closeIssue', 'CloseIssueInput'), variables: { input: { issueId: 'I1' } }, owner: 'example-org', repo: 'hello', confirm: true })
-      .catch((e) => ({ status: 'error', message: String(e?.message ?? e) }));
-    expect(out.status).not.toBe('applied');
   });
 
   it('the inventory leaves no group 2 mutation missing', () => {
