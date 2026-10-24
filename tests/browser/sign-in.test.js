@@ -3,6 +3,7 @@
 // These are the checks that used to need Chris's phone.
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('@neondatabase/serverless', async () => { const h = await import('./harness.js'); return { neon: () => h.fakeNeon() }; });
+import { randomBytes } from 'node:crypto';
 import { PROFILES, ORIGIN, appFinishes, appStartsSignIn, browserFor, mcpTool, startWorld } from './setup.js';
 
 let world, people = 0;
@@ -343,5 +344,51 @@ describe('My connection', () => {
       await fitsScreen(b.page);
       await b.context.close();
     }
+  });
+  it('a key change does not sign people out: old connections keep working, new ones use the new key', async () => {
+    const b = await open(PROFILES[0], { cookies: false });
+    if (!b) return;
+    person({ authorized: true });
+    const { tokens } = await connect(b.page);
+    const before = await mcpTool(world, tokens.access_token, 'github_whoami');
+    expect(before.content.accounts.length).toBeGreaterThan(0);
+
+    // The documented procedure (docs/GO-LIVE-CHECKLIST.md): old key into _PREVIOUS, new key into TOKEN_ENCRYPTION_KEY, release.
+    const oldKey = process.env.TOKEN_ENCRYPTION_KEY, newKey = randomBytes(32).toString('base64url');
+    try {
+      process.env.TOKEN_ENCRYPTION_KEY_PREVIOUS = oldKey;
+      process.env.TOKEN_ENCRYPTION_KEY = newKey;
+      const after = await mcpTool(world, tokens.access_token, 'github_whoami');
+      expect(after.content.accounts.map((a) => a.login)).toEqual(before.content.accounts.map((a) => a.login));
+
+      // Someone who connects after the change works too (sealed with the new key), on the same page flow.
+      const second = await open(PROFILES[0], { cookies: false });
+      person({ authorized: true });
+      const again = await connect(second.page);
+      const who = await mcpTool(world, again.tokens.access_token, 'github_whoami');
+      expect(who.content.accounts.length).toBeGreaterThan(0);
+      await second.context.close();
+    } finally {
+      process.env.TOKEN_ENCRYPTION_KEY = oldKey;
+      delete process.env.TOKEN_ENCRYPTION_KEY_PREVIOUS;
+    }
+    await b.context.close();
+  });
+
+  it('serves the privacy, terms, security and support pages with a draft banner, and the footer links to them', async () => {
+    const b = await open(PROFILES[0], { cookies: false });
+    if (!b) return;
+    for (const [path, title] of [['/privacy', 'Privacy notice'], ['/terms', 'Terms of use'], ['/security', 'Security'], ['/support', 'Support']]) {
+      await b.page.goto(ORIGIN + path);
+      expect(await b.page.title()).toBe(title);
+      const text = await b.page.textContent('main');
+      expect(text).toContain('DRAFT');
+      expect(text).toContain('support email coming soon');
+      await fitsScreen(b.page);
+    }
+    await b.page.goto(ORIGIN + '/connection');
+    await b.page.click('footer a[href="/privacy"]');
+    expect(await b.page.title()).toBe('Privacy notice');
+    await b.context.close();
   });
 });

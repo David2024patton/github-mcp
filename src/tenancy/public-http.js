@@ -6,6 +6,7 @@ import { createPublicConnect, PublicConnectError, publicConnectEnabled, MANAGE_P
 import { TenantCapacityError, TENANT_RUNTIME_LIMITS as LIMITS } from './runtime-limits.js';
 import { escapeHtml as h, paramsOf, publicOrigin, send } from '../core/http.js';
 import { COMMON_ZONES } from '../core/time-zone.js';
+import { renderTrustBody, TRUST_PAGES } from './trust-pages.js';
 import { BRAND_CSS, brandHeader, brandFooter } from '../brand/brand.js';
 
 const CSP = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self' https://github.com; base-uri 'none'; frame-ancestors 'none'";
@@ -83,6 +84,17 @@ export async function publicLimits(req, res, { env = process.env } = {}) {
     `<div class="row"><span><strong>Background jobs</strong><br><small>Longer tasks that finish later.</small></span><span>${LIMITS.jobsTenantPending} waiting at once, ${LIMITS.jobsTenantPerDay} a day</span></div>` +
     '<div class="row"><span><strong>Extra names</strong><br><small>People you list as your own, beyond your accounts.</small></span><span>up to 50</span></div>' +
     '<p><small>GitHub has its own limits too; if GitHub asks us to slow down, your assistant is told when to try again. <a href="/connection">Back to My connection</a></small></p>');
+}
+
+/** /privacy /terms /security /support: public pages from the reviewed drafts (draft banner until the owner approves them). */
+export async function publicTrust(req, res, { env = process.env } = {}) {
+  res.setHeader('Cache-Control', 'no-store');
+  if (!publicConnectEnabled(env)) return off(res);
+  if (req.method !== 'GET') { res.setHeader('Allow', 'GET'); return send(res, 405, { error: 'method_not_allowed' }); }
+  const name = String(paramsOf(req).page ?? '');
+  if (!TRUST_PAGES.includes(name)) return page(res, 404, 'Not found', '<p>That page does not exist.</p>');
+  const { title, html } = renderTrustBody(name, env);
+  return page(res, 200, title, html);
 }
 
 /** GET /api/oauth/authorize for a pcl_ client: checked, then straight to GitHub. */

@@ -23,7 +23,7 @@ button{font:600 16px Inter,-apple-system,'Segoe UI',sans-serif;color:#fff;backgr
 footer{margin-top:28px;color:var(--muted);font-size:14px}a{color:var(--teal)}`;
 
 export const brandHeader = () => `<header class="brand"><img src="${ICON_PATH}" alt="" width="44" height="44"><div><b>${BRAND.product}</b><small>${BRAND.tagline}</small></div></header>`;
-export const brandFooter = () => `<footer>Operated by <a href="${BRAND.website}" rel="noopener noreferrer">${BRAND.name}</a>. We never ask for your GitHub password here.</footer>`;
+export const brandFooter = () => `<footer>Operated by <a href="${BRAND.website}" rel="noopener noreferrer">${BRAND.name}</a>. We never ask for your GitHub password here. <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/security">Security</a> · <a href="/support">Support</a></footer>`;
 /** MCP server icons: shown by apps next to the connection. */
 export const serverIcons = (origin) => [
   { src: `${origin}${ICON_PATH}`, mimeType: 'image/png', sizes: ['256x256'] },

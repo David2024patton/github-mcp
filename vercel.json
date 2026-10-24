@@ -18,6 +18,22 @@
       "destination": "/api/oauth/authorize?manage=1"
     },
     {
+      "source": "/privacy",
+      "destination": "/api/oauth/authorize?page=privacy"
+    },
+    {
+      "source": "/terms",
+      "destination": "/api/oauth/authorize?page=terms"
+    },
+    {
+      "source": "/security",
+      "destination": "/api/oauth/authorize?page=security"
+    },
+    {
+      "source": "/support",
+      "destination": "/api/oauth/authorize?page=support"
+    },
+    {
       "source": "/.well-known/oauth-authorization-server",
       "destination": "/api/well-known/oauth-authorization-server"
     },
