@@ -3,12 +3,12 @@
 **Batch FIN · Design:** this card · **Prerequisites:** GOD-1 (master token), GOD-2 (`personalCred`), GOD-5 (extra
 places), all merged · **Effort:** medium–high (credentials, guards; read `docs/AI-PR-READ-FIRST.md`) · **Split:** one
 PR. Reason: routing as the person and the rule-bypass guard (step 6) must ship together; routing without the guard
-would let an admin's token skip branch rules. **Expected agent time:** 4–6 h.
+would let an admin's token skip branch rules. **Expected agent time:** 5–7 h.
 
 ## Owner decision (Chris, 2026-10-24) — already made
 
 - **God mode off** (no master token): unchanged. Calls use the App (installation token `I`, App user token `U`), and
-  GitHub shows the Robinson GitHub MCP bot.
+  GitHub shows the Robinson GitHub MCP app ("bot").
 - **God mode on** (master token added): every GitHub call uses the person's master token (`M`), so GitHub records the
   person (for example `christcr2012`) as the one who started a workflow, merged, commented or changed a setting. This
   applies to every person who adds a master token, not only Chris.
@@ -50,7 +50,10 @@ hold when the person is an admin who could skip them.
 - `src/tenancy/public-connect.js` — My connection actions (`manageAction`, list at ~line 429; the `time_zone` action
   at ~line 442 is the pattern for a saved per-person setting with `db.setSetting`).
 - `src/tools/pulls-merge.js` — merges check required CI themselves (`readPlan`, `why`), at the exact head.
-- `src/db.js` — `change_log` (~line 307) and its two `INSERT`s (~lines 1367, 1382).
+- `src/db.js` — `change_log` (~line 307), its two `INSERT`s (~lines 1367, 1382) and `finishChange`; `server_settings`
+  (~line 363, `getSetting`/`setSetting` ~line 1262) and `gh_rate_state` (~line 342) are per tenant.
+- `src/tools/production-guard.js` (~lines 90–97) — how branch protection and rulesets are read.
+- `src/tenancy/optional-setup.js` (~line 145–155) — where a saved master token is confirmed.
 
 ## Drift check A (fill in the PR description before coding)
 
@@ -59,175 +62,224 @@ hold when the person is an admin who could skip them.
 | `credentialFor` / `githubFor` as described, one token per Octokit | `sed -n 80,215p src/github/client.js` | | |
 | `masterStatus()` returns `{enrolled, scopes, expires_at}`, no login | `grep -n "async masterStatus" -A6 src/tenancy/user-authorization.js` | | |
 | No per-person "act as me" setting exists | `grep -rn "act_as" src \| head` | | |
-| GitHub App-only routes per inventory: the 12 `/app/...` operations with `classic_pat: unsupported` | `node -e` over `buildCapabilityInventory().operations` (see step 2) | | |
+| GitHub App-only routes per inventory: 12 operations under `/app` with `classic_pat: unsupported` | `node -e` over `buildCapabilityInventory().operations` (step 2) | | |
+| `blockers(plan,args)` in `src/tools/pulls-merge.js` is pure and synchronous; `readPlan` reads through `octo` | `sed -n 20,48p src/tools/pulls-merge.js` | | |
+| Settings and rate state are per tenant, not per person | `grep -n "server_settings\|gh_rate_state" src/db.js \| head` | | |
 
 ## Design (decided; implement in this order)
 
-### 1. When does a call act as the person? — `src/github/act-as.js` (new, pure, ~120 lines)
+**Everything about "me" is per person, not per tenant.** A tenant (one store) can have several people
+(`gh_tenant_memberships`, roles owner/admin/member). `server_settings` and `gh_rate_state` belong to the whole
+tenant, so every "me" value is keyed by the person's numeric GitHub id ("subject"), never by tenant:
+setting keys `act_as_me.<subject>`, `master_rejected_at.<subject>`, `master_login.<subject>` (they satisfy the
+setting-key rule `^[a-z][a-z0-9_.]{0,62}$`; a UUID would not) and rate key `~me:<subject>` (no database check on
+that column's format).
 
-`export async function actAsFor(ctx, { cred, scope })` returns `{ on: true }` or `{ on: false, reason }`. It is
-`on` only when ALL hold, checked in this order (the first failing one is the reason, in plain words):
-1. `cred` is `'I'` or `'U'` (an explicit `K`, `P` or `M` is left exactly as today).
-2. `ctx.connection.profile !== 'read_only'` → "read-only connections always use the bot".
-3. `ctx.connection.pass !== true` → "service passes always use the bot".
-4. no `scope.permissions` and no `scope.repositories` / `scope.repository_ids` → "this tool asks for a narrowed
-   token, which only the bot can have". (Only the universal tools and agent tasks narrow per call today.)
-5. `typeof ctx.credentials?.masterStatus === 'function'` and `masterStatus()` says `enrolled: true`
-   → otherwise no reason is shown at all (plain God mode off).
-6. not expired: `expires_at` is null or in the future → "your master token expired on <date>".
-7. scopes include `repo` (use `scopeCovered` from `personal-cred.js`) → "your master token does not have the repo
-   permission".
-8. the person's setting `act_as_me` (tenant `db.getSetting('act_as_me')`) is not `'off'` → "Act as me is off on My
+### 0. `masterStatus()` tells enough — `src/tenancy/user-authorization.js` (~line 307)
+
+Return `{ enrolled, scopes, expires_at, subject, login }` where `subject` is the GitHub user id already read inside
+`currentMaster` and `login` is setting `master_login.<subject>` (may be null). Today an expired token makes
+`currentMasterReadback` (`src/tenancy/master-credential.js` ~lines 80–81) return null, so `masterStatus` says only
+`{enrolled:false}`. Change: when the stored row is valid in every way except `expires_at <= now`, return
+`{ enrolled: false, expired: true, expires_at, subject }`. Add `masterStatus` to the owner-store credentials as
+`async () => ({ enrolled: false })` only if it is not already absent-safe (callers already check `typeof`).
+
+### 1. When does a call act as the person? — `src/github/act-as.js` (new, ~150 lines)
+
+Define a local `whole(text, fallback, max)` (same as the private helper in `src/tenancy/usage-cost.js`; it is not
+exported anywhere). `export async function actAsFor(ctx, { cred, scope })` returns `{ on: true, subject, login }` or
+`{ on: false, reason }` (`reason` may be null). Checks, in this order; the first that fails decides:
+1. `cred` is `'I'` or `'U'`. Otherwise `{on:false, reason:null}` (explicit `K`/`P`/`M` stay exactly as today).
+2. `masterStatus` exists and returns `enrolled: true` → otherwise `{on:false, reason:null}` (God mode off: no
+   reason shown), except `expired: true` → reason "your master token expired on <date>; add a new one on My
    connection".
-9. no recent rejection: setting `master_rejected_at` is empty (adding a new token clears it; see step 5) → "GitHub
-   rejected your master token; add a new one on My connection".
-10. the person's own allowance is not nearly used up: rate state for key `~me` (step 4) has
-    `remaining === null || remaining > PERSONAL_RATE_RESERVE` (setting via `whole(env.GITHUB_PERSONAL_RATE_RESERVE,
-    100, 5000)`) or its reset time has passed → "your own GitHub allowance is nearly used up until <time>".
-Cache the result on `ctx` for the rest of the call (`ctx.actAsCache`) so a tool that makes 20 requests reads the
-settings once.
+3. `ctx.connection.profile !== 'read_only'` → "read-only connections always use the app".
+4. `ctx.connection.pass !== true` → "service passes always use the app".
+5. no `scope.permissions`, `scope.repositories`, `scope.repository_ids` → "this tool asks for a narrowed token,
+   which only the app can have". (The universal tools narrow to the target repository, so universal calls with
+   `cred:'I'` use the app.)
+6. scopes include `repo` (`scopeCovered` from `src/github/personal-cred.js`) → "your master token does not have the
+   repo permission".
+7. setting `act_as_me.<subject>` is not `'off'` → "Act as me is off on My connection".
+8. setting `master_rejected_at.<subject>` is empty → "GitHub rejected your master token; add a new one on My
+   connection".
+9. rate state `~me:<subject>` / `core`: `remaining === null`, or `remaining > whole(env.GITHUB_PERSONAL_RATE_RESERVE,
+   100, 5000)`, or its reset time has passed → else "your own GitHub allowance is nearly used up until <time>".
+Cache the answer on the call context (`ctx.actAsCache`) so one tool call reads the settings once.
+`export function createActorLog()` returns `{ record({as, note}), summary() }`; `summary()` gives
+`{ as: 'you' | 'app' | 'mixed', notes: [≤3 distinct] }` or null when nothing was recorded.
 
-### 2. App-only requests always use the bot — `src/github/app-only-routes.js` (generated) + script
+### 2. App-only requests always use the app — `src/github/app-only-routes.js` (generated) + script
 
-- `scripts/build-app-only-routes.mjs` writes `src/github/app-only-routes.js` exporting
-  `APP_ONLY = Object.freeze([...'METHOD /template'])`, sorted. Sources:
-  (a) every REST operation in `buildCapabilityInventory().operations` whose
-      `credentialSupport.classic_pat.disposition === 'unsupported'` (today the 12 `/app/...` operations);
-  (b) this fixed list (GitHub's docs say personal tokens cannot use them), kept in the script with a comment citing
-      https://docs.github.com/en/rest/checks/runs and https://docs.github.com/en/rest/checks/suites :
+- `scripts/build-app-only-routes.mjs` exports `buildAppOnlyRoutes()` and, when run directly, writes
+  `src/github/app-only-routes.js` with `APP_ONLY = Object.freeze([...])` of `'METHOD /template'` strings, sorted:
+  (a) every operation in `buildCapabilityInventory().operations` with
+      `credentialSupport.classic_pat.disposition === 'unsupported'`, as `o.operation.method + ' ' + o.operation.path`
+      (today 12, all under `/app`);
+  (b) a fixed list kept in the script, citing https://docs.github.com/en/rest/checks/runs and
+      https://docs.github.com/en/rest/checks/suites (the inventory marks these `unknown`, so they must be listed):
       `POST /repos/{owner}/{repo}/check-runs`, `PATCH /repos/{owner}/{repo}/check-runs/{check_run_id}`,
       `POST /repos/{owner}/{repo}/check-runs/{check_run_id}/rerequest`, `POST /repos/{owner}/{repo}/check-suites`,
       `PATCH /repos/{owner}/{repo}/check-suites/preferences`,
-      `POST /repos/{owner}/{repo}/check-suites/{check_suite_id}/rerequest`, every route starting `/installation/`, and
-      `POST /app-manifests/{code}/conversions`.
-  Before writing (b), re-check both docs pages with the web tool; if a page now says personal tokens ARE allowed, drop
-  that route and say so in the status note.
-- Also export `APP_ONLY_GRAPHQL = ['createCheckRun','updateCheckRun','createCheckSuite','rerequestCheckSuite']`.
-- `export function isAppOnly(method, urlOrTemplate, body)`: true when `METHOD template` is listed (match the template
-  exactly, or the expanded path against the template turned into a regex with `[^/]+` per `{param}`); for
-  `POST /graphql`, true when the mutation document names one of `APP_ONLY_GRAPHQL`.
-- Unit test `tests/unit/god-6-app-only.test.js`: the generated file equals a fresh run of the script (same pattern as
-  other "in sync" tests; copy one with `grep -ln "in sync" tests/unit/*.test.js | head -1`); `isAppOnly` is true for
-  `POST /repos/{owner}/{repo}/check-runs`, the expanded `/repos/a/b/check-runs`, `GET /app` and a `createCheckRun`
-  mutation, and false for `GET /repos/a/b`, `POST /repos/a/b/issues` and a `createIssue` mutation.
+      `POST /repos/{owner}/{repo}/check-suites/{check_suite_id}/rerequest`,
+      `POST /app-manifests/{code}/conversions`, plus every path starting `/installation/`.
+  Re-check both docs pages with the web tool first; drop any route GitHub now allows for personal tokens and say so
+  in the status note.
+- Also export `APP_ONLY_GRAPHQL = ['createCheckRun', 'updateCheckRun', 'createCheckSuite', 'rerequestCheckSuite']`.
+- `export function isAppOnly(method, url, query)`: take `new URL(url, 'https://api.github.com').pathname` (the
+  parsed `url` from `octokit.request.endpoint.parse(options)`, client.js ~line 171; pagination's next pages are
+  absolute URLs with a query string, and some callers pass expanded paths), match it against regexes built from the
+  templates (`{param}` → `[^/]+`, anchored) for that method, or the `/installation/` prefix. For `POST /graphql`,
+  true when `query` names one of `APP_ONLY_GRAPHQL` as a field.
+- Test `tests/unit/god-6-app-only.test.js`: `buildAppOnlyRoutes()` equals the committed `APP_ONLY`; `isAppOnly` true
+  for `POST /repos/a/b/check-runs`, `PATCH /repos/a/b/check-runs/5`, `GET /app`, `GET /installation/repositories`,
+  `https://api.github.com/app/installations?page=2`, a `createCheckRun` mutation; false for `GET /repos/a/b`,
+  `POST /repos/a/b/issues`, a `createIssue` mutation.
 
-### 3. Choose the token per request, not per Octokit — `src/github/client.js`
+### 3. Choose the token per request — `src/github/client.js`
 
-- `credentialFor`: unchanged for every existing caller, plus: when `cred` is `I`/`U`, call `actAsFor`. If `on`, also
-  return `personal: { token: await ctx.credentials.token({ account, cred: 'M', profile }) }`. If that throws or
-  returns nothing, treat as `on: false` with reason "your master token could not be read; using the bot". The bot token
-  is fetched lazily (step below) so a call that only needs the person never mints an installation token.
-- `githubFor`: build the Octokit **without** `auth`. In the existing `hook.wrap('request')`, before anything else,
-  decide `useMe = personal && !isAppOnly(method, options.url, options) && !botForBranchWrite` (step 6), then set
-  `options.headers.authorization = 'token ' + (useMe ? personal.token : await botToken())`, where `botToken()` calls
-  the original `credentialFor` path once and caches it for this Octokit. From that point the request is treated as
-  credential `useMe ? 'M' : cred`: run `authorizeOptionalRequest({account, kind:'M', method, url})` for `M` exactly as
-  today, and use that credential in `takeWriteSlot(ctx.db, \`${account}:${actual}\`)`.
-- Verify with a request-shape test that the `authorization` header GitHub (the fake) receives is the master token for a
-  normal call and the bot token for a check-run call made by the same Octokit. Octokit must not add its own auth header
-  (it has no `auth`); the test proves it.
-- The extra-place path (GOD-5, `place`) is unchanged: those calls were already `M`.
+- `credentialFor`: for `cred` `I`/`U`, also call `actAsFor`. When `on`, read the master token with
+  `ctx.credentials.token({ account, cred: 'M', profile })`; if that throws or is empty, treat as off with reason "your
+  master token could not be read; using the app". Return `{ account, token: null, personal, place }` where
+  `personal = { token, subject, login }`, and a function `botToken()` that runs today's path (the original
+  `ctx.credentials.token({account, cred, scope, profile})`) once, lazily, and caches it. When not `on`, behave
+  exactly as today (`token` filled, `personal` null).
+- `githubFor`: build the Octokit **without** `auth` (verified: `@octokit/core` then installs no auth hook; retry
+  and throttling re-send the same `options`, so the header survives; paginate and graphql go through
+  `octokit.request`, so through this hook). At the top of the existing `hook.wrap('request')`, after the
+  `endpoint.parse`, decide:
+  `const forced = options.request?.robinsonAs; const asMe = personal && forced !== 'app' && !isAppOnly(method, url, options.query) && !(await mustUseAppForBranch(...))` (step 6),
+  then `options.headers.authorization = 'token ' + (asMe ? personal.token : await botToken())`.
+  `actual = asMe ? 'M' : cred`. Use `actual` everywhere below in the hook: `authorizeOptionalRequest` runs for
+  `actual === 'M'` exactly as today; `takeWriteSlot(ctx.db, \`${account}:${actual}\`)`; rate key (step 4).
+  `ctx.actor?.record({ as: asMe ? 'you' : 'app', note })` once per request.
+- When there is no app credential (an extra place, GOD-5) the request is `M` as today; if step 6 says the app
+  is required, refuse: "Branch rules apply to <branch>, and only the app may write there, but the app is not
+  installed on <account>."
+- A request needing the app inside the hook (step 6's branch read) is made with
+  `octokit.request(route, { ...params, request: { robinsonAs: 'app' } })`, so it still gets the API-version header,
+  rate blocking and recording, and never re-enters the "as me" decision.
+- Request-shape test: the fake GitHub receives the master token for a normal request and the app token for a
+  check-run request from the SAME Octokit, and exactly one `authorization` header each time.
 
 ### 4. The person's own request allowance
 
-GitHub counts a personal token against the person (normally 5,000 requests an hour), shared by all their accounts.
-When the actual credential is `M`, use the account key `'~me'` (a tilde can never start a GitHub login) for
-`assertNotBlocked`, `recordRate` and the rate part of `asRateLimited`. The bot keeps recording under `account` as
-today. `github_whoami` shows it (step 7).
+When `actual === 'M'` and `personal` is set, the rate key is `~me:<subject>` instead of `account` for
+`assertNotBlocked`, `recordRate` and `asRateLimited` (extra-place calls without `personal` keep `account`). In the
+message built by `rateLimited` (`src/github/rate.js`), show "your own GitHub login" instead of a key starting with
+`~me:`.
 
-### 5. Expired, removed or rejected token — back to the bot without a loop
+### 5. Expired, removed or rejected token — back to the app without a loop
 
-- Expired or removed: `actAsFor` already says `on: false` with the reason; nothing else to do.
-- GitHub answers **401** to a request sent with `M`: in the hook's `catch`, before `asRateLimited`, save
-  `db.setSetting('master_rejected_at', new Date(now()).toISOString())`. Then:
-  - **read** (`!write`): repeat the same request once with the bot token and return that answer; record
-    `fellBack: 'GitHub rejected your master token; this answer came from the bot'` in the actor log (step 7).
-  - **write**: do not repeat it (rule A8: a write is never replayed). Throw a `GithubClientError('no_credentials',
-    'GitHub rejected your master token, so nothing was changed. Calls now use the bot. Run it again, or add a new
-    master token on My connection.')`.
-- Adding a new master token (enrolment in `src/tenancy/master-credential.js`) clears `master_rejected_at`
-  (`db.setSetting('master_rejected_at', '')`), so the next call acts as the person again.
-- A **403 or 404** to a read sent with `M` (the token may lack a scope the App has): repeat once with the bot and say
-  so in the actor log ("your master token could not read this; the bot did"). Writes are never repeated; the 403 text
-  reaches the person as today.
+- Expired or removed: step 1 already turns it off with the reason.
+- **401** to a request sent as `M` (in the hook's `catch`, before `asRateLimited`): save
+  `db.setSetting('master_rejected_at.<subject>', ISO time)`. Then:
+  - read (`!write`): send the same request once more with `robinsonAs: 'app'` and return that answer; note "GitHub
+    rejected your master token; this answer came from the app".
+  - write: never repeat (A8). Throw `GithubClientError('no_credentials', 'GitHub rejected your master token, so
+    nothing was changed. Calls now use the app. Run it again, or add a new master token on My connection.')`. (A
+    `GithubClientError` is classified `rejected` by `define-github-write.js` ~line 12, so the request key is released
+    and running it again works.)
+- **403/404** to a read sent as `M` (the token may lack a scope the app has): repeat once with the app and note "your
+  master token could not read this; the app did". This is not a widening: it is exactly the answer the connection
+  gets with God mode off. Writes are never repeated; if a write's 403 carries an `x-github-sso` header, add "Authorize
+  your master token for SSO on GitHub, or turn Act as me off."
+- **New token clears the rejection:** `enrollMasterCredential` (`master-credential.js` ~line 68) also returns
+  `login: who.login`. In `src/tenancy/optional-setup.js`, right after the master save succeeds (~line 151, after
+  `currentMasterReadback`), with `scope.db`: `setSetting('master_login.<subject>', login)` and
+  `setSetting('master_rejected_at.<subject>', '')`.
 
 ### 6. Branch rules still hold for admins (the safety part)
 
-An admin's personal token can be allowed by GitHub to skip branch protection or rulesets that the bot cannot skip.
-The server never sends `bypass_rules`, and must not let the change of credential become a bypass:
-- **Merges** (`src/tools/pulls-merge.js` and `src/tools/workflows-merge.js`): they already refuse unless every required
-  check is green at the exact head. Add one more refusal, only when the call would act as the person: if
-  `pr.mergeable_state === 'blocked'` (GitHub's word for "the branch's rules are not met yet", for example a missing
-  approval), refuse: "GitHub's rules for <base> are not met yet (for example a required review). Acting as you could
-  skip them, so it is not merged." Put it in `why()` next to the existing checks; the actor decision is available as
-  `await actAsFor(ctx, {cred:'I'})`.
-- **Direct branch writes** sent as the person — `PUT`/`DELETE /repos/{owner}/{repo}/contents/{path}`,
-  `POST`/`PATCH`/`DELETE /repos/{owner}/{repo}/git/refs…`, `POST /repos/{owner}/{repo}/merges`: read the target
-  branch once (`GET /repos/{owner}/{repo}/branches/{branch}` with the bot token, sent through the hook's own `request`
-  argument with an explicit `authorization` header so it does not re-enter this decision; branch = the `branch` body field, the
-  ref path, or the repository's default branch when none is given). If `protected === true`, send this one request
-  with the bot (`botForBranchWrite = true`) and log "branch rules apply to <branch>, so this change was made by the
-  bot". The bot is never a bypass actor unless someone configured it, so the rules apply as before.
-- The universal REST/GraphQL writes go through the same hook, so the branch-write rule covers them; their merge path
-  is `PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge`: when acting as the person, read the PR first (bot token)
-  and refuse if `mergeable_state === 'blocked'`, as above.
+An admin's personal token may be allowed by GitHub to skip branch protection or rulesets that the app cannot skip.
+The server never sends `bypass_rules`; the change of credential must not become a bypass either.
+`async function mustUseAppForBranch(...)` in `act-as.js`, called from the hook only when the request would be `M`:
+- **Always the app** (no read needed): tags and releases (`POST`/`PATCH .../releases…`, any git ref outside
+  `refs/heads/`, `POST .../git/tags`), and the GraphQL mutations `mergePullRequest`, `mergeBranch`,
+  `createCommitOnBranch`, `updateRef`, `updateRefs`, `createRef`, `deleteRef`, `updatePullRequestBranch`.
+- **The app when the branch has any rule or protection**: `PUT`/`DELETE .../contents/{path}`,
+  `POST`/`PATCH`/`DELETE .../git/refs…` on `heads/`, `POST .../merges`, `PUT .../pulls/{n}/merge`,
+  `PUT .../pulls/{n}/merge-async` if present, `PUT .../pulls/{n}/update-branch`, `POST .../branches/{branch}/rename`,
+  `POST .../merge-upstream`. Branch = `options.branch`, the `heads/<name>` part of `options.ref` or the URL, or
+  `options.base`; for pull-request routes, read the PR with the app to get `base.ref`; when none is given, the
+  repository's default branch (read with the app). Then read, with the app (`robinsonAs: 'app'`),
+  `GET /repos/{owner}/{repo}/branches/{branch}` (`protected`) and
+  `GET /repos/{owner}/{repo}/rules/branches/{branch}` (any entry) — the same two reads the production guard uses
+  (`src/tools/production-guard.js` ~lines 90–97). Protected, any rule, or any read error → the app. Note "branch rules
+  apply to <branch>, so this change was made by the app".
+- This covers every tool, including the universal ones and any tool that asks for `M` explicitly, because it runs in
+  the hook whenever the actual credential is `M` and the person is acting as themselves.
+- **Merge tool, readable reason first** (`src/tools/pulls-merge.js`): in `readPlan` (~lines 24–31) set
+  `plan.actsAsYou = (await actAsFor(ctx, { cred: 'I' })).on` and read the pull request with the app. In the pure
+  function `blockers(plan, args)` (~line 34), when `plan.actsAsYou` is true and `mergeable_state` is not one of
+  `clean`, `unstable`, `has_hooks`, add: for `unknown`/null "GitHub is still working out whether this can be merged;
+  read the pull request again in a moment"; otherwise "GitHub's rules for <base> are not met yet (for example a
+  required review). Acting as you could skip them, so it is not merged." (`workflows-merge.js` merges through
+  `github_pr_merge` via `callTool`, so it needs no change.) When the merge does go ahead on a branch with rules, the
+  hook sends it with the app anyway; that is intended: rules are enforced exactly as for the app.
 
-### 7. Show who acted — every result, `github_whoami`, the change log
+### 7. Show who acted — results, `github_whoami`, the change log
 
-- **Actor log:** `createDispatch` adds `actor: createActorLog()` to the handler context (one per dispatch). The hook in
-  `githubFor` calls `ctx.actor?.record({ as: useMe ? 'you' : 'bot', note })` for every request. `createActorLog()`
-  (in `act-as.js`) keeps a small set: who was used, plus at most 3 distinct notes.
-- **Result field:** after shaping (both the write and read branches in `dispatch`), when the log is not empty, add to
-  `structuredContent` (and the text JSON) one field:
-  `acting_as: 'christcr2012 (you)'`, `'Robinson GitHub MCP bot'`, or `'christcr2012 (you); check results by the bot'`
-  for a mix, plus `acting_as_note` (first note) when the bot was used because of a fallback or a rule. Keep both short
-  (the small-results rule). The person's login: `masterStatus()` gains `login` — saved as setting `master_login` at
-  enrolment (enrolment already reads `who.login` from `GET /user`); when missing, read `GET /user` once with `M` and
-  save it.
-- **`github_whoami`** gains: `acting_as: { mode: 'you' | 'bot', login, reason? , personal_rate: { remaining, resets_at
-  } }` using `actAsFor` and the `~me` rate state. When the token is near expiry, keep the existing reminder.
-- **Change log:** add `acted_as TEXT` to `change_log` (`ALTER TABLE change_log ADD COLUMN IF NOT EXISTS acted_as TEXT`
-  in `initSchema`), filled with `'you:<login>'` or `'bot'` in both `INSERT`s from the write lifecycle (pass it from the
-  actor log). `github_recent_changes` shows it.
+- **One actor log per top-level call:** `createDispatch` creates `actor = createActorLog()` only when the incoming
+  call has none, passes it in the handler context, and passes the same `actor` into nested `dispatch` calls made by
+  `callTool` (~line 87), so a workflow's result covers its inner calls.
+- **Result field:** after shaping and before `containsCredential` (~lines 113–114), when `actor.summary()` is not
+  null and `structuredContent` is an object, add `acting_as` and, if there is a note, `acting_as_note`, then rebuild
+  the `content` text from the new `structuredContent`. Values: `'<login> (you)'`; `'Robinson GitHub MCP app'` when
+  the app's installation token acted; `'<login> (you, through the app)'` when the app credential was the person's
+  own App user token (`U`, as for invited members); for a mix, `'<login> (you); some steps by the app'`. If `login`
+  is null, read `GET /user` once with `M`, save `master_login.<subject>`, and use it. Keep both fields short.
+- **`github_whoami`** gains `acting_as: { mode: 'you' | 'app', login, reason?, personal_rate: { remaining,
+  resets_at } }` from `actAsFor` and the `~me:<subject>` rate state. The existing expiry reminder stays.
+- **Change log:** `ALTER TABLE change_log ADD COLUMN IF NOT EXISTS acted_as TEXT` in `src/db.js` `initSchema`.
+  The INSERTs run before the request is sent, so fill it in `finishChange` (called from `src/core/write.js` ~lines
+  217 and 230) with `ctx.actor?.summary?.()?.as ?? null` (`src/core` stays generic: it only passes a value from the
+  context). Add it to `normalizeChange`/`changeView` so `github_recent_changes` shows it.
 
 ### 8. The switch on My connection
 
-- New action `act_as_me` (add to the allowed list at ~line 429 of `public-connect.js`), value `'on'` | `'off'`, saved
-  with `db.setSetting('act_as_me', value)`, copying the `time_zone` action. Shown only when a master token is added:
-  a line "GitHub shows: **you (christcr2012)** / the Robinson GitHub MCP bot" and a button "Act as me: turn off" /
-  "turn on". Plain words under it: "When on, GitHub records you as the one who made each change. Checks only an app may
-  post still come from the bot." Escape every value with `h()`; no scripts; must fit a 412px phone.
+- New action `act_as_me` in `manageAction` (allowed list ~line 429 of `src/tenancy/public-connect.js`), value `'on'`
+  or `'off'`, saved as `db.setSetting('act_as_me.' + subject, value)` where `subject` comes from the flow's
+  `identityId` through the directory (`getPilotVerifiedSubject(tenantId, identityId)`, as `optional-setup.js`
+  uses). Copy the `time_zone` action's shape.
+- Shown only when a master token is added: "GitHub shows: **you (<login>)**" or "the Robinson GitHub MCP app", and a
+  button "Act as me: turn off" / "turn on". Under it: "When on, GitHub records you as the one who made each change.
+  Checks that only an app may post, and changes to branches with rules, still come from the app." Escape every
+  value with `h()`; no scripts; fits a 412px phone.
 - `docs/TOOL-CATALOG.md`: no new tool; update the `github_whoami` row ("shows who calls act as").
 
-## Tests (all with the fake GitHub; fake values only, e.g. `ghp_FAKEmaster…`)
+## Tests (fake GitHub; fake values only, e.g. `ghp_FAKEmaster…`)
 
-`tests/unit/god-6-act-as.test.js` (copy the setup of the GOD-2/GOD-5 unit tests: `grep -ln "personalCred\|extra place"
-tests/unit/*.test.js | head -3`):
-1. Master token added, switch default → a `github_issue_create` request reaches the fake with the master token;
-   result `acting_as` is `'<login> (you)'`; change log row `acted_as = 'you:<login>'`.
-2. No master token → bot token, `acting_as` bot, no reason text.
-3. Read-only connection and a service pass → bot, reason given, and no `M` request is ever made.
-4. A tool with `scope.repositories` (universal GET) → bot with the narrowed-token reason.
-5. Check-run create in the same call as a commit read → commit read as you, check run as bot, `acting_as` shows the mix.
-6. `act_as_me = 'off'` → bot with that reason; turning it back on → you.
-7. Expired token (`expires_at` in the past) → bot with the date in the reason.
-8. 401 on a read with `M` → same read repeated with the bot, answer returned, `master_rejected_at` saved, next call bot;
-   enrolling a new token clears it and the next call is you again.
-9. 401 on a write with `M` → no second request (the fake records exactly one write), plain "nothing was changed".
-10. 403 on a read with `M` → one bot retry; 403 on a write → no retry.
-11. Personal allowance below the reserve (`~me` remaining 50) → bot with the reset time; the bot's own rate key is
-    untouched by `M` calls and vice versa.
-12. Merge as you with `mergeable_state: 'blocked'` and green checks → refused with the rules message, no merge request;
-    the same as the bot (master token absent) → today's behaviour unchanged.
-13. Contents `PUT` to a protected branch while acting as you → sent with the bot token and noted; to an unprotected
-    branch → sent as you.
-14. `github_whoami` shows `acting_as` (mode, login, personal_rate).
-Also: `tests/browser/sign-in.test.js` — My connection with a master token shows the switch, turning it off/on works,
-the page fits the phone (`fitsScreen`). Write contract (`runWriteContract`) suites stay green unchanged (they run
-without a master token, so they exercise the bot path).
+`tests/unit/god-6-act-as.test.js` (copy the setup of the GOD-2 and GOD-5 unit tests:
+`grep -ln "personalCred\|extra place" tests/unit/*.test.js | head -3`):
+1. Master token added, switch default → `github_issue_create` reaches the fake with the master token; result
+   `acting_as` `'<login> (you)'`; change log `acted_as = 'you'`.
+2. No master token → app token, `acting_as` app, no `acting_as_note`.
+3. Read-only connection and a service pass → app, reason in whoami, and no request ever carries the master token.
+4. Universal GET (narrowed) → app with the narrowed-token reason.
+5. One tool call that reads a commit and creates a check run → read as you, check run by the app, `acting_as` mixed.
+6. Two people in one tenant: person A's switch off and A's rejected token do not affect person B.
+7. Expired token → app with "expired on <date>".
+8. 401 on a read as `M` → one repeat with the app, answer returned, `master_rejected_at.<subject>` saved, next call
+   app; saving a new token clears it and the next call is as you.
+9. 401 on a write as `M` → the fake records exactly one write request; plain "nothing was changed"; the same
+   `requestKey` can run again.
+10. 403 on a read as `M` → one app repeat; 403 on a write → no repeat; with `x-github-sso` the SSO sentence appears.
+11. `~me:<subject>` remaining 50 → app with the reset time; app rate key untouched by `M` calls and vice versa.
+12. Merge as you with green checks and `mergeable_state: 'blocked'` → refused, no merge request sent; `unknown` →
+    "still working out"; `clean` → merged; without a master token → today's behaviour exactly.
+13. Contents `PUT` as you: unprotected branch with no rules → master token; protected branch → app; rules non-empty →
+    app; rules read fails → app. Release create and a `createCommitOnBranch` mutation → always app. Extra place with
+    a protected branch → refused with the "app is not installed" message.
+14. Pagination: page 2 of an `/app/installations` list (absolute URL) is still recognised as app-only.
+15. `github_workflow_merge_when_green` (nested `callTool`) result carries `acting_as` from its inner merge.
+16. `github_whoami` shows `acting_as` (mode, login, personal_rate).
+Browser (`tests/browser/sign-in.test.js`): My connection with a master token shows the switch; off/on works; the page
+fits the phone (`fitsScreen`). Write-contract suites (`runWriteContract`) stay green unchanged (no master token, so the
+app path).
 
 ## Done when
-- [ ] All 14 unit cases and the browser case pass; `npm run check`, `npm run test:db`, `npm run test:shapes`,
+- [ ] All 16 unit cases and the browser case pass; `npm run check`, `npm run test:db`, `npm run test:shapes`,
       `npm run test:browser` green; `ci` and `release-policy` green at the exact head.
 - [ ] `node scripts/build-app-only-routes.mjs` output committed and its in-sync test passes.
 - [ ] Self-review records each `docs/AI-PR-READ-FIRST.md` constraint, in particular: no token in results or logs
