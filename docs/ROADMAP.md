@@ -134,3 +134,7 @@ Nothing here is built. PUB-5 measures each person's daily calls and changes so a
 - Getting people to use it: the official MCP Registry and GitHub Marketplace listings (PUB-5 PR D), the website button,
   a short demo video, posts in MCP communities, and a clear README on the public repository.
 
+## Later options for GOD-6 "act as me" (not built)
+A per-call "as the bot this once" choice; acting as the person for tools that narrow their token per call (needs a
+URL-inside-target check like GOD-5's); fine-grained personal tokens as the "me" credential.
+
