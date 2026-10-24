@@ -237,7 +237,12 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
         !await dir.allowlistPilotIdentity(tenantId, identityId, identityId)) throw refused('r10');
     const logins = [];
     for (const installation of installations) {
-      const login = installation.login.toLowerCase();
+      // A master-token extra place may have been saved with GitHub's display capitalization.
+      // Reuse that exact row/key when the same account gains an App installation, preserving
+      // existing connections. A matching name with a different immutable ID never inherits access.
+      const prior = await db.getAccount(installation.login);
+      if (prior && prior.account_id !== installation.accountId) throw refused('installation-account-changed');
+      const login = prior?.login ?? installation.login.toLowerCase();
       await db.upsertAccount({ login, accountId: installation.accountId, accountType: installation.type, label: login,
         credentialKind: 'app', appId });
       if (!await db.setInstallation(login, { installationId: installation.installationId,

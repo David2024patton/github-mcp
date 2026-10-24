@@ -82,3 +82,5 @@ Card status set to MERGED: all engineering merged (#268, #337); remaining device
 Chris: signing in or adding an organization must install the App, not only mention it. The Approve page now has an "Add <place>"
 button per owned place without the App (opens GitHub's install screen, returns to Approve with it listed); adding an extra place
 that is an organization now says how to install the App there. Tests: `tests/db/pub-6-approve-add.test.js`.
+
+Owner launch follow-up (2026-10-24): installed App reconciliation preserves an existing extra place's exact case-sensitive key after verifying its immutable GitHub account ID. This fixes live duplicate-account-ID sign-in failures when an extra place becomes App-backed; regression covers the complete My connection conversion and original connector survival.

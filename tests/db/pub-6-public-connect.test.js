@@ -46,6 +46,9 @@ const people = {
     { id: 41050, app_id: APP, account: { id: 51001, login: 'client-co', type: 'Organization' }, repository_selection: 'all', suspended_at: null }] }
 };
 people.market = { ...people.alice, token:'ghu_FAKE-marketplace-0001' };
+people.caseowner = {token:'ghu_FAKE-case-owner',id:31009,login:'case-owner',roles:{'client-co':'admin'},installs:[
+  {id:41090,app_id:APP,account:{id:31009,login:'case-owner',type:'User'},repository_selection:'all',suspended_at:null}
+]};
 const revokedMarketplace = new Set();
 let failMarketplaceRevocation = false;
 const fetchImpl = async (url, opts = {}) => {
@@ -1344,5 +1347,23 @@ describe('Marketplace isolated free customer lifecycle', () => {
     expect(await sweepMarketplace({sql:sqlFor(admin),rootDb:root,env:mpEnv(),fetchImpl})).toEqual({removed:1,failed:0});
     expect(revokedMarketplace.has('ghu_FAKE-marketplace-refreshed')).toBe(true);
     expect((await admin.query('SELECT 1 FROM gh_marketplace_grants WHERE tenant_id=$1',[tenantId])).rowCount).toBe(0);
+  });
+});
+
+
+describe('Installed organization saved earlier as an extra place',()=>{
+  it('reuses mixed-case account keys and preserves existing connections when the App is installed',async()=>{
+    const c=make(),client=await c.registerClient({redirect_uris:[CB]});
+    const original=await tokenFor(c,client,'caseowner');
+    const scope=await gateFor(original);
+    await scope.db.upsertExtraPlace({login:'Client-Co',accountId:51001,accountType:'Organization'});
+    people.caseowner.installs.push({id:41091,app_id:APP,account:{id:51001,login:'client-co',type:'Organization'},repository_selection:'all',suspended_at:null});
+    const start=await c.startManage();
+    const result=await c.finish({state:start.state,code:'caseowner-fixture-code-2'});
+    expect(result.manage.accounts).toContainEqual(expect.objectContaining({login:'Client-Co',active:true,changes:true}));
+    expect(result.manage.places.some(p=>p.login.toLowerCase()==='client-co')).toBe(false);
+    expect((await scope.db.listAccounts()).filter(a=>Number(a.account_id)===51001)).toHaveLength(1);
+    expect(await scope.db.getAccount('client-co')).toMatchObject({login:'Client-Co',credential_kind:'app',installation_id:41091});
+    expect(await gateFor(original)).not.toBeNull();
   });
 });
