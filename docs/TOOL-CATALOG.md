@@ -256,7 +256,7 @@ Card(s): G-2.
 
 ## Secrets and variables (`github_secret_*, github_variable_*`) — 7
 
-Card(s): G-3. Covers Actions, Dependabot, Codespaces and agent secrets at repository, environment and organization level. **Secret values never pass through a tool:** Chris types them on the setup page, or the server generates them.
+Card(s): G-3. Covers Actions, Dependabot, Codespaces and agent secrets at repository, environment and organization level, and (GOD-4) your own personal Codespaces secrets with `level: user` and `kind: codespaces` — those use your master token (codespace permission) and are refused in plain words without it. **Secret values never pass through a tool:** Chris types them on the setup page, or the server generates them.
 
 | Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -432,7 +432,7 @@ Card(s): O-3.
 | `github_role_assign` | Give a user or team an organization role | C·A | N built #200 | I | O | F | O-3 built #200 |
 | `github_role_remove` | Take an organization role away from a user or team | C | N built #200 | I | O | F | O-3 built #200 |
 
-## Owner: billing, budgets, Copilot and Codespaces (`github_billing_*, github_copilot_*, github_codespace_*`) — 13
+## Owner: billing, budgets, Copilot and Codespaces (`github_billing_*, github_copilot_*, github_codespace_*`) — 14
 
 Card(s): O-4. The developer's $0/production-OFF TEST rule does not limit an end user's separately delegated authority. Known-price changes disclose the sourced estimate. `$*` includes future metered/unknown charges: disclose an uncapped exposure, confirm, honor explicit user-chosen spend ceilings and RTC pass allowances, and never infer policy GET verification from a Codespaces 204. Current source repair is pending exact-head CI/merge and subsequent live provider acceptance.
 
@@ -447,6 +447,7 @@ Card(s): O-4. The developer's $0/production-OFF TEST rule does not limit an end 
 | `github_copilot_add_seats` | Assign Copilot seats with a verified plan price, or disclose unknown recurring pricing under user delegation | C·$·A·M·Prod | F built #201 | I | O | F | O-4 built #201 |
 | `github_copilot_remove_seats` | Remove Copilot seats at cycle end even if the provider plan's price is not published | C·Prod | C built #201 | I | O | F | O-4 built #201 |
 | `github_codespace_list` | Codespaces of the user or org with machine, state and who pays (uses your master token when added) | — | C built #201 | I,U | O,B | R | O-4 built #201 |
+| `github_codespace_list_machines` | Machine types a codespace of yours could be switched to (cores, memory, storage) (uses your master token when added) | — | N | I,U | O,B | R | GOD-4 |
 | `github_codespace_create` | Create a codespace for a repo and branch (hourly compute plus storage) (uses your master token when added) | C·$·Prod | C built #201 | U | O,B | F | O-4 built #201 |
 | `github_codespace_set_state` | Start (billed) or stop (saves money) a codespace (uses your master token when added) | C·$*·Prod* | C built #201 | U | O,B | F | O-4 built #201 |
 | `github_codespace_delete` | Delete a codespace (unpushed work is lost) (uses your master token when added) | C·D·Prod | C built #201 | U | O,B | F | O-4 built #201 |
@@ -466,7 +467,7 @@ Card(s): O-5. Source built in PR #203 with scoped metadata projections, U-creden
 | `github_tokenpolicy_list_tokens` | Fine-grained tokens that can reach the organization, with owner, repositories and expiry | — | N | I | O | R | O-5 built #203 |
 | `github_tokenpolicy_revoke_access` | Revoke a fine-grained token's access to the organization | C·Prod | N | I | O | F | O-5 built #203 |
 
-## Owner: personal account (`github_account_*`) — 10
+## Owner: personal account (`github_account_*`) — 14
 
 Card(s): O-6. Source built in PR #204 with verified user-auth principal, real profile/email/public-key/block/invitation operations and full guarded-write lifecycle. Needs a user authorization (`U`); installation tokens cannot reach personal settings. Raw public key material is accepted only for additions but never returned in inventory. Provider acceptance and real email confirmation remain separate.
 
@@ -482,6 +483,10 @@ Card(s): O-6. Source built in PR #204 with verified user-auth principal, real pr
 | `github_account_list_invitations` | Repository invitations waiting for Chris (uses your master token when added) | — | N | U | O | R | O-6 built #204 |
 | `github_account_respond_invitation` | Accept or decline a repository invitation (uses your master token when added) | C·Prod·A* | N | U | O | F | O-6 built #204 |
 | `github_account_set_status` | Set or clear your profile status: emoji, message (80 characters), expiry and busy indicator; read back field by field (uses your master token when added) | C | N | U | O | F | Y-1 built #227 |
+| `github_account_export_status` | Your account exports: one export's state, or the recent list (uses your master token when added) | — | N | U | B,O | R | GOD-4 |
+| `github_account_export_link` | Short-lived private download address of a finished export; the archive is not downloaded here (uses your master token when added) | — | N | U | B,O | R | GOD-4 |
+| `github_account_export_start` | Start exporting your own repositories to an archive; never locks repositories (uses your master token when added) | C·Prod | N | U | B,O | F | GOD-4 |
+| `github_account_export_delete` | Delete a finished export archive from GitHub; cannot be undone (uses your master token when added) | C·D·Prod | N | U | B,O | F | GOD-4 |
 
 ## Owner: notifications and gists (`github_notify_*, github_gist_*`) — 7
 
@@ -802,9 +807,9 @@ Card(s): ENT-1. Every tool uses the person's **master token** (credential `M`, w
 
 ## Totals
 
-**Totals:** 438 tools: 432 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
-dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 140, everyday adds 81
-(everyday lists 221), full adds 101 (full lists 365). In compact mode (`docs/designs/BATCH-C.md`) an agent
+**Totals:** 443 tools: 437 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 143, everyday adds 81
+(everyday lists 224), full adds 103 (full lists 368). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
 `github_search_tools` / `github_call`.
 
@@ -832,9 +837,9 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Security features and alerts; Actions settings | 9 |
 | Owner: organization and members | 12 |
 | Owner: teams and roles | 9 |
-| Owner: billing, budgets, Copilot and Codespaces | 13 |
+| Owner: billing, budgets, Copilot and Codespaces | 14 |
 | Owner: apps and fine-grained tokens | 7 |
-| Owner: personal account | 10 |
+| Owner: personal account | 14 |
 | Owner: notifications and gists | 7 |
 | Owner and administration: guided settings | 3 |
 | Moderation and organization planning objects | 16 |
@@ -851,7 +856,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Everything else on GitHub: the universal tools | 6 |
 | Batch Y-9d financial and Copilot operations | 17 |
 | GitHub Enterprise | 11 |
-| **Total** | **438** |
+| **Total** | **443** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 
