@@ -127,6 +127,13 @@ function managePage(res, m) {
         (m.master.unlocks?.length ? '<div id="master-unlocks">' + m.master.unlocks.map((u) => `<div class="row"><span>${h(u.area)}</span><span class="tag">${u.unlocked ? 'unlocked' : 'locked — tick “' + h(u.needs) + '”'}</span></div>`).join('') + '</div>' : '') +
         act('master', 'Replace or remove it', { plain: true })
       : '<p>Unlocks what normal sign-in cannot: notifications, packages, gists, organization settings and more. It has the power of your whole GitHub login, so only add it if you want that.</p>' + act('master', 'Add my master token')) +
+    '<h2>Extra places (uses your master token)</h2>' + (m.master.added
+      ? '<p>Add an organization you belong to, or one repository (owner/name), where the GitHub App is not installed. A new place starts read-only: your apps can look, and every change is refused until you allow changes for it. Read-only app connections cannot use extra places at all.</p>' +
+        ((m.places ?? []).length ? m.places.map((pl) => `<div class="row"><span>${h(pl.login)}${pl.repos?.length ? ' <small>' + h(pl.repos.join(', ')) + '</small>' : ''} <span class="tag">${pl.changes ? 'changes allowed' : 'read-only'}</span></span></div>` +
+          act('place_changes', pl.changes ? `Make ${h(pl.login)} read-only` : `Allow changes for ${h(pl.login)}`, { value: pl.login + ':' + (pl.changes ? 'off' : 'on'), plain: true, id: 'place-changes-' + pl.login }) +
+          (pl.repos?.length ? pl.repos.map((r) => act('remove_place', `Remove ${h(pl.login)}/${h(r)}`, { value: pl.login + '/' + r, plain: true, id: 'remove-place-' + pl.login + '-' + r })).join('') : act('remove_place', `Remove ${h(pl.login)}`, { value: pl.login, plain: true, id: 'remove-place-' + pl.login }))).join('') : '<p class="muted">No extra places yet.</p>') +
+        `<form method="post" action="${MANAGE_PATH}">${hidden('handle', m.handle)}${hidden('action', 'add_place')}<label>Organization or owner/repository<input type="text" name="value" id="place-value" maxlength="150" autocomplete="off"></label><button type="submit" id="add-place">Add place</button></form>`
+      : '<p class="muted">Extra places need your master token. Add it above first.</p>') +
     '<h2>Time zone</h2>' +
     `<form method="post" action="${MANAGE_PATH}">${hidden('handle', m.handle)}${hidden('action', 'time_zone')}<label>Show times in<select name="value">` +
       COMMON_ZONES.map((z) => `<option value="${h(z)}"${z === m.timeZone ? ' selected' : ''}>${h(z.replace('_', ' '))}</option>`).join('') + '</select></label><button type="submit" id="save-zone">Save</button></form>' +

@@ -20,12 +20,14 @@ const dollars = (cents) => `$${((Number(cents) || 0) / 100).toFixed(2)}`;
 const when = (value) => (value ? formatDenver(value) : null);
 
 function installationLabel(row) {
+  if (row.credential_kind === 'master') return 'extra place (your master token)';
   if (row.credential_kind === 'fine_grained') return row.has_fine_grained ? 'token saved' : 'no token';
   if (row.app_id == null) return 'no GitHub App yet';
   return row.installation_status === 'active' ? 'installed' : row.installation_status === 'suspended' ? 'suspended' : 'not installed';
 }
+const placeOf = (row) => (row.credential_kind === 'master' ? { allow_changes: row.allow_changes === true, allowed_repos: row.allowed_repos ?? 'whole account' } : {});
 const credentialsOf = (row) => ({
-  I: row.credential_kind === 'fine_grained' ? row.has_fine_grained : row.installation_status === 'active',
+  I: row.credential_kind === 'master' ? false : row.credential_kind === 'fine_grained' ? row.has_fine_grained : row.installation_status === 'active',
   U: !!row.has_user_token,
   K: !!row.has_classic,
   P: !!row.has_package
@@ -60,7 +62,7 @@ async function whoami(args, ctx) {
     const rate = await ctx.db.getRateState(row.login, 'core');
     const entry = {
       login: row.login, label: row.label, type: row.account_type, is_default: row.login.toLowerCase() === ctx.connection.default_account.toLowerCase(),
-      credentials: credentialsOf(row), production_enabled: !!row.production_enabled,
+      credentials: credentialsOf(row), production_enabled: !!row.production_enabled, ...placeOf(row),
       spend_limit: row.spend_limit_explicit || row.spend_limit_cents > 0 ? dollars(row.spend_limit_cents) : 'not configured',
       spend_limit_cents: row.spend_limit_explicit || row.spend_limit_cents > 0 ? row.spend_limit_cents : null,
       spend_limit_explicit: row.spend_limit_explicit === true || row.spend_limit_cents > 0,
@@ -87,7 +89,7 @@ async function listAccounts(args, ctx) {
   const rows = await visibleAccounts(ctx);
   const accounts = rows.map((row) => {
     const entry = {
-      login: row.login, label: row.label, account_type: row.account_type, credential_kind: row.credential_kind === 'app' ? 'GitHub App' : 'fine-grained token',
+      login: row.login, label: row.label, account_type: row.account_type, credential_kind: row.credential_kind === 'app' ? 'GitHub App' : row.credential_kind === 'master' ? 'master token (extra place)' : 'fine-grained token', ...placeOf(row),
       setup: installationLabel(row), repository_selection: row.repository_selection ?? null,
       user_authorization: row.has_user_token ? `signed in as ${row.user_login ?? 'you'}` : 'not signed in',
       notifications_token: row.has_classic ? 'saved' : 'none', production_enabled: !!row.production_enabled, is_default: !!row.is_default

@@ -2052,7 +2052,7 @@
         "GOD-3"
       ],
       "card": "docs/pr-cards/GOD-5.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "additive gh_accounts columns allow_changes, allowed_repos; credential_kind master",
       "budget": 0,
       "units": [

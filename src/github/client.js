@@ -85,6 +85,13 @@ function resolveAccount(connection, owner) {
  */
 export async function credentialFor(ctx, { owner, cred = 'I', scope } = {}) {
   if (!CREDENTIAL_KINDS.includes(cred)) throw new TypeError(`Unknown credential kind "${cred}".`);
+  // GOD-5: an "extra place" is an account the person added with their master token (no App installed there). Whatever the tool
+  // asked for, the credential IS the master token, so every master-token refusal below applies to it unchanged.
+  const wanted = String(owner ?? ctx.connection?.default_account ?? '').toLowerCase();
+  const listed = (ctx.connection?.accounts || []).find((login) => login.toLowerCase() === wanted);
+  const place = listed && typeof ctx.db?.getAccount === 'function' ? await ctx.db.getAccount(listed) : null;
+  const extraPlace = place?.credential_kind === 'master' ? place : null;
+  if (extraPlace) cred = 'M';
   if ((cred==='K'||cred==='P'||cred==='M') && ctx.connection?.pass===true &&
       typeof ctx.credentials?.authorizeOptionalRequest==='function')
     throw new GithubClientError('outside_scope',
@@ -103,9 +110,26 @@ export async function credentialFor(ctx, { owner, cred = 'I', scope } = {}) {
     throw new GithubClientError('outside_scope', 'Package tokens cannot be narrowed to repository or permission-limited passes.');
   const token = await ctx.credentials?.token({ account, cred, scope: narrowed, profile: ctx.connection?.profile });
   if (typeof token !== 'string' || !token) {
-    throw new GithubClientError('no_credentials', `No GitHub credential is set up for ${account}. Open the setup page to add one.`, { account });
+    throw new GithubClientError('no_credentials', extraPlace ? 'This extra place needs your master token.' : `No GitHub credential is set up for ${account}. Open the setup page to add one.`, { account });
   }
-  return { account, token };
+  return { account, token, place: extraPlace };
+}
+
+/**
+ * GOD-5: what a request on an extra place may do. Changes need the place's "allow changes" switch (the guard gate says so
+ * first, in plain words; this is the backstop for any path that does not go through the gate). A place limited to named
+ * repositories may only reach those repositories through the REST API: GraphQL and owner-level addresses are refused
+ * because the repository cannot be read out of them.
+ */
+export function assertPlaceRequest(place, account, method, url, write) {
+  if (write && place.allow_changes !== true)
+    throw new GithubClientError('outside_scope', `Changes are off for ${account}. Turn on 'allow changes' for it on My connection.`, { account });
+  const list = place.allowed_repos;
+  if (!Array.isArray(list) || !list.length) return;
+  const parts = new URL(url, 'https://api.github.com').pathname.split('/');
+  const safe = (v) => { try { return decodeURIComponent(v ?? '').toLowerCase(); } catch { return ''; } };
+  const inside = parts[1] === 'repos' && safe(parts[2]) === account.toLowerCase() && list.some((r) => r.toLowerCase() === safe(parts[3]));
+  if (!inside) throw new GithubClientError('outside_scope', 'That repository is not one of the places you added.', { account });
 }
 
 /** Replaces every BigInt in a parsed GitHub response by its exact decimal string; everything else is untouched. */
@@ -121,7 +145,8 @@ export function exactIntegers(value) {
 }
 
 export async function githubFor(ctx, { owner, cred = 'I', scope } = {}) {
-  const { account, token } = await credentialFor(ctx, { owner, cred, scope });
+  const { account, token, place } = await credentialFor(ctx, { owner, cred: cred, scope });
+  if (place) cred = 'M';
   const now = ctx.now ?? Date.now;
   const deadline = now() + (ctx.budgetMs ?? DEFAULT_BUDGET_MS);
   const withinBudget = (retryAfterSeconds, retryCount) => retryCount < 1 && now() + retryAfterSeconds * 1000 <= deadline;
@@ -146,6 +171,7 @@ export async function githubFor(ctx, { owner, cred = 'I', scope } = {}) {
     const { method: rawMethod, url } = octokit.request.endpoint.parse(options);
     const method = String(rawMethod || 'GET').toUpperCase();
     const write = isWrite(method, { ...options, url });
+    if (place) assertPlaceRequest(place, account, method, url, write);
     // Classic package credentials never authorize arbitrary REST, GraphQL or foreign accounts.
     // Validate the expanded URL BEFORE any request or rate/write side effect.
     if ((cred==='K'||cred==='P'||cred==='M') &&

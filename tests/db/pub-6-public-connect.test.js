@@ -809,3 +809,147 @@ describe('GOD-4 cancelling leaked tokens (github_credential_revoke)', () => {
     expect(get.body).not.toContain('FAKEleaked');
   });
 });
+
+// GOD-5 extra places: the master token reaches an organization or repositories where the App is not installed.
+describe('GOD-5 extra places (master token) in REAL PostgreSQL', () => {
+  const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+  const none = () => json({ message: 'Not Found' }, 404);
+  // Only requests made through the shared client (its user agent) are answered here; sign-in keeps using the shared fixtures.
+  const placeFetch = async (url, opts = {}) => {
+    const ua = String(opts.headers?.['user-agent'] ?? '');
+    if (!ua.includes('robinson-github-mcp') || !String(url).startsWith('https://api.github.com/')) return fetchImpl(url, opts);
+    if (!String(opts.headers?.authorization ?? '').endsWith(' ' + people.alice.token)) return json({ message: 'Bad credentials' }, 401);
+    const path = new URL(url).pathname;
+    const table = {
+      '/user': json({ id: 31001, login: 'alice-dev', type: 'User' }),
+      '/users/alice-dev': json({ id: 31001, login: 'alice-dev', type: 'User' }),
+      '/users/client-co': json({ id: 51001, login: 'client-co', type: 'Organization' }),
+      '/users/side-co': json({ id: 51050, login: 'side-co', type: 'Organization' }),
+      '/user/memberships/orgs/side-co': json({ state: 'active', role: 'member', organization: { id: 51050 } }),
+      '/users/outsider-co': json({ id: 51099, login: 'outsider-co', type: 'Organization' }),
+      '/users/stranger': json({ id: 61000, login: 'stranger', type: 'User' }),
+      '/user/memberships/orgs/client-co': json({ state: 'active', role: 'admin', organization: { id: 51001 } }),
+      '/user/memberships/orgs/outsider-co': json({ state: 'pending', role: 'member' }),
+      '/repos/client-co/website': json({ name: 'website', owner: { login: 'client-co' }, permissions: { pull: true } }),
+      '/repos/outsider-co/public-site': json({ name: 'public-site', owner: { login: 'outsider-co' }, permissions: { pull: true } }),
+      '/repos/outsider-co/no-access': json({ name: 'no-access', owner: { login: 'outsider-co' }, permissions: { pull: false } })
+    };
+    return table[path] ?? none();
+  };
+  const withFetch = () => createPublicConnect({ env, fetchImpl: placeFetch, rootSqlFactory, tenantSqlFactory });
+  const enrollmentWith = async (fetchFn) => {
+    const { createPrivateOptionalEnrollment } = await import('../../src/tenancy/optional-setup.js');
+    const { openAuthorizedTenantDb } = await import('../../src/tenancy/directory.js');
+    return createPrivateOptionalEnrollment({ env, fetchImpl: fetchFn, directoryFactory: () => createTenantDirectory(rootSqlFactory()),
+      tenantAccess: (dir, claim) => openAuthorizedTenantDb({ directory: dir, tenantId: claim.tenantId, verifiedIdentityId: claim.identityId, connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory }) });
+  };
+  /** Sign in to My connection as `who`; returns a function that runs one action and re-opens the page for the next. */
+  const session = async (c, who) => {
+    let page = (await c.finish({ state: (await c.startManage()).state, code: who + '-fixture-code-1' })).manage;
+    return {
+      get page() { return page; },
+      act: async (action, value = '') => { const out = await c.manageAction({ handle: page.handle, action, value }); if (out.manage) page = out.manage; return out; }
+    };
+  };
+  const addMaster = async (c, who, scopes = 'repo') => {
+    const enrollment = await enrollmentWith(async (url, opts) => {
+      const out = await fetchImpl(url, opts);
+      return url === 'https://api.github.com/user' ? { ...out, headers: { get: (n) => (String(n).toLowerCase() === 'x-oauth-scopes' ? scopes : null) } } : out;
+    });
+    const s = await session(c, who);
+    const { go } = await s.act('master');
+    const form = await enrollment.startMasterLink(new URL(go).searchParams.get('master_link'));
+    await enrollment.finish({ state: form.state, action: 'save', value: people[who].token });
+  };
+
+  it('adds an organization and a repository as read-only extra places, joins live connections, and removes them again', async () => {
+    const c = withFetch();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const token = await tokenFor(c, client, 'alice');
+    await addMaster(c, 'alice');
+    const s = await session(c, 'alice');
+    expect(s.page.master.added).toBe(true);
+
+    await s.act('add_place', 'side-co');
+    expect(s.page.notice).toMatch(/Added side-co as an extra place.*read-only/);
+    const db = await tenantOf(await parsePublicCode(codeOf(await approved(c, client, 'alice'))));
+    const row = await db.getAccount('side-co');
+    expect(row).toMatchObject({ credential_kind: 'master', allow_changes: false, allowed_repos: null, installation_status: 'none', is_default: false, account_type: 'Organization' });
+    // the already-live connection gained it without reconnecting; a brand-new connection gets it too
+    expect((await gateFor(token)).connection ?? (await gateFor(token))).toBeTruthy();
+    const live = await db.getAccessToken(token.access_token);
+    expect(live.accounts).toContain('side-co');
+    expect(live.default_account).toBe('alice-dev');
+    expect(s.page.places).toEqual([{ login: 'side-co', organization: true, changes: false, repos: null }]);
+
+    // a repository of an organization the person is not a member of
+    await s.act('add_place', 'outsider-co/public-site');
+    expect(s.page.notice).toMatch(/Added outsider-co\/public-site/);
+    expect((await db.getAccount('outsider-co')).allowed_repos).toEqual(['public-site']);
+
+    // flipping changes on and off
+    await s.act('place_changes', 'side-co:on');
+    expect((await db.getAccount('side-co')).allow_changes).toBe(true);
+    await s.act('place_changes', 'side-co:off');
+    expect((await db.getAccount('side-co')).allow_changes).toBe(false);
+
+    // removing a repository removes the place when its list empties; removing the whole place leaves every connection
+    await s.act('remove_place', 'outsider-co/public-site');
+    expect(await db.getAccount('outsider-co')).toBeNull();
+    await s.act('remove_place', 'side-co');
+    expect(await db.getAccount('side-co')).toBeNull();
+    expect((await db.getAccessToken(token.access_token)).accounts).not.toContain('side-co');
+    expect(s.page.places).toEqual([]);
+    expect(JSON.stringify(s.page)).not.toContain(people.alice.token);
+  });
+
+  it('refuses a place the master token cannot see, an organization the person has not joined, a connected account, and bad input', async () => {
+    const c = withFetch();
+    const s = await session(c, 'alice');
+    await addMaster(c, 'alice');
+    const s2 = await session(c, 'alice');
+    const before = (await s2.page.places).length;
+    for (const [value, words] of [['nonexistent-co', /does not show nonexistent-co/], ['outsider-co', /not an active member of outsider-co/],
+      ['outsider-co/no-access', /cannot read outsider-co\/no-access/], ['stranger', /specific repository of stranger/],
+      ['alice-dev', /already connected with the GitHub App/], ['client-co', /already connected with the GitHub App/], ['bad value!', /Type an organization/]]) {
+      await s2.act('add_place', value);
+      expect(s2.page.notice, value).toMatch(words);
+    }
+    expect(s2.page.places).toHaveLength(before);
+    // a made-up action value for flipping or removing is refused outright
+    await expect(c.manageAction({ handle: s2.page.handle, action: 'place_changes', value: 'client-co:maybe' })).rejects.toThrow();
+    const s3 = await session(c, 'alice');
+    await expect(c.manageAction({ handle: s3.page.handle, action: 'remove_place', value: '../etc' })).rejects.toThrow();
+  });
+
+  it('works for the connection: a new connection carries the place, tools see it as an extra place, and the page shows it without any token', async () => {
+    const c = withFetch();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    await addMaster(c, 'alice');
+    const s = await session(c, 'alice');
+    await s.act('add_place', 'outsider-co/public-site');
+    const fresh = await tokenFor(c, client, 'alice');
+    const gate = await gateFor(fresh);
+    const row = await gate.db.getAccessToken(fresh.access_token);
+    expect(row.accounts).toContain('outsider-co');
+    const { credentialFor } = await import('../../src/github/client.js');
+    const ctx = { connection: { ...row, profile: 'full' }, db: gate.db, credentials: gate.credentials };
+    expect((await credentialFor(ctx, { owner: 'outsider-co', cred: 'I' })).token).toBe(people.alice.token);
+    await expect(credentialFor({ ...ctx, connection: { ...row, profile: 'read_only' } }, { owner: 'outsider-co', cred: 'I' })).rejects.toThrow(/master token/);
+    const readOnly = await tokenFor(c, client, 'alice', { readOnly: true });
+    expect((await (await gateFor(readOnly)).db.getAccessToken(readOnly.access_token)).accounts).not.toContain('outsider-co');
+    await s.act('remove_place', 'outsider-co');
+  });
+
+  it('shows the extra places section on a phone-sized page, with the forms, and no token', async () => {
+    const c = withFetch();
+    await addMaster(c, 'alice');
+    const s = await session(c, 'alice');
+    await s.act('add_place', 'side-co');
+    const html = await call((req, res) => publicManage(req, res, { env, connect: { manageAction: async () => ({ manage: s.page }) } }), request('POST', { handle: 'x', action: 'refresh', value: '' }, { origin: ORIGIN }));
+    expect(html.statusCode).toBe(200);
+    for (const text of ['Extra places (uses your master token)', 'side-co', 'read-only', 'id="add-place"', 'id="place-changes-side-co"', 'id="remove-place-side-co"']) expect(html.body).toContain(text);
+    expect(html.body).not.toContain(people.alice.token);
+    await s.act('remove_place', 'side-co');
+  });
+});

@@ -5,6 +5,7 @@
 // people and spend (B-4). `scripts/check-writes.mjs` (B-7) fails the build if a tool's declarations need a guard that is not listed.
 import { productionEnabledGate } from './production-guard.js';
 import { protectedResourceGate } from './protect-guard.js';
+import { extraPlaceGate } from './extra-place-guard.js';
 import { peopleGate } from './people-guard.js';
 import { spendGate } from './spend-guard.js';
 
@@ -18,5 +19,5 @@ export function passAccessGate() {
 }
 
 export function createGates() {
-  return [passAccessGate(), productionEnabledGate(), protectedResourceGate(), peopleGate(), spendGate()];
+  return [passAccessGate(), extraPlaceGate(), productionEnabledGate(), protectedResourceGate(), peopleGate(), spendGate()];
 }
