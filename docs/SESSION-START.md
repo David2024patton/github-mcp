@@ -1,5 +1,8 @@
 # SESSION-START — reconcile, accept released work, implement, close out
 
+> **2026-10-23:** pick the next card from `docs/designs/FINISH-PLAN.md` §2 (batch FIN). Smaller models follow
+> `docs/pr-cards/SOL-GUIDE.md`; the rest of this file is the detailed procedure behind it.
+
 ## Autonomous execution contract
 
 “Do N bundles” authorizes continuing the full documented process without routine

@@ -6,6 +6,13 @@ stacked, partly contradictory rules from 31 edits. The old text is kept for refe
 from it). Every hard limit, owner decision and safety gate below was carried over unchanged.
 The repo, not chat history, is the memory.
 
+## Start here (2026-10-23)
+
+The remaining work to finish the product is planned in **`docs/designs/FINISH-PLAN.md`** as ready cards (batch FIN in
+`docs/pr-cards/work-index.json`): GOD-2+GOD-3 → ENT-1 (Enterprise trial ends ~2026-11-22) → ACC-1 (alongside) → GOD-4 →
+GQL-1 → GOD-5 → HARD-1. Smaller models: follow **`docs/pr-cards/SOL-GUIDE.md`** step by step. Live service:
+`https://github.robinsonaisystems.com` (old `github-mcp-chris-projects-de6cd1bf.vercel.app` is an alias).
+
 ## What this is
 
 **Robinson GitHub MCP** is a hosted MCP server (Vercel + Neon) that lets Chris's AI agents operate GitHub
@@ -196,10 +203,23 @@ feature works.
   repository secrets, never `pull_request_target`, never echoes environment values. Never commit GitHub App IDs,
   installation IDs, Vercel/Neon IDs or URLs with credentials.
 
+## Lessons that cost a day (2026-10-23) — do not repeat
+
+- **Test sign-in and pages in real browsers, not on Chris's phone.** `npm run test:browser` drives Chromium (Android,
+  desktop) and WebKit (iPhone) through the real `api/` code with a fake GitHub and fake app. Reproduce a reported
+  browser problem there first; never ship a guess-fix that needs a release and his phone to evaluate.
+- **No cookies across redirects** in the public sign-in or My connection. One-use handles stored server-side plus the
+  Approve page are the protection (`docs/DECISIONS.md` 2026-10-23).
+- **Pages must fit a phone** (412px); the browser tests check it.
+- **Read-only means the `read_only` profile**, not just preview mode (preview still allows non-production writes).
+- When this environment refuses an action (merge, production deploy, posting), ask Chris once in plain words; do not
+  route around it with another tool.
+
 ## Where the rules live (one source of truth each)
 
 | Topic | File |
 |---|---|
+| What is left and in which order | `docs/designs/FINISH-PLAN.md` (+ `docs/pr-cards/SOL-GUIDE.md`) |
 | Starting a session; resume note | `docs/SESSION-START.md` |
 | Step-by-step procedure and testing | `docs/PLAYBOOK.md` |
 | Every tool: name, purpose, safety, credential, audience | `docs/TOOL-CATALOG.md` |

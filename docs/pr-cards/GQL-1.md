@@ -1,0 +1,75 @@
+# GQL-1 — GraphQL write specifications for the remaining mutations
+
+**Batch FIN · Design:** `docs/designs/FINISH-PLAN.md` §4, `docs/designs/BATCH-U.md` (U-2) and Batch Y Y-2 ·
+**Prerequisites:** none (independent of God mode) · **Effort:** medium · **Split:** 4 PRs (one per group below).
+
+## Outcome
+Every one of the 234 GraphQL mutations the capability report lists as "no write specification" is either
+(a) **already covered** by a curated tool, recorded so in the inventory, or (b) given a reviewed `WRITE_SPECS` entry so
+`github_graphql_write` can run it with the normal preview → confirm → verify → undo lifecycle, or (c) **deliberately
+refused** with a one-line reason (e.g. enterprise membership, identity-provider changes). After GQL-1 the report shows
+0 rows in state `missing`.
+
+## Read only these
+- `src/github/graphql-writes.js` header comment (field meanings) and the first 10 entries (patterns: quiet,
+  notifying, destructive, `inverse`).
+- `src/github/capability-inventory.js` lines 220–250 (how a mutation becomes `missing` vs covered).
+- `src/tools/universal-graphql.js` (how a spec is executed; do not change it unless a test proves it necessary).
+- The existing tests for specs: `grep -ln "WRITE_SPECS" tests/unit/*.js`.
+- Per mutation: `node scripts/graphql-find.mjs <mutationName>` (input type and payload).
+
+## Drift check A
+| Expected | Actual on main | Action |
+|---|---|---|
+| `node scripts/capability-inventory.mjs --report` says "GraphQL mutations with no write specification: 234" | | |
+| `WRITE_SPECS` has ~24 entries | | |
+
+## Step 0 (every PR): mark curated coverage first
+For each mutation in the PR's group, run `grep -rn "<mutationName>" src/tools/*.js`. If a curated tool already sends
+it (or a REST tool does the identical job, e.g. `createLabel` = `github_label_save`), add it to a new exported map in
+`src/github/capability-inventory.js`: `COVERED_BY_TOOL = new Map([['createLabel','github_label_save'], …])` and make
+the inventory mark those rows `implemented-unverified` with that tool as route `curated`. That is not a write spec; it
+just stops counting them as missing. Add a unit test that every tool name in the map exists in the registry.
+
+## Groups (one PR each, in this order)
+1. **Projects v2 (32)** — `addProjectV2DraftIssue … updateProjectV2View`. Many are already done by Y-4 tools: map them in
+   Step 0. Specs for the rest use `scope:'org'` for organization projects and a new `scope:'owner'` only if a user
+   project needs it (add with a test; ids must resolve to a project owned by a connected account). `delete*` →
+   `destructive`, `deleted:true`, no inverse, `undoHint`.
+2. **Issues, sub-issues, labels, PR reviews, discussions, reactions, comments (≈60)** — issue fields/types
+   (`createIssueType` … `updateIssueFieldValue`), `addSubIssue`/`removeSubIssue`/`reprioritizeSubIssue`,
+   `addBlockedBy`/`removeBlockedBy`, `addRelatesTo`/`removeRelatesTo`, `addReaction`/`removeReaction`, `addUpvote`/
+   `removeUpvote`, `addDiscussionPollVote`, `markFileAsViewed`/`unmarkFileAsViewed`, `resolveReviewThread` (+ unresolve
+   already exists?), review mutations not covered by E-3 tools. Comment-creating mutations are `notifying`.
+3. **Repository, environments, checks, deployments, branches, custom properties, interaction limits, user lists,
+   follow (≈55)** — e.g. `createEnvironment`, `pinEnvironment`, `createCheckRun`, `approveDeployments`,
+   `createRef`/`deleteRef`, `mergeBranch`, `setRepositoryCustomPropertyValues`, `createUserList`, `followUser`.
+   Most have REST twins → Step 0. Remaining get specs; `deleteRef`/`deleteEnvironment` are destructive; `mergeBranch`
+   must refuse a protected default branch (reuse the production guard via `preflight:'repo-admin'` or a new named
+   preflight with a test).
+4. **Deliberately refused or owner-gated (≈60)** — enterprise membership and identity provider (`inviteEnterprise*`,
+   `removeEnterprise*`, `setEnterpriseIdentityProvider`, `regenerateEnterpriseIdentityProviderRecoveryCodes`,
+   `transferEnterpriseOrganization`, `createEnterpriseOrganization`), migrations (`startRepositoryMigration`,
+   `grantMigratorRole`…), sponsorship money moves (`createSponsorship(s)`, `cancelSponsorship`), IP allow lists,
+   verifiable domains, `removeOutsideCollaborator`, `accessUserNamespaceRepository`. Add them to a new exported
+   `REFUSED_MUTATIONS = new Map([[name, 'plain reason']])` in `graphql-writes.js`; the inventory marks them
+   `unresolved` → change to a new state label `refused-by-design` (update the report printer and its test). The enterprise
+   *settings* mutations (`updateEnterprise*Setting`, `updateEnterpriseProfile`) are NOT refused: give them specs with a
+   new `scope:'enterprise'` that calls `requireEnterprise` from ENT-1 (do group 4 after ENT-1).
+
+## Spec checklist (copy for every new entry)
+- [ ] `ids` lists every ID input with its allowed node types; any other ID input is refused.
+- [ ] `changes` lists every non-ID input; nothing else is accepted.
+- [ ] `before` selection reads exactly the fields `verify` needs.
+- [ ] `already` returns true when nothing would change.
+- [ ] `verify` checks the requested value, not just "no error".
+- [ ] `inverse` restores the previous state, or `inverse:null` plus `undoHint`.
+- [ ] `cls` marks: `notifies` for anything that pings people, `accessWidening` for adding people/permissions,
+      `destructive` for deletes. Never lower a mark (Batch Y decision Y4).
+- [ ] A test in `tests/unit/gql-1-<group>.test.js`: valid input runs the lifecycle against the fake GraphQL (validated
+      against the vendored schema); an extra input key is refused; a wrong node type is refused; `already` path refuses.
+
+## Done when
+- [ ] Four PRs merged; `node scripts/capability-inventory.mjs --report` shows 0 rows "GraphQL mutations with no write
+      specification"; refused ones are listed with reasons; TOOL-CATALOG unchanged (no new tools) except the
+      universal tool's description if it mentions counts.
