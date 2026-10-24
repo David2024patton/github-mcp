@@ -65,7 +65,7 @@ Chris replaces his master token once with the "include enterprise permissions" l
 find the enterprise slug themselves with `github_enterprise_list`.
 
 ## Done when
-- [ ] Tools merged, released (daily release or an owner-requested manual release), and ACC-1 rows "ENT-1 live" recorded
+- [ ] (Tools merged 2026-10-23 as PR #342; release and live rows still to do) Tools merged, released (daily release or an owner-requested manual release), and ACC-1 rows "ENT-1 live" recorded
       before 2026-11-22: list, overview, security configs read, one disposable code-security configuration created and
       deleted, Dependabot access read, Copilot metrics read, Actions cache limits read (no paid changes).
 - [ ] If the trial ends first: rows recorded as BLOCKED with "Enterprise trial ended"; tools stay (they work for any
