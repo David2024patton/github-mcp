@@ -7,6 +7,17 @@ import { neon } from '@neondatabase/serverless';
 import { createDb, SCHEMA_TABLES } from '../db.js';
 import { initTenantRuntimeSchema } from './runtime-limits.js';
 
+/** Postgres refuses two sessions replacing the same function at once ("tuple concurrently updated", SQLSTATE XX000).
+ * Many first-time sign-ins can run this setup together, so that one refusal is retried a few times; anything else is raised. */
+export async function retryConcurrent(run, attempts = 6) {
+  for (let i = 1; ; i += 1) {
+    try { return await run(); } catch (error) {
+      if (i >= attempts || !/tuple concurrently updated/i.test(String(error?.message ?? error))) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 25 * i + Math.floor(Math.random() * 25)));
+    }
+  }
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SCHEMA = /^gh_t_[0-9a-f]{32}$/;
 const GITHUB_SUBJECT = /^[1-9][0-9]{0,18}$/;
@@ -161,7 +172,7 @@ export function createTenantDirectory(sql) {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         PRIMARY KEY (identity_id, account_login)
       )`;
-      await sql`CREATE OR REPLACE FUNCTION gh_bootstrap_private_pilot(
+      await retryConcurrent(() => sql`CREATE OR REPLACE FUNCTION gh_bootstrap_private_pilot(
         principal_id UUID, account_name TEXT, proposed_id UUID
       ) RETURNS UUID LANGUAGE plpgsql SECURITY INVOKER AS $body$
       DECLARE existing_id UUID;
@@ -185,7 +196,7 @@ export function createTenantDirectory(sql) {
           VALUES (principal_id,account_name,proposed_id);
         PERFORM gh_provision_tenant_namespace(schema_name);
         RETURN proposed_id;
-      END $body$`;
+      END $body$`);
       await sql`CREATE TABLE IF NOT EXISTS gh_tenant_pilot_allowlist (
         tenant_id UUID NOT NULL REFERENCES gh_tenants(id),
         identity_id UUID NOT NULL REFERENCES gh_tenant_identities(id),
@@ -295,7 +306,7 @@ export function createTenantDirectory(sql) {
       // PUB-6: owner-requested deletion of ONE public person's data. Only a tenant created by the public sign-in
       // (bootstrap key 'public-connect') with a single member can go. It removes every root row that points at the tenant,
       // then drops that tenant's own database namespace, so nothing of theirs survives and nobody else's data is touched.
-      await sql`CREATE OR REPLACE FUNCTION gh_forget_public_tenant(target UUID)
+      await retryConcurrent(() => sql`CREATE OR REPLACE FUNCTION gh_forget_public_tenant(target UUID)
         RETURNS BOOLEAN LANGUAGE plpgsql SECURITY INVOKER AS $body$
       DECLARE ns TEXT; ident UUID; others INTEGER;
       BEGIN
@@ -322,20 +333,20 @@ export function createTenantDirectory(sql) {
           DELETE FROM gh_tenant_identities WHERE id = ident;
         END IF;
         RETURN TRUE;
-      END $body$`;
+      END $body$`);
       await sql`CREATE INDEX IF NOT EXISTS gh_public_flows_expires
         ON gh_public_flows (expires_at)`;
       // This function only accepts server-generated opaque namespaces. Unlike
       // concatenating raw SQL in JS, %I quotes the identifier within PostgreSQL.
       // It is SECURITY INVOKER (no privilege elevation) and has no public HTTP route.
-      await sql`CREATE OR REPLACE FUNCTION gh_provision_tenant_namespace(namespace_text TEXT)
+      await retryConcurrent(() => sql`CREATE OR REPLACE FUNCTION gh_provision_tenant_namespace(namespace_text TEXT)
         RETURNS VOID LANGUAGE plpgsql SECURITY INVOKER AS $body$
         BEGIN
           IF namespace_text !~ '^gh_t_[0-9a-f]{32}$' THEN
             RAISE EXCEPTION 'Invalid tenant namespace';
           END IF;
           EXECUTE format('CREATE SCHEMA IF NOT EXISTS %I', namespace_text);
-        END $body$`;
+        END $body$`);
     },
 
     /** Called only after a real provider lookup has established this numeric user ID. */

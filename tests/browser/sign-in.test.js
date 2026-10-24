@@ -327,4 +327,21 @@ describe('My connection', () => {
     expect(gone.status).toBe(401);
     await b.context.close();
   });
+  it('shows the limits page in plain words and it fits a phone; My connection links to it', async () => {
+    for (const profile of PROFILES) {
+      const b = await open(profile, { cookies: false });
+      if (!b) continue;
+      await b.page.goto(ORIGIN + '/connection');
+      await b.page.click('a[href="/limits"]');
+      await b.page.waitForSelector('h1');
+      expect(await b.page.title()).toBe('Limits');
+      const text = await b.page.textContent('main');
+      expect(text).toContain('Assistant calls');
+      expect(text).toContain('120 a minute per app');
+      expect(text).toContain('Saved results');
+      expect(text).toContain('up to 50');
+      await fitsScreen(b.page);
+      await b.context.close();
+    }
+  });
 });

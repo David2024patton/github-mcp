@@ -28,6 +28,7 @@ import { createTenantDirectory, openAuthorizedTenantDb } from '../tenancy/direct
 import { saveTenantRuntimePolicy } from '../tenancy/runtime-limits.js';
 import { forgetPublicPerson } from '../tenancy/forget-person.js';
 import { publicUsageSummary } from '../tenancy/usage-summary.js';
+import { estimatePublicCost } from '../tenancy/usage-cost.js';
 import { neon } from '@neondatabase/serverless';
 
 const HTML = 'text/html; charset=utf-8';
@@ -387,7 +388,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
   /** Read-only public usage numbers for the owner; any problem just hides the section. */
   async function publicUsage() {
     if (env.GITHUB_PRIVATE_TENANT_PILOT !== 'enabled' || !env.DATABASE_URL) return null;
-    try { return await publicUsageSummary(neon(env.DATABASE_URL), { connectionString: env.DATABASE_URL }); } catch { return null; }
+    try { const u = await publicUsageSummary(neon(env.DATABASE_URL), { connectionString: env.DATABASE_URL }); return { ...u, cost: estimatePublicCost(u, env) }; } catch { return null; }
   }
 
   /** LAUNCH-1: the invite list (who may become a NEW public person while invite-only is on). Hidden when the public sign-in is not set up. */

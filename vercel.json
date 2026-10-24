@@ -10,6 +10,10 @@
       "destination": "/api/index"
     },
     {
+      "source": "/limits",
+      "destination": "/api/oauth/authorize?page=limits"
+    },
+    {
       "source": "/connection",
       "destination": "/api/oauth/authorize?manage=1"
     },

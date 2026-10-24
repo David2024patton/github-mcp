@@ -72,7 +72,7 @@ again (GitHub itself refuses the installation token, so this is stale state, not
    `tests/browser/` case "a key change does not sign people out"; no production rotation.
 
 ## Done when
-- [ ] A, B, C merged; owner rows added: invite-only switch, cost alert amount, support email, legal approval, permission change.
+- [ ] A (done), B (in review), C merged; owner rows added: invite-only switch, cost alert amount, support email, legal approval, permission change.
 - [ ] Load-test numbers and the cost estimate recorded in a status note.
 
 ## Progress
@@ -80,4 +80,9 @@ again (GitHub itself refuses the installation token, so this is stale state, not
   (`src/tenancy/public-cleanup.js`, called from the webhook after the signature check) and the invite list (`GITHUB_PUBLIC_INVITE_ONLY`,
   `gh_public_invites`, owner setup page form). Tests: DB describe "LAUNCH-1 uninstall clean-up and invite-only" in
   `tests/db/pub-6-public-connect.test.js` (kept in that file because its large fixture is not shared), setup-page unit test.
-- PR B, PR C: not started.
+- PR A merged (#351).
+- PR B (built, in review): load test (`npm run test:load`, local fake only; `tests/load/public-load.test.js`), owner "Public usage" cost
+  estimate (`src/tenancy/usage-cost.js`, `PUBLIC_COST_PER_1K_CALLS_CENTS` default 5, `PUBLIC_COST_ALERT_CENTS` default 2000), `/limits`
+  page (`publicLimits`, vercel rewrite, linked from My connection). The load test found a real bug (first-time sign-ins colliding while
+  creating the database functions, "tuple concurrently updated") fixed with a retry in `src/tenancy/directory.js`. Numbers: `docs/status/2026-10-24-launch-1b.md`.
+- PR C: not started.

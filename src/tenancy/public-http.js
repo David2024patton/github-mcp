@@ -3,7 +3,7 @@
 // shows a short generic message; why a sign-in was refused goes to the server log only. Everything answers 404 while the
 // flow is off.
 import { createPublicConnect, PublicConnectError, publicConnectEnabled, MANAGE_PATH } from './public-connect.js';
-import { TenantCapacityError } from './runtime-limits.js';
+import { TenantCapacityError, TENANT_RUNTIME_LIMITS as LIMITS } from './runtime-limits.js';
 import { escapeHtml as h, paramsOf, publicOrigin, send } from '../core/http.js';
 import { COMMON_ZONES } from '../core/time-zone.js';
 import { BRAND_CSS, brandHeader, brandFooter } from '../brand/brand.js';
@@ -67,6 +67,22 @@ export async function publicRegister(req, res, { env = process.env, ...deps } = 
     if (error instanceof PublicConnectError && error.code === 'capacity') return send(res, 503, { error: 'temporarily_unavailable', error_description: error.message });
     return send(res, 503, { error: 'temporarily_unavailable' });
   }
+}
+
+/** /limits: the working limits in plain words. Read-only, no sign-in, nothing personal. Numbers come from the same settings the server enforces. */
+export async function publicLimits(req, res, { env = process.env } = {}) {
+  res.setHeader('Cache-Control', 'no-store');
+  if (!publicConnectEnabled(env)) return off(res);
+  if (req.method !== 'GET') { res.setHeader('Allow', 'GET'); return send(res, 405, { error: 'method_not_allowed' }); }
+  const mb = (bytes) => `${Math.round(bytes / (1024 * 1024))} MB`;
+  const hours = Math.round(LIMITS.resultMaxTtlSeconds / 3600);
+  return page(res, 200, 'Limits', '<p>These limits keep the service fast and fair for everyone. Normal use never gets near them. When one is reached your assistant is told to wait a moment; nothing is lost or changed.</p>' +
+    `<div class="row"><span><strong>Assistant calls</strong><br><small>How fast your assistants can use GitHub through us.</small></span><span>${LIMITS.mcpClientPerMinute} a minute per app, ${LIMITS.mcpTenantPerMinute} a minute in total</span></div>` +
+    `<div class="row"><span><strong>Sign-in attempts</strong><br><small>Connecting or reconnecting an app.</small></span><span>${LIMITS.oauthClientPerMinute} a minute per app</span></div>` +
+    `<div class="row"><span><strong>Saved results</strong><br><small>Long answers we keep so your assistant can fetch them.</small></span><span>kept up to ${hours} hours; each up to ${Math.round(LIMITS.resultMaxBytes / 1024)} KB; ${mb(LIMITS.resultsTenantBytesPerDay)} a day</span></div>` +
+    `<div class="row"><span><strong>Background jobs</strong><br><small>Longer tasks that finish later.</small></span><span>${LIMITS.jobsTenantPending} waiting at once, ${LIMITS.jobsTenantPerDay} a day</span></div>` +
+    '<div class="row"><span><strong>Extra names</strong><br><small>People you list as your own, beyond your accounts.</small></span><span>up to 50</span></div>' +
+    '<p><small>GitHub has its own limits too; if GitHub asks us to slow down, your assistant is told when to try again. <a href="/connection">Back to My connection</a></small></p>');
 }
 
 /** GET /api/oauth/authorize for a pcl_ client: checked, then straight to GitHub. */
@@ -170,7 +186,7 @@ export async function publicManage(req, res, { env = process.env, ...deps } = {}
     if (req.method === 'GET') {
       if (p.go === '1') return go(res, (await connect.startManage()).url);
       return page(res, 200, 'My connection', '<p>See and change how your assistants use your GitHub: add accounts, add the optional master token, make your apps read-only, pick your time zone, disconnect an app or delete your data.</p>' +
-        `<p><a class="button" id="manage-sign-in" href="${MANAGE_PATH}?go=1">Sign in with GitHub</a></p><p><small>You never type a password or token here for this.</small></p>`);
+        `<p><a class="button" id="manage-sign-in" href="${MANAGE_PATH}?go=1">Sign in with GitHub</a></p><p><small>You never type a password or token here for this. <a href="/limits">See the limits</a>.</small></p>`);
     }
     if (req.method !== 'POST' || !sameSite(req, env)) return failure(res, null, 'manage-origin');
     return render(res, await connect.manageAction({ handle: p.handle, action: p.action, value: p.value }));
