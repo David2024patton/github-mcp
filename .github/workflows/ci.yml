@@ -31,20 +31,28 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
 
   unit:
-    name: unit (${{ matrix.shard }}/2)
+    name: unit (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      # Documentation-only pull requests skip this job's heavy steps (the job still reports success); see scripts/ci-scope.mjs.
+      - id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/ci-scope.mjs >> "$GITHUB_OUTPUT"
+      - if: steps.scope.outputs.code == 'true'
+        uses: actions/setup-node@v7
         with:
           node-version: 24
-      - run: npm ci
-      - run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm test -- --shard=${{ matrix.shard }}/2
+      - if: steps.scope.outputs.code == 'true'
+        run: npm ci
+      - if: steps.scope.outputs.code == 'true'
+        run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm test -- --shard=${{ matrix.shard }}/3
 
   db:
     runs-on: ubuntu-latest
@@ -66,11 +74,19 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      # Documentation-only pull requests skip this job's heavy steps (the job still reports success); see scripts/ci-scope.mjs.
+      - id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/ci-scope.mjs >> "$GITHUB_OUTPUT"
+      - if: steps.scope.outputs.code == 'true'
+        uses: actions/setup-node@v7
         with:
           node-version: 24
-      - run: npm ci
-      - run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:db
+      - if: steps.scope.outputs.code == 'true'
+        run: npm ci
+      - if: steps.scope.outputs.code == 'true'
+        run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:db
         env:
           TEST_DATABASE_URL: postgresql://postgres:ci-only-not-a-secret@127.0.0.1:5432/postgres
 
@@ -79,24 +95,40 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      # Documentation-only pull requests skip this job's heavy steps (the job still reports success); see scripts/ci-scope.mjs.
+      - id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/ci-scope.mjs >> "$GITHUB_OUTPUT"
+      - if: steps.scope.outputs.code == 'true'
+        uses: actions/setup-node@v7
         with:
           node-version: 24
-      - run: npm ci
-      - run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:shapes
+      - if: steps.scope.outputs.code == 'true'
+        run: npm ci
+      - if: steps.scope.outputs.code == 'true'
+        run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:shapes
 
   rtc:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      # Documentation-only pull requests skip this job's heavy steps (the job still reports success); see scripts/ci-scope.mjs.
+      - id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/ci-scope.mjs >> "$GITHUB_OUTPUT"
+      - if: steps.scope.outputs.code == 'true'
+        uses: actions/setup-node@v7
         with:
           node-version: 24
-      - run: npm ci
+      - if: steps.scope.outputs.code == 'true'
+        run: npm ci
       # Upstream Hub RTC 1 runner pinned and executed against reference + our restricted HTTP adapter.
       # A deliberately non-certified manifest remains an explicit failed probe, never a pass.
-      - run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:rtc
+      - if: steps.scope.outputs.code == 'true'
+        run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:rtc
 
   browser:
     # Real browsers (Chromium as an Android phone and desktop, WebKit as an iPhone) walk the whole sign-in and the
@@ -118,13 +150,21 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      # Documentation-only pull requests skip this job's heavy steps (the job still reports success); see scripts/ci-scope.mjs.
+      - id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/ci-scope.mjs >> "$GITHUB_OUTPUT"
+      - if: steps.scope.outputs.code == 'true'
+        uses: actions/setup-node@v7
         with:
           node-version: 24
-      - run: npm ci
+      - if: steps.scope.outputs.code == 'true'
+        run: npm ci
       # Chromium: the runner's own Google Chrome (nothing to download). WebKit: Playwright's build plus its system libraries.
       # A slow or stuck install fails within 6 minutes and leaves its last output as an annotation on the check.
       - name: Install the WebKit engine
+        if: steps.scope.outputs.code == 'true'
         timeout-minutes: 8
         # Usually under a minute. Ubuntu's package mirror is sometimes very slow, so one stuck attempt is cut off and retried
         # (the retry reuses what was already downloaded). A real failure still fails the job, with its output as an annotation.
@@ -139,7 +179,8 @@ jobs:
           done
           echo "::error title=WebKit install failed::$(tail -c 900 /tmp/pw-install.log | tr '\n\r' '  ')"
           exit 1
-      - run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:browser
+      - if: steps.scope.outputs.code == 'true'
+        run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run test:browser
         env:
           TEST_DATABASE_URL: postgresql://postgres:ci-only-not-a-secret@127.0.0.1:5432/postgres
           BROWSER_CHROMIUM_PATH: /usr/bin/google-chrome

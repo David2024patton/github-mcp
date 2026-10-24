@@ -38,7 +38,7 @@ Nothing in this plan is built yet. Status of each card lives in `work-index.json
 | Public launch items from the rollout plan Chris approved: load test, hosting-cost view with alert, App permission review, invite-only switch, served legal/security/support pages, and **clean-up for public people when they uninstall the App** (today only the owner's accounts are updated). | `docs/ROADMAP.md` rollout plan; `src/github/webhook.js` | LAUNCH-1 |
 | The 2026-10-16 end-user authority audit (no developer-only $0/guide-only limit leaks into the product) is still marked open. | `docs/END-USER-AUTHORITY.md` | AUTH-1 |
 | 1,176 operations have no credential decision and 65 have conflicting official information. | capability report | INV-1 |
-| Every PR runs the full 10–15 minute test suite even when only documents changed. | CI | HARD-1 B.3 |
+| (Done 2026-10-23) Documentation-only PRs now skip the heavy test jobs; unit tests split three ways. | CI | HARD-1 B.3 |
 
 **Stays out** (not part of "finished"): PUB-5 public directory listing (blocked by OpenAI policy on unofficial
 connectors and needs Chris's separate decision); GitHub Models (retired by GitHub); OAuth-app token management and
@@ -61,7 +61,7 @@ Do the cards in this order. One card = one PR unless the card says to split. Eac
 | 7 | **LAUNCH-1** (3 PRs) | medium | Uninstall clean-up is a real gap; do PR A early (can go right after GOD-2/3). | Decisions: invite-only, support email, legal approval, cost alert, App permission change |
 | 8 | **AUTH-1** (2 PRs) | medium | Makes sure users get everything GitHub allows, with honest warnings. | No |
 | 9 | **INV-1** | light | Data work: every operation gets a credential decision. | No |
-| 10 | **HARD-1** | light–medium | Hardening, docs tidy, docs-only CI fast path (B.3 can be done first: it saves time on every later PR). | One field in App settings |
+| 10 | **HARD-1** | light–medium | Hardening and docs tidy (B.3, the docs-only CI fast path, is already done). | One field in App settings |
 
 "Finished" = all eleven cards merged and released, ACC-1's ledger has a recorded outcome (passed, or a named
 provider/plan limit) for every row, and `docs/STATUS.md` + this file say so.
