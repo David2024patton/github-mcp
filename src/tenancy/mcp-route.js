@@ -62,6 +62,9 @@ export async function resolvePrivateTenantMcpBearer({
         (!isPublic && (grant.accounts.length !== 1 || grant.accounts[0] !== selectedAccount))) return null;
     for (const login of grant.accounts) {
       const account = await db.getAccount(login);
+      // GOD-5: an extra place (master token) has no installation; it only needs to still exist. Its own gate and the master
+      // token checks decide every request, so a place switched back to read-only never breaks the rest of the connection.
+      if (account?.credential_kind === 'master') continue;
       if (!account || account.credential_kind !== 'app' ||
           account.installation_status !== 'active' ||
           !Number.isSafeInteger(account.installation_id) || account.installation_id <= 0 ||

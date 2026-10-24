@@ -91,7 +91,10 @@ Same read-only default, same guards. Skip if GOD-5 main part is not merged yet.
   API with `GET /user/memberships/orgs/{org}` for the classic token (already partly present) and `GET /repos/{o}/{r}`.
 
 ## Done when
-- [ ] All tests above green; `npm run test:db`, `npm run test:browser`, `npm run check` green.
-- [ ] `docs/DECISIONS.md` entry "Extra places" with the default (read-only first) and the guards.
-- [ ] ACC-1 row: Chris's master token adds one org he is a member of as a read-only place; a read works; a write is
+- [x] All tests above green (unit `god-5-guards`, DB tests in `tests/db/pub-6-public-connect.test.js` describe "GOD-5 extra places", browser test "adds an extra place with the master token"); `npm run test:db`, `npm run test:browser`, `npm run check` green. (The DB tests were added to the existing PUB-6 file because its large fixture is not shared.)
+- [x] `docs/DECISIONS.md` entry "Extra places" with the default (read-only first) and the guards.
+- [ ] ACC-1 row (after the next release): Chris's master token adds one org he is a member of as a read-only place; a read works; a write is
       refused; then the place is removed.
+
+## Progress
+Main part built and merged in one PR. Not built: the optional fine-grained-token extension (separate PR if wanted; recorded in DECISIONS).

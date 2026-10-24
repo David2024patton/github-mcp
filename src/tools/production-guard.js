@@ -112,6 +112,9 @@ export function productionEnabledGate() {
     if (!classification.production || ctx.connection.mode !== 'production') return null;
     const account = await ctx.db.getAccount(target.owner);
     if (account?.production_enabled === true) return null;
+    // GOD-5: for an extra place (master token) the person's explicit "allow changes" on My connection IS the production
+    // authorization; classification, confirmation, protected-resource and spend checks still apply to every change.
+    if (account?.credential_kind === 'master' && account.allow_changes === true) return null;
     return { refuse: `Production changes are not turned on for ${target.owner}. Ask Claude to turn them on, then confirm on the setup page.`, by: 'production switch' };
   };
 }

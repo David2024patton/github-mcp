@@ -485,3 +485,21 @@ explainable in plain steps and addable at any time without disconnecting. Built 
 GitHub person, lifetime chosen by the person on GitHub, no cap of ours, encrypted, revocable), a four-step page, and `github_master_token_link` (private one-use link).
 K/P fall back to it for their own exact reads; `cred:"M"` works in the universal REST/GraphQL tools under all existing guards,
 never for read-only connections, passes, narrowed scopes or any host except api.github.com.
+
+## 2026-10-24 — Extra places: the master token on accounts where the App is not installed (GOD-5)
+Decision: a person with a master token can add an organization they belong to, or named repositories they can read, as an
+"extra place" on My connection. It is stored as a normal account row (`credential_kind='master'`, `allow_changes` false,
+optional `allowed_repos`), joins the person's live public connections at once and every new one, and **is the master token with
+all its limits**: `credentialFor` turns any credential kind into `M` for such an account, so read-only connections, service
+passes and narrowed scopes are refused exactly as for `M`. A new place starts **read-only** (owner default; Chris can change it):
+`extraPlaceGate` refuses every change until "allow changes" is switched on for that place, and the request hook refuses a
+change the same way even on a path that skips the gate. A repository place reaches only its listed repositories over REST
+(GraphQL and owner-level addresses are refused because the repository cannot be read out of them). Protected resources,
+production, spend and people gates still run after it. Adding verifies with the master token that the person can really see the
+place (active organization membership, or read access to the repository) and refuses a connected (App) account, an account
+the token cannot see, and another person's whole account. The token is used only for those checks, through the shared client.
+For an extra place the person's "allow changes" IS the production authorization (the production switch is not separate);
+classification, confirmation, protected-resource and spend checks still apply to every change. Switching all apps read-only
+and back never stops a connection from returning to production because of an extra place.
+Deliberately not built: fine-grained-token places (the card's optional extension).
+

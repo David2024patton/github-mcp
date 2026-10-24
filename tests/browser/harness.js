@@ -177,6 +177,15 @@ export function createFakeGithub() {
       const o = person.orgs[m[1]];
       return o ? json(200, { state: 'active', role: o.role, organization: { id: o.id, login: m[1] } }) : json(404, { message: 'Not Found' });
     }
+    // GOD-5 extra places: who an owner is, and a repository the person can read (any repository of an organization they belong to).
+    const u = /^\/users\/([^/?]+)$/.exec(path);
+    if (u) {
+      const o = person.orgs[u[1]];
+      if (o) return json(200, { id: o.id, login: u[1], type: 'Organization' });
+      return u[1] === person.login ? json(200, { id: person.id, login: person.login, type: 'User' }) : json(404, { message: 'Not Found' });
+    }
+    const r = /^\/repos\/([^/?]+)\/([^/?]+)$/.exec(path);
+    if (r && person.orgs[r[1]]) return json(200, { name: r[2], owner: { login: r[1] }, permissions: { pull: true } });
     return json(404, { message: 'fake GitHub has no route for ' + path });
   }
 

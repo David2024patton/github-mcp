@@ -213,6 +213,10 @@ export function createDb(sql = productionSql()) {
       // Distinguish a user-selected restriction from the legacy default without
       // discarding positive caps that were deliberately configured.
       await sql`ALTER TABLE gh_accounts ADD COLUMN IF NOT EXISTS spend_limit_explicit BOOLEAN NOT NULL DEFAULT FALSE`;
+      // GOD-5 "extra places": a row with credential_kind = 'master' is an organization or repositories reached with the person's
+      // master token where the App is not installed. Changes start OFF; allowed_repos NULL means the whole owner.
+      await sql`ALTER TABLE gh_accounts ADD COLUMN IF NOT EXISTS allow_changes BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS allowed_repos TEXT[]`;
       await sql`CREATE TABLE IF NOT EXISTS gh_installation_tokens (
         installation_id BIGINT NOT NULL,
         scope_key TEXT NOT NULL,
@@ -813,15 +817,18 @@ export function createDb(sql = productionSql()) {
       const wanted = [...new Set((Array.isArray(logins) ? logins : []).map((l) => String(l).toLowerCase()))]
         .filter((l) => /^[a-z0-9][a-z0-9-]{0,38}$/.test(l));
       if (!wanted.length) return 0;
-      const ready = (await sql`SELECT lower(login) AS login, production_enabled FROM gh_accounts
-        WHERE lower(login) = ANY(${wanted}::text[]) AND installation_status = 'active'`);
-      const all = ready.map((r) => r.login), changes = ready.filter((r) => r.production_enabled === true).map((r) => r.login);
-      const rows = await sql`SELECT token_hash, accounts, mode FROM oauth_tokens
+      const ready = (await sql`SELECT lower(login) AS login, production_enabled, credential_kind, allow_changes FROM gh_accounts
+        WHERE lower(login) = ANY(${wanted}::text[]) AND (installation_status = 'active' OR credential_kind = 'master')`);
+      // An extra place always joins (its own gate keeps every change refused until the person allows changes for that place).
+      const places = new Set(ready.filter((r) => r.credential_kind === 'master').map((r) => r.login));
+      const all = ready.map((r) => r.login), changes = ready.filter((r) => (r.credential_kind === 'master' || r.production_enabled === true)).map((r) => r.login);
+      const rows = await sql`SELECT token_hash, accounts, mode, client_id FROM oauth_tokens
         WHERE kind = 'connector' AND revoked_at IS NULL AND (expires_at > now() OR refresh_hash IS NOT NULL)`;
       let changed = 0;
       for (const row of rows) {
         const have = (row.accounts ?? []).map((a) => String(a).toLowerCase());
-        const add = (row.mode === 'production' ? changes : all).filter((l) => !have.includes(l));
+        // Extra places only join the person's own multi-account (public sign-in) connections, never a single-account signed client.
+        const add = (row.mode === 'production' ? changes : all).filter((l) => !have.includes(l) && (!places.has(l) || String(row.client_id ?? '').startsWith('pcl_')));
         const next = [...(row.accounts ?? []), ...add].slice(0, 10);
         if (next.length === (row.accounts ?? []).length) continue;
         await sql`UPDATE oauth_tokens SET accounts = ${next}::text[] WHERE token_hash = ${row.token_hash} AND revoked_at IS NULL`;
@@ -842,7 +849,7 @@ export function createDb(sql = productionSql()) {
       if (readOnly !== false) return 0;
       const rows = await sql`UPDATE oauth_tokens t SET profile = 'full',
           mode = CASE WHEN cardinality(t.accounts) > 0 AND NOT EXISTS (SELECT 1 FROM unnest(t.accounts) acct WHERE NOT EXISTS (
-            SELECT 1 FROM gh_accounts a WHERE lower(a.login) = lower(acct) AND a.production_enabled = TRUE AND a.installation_status = 'active'))
+            SELECT 1 FROM gh_accounts a WHERE lower(a.login) = lower(acct) AND (a.credential_kind = 'master' OR (a.production_enabled = TRUE AND a.installation_status = 'active'))))
             THEN 'production' ELSE 'preview' END
         WHERE t.kind = 'connector' AND t.revoked_at IS NULL AND (t.expires_at > now() OR t.refresh_hash IS NOT NULL)
         RETURNING token_hash`;
@@ -968,12 +975,63 @@ export function createDb(sql = productionSql()) {
       return rows[0] ? { ...rows[0], account_id: Number(rows[0].account_id), app_id: rows[0].app_id == null ? null : Number(rows[0].app_id),
         installation_id: rows[0].installation_id == null ? null : Number(rows[0].installation_id) } : null;
     },
+    /**
+     * GOD-5: adds an extra place (master token) or widens its repository list. Never touches a row of any other kind.
+     * `repo` null = the whole owner. Changes start off. Returns the row, or null when the login belongs to a connected account.
+     */
+    async upsertExtraPlace({ login, accountId, accountType, repo = null }) {
+      const rows = await sql`INSERT INTO gh_accounts (login, account_id, account_type, label, credential_kind, is_default, allow_changes, allowed_repos)
+        VALUES (${login}, ${accountId}, ${accountType}, ${login}, 'master', FALSE, FALSE, ${repo ? [repo] : null}::text[])
+        ON CONFLICT (login) DO UPDATE SET
+          allowed_repos = CASE WHEN ${repo === null} THEN NULL
+            WHEN gh_accounts.allowed_repos IS NULL THEN NULL
+            ELSE (SELECT array_agg(DISTINCT r) FROM unnest(gh_accounts.allowed_repos || ARRAY[${repo ?? ''}]::text[]) AS r) END
+        WHERE gh_accounts.credential_kind = 'master'
+        RETURNING login, allowed_repos, allow_changes`;
+      return rows[0] ?? null;
+    },
+    /** GOD-5: switch changes on or off for one extra place. Returns whether a place was changed. */
+    async setPlaceChanges(login, on) {
+      const rows = await sql`UPDATE gh_accounts SET allow_changes = ${on === true} WHERE lower(login) = lower(${login}) AND credential_kind = 'master' RETURNING login`;
+      return rows.length === 1;
+    },
+    /** GOD-5: remove one extra place, or only `repo` from its list (the place goes when its list becomes empty). */
+    async removeExtraPlace(login, repo = null) {
+      const row = (await sql`SELECT allowed_repos FROM gh_accounts WHERE lower(login) = lower(${login}) AND credential_kind = 'master'`)[0];
+      if (!row) return { removed: false, whole: false };
+      if (repo && row.allowed_repos?.length) {
+        const left = row.allowed_repos.filter((r) => r.toLowerCase() !== String(repo).toLowerCase());
+        if (left.length === row.allowed_repos.length) return { removed: false, whole: false };
+        if (left.length) {
+          await sql`UPDATE gh_accounts SET allowed_repos = ${left}::text[] WHERE lower(login) = lower(${login}) AND credential_kind = 'master'`;
+          return { removed: true, whole: false };
+        }
+      }
+      await sql`DELETE FROM gh_accounts WHERE lower(login) = lower(${login}) AND credential_kind = 'master'`;
+      return { removed: true, whole: true };
+    },
+    /** GOD-5: take a login out of every live connector login (the default falls back to the first account left). */
+    async removeAccountFromConnections(login) {
+      const who = String(login).toLowerCase();
+      const rows = await sql`SELECT token_hash, accounts, default_account FROM oauth_tokens
+        WHERE kind = 'connector' AND revoked_at IS NULL AND (expires_at > now() OR refresh_hash IS NOT NULL)`;
+      let changed = 0;
+      for (const row of rows) {
+        const have = row.accounts ?? [];
+        const next = have.filter((a) => String(a).toLowerCase() !== who);
+        if (next.length === have.length || !next.length) continue;
+        const def = String(row.default_account ?? '').toLowerCase() === who ? next[0] : row.default_account;
+        await sql`UPDATE oauth_tokens SET accounts = ${next}::text[], default_account = ${def} WHERE token_hash = ${row.token_hash} AND revoked_at IS NULL`;
+        changed++;
+      }
+      return changed;
+    },
     /** Every account without any ciphertext: safe to show on the setup page and in tool results. */
     async listAccounts() {
       const rows = await sql`SELECT login, account_type, label, credential_kind, app_id, installation_id, repository_selection,
           installation_status, installation_permissions, user_login, (user_token_enc IS NOT NULL) AS has_user_token, user_token_expires_at,
           (fine_grained_enc IS NOT NULL) AS has_fine_grained, fine_grained_last4, (classic_enc IS NOT NULL) AS has_classic, classic_scopes,
-          classic_last4, (package_enc IS NOT NULL) AS has_package, package_scopes, package_actor, package_expires_at, plan_name, production_enabled, spend_limit_cents, spend_limit_explicit, is_default, is_scratch, checked_at
+          classic_last4, (package_enc IS NOT NULL) AS has_package, package_scopes, package_actor, package_expires_at, plan_name, production_enabled, spend_limit_cents, spend_limit_explicit, is_default, is_scratch, checked_at, allow_changes, allowed_repos
         FROM gh_accounts ORDER BY is_default DESC, login`;
       return rows.map((r) => ({ ...r, app_id: r.app_id == null ? null : Number(r.app_id), installation_id: r.installation_id == null ? null : Number(r.installation_id) }));
     },
@@ -1387,7 +1445,7 @@ export function createDb(sql = productionSql()) {
 
     /** The accounts the login page offers. `production_enabled` decides whether production mode may be offered. */
     async listAccountsForLogin() {
-      return await sql`SELECT login, label, production_enabled, is_default FROM gh_accounts ORDER BY is_default DESC, login`;
+      return await sql`SELECT login, label, production_enabled, is_default FROM gh_accounts WHERE credential_kind <> 'master' ORDER BY is_default DESC, login`;
     }
   };
 }

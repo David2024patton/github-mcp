@@ -212,6 +212,46 @@ describe('My connection', () => {
     await b.context.close();
   });
 
+  it('adds an extra place with the master token: starts read-only, shows on a phone, can allow changes and be removed', async () => {
+    const b = await open(PROFILES[0], { cookies: false });
+    if (!b) return;
+    const p = person({ authorized: true });
+    world.github.state.people.get(p.login).orgs['acme-co'] = { id: 9911, role: 'member' };
+    const { tokens } = await connect(b.page, { appName: 'Claude' });
+    await b.page.goto(ORIGIN + '/connection');
+    await b.page.click('#manage-sign-in');
+    await b.page.waitForSelector('#master');
+    // without a master token the section only explains
+    expect(await b.page.textContent('main')).toContain('Extra places need your master token');
+    await b.page.click('#master');
+    await b.page.waitForSelector('input[name=value]');
+    await b.page.fill('input[name=value]', world.github.classicToken(p));
+    await b.page.click('button[type=submit]');
+    await b.page.waitForSelector('#optional-done');
+    await b.page.click('text=Back to My connection');
+    await b.page.click('#manage-sign-in');
+    await b.page.waitForSelector('#add-place');
+    await b.page.fill('#place-value', 'acme-co');
+    await b.page.click('#add-place');
+    await b.page.waitForSelector('#place-changes-acme-co');
+    expect(await b.page.textContent('.notice')).toContain('starts read-only');
+    expect(await b.page.textContent('main')).toContain('read-only');
+    await fitsScreen(b.page);
+    let who = (await mcpTool(world, tokens.access_token, 'github_whoami', { detail: 'full' })).content;
+    const place = who.accounts.find((a) => a.login === 'acme-co');
+    expect(place).toMatchObject({ allow_changes: false, allowed_repos: 'whole account', setup: 'extra place (your master token)' });
+    await b.page.click('#place-changes-acme-co');
+    await b.page.waitForSelector('#remove-place-acme-co');
+    expect(await b.page.textContent('main')).toContain('changes allowed');
+    who = (await mcpTool(world, tokens.access_token, 'github_whoami', { detail: 'full' })).content;
+    expect(who.accounts.find((a) => a.login === 'acme-co').allow_changes).toBe(true);
+    await b.page.click('#remove-place-acme-co');
+    await b.page.waitForSelector('.notice');
+    who = (await mcpTool(world, tokens.access_token, 'github_whoami')).content;
+    expect(who.accounts.map((a) => a.login)).not.toContain('acme-co');
+    await b.context.close();
+  });
+
   it('read-only switch, time zone, master token and disconnect all work from the page (no cookies)', async () => {
     const b = await open(PROFILES[0], { cookies: false });
     if (!b) return;

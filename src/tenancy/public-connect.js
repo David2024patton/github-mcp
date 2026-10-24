@@ -25,11 +25,12 @@ import { neon } from '@neondatabase/serverless';
 import { createTenantDirectory, initializeProvisionedTenant, openAuthorizedTenantDb } from './directory.js';
 import { admitTenantOAuth, recordTenantMetric } from './runtime-limits.js';
 import { verifyGithubBearerIdentity, listUserAppInstallations, verifyAccountAuthority } from './github-identity.js';
-import { storePilotUserGrant } from './user-authorization.js';
+import { storePilotUserGrant, createTenantScopedCredentials } from './user-authorization.js';
 import { pilotAppClient } from './pilot-app-client.js';
 import { MASTER_HANDLE } from './master-credential.js';
 import { masterUnlocks } from '../github/master-areas.js';
 import { createDb } from '../db.js';
+import { bareOctokit } from '../github/client.js';
 import { hashToken, randomToken, validRedirectUri } from '../core/oauth.js';
 import { publicOrigin } from '../core/http.js';
 import { isPublicClientId, publicAuthCode, parsePublicCode } from './public-code.js';
@@ -38,6 +39,7 @@ const gitAuthorize = 'https://github.com/login/oauth/authorize';
 const gitToken = 'https://github.com/login/oauth/access_token';
 const LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
 const CHALLENGE = /^[A-Za-z0-9_-]{43}$/;
+const PLACE = /^[A-Za-z0-9-]{1,39}(\/[A-Za-z0-9._-]{1,100})?$/;
 const STATE = /^pc\.[A-Za-z0-9_-]{32,256}$/;
 const CODE = /^[A-Za-z0-9_-]{8,256}$/;
 const TENANT_KEY = 'public-connect';
@@ -320,7 +322,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       connectionString: env.DATABASE_URL, sqlFactory: tenantSqlFactory });
     const live = await dir.authorizedPilotIdentity(flow.tenantId, flow.identityId);
     if (!live || live.membershipRevision !== tenant.membershipRevision) throw refused('r24');
-    return { dir, db, sql };
+    return { dir, db, sql, tenant: live };
   }
   async function mintCode({ db, tenantId, identityId, logins, flow, mode, profile = 'full' }) {
     const code = publicAuthCode(tenantId, identityId);
@@ -357,6 +359,10 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     // Changes only when not read-only AND every connected account really has them on; otherwise safe preview.
     // Read-only means the read_only profile (every change tool refused), not only preview mode.
     const mode = readOnly !== true && env.VERCEL_ENV === 'production' && rows.every((r) => r.production_enabled === true) ? 'production' : 'preview';
+    // GOD-5: the person's extra places (master token) come along with a new connection; their own gate keeps changes off until allowed.
+    const places = readOnly === true ? [] : (await db.listAccounts()).filter((a) => a.credential_kind === 'master').map((a) => a.login);
+    logins.push(...places.filter((p) => !logins.some((l) => l.toLowerCase() === p.toLowerCase())));
+    logins.splice(10);
     return { redirect: await mintCode({ db, tenantId: flow.tenantId, identityId: flow.identityId, logins,
       flow: { clientId: flow.clientId, redirectUri: flow.redirectUri, codeChallenge: flow.codeChallenge, clientState: flow.clientState },
       mode, profile: readOnly === true ? 'read_only' : 'full' }) };
@@ -392,25 +398,28 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   async function manageView({ tenantId, identityId, signedInAs, offers, db, notice = null }) {
     const handle = await openHandle({ clientId: MANAGE_CLIENT, redirectUri: manageUrl(), purpose: 'manage', tenantId, identityId,
       accountLogin: signedInAs.toLowerCase(), offers: offers?.length ? offers : null }, MANAGE_SECONDS);
-    const accounts = (await db.listAccounts()).map((a) => ({ login: a.login, organization: a.account_type === 'Organization',
+    const all = await db.listAccounts();
+    const accounts = all.filter((a) => a.credential_kind !== 'master').map((a) => ({ login: a.login, organization: a.account_type === 'Organization',
       changes: a.production_enabled === true, active: a.installation_status === 'active' }));
+    const places = all.filter((a) => a.credential_kind === 'master').map((a) => ({ login: a.login, organization: a.account_type === 'Organization',
+      changes: a.allow_changes === true, repos: a.allowed_repos ?? null }));
     // Refresh-aware: an app whose one-hour access lapsed but can still renew it is listed (and can be disconnected).
     const seen = new Set();
     const connections = (await db.listUpgradeableConnections()).filter((c) => c.client_id !== MANAGE_CLIENT && !seen.has(c.client_id) && seen.add(c.client_id))
       .map((c) => ({ clientId: c.client_id, name: c.client_name ?? 'An app', readOnly: c.profile === 'read_only', canChange: c.profile !== 'read_only' && c.mode === 'production',
         accounts: c.accounts }));
     const master = await directory().getPilotOptionalCredential({ tenantId, identityId, accountLogin: MASTER_HANDLE, kind: 'M' }).catch(() => null);
-    return { handle, signedInAs, accounts, connections, offers: offers ?? [], timeZone: (await db.getSetting(ZONE_SETTING)) ?? 'UTC',
+    return { handle, signedInAs, accounts, places, connections, offers: offers ?? [], timeZone: (await db.getSetting(ZONE_SETTING)) ?? 'UTC',
       master: master ? { added: true, expiresAt: master.expires_at ?? null, unlocks: masterUnlocks(master.scopes ?? []) } : { added: false, unlocks: [] }, notice };
   }
   /** One action on My connection. Every action uses up the page's handle and returns a fresh page (or somewhere to go). */
   async function manageAction({ handle, action, value }) {
     active();
     if (!STATE.test(String(handle ?? '')) ||
-        !['refresh', 'read_only', 'allow_changes', 'time_zone', 'disconnect', 'add', 'master'].includes(action)) throw refused('r33');
+        !['refresh', 'read_only', 'allow_changes', 'time_zone', 'disconnect', 'add', 'master', 'add_place', 'place_changes', 'remove_place'].includes(action)) throw refused('r33');
     const flow = await directory().consumePublicFlow(sha(handle), 'god');
     if (!flow || flow.purpose !== 'manage' || !flow.tenantId || !flow.identityId || !flow.accountLogin) throw refused('r34');
-    const { db, dir } = await scopeOf(flow);
+    const { db, dir, tenant } = await scopeOf(flow);
     const view = (notice) => manageView({ tenantId: flow.tenantId, identityId: flow.identityId, signedInAs: flow.accountLogin, offers: flow.offers, db, notice });
     if (action === 'read_only') {
       const n = await db.setConnectionsReadOnly(true);
@@ -447,7 +456,55 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
         ttlSeconds: 600, maxOpen: limits.maxOpenFlows })) throw busy();
       return { go: active() + '/api/tenant/optional?master_link=' + link };
     }
+    if (action === 'add_place') return { manage: await view(await addPlace({ db, dir, tenant, value })) };
+    if (action === 'place_changes') {
+      const [login, state] = String(value ?? '').split(':');
+      if (!LOGIN.test(login ?? '') || !['on', 'off'].includes(state)) throw refused('r38');
+      if (!await db.setPlaceChanges(login, state === 'on')) return { manage: await view('That place is not in your list.') };
+      if (state === 'on') await db.addAccountsToConnections([login]);
+      return { manage: await view(state === 'on' ? `Changes are now allowed for ${login}. Each one is still shown to you first.` : `${login} is read-only again.`) };
+    }
+    if (action === 'remove_place') {
+      const [login, repo = null] = String(value ?? '').split('/');
+      if (!PLACE.test(String(value ?? ''))) throw refused('r39');
+      const done = await db.removeExtraPlace(login, repo);
+      if (done.whole) await db.removeAccountFromConnections(login);
+      return { manage: await view(done.removed ? `Removed ${value}.` : 'That place is not in your list.') };
+    }
     return { manage: await view(null) };
+  }
+
+  // GOD-5: "extra places". The master token is read here only to ask GitHub whether the person can really see the place; it
+  // is never stored again, logged or shown. The reply to the person is a plain sentence either way.
+  async function addPlace({ db, dir, tenant, value }) {
+    const text = String(value ?? '').trim();
+    if (!PLACE.test(text)) return 'Type an organization (like acme-co) or a repository (like acme-co/website).';
+    const [owner, repoWanted = null] = text.split('/');
+    let token;
+    try {
+      token = await createTenantScopedCredentials({ base: { token: async () => { throw refused('r40'); } }, directory: dir, tenant, db, env, fetchImpl })
+        .token({ cred: 'M', account: owner });
+    } catch { return 'Add your master token first (below). Extra places use it.'; }
+    // Only through the shared client (pinned API version, user agent). A refusal or missing item reads as "not visible".
+    const octokit = bareOctokit({ token, fetch: fetchImpl });
+    const get = async (route, params = {}) => { try { return (await octokit.request(route, params)).data; } catch { return null; } };
+    const me = await get('GET /user'), who = await get('GET /users/{username}', { username: owner });
+    if (!me?.login || !who?.login || !Number.isSafeInteger(who.id)) return `GitHub does not show ${owner} to your master token, so it was not added.`;
+    let repo = null;
+    if (repoWanted) {
+      const r = await get('GET /repos/{owner}/{repo}', { owner: who.login, repo: repoWanted });
+      if (!r || r.permissions?.pull !== true || String(r.owner?.login).toLowerCase() !== who.login.toLowerCase()) return `Your master token cannot read ${text}, so it was not added.`;
+      repo = r.name;
+    } else if (who.type === 'Organization') {
+      const m = await get('GET /user/memberships/orgs/{org}', { org: who.login });
+      if (m?.state !== 'active') return `You are not an active member of ${who.login}. Add a specific repository (${who.login}/name) instead, or ask an owner to add you.`;
+    } else if (who.login.toLowerCase() !== me.login.toLowerCase()) return `Add a specific repository of ${who.login} (${who.login}/name), not the whole account.`;
+    const existing = await db.getAccount(who.login);
+    if (existing && existing.credential_kind !== 'master') return `${who.login} is already connected with the GitHub App, which is the better way. Nothing was changed.`;
+    const row = await db.upsertExtraPlace({ login: who.login, accountId: who.id, accountType: who.type, repo });
+    if (!row) return `${who.login} could not be added.`;
+    await db.addAccountsToConnections([who.login]);
+    return `Added ${repo ? who.login + '/' + repo : who.login} as an extra place. It starts read-only: your apps can look, and every change is refused until you allow changes for it here.`;
   }
 
   // ---------------------------------------------------------------- delete my data
