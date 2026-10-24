@@ -64,7 +64,7 @@ Fix:
 4. `docs/OWNER-GUIDE.md`: add "My connection" (`/connection`) and the master token in plain words.
 5. Run `python3 docs/pr-cards/validate-index.py` (checks links) and `npm run check`.
 
-## PR B.3 — documents-only pull requests finish in a minute or two
+## PR B.3 — documents-only pull requests finish in a minute or two — DONE 2026-10-23 (`scripts/ci-scope.mjs`, unit split into 3 shards)
 Today every PR runs unit (2 shards), db, shapes, rtc and browser (~10–15 minutes) even when only `docs/` or `*.md`
 changed. Keep every job (the CI layout guard `scripts/check-ci-layout.mjs` requires them and forbids job-level `if:false`)
 but let each heavy job finish fast:

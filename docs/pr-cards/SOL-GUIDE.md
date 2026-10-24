@@ -15,14 +15,15 @@ It is short on purpose; `AGENTS.md` still holds the hard limits.
    "Environment" below).
 6. **Full checks once at the end:** `npx eslint .` → `BASE_SHA=$(git merge-base origin/main HEAD) npm run check` →
    `npm run test:db` (if SQL or sign-in changed) → `npm run test:browser` (if pages changed). The full unit suite is
-   slow locally (~15 min); CI runs it in two shards, so you may rely on CI for it.
+   slow locally (~15 min); CI runs it in three shards in about 1.5 minutes, so you may rely on CI for it.
 7. **Docs in the same PR:** `docs/TOOL-CATALOG.md` row for every new tool; a `docs/status/<yyyy-mm-dd>-<card>.md`
    note (5–10 lines, plain English); tick the card's "Done when" boxes; set the card status in
    `docs/pr-cards/work-index.json` (`APPROVED` → `IN_PROGRESS` when you open the PR, `MERGED` after merge).
 8. **Push once, open the PR** (REST works when the GraphQL CLI is blocked):
    `jq -n --rawfile body pr.md '{title:"…",head:"<branch>",base:"main",body:$body}' > pr.json &&
    gh api repos/Robinson-AI-Systems/github-mcp/pulls --input pr.json --jq .number`.
-9. **CI as a decision:** wait for `ci` and `release-policy` on the exact head SHA. Red → read ALL failures, fix all,
+9. **CI as a decision:** a full run takes about 2 minutes (documentation-only PRs about 30 seconds: heavy jobs skip
+   themselves via `scripts/ci-scope.mjs`). Wait for `ci` and `release-policy` on the exact head SHA. Red → read ALL failures, fix all,
    push once. Green → read review threads (`gh api repos/<o>/<r>/pulls/<n>/ccr/review_threads`), fix real findings,
    reply and resolve; then merge at the exact head:
    `gh api -X PUT repos/<o>/<r>/pulls/<n>/merge -f merge_method=merge -f sha=<head>`.
