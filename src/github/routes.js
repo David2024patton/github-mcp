@@ -5,6 +5,9 @@ import { createWebhookHandler } from './webhook.js';
 import { getSecretsRuntime } from '../runtime.js';
 import privateTenantCallback from '../../api/tenant/oauth/callback.js';
 import { publicCallback, publicInstallReturn } from '../tenancy/public-http.js';
+import { createPublicCleanup } from '../tenancy/public-cleanup.js';
+import { publicConnectEnabled } from '../tenancy/public-connect.js';
+import { neon } from '@neondatabase/serverless';
 
 const ROUTES = { 'setup': 'setup', 'manifest-callback': 'manifestCallback', 'user-callback': 'userCallback' };
 
@@ -36,10 +39,13 @@ export async function handleGithub(action, req, res, { runtime, env = process.en
 }
 
 /** The App webhook. Same rule: any failure before the signature is checked answers 503 with no detail. */
-export async function handleWebhook(req, res, { runtime, env = process.env, fetch = globalThis.fetch } = {}) {
+export async function handleWebhook(req, res, { runtime, env = process.env, fetch = globalThis.fetch, publicCleanup } = {}) {
   try {
     const { db, credentials } = runtime ?? await getSecretsRuntime({ env, fetch });
-    return await createWebhookHandler({ db, credentials })(req, res);
+    // LAUNCH-1: public people's own stores are tidied too when the public sign-in is on.
+    const cleanup = publicCleanup ?? (publicConnectEnabled(env) && env.DATABASE_URL
+      ? createPublicCleanup({ rootSql: neon(env.DATABASE_URL), connectionString: env.DATABASE_URL }) : null);
+    return await createWebhookHandler({ db, credentials, publicCleanup: cleanup })(req, res);
   } catch {
     res.setHeader('Cache-Control', 'no-store');
     return res.status(503).json({ error: 'temporarily_unavailable' });

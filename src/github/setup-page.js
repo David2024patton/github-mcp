@@ -129,7 +129,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
         await db.getConnectorOAuthReadiness(),{mcpUrl:`${expectedOrigin}/api/mcp`});
       return page(200, { accounts, oauthReadiness, connections: (await db.listUpgradeableConnections()).filter((c) => c.kind === 'connector').map((c) => ({
         id: c.client_id, name: c.client_name || 'Custom MCP login', mode: c.mode, profile: c.profile, accounts: c.accounts
-      })), productionNames: await productionNames(db), protectedList: await protectedList(db), spendLimits: await spendView(), ownPeopleExtra: await extraOwnPeople(db), publicUsage: await publicUsage() });
+      })), productionNames: await productionNames(db), protectedList: await protectedList(db), spendLimits: await spendView(), ownPeopleExtra: await extraOwnPeople(db), publicUsage: await publicUsage(), publicInvites: await publicInvites() });
     }
     if (action === 'reveal') {
       if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
@@ -213,6 +213,7 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
       return page(revoked?200:404,{result:revoked?'RTC pass revoked immediately.':'No active RTC pass with that identifier.'});
     }
     if (action === 'forget-person') return await forgetPerson(p, page);
+    if (action === 'add-invites' || action === 'remove-invite') return await editInvites(action, p, page);
     if (action === 'set-time-zone') return await setTimeZone(p, page);
     if (action === 'set-own-people') return await setOwnPeople(p, page);
     if (action === 'save-protected' || action === 'remove-protected') return await editProtected(action, p, page);
@@ -387,6 +388,31 @@ export function createSetupHandlers({ db, credentials, oneTimeStore, env = proce
   async function publicUsage() {
     if (env.GITHUB_PRIVATE_TENANT_PILOT !== 'enabled' || !env.DATABASE_URL) return null;
     try { return await publicUsageSummary(neon(env.DATABASE_URL), { connectionString: env.DATABASE_URL }); } catch { return null; }
+  }
+
+  /** LAUNCH-1: the invite list (who may become a NEW public person while invite-only is on). Hidden when the public sign-in is not set up. */
+  async function publicInvites() {
+    if (env.GITHUB_PRIVATE_TENANT_PILOT !== 'enabled' || !env.DATABASE_URL) return null;
+    try { return { on: env.GITHUB_PUBLIC_INVITE_ONLY === 'enabled', logins: await createTenantDirectory(neon(env.DATABASE_URL)).listPublicInvites() }; } catch { return null; }
+  }
+  async function editInvites(action, p, page) {
+    if (!isProduction()) return page(403, { blocked: NOT_PRODUCTION });
+    if (env.GITHUB_PRIVATE_TENANT_PILOT !== 'enabled' || !env.DATABASE_URL) return page(409, { result: 'The public sign-in is not set up here.' });
+    try {
+      const dir = createTenantDirectory(neon(env.DATABASE_URL));
+      let result;
+      if (action === 'add-invites') {
+        const names = String(p.logins ?? '').split(/[\s,]+/).filter(Boolean);
+        if (!names.length || names.length > 100 || !names.every((n) => isValidLogin(n))) return page(400, { result: 'Enter one or more GitHub account names separated by commas. Nothing was saved.' });
+        await dir.addPublicInvites(names);
+        result = `Invited ${names.length} name${names.length === 1 ? '' : 's'}.`;
+      } else {
+        if (!isValidLogin(String(p.login ?? ''))) return page(400, { result: 'Enter a valid GitHub account name.' });
+        result = await dir.removePublicInvite(p.login) ? `Removed ${p.login} from the invite list. Anyone who already signed in keeps their connection.` : 'That name was not on the invite list.';
+      }
+      await db.recordChange({ account: null, mode: 'setup', tool: 'setup_edit_public_invites', target: 'public_invites', summary: action === 'add-invites' ? 'Added names to the public invite list' : 'Removed a name from the public invite list', production: true, accessWidening: false, confirmed: true }).catch(() => {});
+      return page(200, { result, publicInvites: await publicInvites() });
+    } catch { return page(500, { result: 'The invite list could not be changed. Nothing further was changed; try again.' }); }
   }
 
   /** Display-only time zone for times shown to assistants. Blank means UTC. Not a security setting, so it works in any mode. */

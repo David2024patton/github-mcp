@@ -118,3 +118,4 @@ The remaining work is planned in `docs/designs/FINISH-PLAN.md`. None of these bl
       lawyer reads it), and the monthly hosting-cost alert amount (default $20).
 - Money decisions stay yours and stay untested until you choose: budgets deletion, paid runners, paid Copilot or
   Sponsors actions.
+- [ ] (LAUNCH-1) Decide when to limit new sign-ups to the invite list: set `GITHUB_PUBLIC_INVITE_ONLY=enabled` for the production deployment, then add names on the owner setup page. Today anyone with the link can connect (capped by `GITHUB_PUBLIC_MAX_TENANTS`). Not needed for building or merging.
