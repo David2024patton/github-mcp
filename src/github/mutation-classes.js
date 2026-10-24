@@ -21,7 +21,30 @@ const curated=new Map(Object.entries({
   deleteBranchProtectionRule:'github_protection_remove',
   createRepositoryRuleset:'github_ruleset_save',
   updateRepositoryRuleset:'github_ruleset_save',
-  deleteRepositoryRuleset:'github_ruleset_delete'
+  deleteRepositoryRuleset:'github_ruleset_delete',
+  addProjectV2DraftIssue:'github_project_add_draft',
+  archiveProjectV2Item:'github_project_archive_item',
+  unarchiveProjectV2Item:'github_project_archive_item',
+  clearProjectV2ItemFieldValue:'github_project_clear_field',
+  convertProjectV2DraftIssueItemToIssue:'github_project_convert_draft',
+  copyProjectV2:'github_project_copy',
+  createProjectV2:'github_project_create',
+  createProjectV2Field:'github_project_field_save',
+  updateProjectV2Field:'github_project_field_save',
+  deleteProjectV2Field:'github_project_field_delete',
+  createProjectV2StatusUpdate:'github_project_status_update',
+  createProjectV2View:'github_project_view_save',
+  deleteProjectV2View:'github_project_view_save',
+  deleteProjectV2:'github_project_delete',
+  deleteProjectV2Item:'github_project_delete_item',
+  linkProjectV2ToRepository:'github_project_link',
+  unlinkProjectV2FromRepository:'github_project_link',
+  linkProjectV2ToTeam:'github_project_link',
+  unlinkProjectV2FromTeam:'github_project_link',
+  updateProjectV2:'github_project_update',
+  updateProjectV2ItemPosition:'github_project_move_item',
+  addProjectV2ItemById:'github_project_set_item',
+  updateProjectV2ItemFieldValue:'github_project_set_item'
 }));
 export const curatedGraphqlMutation=name=>curated.get(name)??null;
 /** Read-only list of every curated tool name a GraphQL mutation points at (used by the registry consistency test). */

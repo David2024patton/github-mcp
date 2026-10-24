@@ -39,11 +39,25 @@ const ROWS = [
   ['updateTeamReviewAssignment', { id: 'T1', enabled: true, algorithm: 'ROUND_ROBIN' }, { T1: 'Team' },
     { reviewRequestDelegationEnabled: false, reviewRequestDelegationAlgorithm: null, reviewRequestDelegationMemberCount: null, reviewRequestDelegationNotifyTeam: false },
     // GitHub applies the schema defaults (member count 1, notify team on) when they are not given, so the read-back shows them.
-    { reviewRequestDelegationEnabled: true, reviewRequestDelegationAlgorithm: 'ROUND_ROBIN', reviewRequestDelegationMemberCount: 1, reviewRequestDelegationNotifyTeam: true }]
+    { reviewRequestDelegationEnabled: true, reviewRequestDelegationAlgorithm: 'ROUND_ROBIN', reviewRequestDelegationMemberCount: 1, reviewRequestDelegationNotifyTeam: true }],
+  // GQL-1 group 1: Projects v2 children and flags (the project must be owned by the enrolled account)
+  ['updateProjectV2View', { viewId: 'V1', name: 'Board', layout: 'BOARD_LAYOUT' }, { V1: 'ProjectV2View' },
+    { name: 'Table', filter: null, layout: 'TABLE_LAYOUT', updatedAt: 't1' }, { name: 'Board', filter: null, layout: 'BOARD_LAYOUT', updatedAt: 't2' }],
+  ['updateProjectV2StatusUpdate', { statusUpdateId: 'S1', status: 'AT_RISK', body: 'Late' }, { S1: 'ProjectV2StatusUpdate' },
+    { body: 'On time', status: 'ON_TRACK', startDate: null, targetDate: null }, { body: 'Late', status: 'AT_RISK', startDate: null, targetDate: null }],
+  ['deleteProjectV2StatusUpdate', { statusUpdateId: 'S1' }, { S1: 'ProjectV2StatusUpdate' }, { body: 'x', status: 'ON_TRACK' }, null],
+  ['deleteProjectV2Workflow', { workflowId: 'W1' }, { W1: 'ProjectV2Workflow' }, { name: 'Auto-add', enabled: true }, null],
+  ['markProjectV2AsTemplate', { projectId: 'PJ1' }, { PJ1: 'ProjectV2' }, { template: false }, { template: true }],
+  ['unmarkProjectV2AsTemplate', { projectId: 'PJ1' }, { PJ1: 'ProjectV2' }, { template: true }, { template: false }],
+  ['updateProjectV2DraftIssue', { draftIssueId: 'DI1', title: 'New' }, { DI1: 'DraftIssue' }, { title: 'Old', body: 'b' }, { title: 'New', body: 'b' }]
 ];
 
 const scopeNode = (id, type, repo = REPO) => {
   if (type === 'Team') return { __typename: type, id, slug: 'core', organization: { login: repo.split('/')[0] } };
+  const ownerObj = { login: repo.split('/')[0] };
+  if (type === 'ProjectV2') return { __typename: type, id, owner: ownerObj };
+  if (['ProjectV2View', 'ProjectV2StatusUpdate', 'ProjectV2Workflow'].includes(type)) return { __typename: type, id, project: { id: 'PJ1', owner: ownerObj } };
+  if (type === 'DraftIssue') return { __typename: type, id, projectsV2: { nodes: [{ id: 'PJ1', owner: ownerObj }] } };
   if (type === 'LinkedBranch') return { __typename: type, id, ref: { repository: { nameWithOwner: repo } } };
   if (type === 'Repository') return { __typename: type, id, nameWithOwner: repo };
   return { __typename: type, id, repository: { nameWithOwner: repo } };

@@ -5,7 +5,7 @@ import {githubGraphqlSchema} from './graphql-schema.js';
 import {curatedTool} from './hand-built-map.js';
 import {classifyUniversal, assertUniversalAuthority} from './operation-classes.js';
 import {curatedGraphqlMutation} from './mutation-classes.js';
-import {WRITE_SPECS} from './graphql-writes.js';
+import {WRITE_SPECS, REFUSED_MUTATIONS} from './graphql-writes.js';
 import {reviewedRestEvidence} from './capability-evidence.js';
 
 export const SOURCE = Object.freeze({
@@ -28,7 +28,7 @@ export const CREDENTIAL_KINDS = Object.freeze([
 ]);
 export const STATES = Object.freeze([
   'missing', 'implemented-unverified', 'verified', 'provider-retired',
-  'provider-UI-only', 'unresolved'
+  'provider-UI-only', 'unresolved', 'refused-by-design'
 ]);
 const SUPPORT = new Set(['supported', 'unsupported', 'unknown']);
 const ROOT_TYPES = Object.freeze(['query', 'mutation']);
@@ -236,6 +236,12 @@ function gqlRecord(root, field, names) {
       } else {
         rec.implementation.reason = 'Orphan curated tool mapping: ' + curated;
       }
+    } else if (REFUSED_MUTATIONS.has(field.name)) {
+      rec.implementation.route = 'refused-by-design';
+      rec.implementation.status = 'refused-by-design';
+      rec.state = 'refused-by-design';
+      rec.implementation.reason = REFUSED_MUTATIONS.get(field.name);
+      rec.delivery.nextAction = 'None: refused on purpose (see reason); revisit only on an owner decision';
     } else if (WRITE_SPECS.has(field.name)) {
       rec.implementation.universalCandidate = true;
       rec.implementation.reason = 'A reviewed GraphQL writeSpec exists; exact credential, ownership and request shape still require verification';

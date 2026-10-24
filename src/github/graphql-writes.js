@@ -186,7 +186,62 @@ export const WRITE_SPECS = new Map([
       ...(given(i, 'teamMemberCount') && b?.reviewRequestDelegationMemberCount != null ? { teamMemberCount: b.reviewRequestDelegationMemberCount } : {}),
       ...(given(i, 'notifyTeam') && b?.reviewRequestDelegationNotifyTeam != null ? { notifyTeam: b.reviewRequestDelegationNotifyTeam } : {}) } }),
     cls: quiet
+  }],
+  // GQL-1 group 1: Projects v2 children and flags with no dedicated tool. Ownership: the project must belong to the enrolled account.
+  ['updateProjectV2View', {
+    scope: 'org', primary: 'viewId', ids: { viewId: ['ProjectV2View'] }, changes: ['name', 'filter', 'layout', 'configuration'],
+    before: '... on ProjectV2View { name filter layout updatedAt }',
+    already: (i, b) => !given(i, 'configuration') && ['name', 'filter', 'layout'].every((k) => !given(i, k) || b?.[k] === i[k]),
+    verify: (i, a, b) => ['name', 'filter', 'layout'].every((k) => !given(i, k) || a?.[k] === i[k]) && (!given(i, 'configuration') || a?.updatedAt !== b?.updatedAt),
+    inverse: (i, b) => given(i, 'configuration') ? null : { mutation: 'updateProjectV2View', input: { viewId: i.viewId,
+      ...Object.fromEntries(['name', 'filter', 'layout'].filter((k) => given(i, k) && b?.[k] != null).map((k) => [k, b[k]])) } },
+    cls: quiet, undoHint: 'Changing which columns a view shows cannot be undone automatically. Set the columns again.'
+  }],
+  ['updateProjectV2StatusUpdate', {
+    scope: 'org', primary: 'statusUpdateId', ids: { statusUpdateId: ['ProjectV2StatusUpdate'] }, changes: ['body', 'status', 'startDate', 'targetDate'],
+    before: '... on ProjectV2StatusUpdate { body status startDate targetDate }',
+    already: (i, b) => ['body', 'status', 'startDate', 'targetDate'].every((k) => !given(i, k) || b?.[k] === i[k]),
+    verify: (i, a) => ['body', 'status', 'startDate', 'targetDate'].every((k) => !given(i, k) || a?.[k] === i[k]),
+    inverse: (i, b) => ({ mutation: 'updateProjectV2StatusUpdate', input: { statusUpdateId: i.statusUpdateId,
+      ...Object.fromEntries(['body', 'status', 'startDate', 'targetDate'].filter((k) => given(i, k) && b?.[k] != null).map((k) => [k, b[k]])) } }),
+    cls: notifying
+  }],
+  ['deleteProjectV2StatusUpdate', {
+    scope: 'org', primary: 'statusUpdateId', ids: { statusUpdateId: ['ProjectV2StatusUpdate'] }, changes: [],
+    before: '... on ProjectV2StatusUpdate { body status }', deleted: true, verify: (_i, a) => a === null, inverse: null, cls: destructive,
+    undoHint: 'A deleted project status update cannot be restored. Post it again with github_project_status_update.'
+  }],
+  ['deleteProjectV2Workflow', {
+    scope: 'org', primary: 'workflowId', ids: { workflowId: ['ProjectV2Workflow'] }, changes: [],
+    before: '... on ProjectV2Workflow { name enabled }', deleted: true, verify: (_i, a) => a === null, inverse: null, cls: destructive,
+    undoHint: 'A deleted project automation cannot be restored. Create it again in the project settings on github.com.'
+  }],
+  ['markProjectV2AsTemplate', {
+    scope: 'org', primary: 'projectId', ids: { projectId: ['ProjectV2'] }, changes: [], before: '... on ProjectV2 { template }',
+    already: (_i, b) => b?.template === true, verify: (_i, a) => a?.template === true,
+    inverse: (i) => ({ mutation: 'unmarkProjectV2AsTemplate', input: { projectId: i.projectId } }), cls: quiet
+  }],
+  ['unmarkProjectV2AsTemplate', {
+    scope: 'org', primary: 'projectId', ids: { projectId: ['ProjectV2'] }, changes: [], before: '... on ProjectV2 { template }',
+    already: (_i, b) => b?.template !== true, verify: (_i, a) => a?.template === false,
+    inverse: (i) => ({ mutation: 'markProjectV2AsTemplate', input: { projectId: i.projectId } }), cls: quiet
+  }],
+  ['updateProjectV2DraftIssue', {
+    scope: 'org', primary: 'draftIssueId', ids: { draftIssueId: ['DraftIssue'] }, changes: ['title', 'body'],
+    before: '... on DraftIssue { title body }',
+    already: (i, b) => ['title', 'body'].every((k) => !given(i, k) || b?.[k] === i[k]),
+    verify: (i, a) => ['title', 'body'].every((k) => !given(i, k) || a?.[k] === i[k]),
+    inverse: (i, b) => ({ mutation: 'updateProjectV2DraftIssue', input: { draftIssueId: i.draftIssueId,
+      ...Object.fromEntries(['title', 'body'].filter((k) => given(i, k) && b?.[k] != null).map((k) => [k, b[k]])) } }),
+    cls: quiet
   }]
+]);
+
+/** Mutations this server refuses on purpose, each with a plain-English reason (GQL-1). The inventory shows them as
+ *  `refused-by-design`; `github_graphql_write` names the reason. Nothing here is a gap to be filled later. */
+export const REFUSED_MUTATIONS = new Map([
+  ['updateProjectV2Collaborators', 'It replaces the whole collaborator list of a project, which can silently remove or widen access. Change who can see a project on github.com.'],
+  ['createProjectV2IssueField', 'The new field cannot be proven to belong to your account by a read before it is created.']
 ]);
 
 export const writeSpec = (mutation) => WRITE_SPECS.get(mutation) ?? null;

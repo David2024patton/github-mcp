@@ -40,6 +40,7 @@ export function printReport(catalog) {
     '- GraphQL mutations with no write specification (not covered): ' + of(s.byState.missing),
     '- Not yet classified: ' + of(s.byState.unresolved),
     '- Provider-retired: ' + of(s.byState['provider-retired']) + '; provider-UI-only: ' + of(s.byState['provider-UI-only']),
+    '- Refused on purpose (reason recorded per row): ' + of(s.byState['refused-by-design']),
     '- Rows with unresolved official-source conflicts: ' + of(s.unresolvedConflictRows),
     'Categories overlap (a row can be unclassified and a universal candidate), so they do not sum to the denominator.',
     'Coverage percentage: not stated; no proven numerator exists until live verification records rows as verified.'
