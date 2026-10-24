@@ -31,7 +31,7 @@ Verified GitHub requirements apply even to a free plan:
 - Cancellation: deactivate the Marketplace customer, revoke the relevant OAuth authorization, and remove customer data within 30 days.
 - Handle marketplace_purchase through a verified-signature endpoint with durable delivery deduplication, meaningful purchased/cancelled behavior, and denial/replay/recovery tests. Merely logging receipts is insufficient.
 
-Current direct-MCP identity/grant storage is shared. Marketplace lifecycle/provenance must be isolated so cancellation does not revoke or erase unrelated direct ChatGPT/Claude connections. This adds customer-lifecycle product work beyond PUB-5's original listing-pack scope; obtain the owner's scope/design decision before treating this as routine form completion. Secrets remain encrypted/server-owned; never read or print the App signing secret.
+The owner approved the separate Marketplace lifecycle. PR #387 implements dedicated account/identity tenants, exact MCP resource binding, signed event watermarks, GitHub purchase/admin readback, immediate cancellation blocking, individual encrypted-token revocation, refresh-safe durable cleanup and isolated data deletion. Existing direct ChatGPT/Claude connections remain separate. Secrets remain encrypted/server-owned; never read or print the App signing secret.
 
 Primary references, checked 2026-10-24:
 - https://docs.github.com/en/apps/github-marketplace/creating-apps-for-github-marketplace/requirements-for-listing-an-app
@@ -39,3 +39,16 @@ Primary references, checked 2026-10-24:
 - https://docs.github.com/en/apps/github-marketplace/using-the-github-marketplace-api-in-your-app/handling-plan-cancellations
 
 PR #383 passed ci and release-policy at its original head. Merge was refused because main requires the App identity and this connector has no App installation for Robinson-AI-Systems. No branch-rule override or manual installation was attempted; preserve the owner's requirement to test installation through initial sign-in. The publication hold is lifted; the merge/technical/legal prerequisites are separate. No extra release was triggered.
+
+
+## Final implementation and actual operation results
+
+PR #387: https://github.com/Robinson-AI-Systems/github-mcp/pull/387, head 8924960e15fa369a8f8fab0ba96352bcaee3094f. Exact-head ci and release-policy passed. CI run 40134271506 passed check, three unit cohorts, disposable PostgreSQL, browser, shapes and RTC. Integrated tests verify purchase, cancellation, direct survival, stale/replayed deliveries, deletion readback, atomic enrollment and cancellation during an in-flight refresh. Focused resource/webhook/setup tests pass; full local unit suite passed 9,477 tests before the final three focused additions. Self-review and acceptance are in the PR body. No real Marketplace purchase/cancellation acceptance or production activation has run.
+
+The checked merge was attempted without overrideRules. After an edited-body release-policy rerun finished, the connector's actual final refusal was: "Branch rules apply to main, and only the app may write there, but the app is not installed on Robinson-AI-Systems." The active connector confirms that organization has no I credential, while personal and scratch do. An existing signed-in My connection page confirms only personal/scratch App accounts; the organization remains a master-token extra place. App ownership transfer is complete but is not an installation. No manual App installation was made, preserving the owner's initial-sign-in requirement.
+
+Authorized one-off manual release was prepared from fresh refs: main ec4f8831f9dc07f718bf3946bb8ffe75c3e5e863, live d96aab4a7a250ab844a9815b7230542cba4933f4. Ancestry and successful exact-main ci/release-policy runs were verified. The guarded non-forced expected-head update of live was refused by protected resource policy: this server repository is pr-only and live is production. No alternate tool, rule override, force push, Vercel deploy or workflow workaround was used. Thus neither the new Marketplace code nor the newer main snapshot has been released by this session.
+
+Still required: resolve the owner-side App installation and authorized release protection path; merge checked PRs; release and independently verify READY production/aliases; privately configure Marketplace signing/cron secrets and actual free-plan ID; run genuine purchase/cancellation acceptance; finish publisher email verification, trader declaration, trust-text approval and action-time Marketplace Developer Agreement acceptance. The publication hold is already lifted; do not request it again.
+
+Vercel independently reports the existing production deployment READY at d96aab4a7a250ab844a9815b7230542cba4933f4. It is not the newer main ec4f883 or Marketplace PR #387.
