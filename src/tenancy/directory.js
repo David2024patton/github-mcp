@@ -303,6 +303,14 @@ export function createTenantDirectory(sql) {
       await sql`ALTER TABLE gh_public_flows ADD COLUMN IF NOT EXISTS time_zone TEXT`;
       await sql`ALTER TABLE gh_public_flows ADD COLUMN IF NOT EXISTS offers TEXT`;
       await sql`ALTER TABLE gh_public_flows ADD COLUMN IF NOT EXISTS purpose TEXT`;
+      // PUB-5 A: which public people hold which App installation. Numbers only (no names, no tokens). It lets the
+      // App-uninstall clean-up find the right people with ONE query instead of opening every person's store.
+      await sql`CREATE TABLE IF NOT EXISTS gh_public_installations (
+        installation_id BIGINT NOT NULL,
+        tenant_id UUID NOT NULL REFERENCES gh_tenants(id),
+        PRIMARY KEY (installation_id, tenant_id)
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS gh_public_installations_tenant ON gh_public_installations (tenant_id)`;
       // PUB-6: owner-requested deletion of ONE public person's data. Only a tenant created by the public sign-in
       // (bootstrap key 'public-connect') with a single member can go. It removes every root row that points at the tenant,
       // then drops that tenant's own database namespace, so nothing of theirs survives and nobody else's data is touched.
@@ -324,6 +332,7 @@ export function createTenantDirectory(sql) {
         DELETE FROM gh_tenant_oauth_flows WHERE tenant_id = target;
         DELETE FROM gh_public_flows WHERE tenant_id = target;
         DELETE FROM gh_tenant_pilot_allowlist WHERE tenant_id = target;
+        DELETE FROM gh_public_installations WHERE tenant_id = target;
         DELETE FROM gh_tenant_pilot_bootstraps WHERE tenant_id = target;
         DELETE FROM gh_tenant_memberships WHERE tenant_id = target;
         DELETE FROM gh_tenants WHERE id = target;
@@ -994,6 +1003,64 @@ export function createTenantDirectory(sql) {
     async listPublicTenantIds(limit = 1000) {
       const max = Math.min(Math.max(Number.isInteger(limit) ? limit : 1000, 1), 1000);
       return (await sql`SELECT tenant_id FROM gh_tenant_pilot_bootstraps WHERE account_login='public-connect' ORDER BY created_at LIMIT ${max}`).map((r) => String(r.tenant_id));
+    },
+    /** PUB-5 A: replaces this person's rows in the installation lookup. One statement, so it is all-or-nothing. Numbers only. */
+    async indexPublicInstallations(tenantId, installationIds) {
+      const t = validUuid(tenantId);
+      const ids = [...new Set((Array.isArray(installationIds) ? installationIds : []).map(Number))];
+      if (ids.some((n) => !Number.isSafeInteger(n) || n <= 0)) throw new TypeError('Invalid installation id.');
+      const list = JSON.stringify(ids);
+      await sql`WITH gone AS (
+          DELETE FROM gh_public_installations WHERE tenant_id = ${t}::uuid
+            AND installation_id NOT IN (SELECT value::bigint FROM jsonb_array_elements_text(${list}::jsonb))
+          RETURNING 1)
+        INSERT INTO gh_public_installations (installation_id, tenant_id)
+          SELECT value::bigint, ${t}::uuid FROM jsonb_array_elements_text(${list}::jsonb)
+          ON CONFLICT DO NOTHING`;
+      return ids.length;
+    },
+    /** PUB-5 A: the people who hold this installation (one root query). */
+    async publicTenantsForInstallation(installationId) {
+      if (!Number.isSafeInteger(installationId) || installationId <= 0) return [];
+      return (await sql`SELECT tenant_id FROM gh_public_installations WHERE installation_id = ${installationId}`).map((r) => String(r.tenant_id));
+    },
+    /** PUB-5 A: public people in pages of `size`, after the last id seen (no ceiling). */
+    async publicTenantPage(afterId, size = 200) {
+      const after = afterId ? validUuid(afterId) : '00000000-0000-0000-0000-000000000000';
+      const max = Math.min(Math.max(Number.isInteger(size) ? size : 200, 1), 500);
+      return (await sql`SELECT tenant_id FROM gh_tenant_pilot_bootstraps WHERE account_login='public-connect' AND tenant_id > ${after}::uuid
+        ORDER BY tenant_id LIMIT ${max}`).map((r) => String(r.tenant_id));
+    },
+    /** PUB-5 A: public people whose personal GitHub name matches, found through the grant kept at the shared level. */
+    async publicTenantsByUserLogin(login) {
+      const name = String(login ?? '').trim().toLowerCase();
+      return (await sql`SELECT DISTINCT a.tenant_id FROM gh_tenant_user_authorizations a
+        JOIN gh_tenant_pilot_bootstraps b ON b.tenant_id = a.tenant_id AND b.account_login='public-connect'
+        WHERE lower(a.user_login) = ${name}`).map((r) => String(r.tenant_id));
+    },
+    /** PUB-5 A: one-time fill of the installation lookup from each person's own store. `readInstallationIds(tenantId)` reads one store.
+     * Each page of 200 people is written by ONE statement guarded by a transaction-level advisory lock (a statement is its own
+     * transaction, which also holds on Neon's HTTP driver): a second caller waits, then re-inserts the same rows harmlessly. */
+    async backfillPublicInstallations({ readInstallationIds }) {
+      let people = 0, last = null;
+      for (let ids = await this.publicTenantPage(null, 200); ids.length; ids = await this.publicTenantPage(last, 200)) {
+        const rows = [];
+        for (const tenantId of ids) {
+          last = tenantId;
+          let installs = [];
+          try { installs = await readInstallationIds(tenantId); } catch { continue; }
+          for (const n of installs) if (Number.isSafeInteger(n) && n > 0) rows.push({ i: n, t: tenantId });
+          people += 1;
+        }
+        if (rows.length) {
+          const json = JSON.stringify(rows);
+          await sql`INSERT INTO gh_public_installations (installation_id, tenant_id)
+            SELECT (e->>'i')::bigint, (e->>'t')::uuid FROM (SELECT pg_advisory_xact_lock(5005001)) AS lock,
+              jsonb_array_elements(${json}::jsonb) e
+            ON CONFLICT DO NOTHING`;
+        }
+      }
+      return people;
     },
     /** The public tenant of an already-known GitHub person, or null. Look-up only: it never enrolls anyone. */
     async findPublicTenantBySubject(subject) {

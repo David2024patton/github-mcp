@@ -215,6 +215,10 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       if (env.VERCEL_ENV === 'production') await db.setProductionEnabled(login, true);
       logins.push(login);
     }
+    // PUB-5 A: keep the shared lookup of "who holds which App installation" current (numbers only), from what this
+    // person's own store now holds, so accounts added earlier are kept. Extra places (master token) have no installation.
+    await dir.indexPublicInstallations(tenantId, (await db.listAccounts())
+      .filter((a) => a.credential_kind === 'app' && a.installation_id).map((a) => a.installation_id));
     return { dir, tenantId, identityId, logins };
   }
 

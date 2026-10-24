@@ -1114,3 +1114,26 @@ describe('HARD-2 people who signed in before a release get its new columns', () 
     await expect(db.listAccounts()).resolves.toBeInstanceOf(Array);
   });
 });
+
+describe('PUB-5 A: sign-in keeps the shared installation lookup current', () => {
+  it('records the App installations of the accounts a person connects (numbers only) and adds nothing for an extra place', async () => {
+    const c = make();
+    const client = await c.registerClient({ redirect_uris: [CB] });
+    const idsOf = async (subject) => {
+      const t = await admin.query("SELECT b.tenant_id FROM gh_tenant_pilot_bootstraps b JOIN gh_tenant_identities i ON i.id=b.identity_id WHERE b.account_login='public-connect' AND i.provider_subject=$1", [subject]).then((r) => r.rows[0]?.tenant_id);
+      const rows = t ? await admin.query('SELECT installation_id FROM gh_public_installations WHERE tenant_id=$1 ORDER BY 1', [t]).then((r) => r.rows.map((x) => Number(x.installation_id))) : [];
+      return { tenantId: t, rows };
+    };
+    const bob = await tokenFor(c, client, 'bob');
+    expect((await idsOf('31002')).rows).toEqual([41010]);
+    const alice = await tokenFor(c, client, 'alice');
+    const first = await idsOf('31001');
+    expect(first.rows).toEqual([41001, 41002]); // the other App's installation (41003) is not ours and is not recorded
+    // an extra place (master token) lives in the person's own store and has no installation: signing in again changes nothing
+    const aliceDb = (await gateFor(alice)).db;
+    await aliceDb.upsertAccount({ login: 'alice-extra-place', accountId: 99, accountType: 'Organization', label: 'extra', credentialKind: 'master' });
+    await tokenFor(c, client, 'alice');
+    expect((await idsOf('31001')).rows).toEqual([41001, 41002]);
+    expect(bob.access_token).toBeTruthy();
+  });
+});
