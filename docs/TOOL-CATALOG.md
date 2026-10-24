@@ -443,7 +443,7 @@ Card(s): O-4. The developer's $0/production-OFF TEST rule does not limit an end 
 | `github_billing_list_budgets` | Organization budgets with amount, spent so far and whether usage stops at the limit | — | N built #201 | I | O | R | O-4 built #201 |
 | `github_billing_save_budget` | Create or modify a verified provider budget, including unenforced settings through informed owner authorization | C·$*·Prod | N built #201 | I | O | F | O-4 built #201 |
 | `github_billing_delete_budget` | Delete an exact verified organization budget after typed-ID confirmation, metered-cost warning, full-profile production consent and provider absence readback | C·D·$*·Prod | N built #201 | I | O | F | O-4 built #201; authority repair pending |
-| `github_billing_list_marketplace` | Marketplace apps Chris pays for (plan, price, next billing date); buying is guided only | — | N built #201 | U | O | R | O-4 built #201 |
+| `github_billing_list_marketplace` | Marketplace apps Chris pays for (plan, price, next billing date); buying is guided only because GitHub has no purchase API (provider UI only) | — | N built #201 | U | O | R | O-4 built #201 |
 | `github_copilot_get_billing` | Copilot plan, seat counts and seat assignments with last activity | — | C built #201 | I | O | R | O-4 built #201 |
 | `github_copilot_add_seats` | Assign Copilot seats with a verified plan price, or disclose unknown recurring pricing under user delegation | C·$·A·M·Prod | F built #201 | I | O | F | O-4 built #201 |
 | `github_copilot_remove_seats` | Remove Copilot seats at cycle end even if the provider plan's price is not published | C·Prod | C built #201 | I | O | F | O-4 built #201 |
