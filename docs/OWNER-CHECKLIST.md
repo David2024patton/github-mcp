@@ -113,5 +113,8 @@ The remaining work is planned in `docs/designs/FINISH-PLAN.md`. None of these bl
       `https://github.robinsonaisystems.com/api/github/setup` → Save. The old address keeps working until then.
 - [ ] **Optional, for one acceptance test:** a second GitHub account you control (the collaborator-invite check);
       already listed above, still optional.
+- [ ] **Public launch decisions (LAUNCH-1, whenever you like):** turn on invite-only (recommended while you test with a
+      few people), the support email shown on the App and the trust pages, approving the legal text (ideally after a
+      lawyer reads it), and the monthly hosting-cost alert amount (default $20).
 - Money decisions stay yours and stay untested until you choose: budgets deletion, paid runners, paid Copilot or
   Sponsors actions.

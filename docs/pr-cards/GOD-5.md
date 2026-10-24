@@ -58,6 +58,13 @@ connection. All normal guards (preview, confirm, production classification, prot
 7. **Never:** add a place for an account the token cannot see; let an extra place bypass protected resources; let a
    read-only connection write; return the token.
 
+## Optional extension (same card, separate PR if time): fine-grained token places
+Some organizations refuse third-party Apps but allow fine-grained tokens. On My connection, "Add place with a
+fine-grained token" opens the same protected one-use page as the master token (never a tool argument), verifies the
+token's owner is the signed-in person (`GET /user`), and stores it as an extra place with `credential_kind='fine_grained'`
+(the owner store already supports this kind: copy its encryption context and `credentials.js` fine-grained branch).
+Same read-only default, same guards. Skip if GOD-5 main part is not merged yet.
+
 ## Read only these
 `src/github/client.js` (request hook), `src/tenancy/user-authorization.js` (`token`, `currentMaster`),
 `src/tools/production-guard.js` (`productionEnabledGate`), `src/core/write.js` lines 95–140, `src/db.js`

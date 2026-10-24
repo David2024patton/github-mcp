@@ -22,7 +22,7 @@
     "CAP",
     "FIN"
   ],
-  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split \u2014 A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00). Owner-approved execution: adjacent small roadmap slices are grouped into cohesive outcome-sized PRs; session PR count comes only from the current owner prompt. See docs/SESSION-START.md. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain. 2026-10-18: owner-approved PRIVATE-first mobile+desktop and multi-user isolation completion expansion adds PUB-1..PUB-4 as APPROVED unfinished work and PUB-5 as BLOCKED publication gate; source/real-acceptance evidence remains separate, public Directory eligibility of an unofficial third-party connector cannot be presumed. 2026-10-23: Chris asked for the remaining work to be designed and planned (not built) so lesser models can implement it; batch FIN (GOD-2, GOD-3, ENT-1, ACC-1, GOD-4, GQL-1, GOD-5, HARD-1) holds READY cards written in advance; order and rules in docs/designs/FINISH-PLAN.md.",
+  "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split \u2014 A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00). Owner-approved execution: adjacent small roadmap slices are grouped into cohesive outcome-sized PRs; session PR count comes only from the current owner prompt. See docs/SESSION-START.md. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain. 2026-10-18: owner-approved PRIVATE-first mobile+desktop and multi-user isolation completion expansion adds PUB-1..PUB-4 as APPROVED unfinished work and PUB-5 as BLOCKED publication gate; source/real-acceptance evidence remains separate, public Directory eligibility of an unofficial third-party connector cannot be presumed. 2026-10-23: Chris asked for the remaining work to be designed and planned (not built) so lesser models can implement it; batch FIN (GOD-2, GOD-3, ENT-1, ACC-1, GOD-4, GQL-1, GOD-5, LAUNCH-1, AUTH-1, INV-1, HARD-1) holds READY cards written in advance; order and rules in docs/designs/FINISH-PLAN.md.",
   "cards": [
     {
       "id": "A-1",
@@ -2073,6 +2073,56 @@
       "budget": 0,
       "units": [
         "HARD-1"
+      ],
+      "readiness": "READY",
+      "ownerInputs": []
+    },
+    {
+      "id": "LAUNCH-1",
+      "title": "Public launch readiness: uninstall clean-up for public people, invite-only, load test, cost view, trust pages, App permission review",
+      "batch": "FIN",
+      "design": "docs/designs/FINISH-PLAN.md",
+      "dependencies": [],
+      "card": "docs/pr-cards/LAUNCH-1.md",
+      "status": "APPROVED",
+      "migration": "additive root table gh_public_invites",
+      "budget": 0,
+      "units": [
+        "LAUNCH-1"
+      ],
+      "readiness": "READY",
+      "ownerInputs": []
+    },
+    {
+      "id": "AUTH-1",
+      "title": "Finish the end-user authority audit: no developer-only limit in the product; guide-only tools made real where GitHub has an API",
+      "batch": "FIN",
+      "design": "docs/designs/FINISH-PLAN.md",
+      "dependencies": [],
+      "card": "docs/pr-cards/AUTH-1.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 0,
+      "units": [
+        "AUTH-1"
+      ],
+      "readiness": "READY",
+      "ownerInputs": []
+    },
+    {
+      "id": "INV-1",
+      "title": "Capability inventory: credential decision and evidence for every operation; resolve source conflicts",
+      "batch": "FIN",
+      "design": "docs/designs/FINISH-PLAN.md",
+      "dependencies": [
+        "GOD-2"
+      ],
+      "card": "docs/pr-cards/INV-1.md",
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 0,
+      "units": [
+        "INV-1"
       ],
       "readiness": "READY",
       "ownerInputs": []
