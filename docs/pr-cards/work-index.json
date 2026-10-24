@@ -1799,7 +1799,7 @@
         "HARD-1"
       ],
       "card": "docs/pr-cards/PUB-5.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "additive root tables gh_public_installations, gh_public_usage_daily, gh_public_usage_hourly",
       "budget": 900,
       "units": [
