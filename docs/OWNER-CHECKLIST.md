@@ -119,3 +119,4 @@ The remaining work is planned in `docs/designs/FINISH-PLAN.md`. None of these bl
 - Money decisions stay yours and stay untested until you choose: budgets deletion, paid runners, paid Copilot or
   Sponsors actions.
 - [ ] (LAUNCH-1) Decide when to limit new sign-ups to the invite list: set `GITHUB_PUBLIC_INVITE_ONLY=enabled` for the production deployment, then add names on the owner setup page. Today anyone with the link can connect (capped by `GITHUB_PUBLIC_MAX_TENANTS`). Not needed for building or merging.
+- [ ] (LAUNCH-1) Check the hosting cost estimate: on the owner setup page, "Public usage" shows an estimated monthly cost. The starting price (`PUBLIC_COST_PER_1K_CALLS_CENTS`, 5 cents per 1,000 calls) is a rough guess; when you have a real Vercel/Neon bill, set it to match, and set `PUBLIC_COST_ALERT_CENTS` (default 2000 = $20) to the monthly amount you want a warning at. Not needed for building or merging.
