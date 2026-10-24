@@ -9,6 +9,8 @@ import { requireEnterprise, ENTERPRISE_SLUG } from '../github/enterprise-access.
 import { SETTINGS, requestedMatches, shapeConfig, turnsOnPaid } from './security-config.js';
 import { readActionsSettings } from './enterprise.js';
 import { accessChange } from './people-guard.js';
+import { protectedList } from './protect-guard.js';
+import { graphql } from '../github/client.js';
 
 const E = ENTERPRISE_SLUG;
 const ID = { type: 'integer', minimum: 1 };
@@ -18,6 +20,39 @@ const adminClient = (ctx, t) => requireEnterprise(ctx, t.enterprise, { scope: 'a
 const missing = async (run) => { try { return await run(); } catch (e) { if (e?.status === 404) return null; throw e; } };
 const CONFIGS = 'enterprises/{enterprise}/code-security/configurations';
 const getConfig = (gh, t, id) => missing(async () => (await gh.request(`GET /${CONFIGS}/{configuration_id}`, { enterprise: t.enterprise, configuration_id: id })).data);
+
+
+// The undo of an edit restores EVERY field the edit changed (name, description, enforcement and nested settings). When any
+// changed setting has no clean earlier value to put back, there is no undo (null) rather than a partial one.
+const priorOf = (asked, was) => {
+  if (was === undefined || was === null) return undefined;
+  if (asked && typeof asked === 'object' && !Array.isArray(asked)) {
+    if (typeof was !== 'object' || Array.isArray(was)) return undefined;
+    const out = {};
+    for (const [k, v] of Object.entries(asked)) { const prior = priorOf(v, was[k]); if (prior === undefined) return undefined; out[k] = prior; }
+    return out;
+  }
+  return Array.isArray(asked) ? undefined : was;
+};
+function configInverse(args, before, t) {
+  if (!before.current || !args.configurationId) return null;
+  const restore = {};
+  if (args.name !== undefined) restore.name = before.current.name;
+  if (args.description !== undefined) {
+    if (typeof before.current.description !== 'string') return null;
+    restore.description = before.current.description;
+  }
+  if (args.settings) {
+    const settings = {};
+    for (const [k, v] of Object.entries(args.settings)) {
+      const prior = priorOf(v, k === 'enforcement' ? before.current.enforcement : before.current.settings[k]);
+      if (prior === undefined) return null;
+      settings[k] = prior;
+    }
+    restore.settings = settings;
+  }
+  return { tool: 'github_enterprise_security_config_save', args: { enterprise: t.enterprise, configurationId: args.configurationId, ...restore } };
+}
 
 // ---- code-security configuration: create / edit ---------------------------------------------------------------------
 const configSave = defineGithubWrite({
@@ -59,10 +94,7 @@ const configSave = defineGithubWrite({
     && (args.description === undefined || after.config.description === args.description)
     && (args.settings?.enforcement === undefined || after.config.enforcement === args.settings.enforcement)
     && Object.entries(args.settings ?? {}).filter(([k]) => k !== 'enforcement').every(([k, v]) => requestedMatches(v, after.config.settings[k])),
-  inverse: ({ args, before, target: t }) => (before.current && args.configurationId
-    ? { tool: 'github_enterprise_security_config_save', args: { enterprise: t.enterprise, configurationId: args.configurationId, ...(args.name !== undefined ? { name: before.current.name } : {}),
-      ...(args.settings ? { settings: Object.fromEntries(Object.keys(args.settings).filter((k) => typeof before.current.settings[k] === 'string').map((k) => [k, before.current.settings[k]])) } : {}) } }
-    : null),
+  inverse: ({ args, before, target: t }) => configInverse(args, before, t),
   present: ({ after }) => ({ configuration: after.config })
 });
 
@@ -94,6 +126,18 @@ const defaultsOf = async (gh, t, id) => {
   const list = (await gh.request(`GET /${CONFIGS}/defaults`, { enterprise: t.enterprise })).data ?? [];
   return list.find((d) => d.configuration?.id === id)?.default_for_new_repos ?? 'none';
 };
+// Attaching a configuration to ALL repositories reaches repositories the per-repository gate never sees. So the enterprise's
+// organizations are looked up and the attach is refused when a protected repository lives in one (or the list is too long to check).
+const ORGS_QUERY = 'query($slug: String!) { enterprise(slug: $slug) { organizations(first: 100) { totalCount nodes { login } } } }';
+async function protectedInside(gh, ctx, t) {
+  const entries = (await protectedList(ctx.db)).filter((e) => e.kind === 'repo');
+  if (!entries.length) return null;
+  const orgs = (await graphql(gh, ORGS_QUERY, { slug: t.enterprise }))?.enterprise?.organizations;
+  const names = new Set((orgs?.nodes ?? []).map((n) => String(n.login).toLowerCase()));
+  if (!orgs || (orgs.totalCount ?? 0) > names.size) return 'the enterprise has too many organizations to check them against the protected-resources list';
+  const hit = entries.find((e) => names.has(String(e.target).split('/')[0]));
+  return hit ? `${hit.target} is protected (${hit.level}) and sits inside this enterprise` : null;
+}
 const configApply = defineGithubWrite({
   name: 'github_enterprise_security_config_apply', area: 'enterprise', audience: ['O'],
   description: 'Attach an enterprise code-security configuration to all repositories, or set which new repositories get it by default.',
@@ -110,31 +154,35 @@ const configApply = defineGithubWrite({
   read: async (args, ctx, t) => {
     const gh = await adminClient(ctx, t);
     const current = shapeConfig(await getConfig(gh, t, args.configurationId));
-    return { current, today: args.action === 'set_default' ? await defaultsOf(gh, t, args.configurationId) : null };
+    return { current, today: args.action === 'set_default' ? await defaultsOf(gh, t, args.configurationId) : null,
+      blocked: args.action === 'attach' ? await protectedInside(gh, ctx, t) : null };
   },
   price: ({ before }) => (before?.current?.paid ? null : 0),
   classify: ({ args }) => ({ production: args.action === 'attach' ? `applies security settings to ${args.scope.replace(/_/g, ' ')} repositories across the enterprise` : 'changes the security settings every NEW repository in the enterprise starts with' }),
   summarize: ({ args, target: t, before }) => (!before.current ? `Configuration ${args.configurationId} was not found`
+    : before.blocked ? `Refused: ${before.blocked}. Attaching to all repositories would change protected resources; attach per organization instead.`
     : args.action === 'attach' ? `Attach "${before.current.name}" to ${args.scope.replace(/_/g, ' ')} repositories of ${t.enterprise}${before.current.paid ? ' (PAID settings: private targets can incur future charges)' : ''}; GitHub applies it in the background`
       : `Make "${before.current.name}" the default for ${args.newRepos} new repositories of ${t.enterprise} (today: ${before.today})`),
   apply: async ({ args, ctx, target: t, before }) => {
     if (!before.current) throw refusal('That configuration was not found; nothing was changed.', 404);
+    if (before.blocked) throw refusal(`${before.blocked}, so it will not be attached to all repositories. Attach it per organization instead.`, 403);
     const gh = await adminClient(ctx, t);
     if (args.action === 'attach') return gh.request(`POST /${CONFIGS}/{configuration_id}/attach`, { enterprise: t.enterprise, configuration_id: args.configurationId, scope: args.scope });
     if (before.today === args.newRepos) throw refusal(`It is already the default for ${args.newRepos} new repositories; nothing to do.`);
     return gh.request(`PUT /${CONFIGS}/{configuration_id}/defaults`, { enterprise: t.enterprise, configuration_id: args.configurationId, default_for_new_repos: args.newRepos });
   },
-  readAfter: async ({ args, ctx, target: t }) => {
+  readAfter: async ({ args, ctx, target: t, response }) => {
     const gh = await adminClient(ctx, t);
     if (args.action === 'set_default') return { today: await defaultsOf(gh, t, args.configurationId) };
-    const rows = (await gh.request(`GET /${CONFIGS}/{configuration_id}/repositories`, { enterprise: t.enterprise, configuration_id: args.configurationId, per_page: 1 })).data ?? [];
-    return { attachedSample: rows.length };
+    // Attaching is asynchronous. What can be proven now: GitHub accepted the request and reports no failed attachment.
+    const failed = (await gh.request(`GET /${CONFIGS}/{configuration_id}/repositories`, { enterprise: t.enterprise, configuration_id: args.configurationId, status: 'failed', per_page: 1 })).data ?? [];
+    return { accepted: response?.status === 202 || response?.status === 200, failed: failed.length };
   },
-  verify: ({ args, after }) => (args.action === 'set_default' ? after.today === args.newRepos : after.attachedSample > 0),
+  verify: ({ args, after }) => (args.action === 'set_default' ? after.today === args.newRepos : after.accepted === true && after.failed === 0),
   inverse: ({ args, before, target: t }) => (args.action === 'set_default'
     ? { tool: 'github_enterprise_security_config_apply', args: { enterprise: t.enterprise, configurationId: args.configurationId, action: 'set_default', newRepos: before.today } } : null),
   present: ({ args, after }) => ({ configurationId: args.configurationId, action: args.action,
-    ...(args.action === 'set_default' ? { defaultForNewRepos: after.today } : { note: 'GitHub attaches in the background; statuses can read "attaching" for a while.' }) })
+    ...(args.action === 'set_default' ? { defaultForNewRepos: after.today } : { note: 'GitHub accepted the request and reports no failed attachment so far; it attaches in the background, so check github_enterprise_security_configs for progress.' }) })
 });
 
 // ---- Dependabot repository access ---------------------------------------------------------------------------------------

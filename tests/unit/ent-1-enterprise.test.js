@@ -190,7 +190,7 @@ runWriteContract({ ...base, label: 'github_enterprise_security_config_apply (att
     arrangeAdmin(gh);
     gh.when(`GET ${CFG}/{configuration_id}`).reply(200, config());
     gh.when(`POST ${CFG}/{configuration_id}/attach`).reply(202, {});
-    gh.when(`GET ${CFG}/{configuration_id}/repositories`).reply(200, result === 'ok' ? [{ status: 'attaching', repository: { id: 9, full_name: 'robinson-ai-scratch/sample' } }] : []);
+    gh.when(`GET ${CFG}/{configuration_id}/repositories`).reply(200, result === 'ok' ? [] : [{ status: 'failed', repository: { id: 9, full_name: 'robinson-ai-scratch/sample' } }]);
   } });
 runWriteContract({ ...base, label: 'github_enterprise_dependabot_access_set', definition: def('github_enterprise_dependabot_access_set'), accessWidening: true,
   args: { enterprise: SLUG, defaultLevel: 'internal' },
@@ -248,5 +248,36 @@ describe('ENT-1 write details', () => {
     const out = await call(w, 'github_enterprise_security_config_delete', { enterprise: SLUG, configurationId: 5, name: 'wrong', confirm: true });
     expect(parse(out).done).toBe(false);
     expect(w.gh.calls.filter((c) => c.method === 'DELETE')).toEqual([]);
+  });
+});
+
+describe('ENT-1 review fixes', () => {
+  const world = async (o) => withMaster(await makeWorld({ profile: 'full', ...o }));
+  const run = async (w, name, args) => parse(await call(w, name, args));
+  const protect = (w, target, level = 'locked') => w.db.seedProtectedResources([{ kind: 'repo', target, level, reason: 'test' }]);
+  it('attach to all repositories is refused when a protected repository sits in an enterprise organization', async () => {
+    const w = await world({ mode: 'production' });
+    arrangeAdmin(w.gh);
+    w.gh.when(`GET ${CFG}/{configuration_id}`).reply(200, config());
+    w.gh.when(`POST ${CFG}/{configuration_id}/attach`).reply(202, {});
+    await protect(w, 'robinson-ai-scratch/guarded');
+    const out = await run(w, 'github_enterprise_security_config_apply', { enterprise: SLUG, configurationId: 5, action: 'attach', scope: 'all', confirm: true });
+    expect(out.status).not.toBe('applied');
+    expect(JSON.stringify(out)).toMatch(/guarded/);
+    expect(w.gh.calls.some((c) => c.route.startsWith('POST') && c.route.endsWith('/attach'))).toBe(false);
+  });
+  it('the undo of an edit restores name, description, enforcement and nested settings together', async () => {
+    const w = await world({ mode: 'production' });
+    arrangeAdmin(w.gh);
+    w.gh.when(`GET ${CFG}/{configuration_id}`).replySequence([
+      { status: 200, body: config({ name: 'Baseline', description: 'old words', enforcement: 'unenforced' }) },
+      { status: 200, body: config({ name: 'Renamed', description: 'new words', enforcement: 'enforced' }) }]);
+    w.gh.when(`PATCH ${CFG}/{configuration_id}`).reply(200, {});
+    const out = await run(w, 'github_enterprise_security_config_save', { enterprise: SLUG, configurationId: 5, name: 'Renamed', description: 'new words', settings: { enforcement: 'enforced' }, confirm: true });
+    expect(out.status).toBe('applied');
+    const change = await w.db.getChange(1);
+    expect(JSON.stringify(change)).toMatch(/old words/);
+    expect(JSON.stringify(change)).toMatch(/unenforced/);
+    expect(JSON.stringify(change)).toMatch(/Baseline/);
   });
 });
