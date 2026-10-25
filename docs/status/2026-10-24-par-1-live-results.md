@@ -7,3 +7,6 @@
 - Approve/My connection install buttons: Chris installed the App on his organization through the new flow and confirmed sign-in works after #391.
 - work-index: PAR-1 set to MERGED.
 - github_content_edit_files live test on a private scratch repo (christcr2012/scratch-par1-live-20261024, Chris approved): preview, confirmed edit on branch edit-test, read-back, missing-text refusal and stale-head refusal all PASS. Defect found and fixed: a moved branch was reported as 'a network problem'; now 'The branch moved since the preview' and refused before GitHub is asked.
+- github_project_set_items (bulk): NOT tested live. Chris's own account projects cannot be reached with App tokens (GitHub limit; needs the classic-token path IN-11), and the Robinson-AI-Systems organization has no project yet. Re-entry trigger: a scratch project in the organization. Unit and fake-GitHub request-shape tests pass.
+- Scratch repository christcr2012/scratch-par1-live-20261024 (private) remains for reuse; safe to delete.
+- The edit-tool stale-branch message fix merged as #394 (not yet released; nightly release or Chris's go-ahead).
