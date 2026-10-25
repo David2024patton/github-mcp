@@ -168,8 +168,9 @@ describe('file and ref changes: extra checks (BATCH-D §4 D-2)', () => {
     seq(w2.gh, 'GET /repos/{owner}/{repo}/branches/{branch}', [[200, { protected: false, commit: { sha: B } }], [200, { commit: { sha: B } }]]);
     w2.gh.when('POST /graphql').reply(200, { errors: [{ message: 'Expected branch to point to aaaa but it did not' }] });
     const stale = await call('github_content_push_files', w2, { ...R, branch: 'dev', message: 'x', files: [{ path: 'a.txt', content: 'x' }], expectedHead: A });
-    expect(w2.gh.graphql[0].variables.input.expectedHeadOid).toBe(A);
+    expect(w2.gh.graphql).toHaveLength(0); // refused before GitHub is asked to commit
     expect(stale.done).toBe(false);
+    expect(JSON.stringify(stale)).toMatch(/moved since the preview/);
   });
 
   it('push_files refuses duplicate paths and an item with both content and delete', async () => {
@@ -194,6 +195,14 @@ describe('file and ref changes: extra checks (BATCH-D §4 D-2)', () => {
       const input = w.gh.graphql[0].variables.input;
       expect(input).toMatchObject({ expectedHeadOid: A, message: { headline: 'Fix', body: 'why' }, fileChanges: { additions: [{ path: 'docs/a.md', contents: b64('1 2 2 three') }] } });
       expect(w.gh.invalid).toEqual([]);
+    });
+    it('refuses with a plain message, before asking GitHub to commit, when the branch moved since the preview', async () => {
+      const w = await makeWorld();
+      arrangeEdit(w, 'one two');
+      const out = await call('github_content_edit_files', w, EDIT([{ find: 'one', replace: '1' }], { expectedHead: 'c'.repeat(40) }));
+      expect(out.done).toBe(false);
+      expect(JSON.stringify(out)).toMatch(/moved since the preview/);
+      expect(w.gh.graphql).toHaveLength(0);
     });
     it('refuses text that is missing or ambiguous and changes nothing', async () => {
       for (const [edits, words] of [[[{ find: 'zzz', replace: 'x' }], 'was not found'], [[{ find: 'two', replace: 'x' }], 'appears 2 times'], [[{ find: 'one', replace: 'one' }], 'change nothing']]) {
