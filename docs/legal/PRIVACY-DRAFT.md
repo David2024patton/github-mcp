@@ -18,6 +18,9 @@ GitHub handles authentication and GitHub operations. Vercel hosts the service an
 
 We do not sell customer data, show targeted advertising in this service, or use customer repository content to train AI models. We may disclose information when legally required or necessary to investigate abuse or protect the service and its users.
 
+## Data locations and international processing
+Robinson operates from Colorado, United States. Our production application compute on Vercel and primary database on Neon are currently configured in United States regions. GitHub, infrastructure providers and your chosen assistant provider may also process information in other countries under their own service arrangements and privacy policies. This is not a promise that all processing or every provider backup remains in the United States. Contact [support email] for questions about data locations and applicable transfer safeguards.
+
 ## Retention and deletion
 We retain connection settings and change records while your service account exists, unless you delete them or request deletion. Stored GitHub authorizations expire or can be revoked; the service removes unused authorizations after the configured inactivity period, initially 180 days. This does not automatically delete your settings and change records.
 
