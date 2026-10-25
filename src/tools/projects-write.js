@@ -39,7 +39,10 @@ const readFull=(ctx,t,route,params,max)=>{
   return octo(ctx,t.owner).then(gh=>listAll(gh,route,{...params,per_page:100},{max}));
 };
 const containsContent=(item,src)=>item?.content?.id===src.id;
-const wantedValue=(row,v)=>Object.hasOwn(row,'value')&&row.value===v;
+// GitHub returns a text value as {raw, html} and a single-select value as an object with an id (found by the first live test of the
+// bulk edit); the tool sends plain text, numbers, dates and option ids. Compare, and build undo values, from the plain form.
+const plainValue=(v)=>(v&&typeof v==='object'?(Object.hasOwn(v,'raw')?v.raw:Object.hasOwn(v,'id')?v.id:v):v);
+const wantedValue=(row,v)=>Object.hasOwn(row,'value')&&plainValue(row.value)===v;
 export const projectSetItem=defineGithubWrite({
   name:'github_project_set_item',area:'project',audience:['Op'],
   description:'Add a verified own-repository issue/PR to an organization project, or edit verified project item fields.',
@@ -197,7 +200,7 @@ export const projectSetItems=defineGithubWrite({
     }),
   inverse:({args:a,before:b,after})=>{
     const items=a.items.filter(i=>after.done.includes(i.itemId)).map(i=>({itemId:i.itemId,
-      fields:i.fields.map(f=>({id:f.id,value:(b.current[i.itemId].fields??[]).find(v=>v.id===f.id)?.value??null}))}));
+      fields:i.fields.map(f=>({id:f.id,value:plainValue((b.current[i.itemId].fields??[]).find(v=>v.id===f.id)?.value)??null}))}));
     return items.length?{tool:'github_project_set_items',args:{number:a.number,items}}:null;
   },
   present:({args:a,after})=>({
