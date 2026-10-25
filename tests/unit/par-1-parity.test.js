@@ -219,6 +219,18 @@ describe('PAR-1 bulk project edits', () => {
     expect((await w.db.getChange(1)).inverse).toMatchObject({ tool: 'github_project_set_items', args: { items: [{ itemId: 20, fields: [{ id: 3, value: 'Todo' }] }, { itemId: 21 }, { itemId: 22 }] } });
     expect(w.gh.invalid).toEqual([]);
   });
+  it('confirms and builds the undo from GitHub\'s real text-value shape ({raw, html}), as the first live test showed', async () => {
+    const w = await makeWorld({ mode: 'production' });
+    const updated = new Set();
+    w.gh.when(R.project).reply(200, { id: 1, node_id: 'PVT_TEST', number: 9, title: 'Roadmap' });
+    w.gh.when(R.fields).reply(200, [{ id: 3, name: 'Note', data_type: 'text' }]);
+    w.gh.when(R.item).reply(200, (req) => { const id = Number(req.params.item_id);
+      return { id, node_id: `PVTI_${id}`, content: { id: 100 + id }, fields: [{ id: 3, data_type: 'text', value: updated.has(id) ? { raw: 'Doing', html: 'Doing' } : { raw: 'Todo', html: 'Todo' } }] }; });
+    w.gh.when(R.patch).reply(200, (req) => { updated.add(Number(req.params.item_id)); return {}; });
+    const out = await call(w, 'github_project_set_items', { number: 9, items: items(2), confirm: true });
+    expect(out).toMatchObject({ status: 'applied', result: { updated: 2, of: 2, failed: null } });
+    expect((await w.db.getChange(1)).inverse.args.items[0]).toEqual({ itemId: 20, fields: [{ id: 3, value: 'Todo' }] });
+  });
   it('a field that is not in the project is refused before any PATCH, naming it', async () => {
     const w = await makeWorld({ mode: 'production' });
     arrangeBulk(w.gh, 'ok');

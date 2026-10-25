@@ -198,3 +198,4 @@ listing modes and `github_search_tools`); anything needing git on the agent's ow
 - Approve page and My connection: a permanent "Install on another organization or account" button (value `*`) opens GitHub's install picker with no place pre-selected, so it does not depend on our own organization lookup.
 - Stargazers: when GitHub refuses the listing of a repository already confirmed public, retry once with the App credential and otherwise say so plainly with the star total (no more misleading "not found").
 - Status set to MERGED; live results recorded in docs/status/2026-10-24-par-1-live-results.md.
+- Bulk project edit: read-back and undo values now understand GitHub's real value shapes ({raw, html} text, option objects); found by the live test on the scratch organization.
