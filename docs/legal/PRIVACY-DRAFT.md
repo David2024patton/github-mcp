@@ -1,38 +1,35 @@
-# Privacy notice — DRAFT for the owner to approve (not legal advice, not published)
+# Privacy notice
 
-Status: draft written 2026-10-23 from what the server actually does. A lawyer should review it before the public sign-in opens. Items in [brackets] need the owner's choice.
+Effective: 2026-10-25. Approved by the owner.
 
-**Who we are.** Robinson AI Systems LLC runs Robinson GitHub MCP, a service that lets an AI assistant you choose work on your GitHub accounts at your direction. Contact: [support email].
+**Who operates the service.** Robinson AI Systems operates Robinson GitHub MCP, a hosted connection between GitHub and a compatible assistant you choose. Contact: [support email]. We are independent of GitHub and your assistant provider.
 
-## What we store about you
-- **Your GitHub identity:** your numeric GitHub user ID and the account names you connect. We never see or store your GitHub password.
-- **Sign-in grants:** the GitHub authorization that lets the service act for you, stored encrypted. Optional extra keys you add (package or notification tokens) are stored encrypted too and are typed only on a protected page, never into a chat.
-- **Connection settings:** which accounts you connected, whether the connection is read-only, your time zone.
-- **A record of changes:** each change your assistant makes is logged with who, where, what, the before/after of what changed, whether it was confirmed, and GitHub's request reference, so it can be explained and, where possible, undone. This can include text of the thing that was changed (for example a file, issue or setting).
-- **Short-lived results:** large answers are kept for 24 hours behind a private handle so your assistant can page through them, then removed.
-- **Usage counts:** hourly totals of calls by result and speed (they contain no content and no names), and, for each person, how many calls, real changes and errors they made each day (kept up to 400 days; per-hour change counts are kept 48 hours). These per-person counts are used for the free fair-use limits and to control cost. The service owner can see them, and can see the GitHub name of the ten heaviest users each week, only to prevent abuse and control cost.
-- **Hosting logs:** our hosting provider keeps ordinary request logs (time, address, route, status) for operating and securing the service.
+## Information we handle
+- **Account and connection information:** your numeric GitHub identity, connected account names, permissions, connection settings, time zone and subscription status where applicable.
+- **Access credentials:** GitHub authorizations and optional credentials you choose to provide. These are stored encrypted. We do not receive your GitHub password. Optional credentials belong on the protected setup page, never in an assistant conversation.
+- **Requested GitHub content:** information needed to carry out your assistant's requests. Change records can contain repository names, file or issue content, before/after information, who requested the change, and provider request references.
+- **Temporary results:** large answers may be stored behind a private handle for 24 hours so your assistant can retrieve additional pages.
+- **Usage and operating information:** call counts, changes, errors, timing and ordinary hosting/security logs. Daily customer usage counts are kept for up to 400 days; hourly change counts for 48 hours. Operating logs may include request addresses, paths and status codes.
 
-## What your assistant receives
-Whatever it asks GitHub for through the service (repository data, issues, files and so on) goes to the AI app you connected, under that app's own terms and privacy policy. We do not control what that app does with it.
+## Purposes and sharing
+We use this information to authenticate you, carry out authorized requests, operate and secure the service, enforce usage limits, support users and investigate errors. The operator can inspect usage and identify unusually heavy users for cost control and abuse prevention.
 
-## What we do not do
-We do not sell your data, show ads, or use your repositories to train models. [Owner to confirm.] We do not read your private repositories except to carry out the request your assistant makes.
+GitHub handles authentication and GitHub operations. Vercel hosts the service and Neon stores its database. Information returned to your chosen assistant is also handled by that assistant's provider under its own terms and privacy practices. We do not control those separate services.
 
-## Who else handles data
-GitHub (the source of your data and your authorization), our hosting provider (Vercel) and our database provider (Neon). [Owner to list any others added later.]
+We do not sell customer data, show targeted advertising in this service, or use customer repository content to train AI models. We may disclose information when legally required or necessary to investigate abuse or protect the service and its users.
 
-## How long we keep it
-Sign-in grants until they expire or you disconnect, and are removed if you have not used the service or signed in for 180 days (you simply sign in again; your settings stay); settings and the change record until you ask us to delete them; short-lived results 24 hours; usage counts in aggregate. When you ask to be deleted, we remove your sign-in, grants, settings, change record and saved results for good, and your tokens stop working immediately.
+## Retention and deletion
+We retain connection settings and change records while your service account exists, unless you delete them or request deletion. Stored GitHub authorizations expire or can be revoked; the service removes unused authorizations after the configured inactivity period, initially 180 days. This does not automatically delete your settings and change records.
 
-## Marketplace subscriptions (draft addition, 2026-10-24)
-Marketplace connections store your billing account number, free-plan number and subscription status separately from direct connections. Cancellation blocks Marketplace access immediately. We retry revocation of its GitHub user tokens and removal of its isolated settings, changes and saved results, with a maximum deletion commitment of 30 days. Independent direct connections remain active. Once cleanup completes we remove the Marketplace account and subscription records. To reject repeated or delayed purchase deliveries, we retain hashed delivery receipts and a keyed account digest with the event time and status; no raw webhook payload or customer profile is kept in those records.
+Disconnecting an assistant stops that connection; it is separate from deleting all stored service data. The direct connection's Delete my data flow removes its active-service identity, grants, settings, change records, usage records and saved results. Independently enrolled Marketplace connections have their own cancellation process. Provider-managed backups and hosting/security logs have separate retention under the providers' policies; active-service deletion does not promise immediate erasure of every backup copy.
+
+## GitHub Marketplace connections
+Marketplace enrollment stores the billing account number, free-plan identifier and subscription status separately from direct connections. When cancellation takes effect, Marketplace access is blocked immediately. We retry revocation of its GitHub user tokens and deletion of its isolated customer data, and will complete that deletion within 30 days. Independent direct connections remain separate.
+
+After cleanup, the Marketplace account and subscription records are removed. We retain hashed delivery receipts and a keyed account digest with event time and status to reject duplicate or delayed events. These anti-replay records contain no raw webhook payload, repository content, access token or customer profile.
 
 ## Your choices
-Disconnect any time from your AI app or by revoking the GitHub App's access in your GitHub settings. Delete everything yourself, any time, at the "Delete my data" link on the sign-in page (you sign in with GitHub, confirm once, and it is removed for good), or ask us at [support email]. Choose a read-only connection when you sign in if you want your assistant to only look and preview.
+Use a read-only connection, restrict GitHub access, disconnect assistants, revoke the App's authorization in GitHub, or request access/correction/deletion at [support email]. My connection explains the available controls. Use GitHub's Marketplace billing controls to cancel a Marketplace plan. We may need to verify your identity before handling a data request.
 
-## Children
-The service is not for anyone under the age GitHub allows for an account.
-
-## Changes
-We will say here, with a date, if this notice changes.
+## Eligibility and updates
+You must meet GitHub's account age requirements and be authorized to use the connected accounts. We will publish a date and updated notice when these practices change materially.

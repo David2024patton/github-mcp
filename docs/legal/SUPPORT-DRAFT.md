@@ -1,11 +1,15 @@
-# Support — DRAFT for the owner to approve (not published)
+# Support
 
-Status: draft written 2026-10-24. Items in [brackets] need the owner's choice.
+Effective: 2026-10-25. Approved by the owner.
 
-**Need help?** Email [support email]. Tell us which AI app you connected and what you expected to happen.
+**Contact.** Email [support email]. Tell us which assistant you use, what you expected and what happened. Include the approximate time and any non-sensitive error reference. Never email passwords, tokens, private keys or unnecessary repository content.
 
-## Do it yourself
-- **See or change your connection:** "My connection" (/connection) lets you add accounts, make your apps read-only, set your time zone and disconnect an app.
-- **Stop everything:** revoke the GitHub App's access in your GitHub settings, or use "Delete my data" on the sign-in page.
-- **Hit a limit?** The Limits page (/limits) explains how fast assistants can call the service.
-- **Privacy and terms:** see the Privacy notice (/privacy) and Terms (/terms).
+## Connection controls
+- **My connection:** review connected accounts, install the App on another account, choose read-only access, set your time zone or disconnect an assistant.
+- **GitHub settings:** manage the App's installed repositories or revoke its authorization.
+- **Delete my data:** use the direct connection's deletion flow or contact support. Deletion and Marketplace cancellation are described in the privacy notice.
+- **Marketplace plans:** use GitHub's billing controls to cancel a Marketplace subscription.
+- **Usage limits:** the Limits page explains the current free allowance and burst limits.
+
+## Service expectations
+Support is best effort. We do not currently promise 24/7 support or a response-time service level. Security reports should be clearly marked as security-related and should contain safe reproduction steps.

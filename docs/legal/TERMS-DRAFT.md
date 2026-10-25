@@ -1,19 +1,21 @@
-# Terms of use — DRAFT for the owner to approve (not legal advice, not published)
+# Terms of use
 
-Status: draft written 2026-10-23. A lawyer should review it before the public sign-in opens. Items in [brackets] need the owner's choice.
+Effective: 2026-10-25. Approved by the owner.
 
-**1. What this is.** Robinson GitHub MCP ("the service") is run by Robinson AI Systems LLC. It lets an AI assistant you choose act on GitHub accounts you own or administer, at your direction.
+**1. Service and operator.** Robinson AI Systems operates Robinson GitHub MCP. The service lets a compatible assistant you choose access GitHub through permissions you authorize. We are independent of GitHub and your assistant provider; their services have separate terms.
 
-**2. Your authority.** You may connect only a personal account that is yours, or an organization where you are an owner or administrator. You are responsible for what your assistant does with that access. Each change is previewed and needs confirmation unless a safety rule says otherwise; you can choose a read-only connection.
+**2. Your authority and responsibility.** Connect only accounts you are authorized to use. You are responsible for instructions and permissions you give your assistant and for reviewing consequential actions. Tools provide previews, read-only options and confirmation controls, but these do not guarantee that an assistant's request is correct. Authorized operations may modify or delete GitHub resources and may cause provider charges. Keep appropriate backups and protect your credentials.
 
-**3. Acceptable use.** Do not use the service to break GitHub's terms, attack others, access accounts you are not allowed to use, or overload or probe the service. We may slow down, limit or stop a connection that does.
+**3. Acceptable use.** Do not use the service for unauthorized access, malicious code, harassment, unlawful activity, evading provider restrictions or overwhelming the service. Follow GitHub's terms and the terms of other services you use. We may limit or suspend access to address abuse, security risks or legal requirements.
 
-**4. Cost.** [Free during the opening period / pricing to be announced.] Some GitHub actions cost money on GitHub's side. The service tells you what it knows before a paid action and asks first; you are responsible for charges on your GitHub account.
+**4. Price and third-party costs.** The current free plan costs $0 and is subject to the published usage limits. A free plan does not automatically become a paid subscription. Any future paid subscription requires your agreement. GitHub, your assistant provider or other services may charge independently for actions or subscriptions you authorize; our free plan does not cover those charges.
 
-**5. Availability and changes.** The service is provided as is, may be unavailable, and may change. We may add limits to keep it fair for everyone.
+**5. Availability and changes.** The service is provided as available. We do not promise uninterrupted operation, support response times or that every provider operation is available. We may maintain, change or discontinue features and impose reasonable usage limits. We will communicate material changes through the service or its published notices.
 
-**6. No guarantees.** To the fullest extent the law allows, we do not promise that the service is error-free, and we are not liable for indirect or lost-profit damages, or for actions an assistant takes that you confirmed. [Lawyer to set the liability limit and governing law.]
+**6. Ending access and data.** You can disconnect or revoke access at any time. Disconnecting is separate from requesting deletion. Data handling and deletion are described in the privacy notice. Marketplace subscriptions are managed through GitHub; cancellation affects the separately enrolled Marketplace connection. We may end access for violations or to protect the service.
 
-**7. Ending.** You can disconnect at any time. We can end access for breaking these terms or to protect the service. On request we delete your data as described in the privacy notice.
+**7. Warranties and liability.** To the extent permitted by applicable law, the service is provided without warranties of uninterrupted availability, accuracy, fitness for a particular purpose or error-free operation. We are not responsible for indirect, special or consequential losses, including lost profits, to the extent the law permits that exclusion. Our total liability arising from the service is limited to the greater of US $100 or the amount you paid Robinson AI Systems for this service during the 12 months before the claim. These limits do not exclude liability or consumer rights that cannot legally be excluded.
 
-**8. Contact.** [support email].
+**8. Governing law.** Colorado law governs these terms, subject to mandatory consumer protections and jurisdiction rights that apply where you live. These terms do not require arbitration or waive non-waivable rights.
+
+**9. Contact and changes.** Contact [support email] about support or these terms. Updated terms will carry a date. We will seek any agreement required before introducing a paid subscription or other change that requires consent.
