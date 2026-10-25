@@ -1,6 +1,6 @@
-# Terms of use — DRAFT for owner review
+# Terms of use
 
-Status: proposed 2026-10-24. Not approved for publication as final terms.
+Effective: 2026-10-25. Approved by the owner.
 
 **1. Service and operator.** Robinson AI Systems operates Robinson GitHub MCP. The service lets a compatible assistant you choose access GitHub through permissions you authorize. We are independent of GitHub and your assistant provider; their services have separate terms.
 

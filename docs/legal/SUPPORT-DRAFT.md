@@ -1,6 +1,6 @@
-# Support — DRAFT for owner review
+# Support
 
-Status: proposed 2026-10-24. Not approved for publication as a final support policy.
+Effective: 2026-10-25. Approved by the owner.
 
 **Contact.** Email [support email]. Tell us which assistant you use, what you expected and what happened. Include the approximate time and any non-sensitive error reference. Never email passwords, tokens, private keys or unnecessary repository content.
 

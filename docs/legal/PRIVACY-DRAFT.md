@@ -1,6 +1,6 @@
-# Privacy notice — DRAFT for owner review
+# Privacy notice
 
-Status: proposed 2026-10-24. Not approved for publication as a final policy.
+Effective: 2026-10-25. Approved by the owner.
 
 **Who operates the service.** Robinson AI Systems operates Robinson GitHub MCP, a hosted connection between GitHub and a compatible assistant you choose. Contact: [support email]. We are independent of GitHub and your assistant provider.
 

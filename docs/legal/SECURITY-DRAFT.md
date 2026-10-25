@@ -1,6 +1,6 @@
-# Security — DRAFT for owner review
+# Security
 
-Status: proposed 2026-10-24. Not approved for publication as a final statement.
+Effective: 2026-10-25. Approved by the owner.
 
 ## Reporting a problem
 Email [support email] with a description and safe reproduction steps. Do not include passwords, tokens or private keys. Do not test against another person's accounts or data. We review reports and prioritize fixes according to their impact; no guaranteed response time or paid bug bounty is offered.
