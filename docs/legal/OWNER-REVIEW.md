@@ -1,6 +1,6 @@
 # Launch disclosure approval sheet — 2026-10-24
 
-Owner approved this policy package and the trader recommendation on 2026-10-25 after confirming the LLC has not been formed. Use Robinson AI Systems without LLC. These approvals authorize finalizing and publishing the customer policies; they do not accept GitHub's separate Marketplace Developer Agreement. No payment system is activated.
+Owner approved the customer policy package on 2026-10-25 after confirming the LLC has not been formed. The owner subsequently requested a non-business Marketplace option; classification remains unresolved pending confirmation of whether the current offering is personal/non-professional. Use Robinson AI Systems without LLC. These approvals authorize finalizing and publishing the customer policies; they do not accept GitHub's separate Marketplace Developer Agreement. No payment system is activated.
 
 | Decision | Proposed choice | What approving it means |
 | --- | --- | --- |
@@ -17,9 +17,9 @@ Full drafts: PRIVACY-DRAFT.md, TERMS-DRAFT.md, SECURITY-DRAFT.md and SUPPORT-DRA
 
 ## GitHub's trader question
 
-This asks whether you offer the app in a business/professional capacity. It does not mean stock trader. My provisional recommendation is **trader**, because Robinson AI Systems is being developed as a software business, including possible future paid service. This is an inference from the owner's stated business purpose, not a certification of legal status. GitHub's current form says the DSA information requirements concern paid publishers and do not apply when payments are not processed there, but it still presents a required trader/non-trader choice. Do not select a false non-trader declaration merely because today's plan is free.
+This asks whether you offer the app in a business/professional capacity. It does not mean stock trader. The earlier provisional trader recommendation was based on the stated software-business purpose. The owner later requested a non-business option because no LLC has been formed and no payments are being taken. Those facts alone do not establish non-trader status: the relevant question is the purpose of the current offering. Confirm whether it is currently a personal/non-professional project before saving a non-trader declaration. GitHub's current form says the DSA information requirements concern paid publishers and do not apply when payments are not processed there, but it still presents a required trader/non-trader choice. Do not select a false non-trader declaration merely because today's plan is free.
 
-The owner confirmed on 2026-10-24 that the LLC has not been formed and instructed us to omit LLC. The owner subsequently approved the trader classification and remaining policy decisions; the business name alone does not establish a separate legal entity. If GitHub then requests a business number, address or documents, enter them privately in GitHub; none belong in this public repository or chat.
+The owner confirmed on 2026-10-24 that the LLC has not been formed and instructed us to omit LLC. The remaining customer policy decisions are approved. The owner superseded the provisional trader choice by requesting a non-business option; no final trader declaration has been saved. the business name alone does not establish a separate legal entity. If GitHub then requests a business number, address or documents, enter them privately in GitHub; none belong in this public repository or chat.
 
 ## Separate steps before submission
 
