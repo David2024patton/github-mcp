@@ -138,6 +138,7 @@ const contentPushFiles = defineGithubWrite(overridable({
     if (!before) throw refusal(`The branch ${args.branch} does not exist.`, 404);
     const additions = args.files.filter((f) => !f.delete).map((f) => ({ path: cleanPath(f.path), contents: b64(f.content) }));
     const deletions = args.files.filter((f) => f.delete).map((f) => ({ path: cleanPath(f.path) }));
+    if (args.expectedHead && args.expectedHead !== before) throw refusal(`The branch ${args.branch} moved since the preview: it now points at ${short(before)}, not ${short(args.expectedHead)}. Nothing was changed; preview again.`, 409);
     const octokit = await octo(ctx, target.owner);
     const [headline, ...rest] = args.message.split('\n');
     const data = await graphql(octokit, COMMIT, { input: { branch: { repositoryNameWithOwner: slug(target.owner, target.repo), branchName: args.branch },
@@ -226,6 +227,7 @@ const contentEditFiles = defineGithubWrite(overridable({
     if (!before) throw refusal(`The branch ${args.branch} does not exist.`, 404);
     const { changes, problems } = planEdits(args, before);
     if (problems.length) throw refusal(`Nothing was changed. ${problems.join('; ')}`, 422);
+    if (args.expectedHead && args.expectedHead !== before.head) throw refusal(`The branch ${args.branch} moved since the preview: it now points at ${short(before.head)}, not ${short(args.expectedHead)}. Nothing was changed; preview again.`, 409);
     const octokit = await octo(ctx, target.owner);
     const [headline, ...rest] = args.message.split('\n');
     const data = await graphql(octokit, COMMIT, { input: { branch: { repositoryNameWithOwner: slug(target.owner, target.repo), branchName: args.branch },

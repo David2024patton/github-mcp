@@ -6,3 +6,4 @@
 - github_content_edit_files, github_project_set_items, github_review_request_copilot: NOT tested live. Developer writes are unavailable in production mode by design (scratch repo creation refused); Copilot review also needs a Copilot plan (untested, not a blocker). Re-entry trigger: a preview deployment or the scratch organization (IN-06).
 - Approve/My connection install buttons: Chris installed the App on his organization through the new flow and confirmed sign-in works after #391.
 - work-index: PAR-1 set to MERGED.
+- github_content_edit_files live test on a private scratch repo (christcr2012/scratch-par1-live-20261024, Chris approved): preview, confirmed edit on branch edit-test, read-back, missing-text refusal and stale-head refusal all PASS. Defect found and fixed: a moved branch was reported as 'a network problem'; now 'The branch moved since the preview' and refused before GitHub is asked.
