@@ -90,7 +90,7 @@ export function createOAuthHandlers({ db, env = process.env, policy, scopesSuppo
     // The registration decides the auth method; requests cannot downgrade confidential clients.
     const publicClient = client?.token_endpoint_auth_method === 'none';
     if (!client || (publicClient ? p.client_secret !== undefined && p.client_secret !== ''
-      : !secretsMatch(p.client_secret, client.client_secret_hash))) {
+      : !secretsMatch(hashToken(p.client_secret), client.client_secret_hash))) {
       return bad(res, 401, 'invalid_client', 'Client credentials rejected');
     }
     if (p.grant_type === 'authorization_code') {
