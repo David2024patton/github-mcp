@@ -21,12 +21,24 @@ export function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
+export const MAX_REQUEST_BODY_BYTES = 16384;
+
 export function paramsOf(req) {
   if (req.method === 'GET') return req.query || {};
   const contentType = String(req.headers?.['content-type'] || '').split(';')[0].toLowerCase();
   const body = req.body;
-  if (typeof body === 'object' && body !== null && !Array.isArray(body)) return body;
-  if (typeof body !== 'string' || Buffer.byteLength(body) > 16384) throw new Error('Invalid request body');
+  if (typeof body === 'object' && body !== null && !Array.isArray(body)) {
+    // Vercel can parse JSON before our handler. Its Content-Length header is not
+    // an enforceable size check; measure the actual object representation instead.
+    let serialized;
+    try { serialized = JSON.stringify(body); }
+    catch { throw new Error('Invalid request body'); }
+    if (typeof serialized !== 'string' || Buffer.byteLength(serialized, 'utf8') > MAX_REQUEST_BODY_BYTES)
+      throw new Error('Invalid request body');
+    return body;
+  }
+  if (typeof body !== 'string' || Buffer.byteLength(body, 'utf8') > MAX_REQUEST_BODY_BYTES)
+    throw new Error('Invalid request body');
   if (contentType === 'application/x-www-form-urlencoded') return Object.fromEntries(new URLSearchParams(body));
   if (contentType === 'application/json') {
     const parsed = JSON.parse(body);

@@ -565,3 +565,7 @@ Owner authorized independent assessment and adoption of David2024patton's PRs, i
 ## 2026-10-26 — signed download redirect URLs are never model-visible
 
 After reviewing outside PR #401 and #405, the maintainer identified a bearer leak in the current archive, artifact and account-export link tools: the redirect Location could contain secret access query parameters. Merely redacting in the default mode while offering full detail would leak the same credential. CONTRIB-2 requires sanitization inside handlers before result shaping, with an allowlisted clean public codeload URL or safe GitHub navigation page, never a bearer redirect in any detail/fields mode. Human-only authenticated transfer is separate future work, not an AI full-detail override.
+
+## 2026-10-26 — owner-managed adoption of OAuth input validation from outside review
+
+David2024patton's #399 usefully identified inconsistent unauthenticated OAuth body limits, but its per-process in-memory IP map cannot provide a reliable limit across Vercel instances, and its 64KB check did not cover already-parsed JSON. CONTRIB-3 adopts the bounded input behavior through shared 16KB `paramsOf` for raw and parsed objects and correctly classifies malformed public registration as HTTP 400. It does not claim or implement a cross-instance IP quota; that requires a separately reviewed shared bounded design without abuse-amplified database cost or unneeded IP retention. Owner's autonomous maintainer handles corrections and closes the original as partially accepted only after full green CI and merge.

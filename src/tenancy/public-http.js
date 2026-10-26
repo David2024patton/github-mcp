@@ -64,8 +64,13 @@ export async function publicRegister(req, res, { env = process.env, ...deps } = 
   res.setHeader('Cache-Control', 'no-store');
   if (!publicConnectEnabled(env)) return off(res);
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return send(res, 405, { error: 'method_not_allowed' }); }
+  // Parse failures are client errors, not database outages. Check size even if
+  // the HTTP runtime supplied a pre-parsed JSON object.
+  let params;
+  try { params = paramsOf(req); }
+  catch { return send(res, 400, { error: 'invalid_client_metadata' }); }
   try {
-    return send(res, 201, await make(env, deps).registerClient(paramsOf(req)));
+    return send(res, 201, await make(env, deps).registerClient(params));
   } catch (error) {
     if (error instanceof PublicConnectError && error.code === 'invalid_client_metadata') return send(res, 400, { error: 'invalid_client_metadata', error_description: error.message });
     if (error instanceof PublicConnectError && (error.code === 'capacity' || error.code === 'paused')) return send(res, 503, { error: 'temporarily_unavailable', error_description: error.message });
