@@ -407,13 +407,13 @@
       "design": "docs/designs/BATCH-C.md",
       "dependencies": ["C-3"],
       "card": "docs/pr-cards/C-4.md",
-      "status": "IN_PROGRESS",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": ["C-4"],
       "readiness": "READY",
       "ownerInputs": [],
-      "pr": []
+      "pr": [416]
     },
     {
       "id": "D-1",
