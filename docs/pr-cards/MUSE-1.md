@@ -8,9 +8,9 @@ A person opening `https://github.robinsonaisystems.com` sees correct, usable con
 
 ## Acceptance criteria
 
-- [ ] The home page explains the difference between consumer Muse custom connectors and Muse Code native MCP, with the exact HTTPS service endpoint and a usable `mcp_servers` settings example, `muse mcp login` and `/mcp`.
-- [ ] Consumer Muse instructions give a safe custom-connector request, browser-based authorization and an honest fallback if Muse cannot create an MCP-backed connector. No promise that Meta has reviewed, listed or approved the service.
-- [ ] The existing Streamable HTTP / OAuth stack remains the single integration path: no special Muse bypass, no credential prompt in chat, no client-specific grant escalation. The documented URL matches the deployed endpoint.
+- [x] The home page explains the difference between consumer Muse custom connectors and Muse Code native MCP, with the exact HTTPS service endpoint and a usable `mcp_servers` settings example, `muse mcp login` and `/mcp`.
+- [x] Consumer Muse instructions give a safe custom-connector request, browser-based authorization and an honest fallback if Muse cannot create an MCP-backed connector. No promise that Meta has reviewed, listed or approved the service.
+- [x] The existing Streamable HTTP / OAuth stack remains the single integration path: no special Muse bypass, no credential prompt in chat, no client-specific grant escalation. The documented URL matches the deployed endpoint.
 - [ ] Automated tests assert the new website content, configuration format, no embedded bearer or custom script, and phone-compatible HTML alongside existing browser checks. Run the full repo checks / browser CI for the candidate SHA.
 - [ ] Update the public setup guide, roadmap/status/owner guide as applicable; open one PR, self-review, and merge only after exact-head `ci` and `release-policy` green.
 

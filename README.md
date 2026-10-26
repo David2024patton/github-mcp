@@ -10,3 +10,10 @@ It follows the Robinson Tool Contract, so Robinson's Toolkit (the hub) can offer
 servers — and it works fully on its own.
 
 **Status (2026-10-16):** all 64 planned work cards are merged (394 tools). Deployed to Vercel with its own Neon database; the custom GitHub App is installed on owner-designated `robinson-ai-scratch`; custom OAuth and scratch reads were verified after the October 15 reconnect. **Still owner-run: the real-account read-only smoke report, connected scratch write/cleanup acceptance, per-account production activation and Hub route evidence. Production remains OFF.** Gap-closure work is planned in `docs/designs/BATCH-Y.md`. See [`docs/STATUS.md`](docs/STATUS.md), [`docs/OWNER-INPUTS.md`](docs/OWNER-INPUTS.md), [`docs/DEPLOY.md`](docs/DEPLOY.md). Agents read [`AGENTS.md`](AGENTS.md) first.
+
+## Meta Muse and Muse Code
+
+- **Muse Code (native MCP):** Add the hosted `https://github.robinsonaisystems.com/api/mcp` as a `streamable_http` server in `~/.config/muse/settings.json` under `mcp_servers`. Run `muse mcp login github-robinson` to authorize in a browser, then `/mcp` to inspect the available tools. See the complete JSON on the [service home page](https://github.robinsonaisystems.com).
+- **Muse personal assistant:** Muse supports custom connectors, but its custom connector builder is not the same native MCP setup as Muse Code. The [service home page](https://github.robinsonaisystems.com) provides a request you can give Muse and explains the unverified, platform-dependent integration; we do not claim a Meta catalog listing or an accepted third-party integration.
+
+This service uses its existing independent OAuth consent, security checks and permission limits with every MCP client. Never paste a GitHub token or password into Muse chat.

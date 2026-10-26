@@ -139,3 +139,7 @@ A per-call "as the bot this once" choice; acting as the person for tools that na
 URL-inside-target check like GOD-5's); fine-grained personal tokens as the "me" credential; the deliberate rule override on more tools (tags, branch rename,
 update branch, universal tools).
 
+
+## Owner-authorized 2026-10-26 — Meta Muse support (MUSE-1)
+
+Owner requested compatibility with Meta Muse and an updated `github.robinsonaisystems.com` homepage. Work plan and acceptance: `docs/pr-cards/MUSE-1.md`. Existing standard MCP and independent OAuth provide the Muse Code connection; the consumer Muse custom-connector builder is a distinct platform flow that needs real-client acceptance before claiming it works. No directory submission, manual deployment, or production permission change is authorized by this request. Any future Meta Connector Platform application, verified consumer-Muse connection, or provider-specific adapter should be separately evidenced and approved if needed.

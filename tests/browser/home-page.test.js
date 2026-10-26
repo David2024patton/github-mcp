@@ -32,8 +32,19 @@ describe('home page', () => {
       expect(await b.page.locator('#address').count()).toBe(1);
       const text = await b.page.textContent('main');
       expect(text).toContain('Not affiliated with or endorsed by GitHub.');
-      for (const word of ['Claude', 'ChatGPT', 'Claude Code', 'Cursor', 'VS Code']) expect(text).toContain(word);
+      for (const word of ['Claude', 'ChatGPT', 'Claude Code', 'Cursor', 'VS Code', 'Meta Muse', 'Meta Muse Code']) expect(text).toContain(word);
       expect(text).toContain('claude mcp add --transport http github-robinson ' + ORIGIN + '/api/mcp');
+      const museConfig = JSON.parse(await b.page.locator('#muse-code-config').textContent());
+      expect(museConfig.mcp_servers['github-robinson']).toEqual({
+        transport: 'streamable_http', url: ORIGIN + '/api/mcp', enabled: true, mode: 'optional'
+      });
+      const museRequest = await b.page.locator('#muse-connector-request').textContent();
+      expect(museRequest).toContain(ORIGIN + '/api/mcp');
+      expect(museRequest).toContain('OAuth sign-in in the browser');
+      expect(museRequest).not.toMatch(/Bearer\s+|ghp_|github_pat_|client_secret/i);
+      expect(text).toContain('muse mcp login github-robinson');
+      expect(text).toContain('muse mcp logout github-robinson');
+      expect(text).toContain('not a Meta-reviewed or Meta-listed connector');
       expect(await b.page.locator('script').count()).toBe(0);
       for (const href of ['/connection', '/limits', '/privacy', '/terms', '/security', '/support']) expect(await b.page.locator(`a[href="${href}"]`).count()).toBeGreaterThan(0);
       await b.context.close();

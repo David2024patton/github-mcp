@@ -30,7 +30,9 @@ export function renderHome(origin = 'https://github.robinsonaisystems.com') {
   ChatGPT: https://developers.openai.com/api/docs/guides/custom-mcp-server (ChatGPT Plugins > plus > Add custom MCP server > name and URL > OAuth > confirm > Create as a plugin; install it before use).
   Claude Code: https://code.claude.com/docs/en/mcp (claude mcp add --transport http <name> <url>; run /mcp to sign in).
   Cursor: https://cursor.com/docs/context/mcp (.cursor/mcp.json or ~/.cursor/mcp.json, "mcpServers" with a "url").
-  VS Code: https://code.visualstudio.com/docs/copilot/reference/mcp-configuration (.vscode/mcp.json, "servers" with "type": "http" and "url"). -->
+  VS Code: https://code.visualstudio.com/docs/copilot/reference/mcp-configuration (.vscode/mcp.json, "servers" with "type": "http" and "url").
+  Meta Muse Code: https://dev.meta.ai/docs/muse-code/extending (streamable_http and muse mcp login).
+  Meta Muse personal assistant: https://about.fb.com/news/2026/09/introducing-muse-small-business/ (custom connectors); https://platform.muse.ai/docs (Meta catalog review). -->
 <h2>Claude (web, desktop and phone app)</h2><ol><li>Open Claude on the web, or in the desktop or phone app, and go to <b>Customize</b>, then <b>Connectors</b>.</li><li>Choose <b>Add custom connector</b> and paste the address above.</li><li>Choose <b>Add</b>, then <b>Connect</b>, and sign in with GitHub.</li></ol>
 <p><small>On a team or company plan, an owner adds it first under Organization settings, then members choose Connect.</small></p>
 <h2>ChatGPT</h2><ol><li>Open ChatGPT on the web and go to <b>Plugins</b>.</li><li>Choose the plus button, then <b>Add custom MCP server</b>.</li><li>Enter a name and paste the address above. For authentication choose <b>OAuth</b>.</li><li>Confirm the warning, choose <b>Create as a plugin</b>, then install it and sign in with GitHub.</li></ol>
@@ -41,6 +43,28 @@ export function renderHome(origin = 'https://github.robinsonaisystems.com') {
     "github-robinson": { "url": "${address}" }
   }
 }</pre>
+<section id="meta-muse"><h2>Meta Muse (personal assistant)</h2>
+<p>Meta Muse can build custom connectors. Its personal assistant is different from <b>Muse Code</b> (below), which supports MCP servers directly. In Muse, ask it to create a custom connector using this request:</p>
+<pre id="muse-connector-request">Create a custom connector named Robinson MCP for GitHub.
+Service: ${address}
+Protocol: remote Streamable HTTP MCP.
+Use this service's OAuth sign-in in the browser, and let me approve access. Never request my GitHub password or a token in chat.
+Once connected, show me the GitHub tools available to my account. Make changes only when I ask.</pre>
+<p><small>Muse's custom connector builder may not support every MCP service. If it cannot connect to this MCP endpoint, use Muse Code below, or Muse's existing GitHub connector. This service is not a Meta-reviewed or Meta-listed connector. Custom connection through the Muse personal assistant has not yet been verified.</small></p>
+<h2>Meta Muse Code (coding assistant)</h2>
+<p>In Muse Code's <code>~/.config/muse/settings.json</code>, add this entry to <code>mcp_servers</code> (keep your existing settings):</p>
+<pre id="muse-code-config">{
+  "mcp_servers": {
+    "github-robinson": {
+      "transport": "streamable_http",
+      "url": "${address}",
+      "enabled": true,
+      "mode": "optional"
+    }
+  }
+}</pre>
+<p>Then run <code>muse mcp login github-robinson</code> and approve the GitHub sign-in in your browser. In Muse Code, type <code>/mcp</code> to check the connection. You can log out with <code>muse mcp logout github-robinson</code>.</p>
+<p><small>Both paths use the same independently secured GitHub service. No Meta special access, credentials in chat, or approval bypass is needed.</small></p></section>
 <h2>VS Code</h2><p>Add this to <code>.vscode/mcp.json</code>, then sign in when asked:</p>
 <pre>{
   "servers": {
