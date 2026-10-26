@@ -1,3 +1,7 @@
+## 2026-10-26 — MUSE-2 public Muse onboarding under implementation
+
+See `docs/status/2026-10-26-muse-2.md`: public secretless OAuth client registration, Android Muse fallback Client ID, canonical-audience compatibility and per-person GitHub authorization are being implemented in a review branch. No user-facing Muse acceptance or production deployment is claimed by the branch.
+
 > Older entries (before 2026-10-20) are in `docs/archive/STATUS-before-2026-10-20.md`. New notes go in `docs/status/`.
 
 
