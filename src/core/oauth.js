@@ -7,6 +7,11 @@ import { isIP } from 'node:net';
 
 export const MAX_FAILED_LOGINS = 5;
 export const LOCKOUT_WINDOW_MINUTES = 15;
+// The per-IP cap stops one address, but the admin login checks a single shared passphrase, so a
+// guessing spray spread over many addresses never trips it. 50 total failures per window bounds
+// every attacker combined to ~4,800 guesses/day regardless of how many source IPs rotate, while
+// staying far above what a real admin mistyping (or a couple of people behind one NAT) produces.
+export const MAX_GLOBAL_FAILED_LOGINS = 50;
 export const randomToken = (bytes = 32) => randomBytes(bytes).toString('base64url');
 export function hashToken(value) {
   if (typeof value !== 'string' || !value) throw new TypeError('Credential must be non-empty');
@@ -59,9 +64,19 @@ export function clientIp(req) {
 }
 export async function evaluateLogin({ ip, supplied, expected, store }) {
   if (!expected) throw new Error('Login passphrase is not configured');
+  // Rows older than the window can never change a verdict; drop them here so the table stays bounded
+  // without a scheduler. Method guards keep minimal store fakes (which predate the purge and the
+  // global budget) working unchanged.
+  if (store.purgeExpiredLoginAttempts) await store.purgeExpiredLoginAttempts(LOCKOUT_WINDOW_MINUTES);
   const attempt = await store.recordLoginAttempt(ip);
   const count = await store.countRecentFailedLogins(ip, LOCKOUT_WINDOW_MINUTES);
   if (count > MAX_FAILED_LOGINS) return { status: 'locked' };
+  // One address's cap cannot stop a spray across many addresses against the shared passphrase, so
+  // cap the total too. Same 'locked' verdict as the per-IP limit so callers cannot leak which fired.
+  if (store.countRecentFailedLoginsAll) {
+    const total = await store.countRecentFailedLoginsAll(LOCKOUT_WINDOW_MINUTES);
+    if (total > MAX_GLOBAL_FAILED_LOGINS) return { status: 'locked' };
+  }
   if (!secretsMatch(supplied, expected)) return { status: 'wrong', attemptsLeft: MAX_FAILED_LOGINS - count };
   await store.markLoginAttemptSucceeded(attempt);
   return { status: 'ok' };

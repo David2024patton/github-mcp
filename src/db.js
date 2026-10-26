@@ -954,6 +954,21 @@ export function createDb(sql = productionSql()) {
       return rows[0].count;
     },
 
+    // Global counterpart: one shared admin passphrase means per-IP caps alone let a distributed
+    // spray guess without limit, so evaluateLogin also enforces a whole-table budget.
+    async countRecentFailedLoginsAll(minutes = 15) {
+      const rows = await sql`SELECT count(*)::integer AS count FROM login_attempts
+        WHERE success = FALSE AND attempted_at > now() - ${minutes} * interval '1 minute'`;
+      return rows[0].count;
+    },
+
+    // Rows past the lockout window can no longer affect any verdict; dropping them on every
+    // evaluation keeps the table bounded without a scheduler. The DELETE is a single idempotent
+    // statement, so concurrent logins racing here are safe.
+    async purgeExpiredLoginAttempts(minutes = 15) {
+      await sql`DELETE FROM login_attempts WHERE attempted_at < now() - ${minutes} * interval '1 minute'`;
+    },
+
     // ---- GitHub Apps, accounts and credentials (A-5a). Values named *_enc are ciphertext made by src/github/credentials.js. ----
 
     /** Stores (or replaces) the GitHub App returned by the manifest flow. Secrets arrive already encrypted. */
