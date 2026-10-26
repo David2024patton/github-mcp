@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { mergeNamespaces, isToolVisible } from '../../src/core/registry.js';
+import { mergeNamespaces, isToolVisible, toolsForListing } from '../../src/core/registry.js';
 import { pageToolsForListing, toolListingPages, TOOLS_PER_PAGE } from '../../src/core/tool-pages.js';
-import { registry } from '../../src/tools/index.js';
+import { COMPACT_DEVELOPER_TOOLS, registry } from '../../src/tools/index.js';
 import { checkBudgets, listingTokens, EVERYDAY_CATALOG_TOKEN_LIMIT } from '../../scripts/check-budgets.mjs';
 
 const make = names => mergeNamespaces([{ tools: names.map(name => ({ name, description: 'Test', inputSchema: { type: 'object' }, annotations: { readOnlyHint: true } })),
@@ -18,11 +18,38 @@ describe('MCP complete bounded catalog pagination', () => {
   });
   it('has one complete compact list and preserves every everyday tool through the cursor chain', () => {
     const compact = [...toolListingPages(registry, 'everyday', 'compact')];
-    expect(compact.flatMap(p => p.tools.map(t => t.name))).toEqual(registry.tools.filter(t => t.compact && isToolVisible(t,'everyday')).map(t => t.name));
+    expect(compact.flatMap(p => p.tools.map(t => t.name))).toEqual(toolsForListing(registry, 'everyday', 'compact').map(t => t.name));
     const everyday = [...toolListingPages(registry, 'everyday', 'catalog')];
     expect(everyday.flatMap(p => p.tools.map(t => t.name))).toEqual(registry.tools.filter(t => isToolVisible(t,'everyday')).map(t => t.name));
     expect(checkBudgets(registry.tools)).toEqual([]);
     expect(listingTokens(registry.tools).everyday).toBeLessThan(EVERYDAY_CATALOG_TOKEN_LIMIT);
+  });
+  it('shows everyday developer workflows directly without profile, budget, or catalog bypass', () => {
+    const names = new Set(registry.tools.map(t => t.name));
+    expect(new Set(COMPACT_DEVELOPER_TOOLS).size).toBe(COMPACT_DEVELOPER_TOOLS.length);
+    for (const name of COMPACT_DEVELOPER_TOOLS) {
+      expect(names.has(name), name).toBe(true);
+      expect(registry.tools.find(t => t.name === name).compact, name).toBe(true);
+    }
+    for (const profile of ['read_only', 'everyday', 'full']) {
+      const pages = [...toolListingPages(registry, profile, 'compact')];
+      expect(pages, profile).toHaveLength(1);
+      expect(pages[0].nextCursor, profile).toBeUndefined();
+      expect(pages[0].tools.length, profile).toBeLessThanOrEqual(TOOLS_PER_PAGE);
+      const listed = pages[0].tools.map(t => t.name);
+      expect(listed).toEqual(toolsForListing(registry, profile, 'compact').map(t => t.name));
+      for (const name of COMPACT_DEVELOPER_TOOLS) {
+        const tool = registry.tools.find(t => t.name === name);
+        expect(listed.includes(name), profile + ' ' + name).toBe(isToolVisible(tool, profile));
+      }
+      expect(listed).not.toContain('github_repo_delete');
+      expect(listed).not.toContain('github_secret_set');
+      expect(listed).not.toContain('github_protection_remove');
+    }
+    const low = pageToolsForListing(registry, 'read_only', 'compact').tools.map(t => t.name);
+    expect(low).toContain('github_content_get');
+    expect(low).not.toContain('github_content_commit_git_data');
+    expect(low).not.toContain('github_pr_create');
   });
   it('refuses stale, malformed, cross-profile and wrong-listing cursors without expanding visibility', () => {
     const page = pageToolsForListing(registry, 'everyday', 'catalog');

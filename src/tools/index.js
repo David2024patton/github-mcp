@@ -132,4 +132,35 @@ import * as docsSearch from './docs-search.js';
 import * as undo from './undo.js';
 
 // Tool modules are added here as their cards land.
-export const registry = mergeNamespaces([meta, server, undo, diagnostics, devRunsRead, devScratchWrite, devSeedWrite, devTestWrite, devCiWrite, devForwardWrite, devForwardRead, devIntegration, devCleanupWrite, repos, reposWrite, codeRead, codeWrite, gitDataCommit, branches, pullsRead, issuesRead, issuesWrite, issuesRelationsWrite, issuesReactionsWrite, issuesTransferWrite, labels, milestones, labelsSync, searchGitHub, discussions, projectsRead, projectsWrite, projectsManage, projectsItems, moderation, orgPlanning, orgIssueDiscovery, runnersRead, runnersWrite, actionsLimits, advisories, securityScanningWrites, securityConfig, governanceRead, governanceWrite, protectionWrite, webhooksRead, webhooksActions, webhooksSave, accessRead, accessWrite, securityRead, securityScanFiles, securityAlertsWrite, securitySettingsRead, securitySettingsWrite, adminGuided, adminOverview, orgRead, orgGovernanceRead, orgScimWrite, orgSaml, appJwtRead, appJwtInstallGovernance, appJwtWrite, orgWrite, teamRoleRead, teamRoleWrite, billingRead, billingGuided, billingWrite, appsTokens, userAccount, usersPublic, codeQuality, docsSearch, socialWrite, notificationsGists, profiles, appReadiness, projectSetup, workflowHealth, workflowRelease, workflowFind, vulnerabilityAlerts, workflowPr, workflowMerge, workflowReview, workflowCi, pullsWrite, pullsMerge, pullsStacks, reviews, reviewsWrite, actionsRead, actionsWrite, checksRead, asyncJobs, artifactsRead, autofix, wiki, orgAdminExtras, accountExport, copilotSpaces, smallMaster, y9Copilot, y9CopilotRepos, y9Sponsors, y9Hosted, y9AgentTasks, checksWrite, variables, secrets, environmentsRead, environmentsWrite, environmentsPolicies, deploymentsRead, deploymentsWrite, releasesRead, releasesWrite, releasesAssets, pagesRead, packagesRead, pagesWrite, packagesWrite, packagesRestore, universal, universalGraphql, enterprise, enterpriseWrite, enterprisePolicy]);
+const baseRegistry = mergeNamespaces([meta, server, undo, diagnostics, devRunsRead, devScratchWrite, devSeedWrite, devTestWrite, devCiWrite, devForwardWrite, devForwardRead, devIntegration, devCleanupWrite, repos, reposWrite, codeRead, codeWrite, gitDataCommit, branches, pullsRead, issuesRead, issuesWrite, issuesRelationsWrite, issuesReactionsWrite, issuesTransferWrite, labels, milestones, labelsSync, searchGitHub, discussions, projectsRead, projectsWrite, projectsManage, projectsItems, moderation, orgPlanning, orgIssueDiscovery, runnersRead, runnersWrite, actionsLimits, advisories, securityScanningWrites, securityConfig, governanceRead, governanceWrite, protectionWrite, webhooksRead, webhooksActions, webhooksSave, accessRead, accessWrite, securityRead, securityScanFiles, securityAlertsWrite, securitySettingsRead, securitySettingsWrite, adminGuided, adminOverview, orgRead, orgGovernanceRead, orgScimWrite, orgSaml, appJwtRead, appJwtInstallGovernance, appJwtWrite, orgWrite, teamRoleRead, teamRoleWrite, billingRead, billingGuided, billingWrite, appsTokens, userAccount, usersPublic, codeQuality, docsSearch, socialWrite, notificationsGists, profiles, appReadiness, projectSetup, workflowHealth, workflowRelease, workflowFind, vulnerabilityAlerts, workflowPr, workflowMerge, workflowReview, workflowCi, pullsWrite, pullsMerge, pullsStacks, reviews, reviewsWrite, actionsRead, actionsWrite, checksRead, asyncJobs, artifactsRead, autofix, wiki, orgAdminExtras, accountExport, copilotSpaces, smallMaster, y9Copilot, y9CopilotRepos, y9Sponsors, y9Hosted, y9AgentTasks, checksWrite, variables, secrets, environmentsRead, environmentsWrite, environmentsPolicies, deploymentsRead, deploymentsWrite, releasesRead, releasesWrite, releasesAssets, pagesRead, packagesRead, pagesWrite, packagesWrite, packagesRestore, universal, universalGraphql, enterprise, enterpriseWrite, enterprisePolicy]);
+
+// C-3: standalone compact connector exposes everyday code/PR/CI tools directly. The
+// complete catalog, lazy RTC/Hub protocol and every tool's actual authorization stay unchanged.
+// Keep this set bounded by the existing 5,000-token compact tools/list budget.
+export const COMPACT_DEVELOPER_TOOLS = Object.freeze([
+  'github_repo_get',
+  'github_content_get',
+  'github_content_push_files',
+  'github_content_commit_git_data',
+  'github_branch_create',
+  'github_commit_list',
+  'github_pr_list',
+  'github_pr_get',
+  'github_pr_list_files',
+  'github_pr_create',
+  'github_actions_get_run_logs_summary',
+  'github_check_get_ci_state',
+  'github_review_list_threads'
+]);
+const directNames = new Set(COMPACT_DEVELOPER_TOOLS);
+if (directNames.size !== COMPACT_DEVELOPER_TOOLS.length ||
+    COMPACT_DEVELOPER_TOOLS.some(name => !baseRegistry.tools.some(tool => tool.name === name))) {
+  throw new Error('Curated compact developer tools must be distinct, registered GitHub tools.');
+}
+// Do not mutate the frozen read/write declarations. This only sets listing metadata;
+// actual calls still reach the exact same guarded handlers and per-profile checks.
+export const registry = {
+  ...baseRegistry,
+  tools: baseRegistry.tools.map(tool => directNames.has(tool.name)
+    ? Object.freeze({ ...tool, compact: true }) : tool)
+};
