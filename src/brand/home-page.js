@@ -3,6 +3,7 @@
 // client's own official documentation on 2026-10-24; the pages are cited in the HTML comments below.
 import { BRAND, BRAND_CSS, brandHeader, brandFooter } from './brand.js';
 import { escapeHtml as h } from '../core/http.js';
+import { MUSE_PUBLIC_CLIENT_ID } from '../tenancy/muse-client.js';
 
 export const HOME_CSP = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'";
 export const SERVER_ADDRESS = (origin) => `${origin}/api/mcp`;
@@ -43,14 +44,21 @@ export function renderHome(origin = 'https://github.robinsonaisystems.com') {
     "github-robinson": { "url": "${address}" }
   }
 }</pre>
-<section id="meta-muse"><h2>Meta Muse (personal assistant)</h2>
-<p>Meta Muse can build custom connectors. Its personal assistant is different from <b>Muse Code</b> (below), which supports MCP servers directly. In Muse, ask it to create a custom connector using this request:</p>
+<section id="meta-muse"><h2>Meta Muse (personal assistant — Android, iPhone and web)</h2>
+<p>In Muse, open <b>Settings → Connectors → Add custom connector</b>. For the server address, paste the full HTTPS MCP URL:</p>
+<code class="addr" id="muse-address">${address}</code>
+<p>Muse may register automatically. If it instead shows the <b>Secure credentials store</b> screen asking for a Client ID and Secret, use this <b>public, nonsecret client ID</b> (the same for everyone):</p>
+<code class="addr" id="muse-client-id">${h(MUSE_PUBLIC_CLIENT_ID)}</code>
+<p><b>Client Secret: leave blank.</b> Then choose Add. Muse should open GitHub sign-in, where each person signs in to <em>their own GitHub account</em>, approves the App installation on their chosen repositories if needed, and approves Muse. The browser returns to Muse automatically. Never enter a GitHub password, access token, or the service owner's credentials in Muse.</p>
+<p>You can also ask Muse to create the connector for you:</p>
 <pre id="muse-connector-request">Create a custom connector named Robinson MCP for GitHub.
 Service: ${address}
 Protocol: remote Streamable HTTP MCP.
-Use this service's OAuth sign-in in the browser, and let me approve access. Never request my GitHub password or a token in chat.
-Once connected, show me the GitHub tools available to my account. Make changes only when I ask.</pre>
-<p><small>Muse's custom connector builder may not support every MCP service. If it cannot connect to this MCP endpoint, use Muse Code below, or Muse's existing GitHub connector. This service is not a Meta-reviewed or Meta-listed connector. Custom connection through the Muse personal assistant has not yet been verified.</small></p>
+Authentication: OAuth authorization code with S256 PKCE (public client, no secret).
+If a Client ID is required, use ${h(MUSE_PUBLIC_CLIENT_ID)} and leave Client Secret blank.
+Let me approve my own GitHub account in the browser. Never request GitHub passwords or tokens in chat.
+Once connected, show my tools; make changes only after I ask.</pre>
+<p><small>The Client ID identifies Muse, not any GitHub user, and gives no access by itself. Each user's OAuth session, tenant, GitHub installation and permissions are kept separate. If Muse cannot reach the sign-in page, use Muse Code below or the official GitHub connector. This service is not a Meta-reviewed or Meta-listed connector. Live Muse acceptance is pending.</small></p>
 <h2>Meta Muse Code (coding assistant)</h2>
 <p>In Muse Code's <code>~/.config/muse/settings.json</code>, add this entry to <code>mcp_servers</code> (keep your existing settings):</p>
 <pre id="muse-code-config">{

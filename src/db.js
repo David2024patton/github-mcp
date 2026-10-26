@@ -594,25 +594,29 @@ export function createDb(sql = productionSql()) {
 
     // ---- Connector login store (A-3a). Codes, tokens and client secrets are stored as SHA-256 hashes only. ----
 
-    async createOAuthClient({ clientId, clientSecret, redirectUris, clientName, authorizedAccount = null }) {
-      if (!clientId || !clientSecret || !Array.isArray(redirectUris) || !redirectUris.length) {
+    async createOAuthClient({ clientId, clientSecret, authMethod = 'client_secret_post', redirectUris, clientName, authorizedAccount = null }) {
+      if (!clientId || !['none', 'client_secret_post'].includes(authMethod) ||
+          (authMethod === 'none' ? clientSecret !== null : !clientSecret) ||
+          !Array.isArray(redirectUris) || !redirectUris.length) {
         throw new TypeError('Missing OAuth client registration fields.');
       }
       if (authorizedAccount !== null && (typeof authorizedAccount !== 'string' ||
           !/^[A-Za-z0-9-]{1,39}$/.test(authorizedAccount)))
         throw new TypeError('Invalid OAuth client account binding.');
-      const data = JSON.stringify({ client_secret_hash: hashToken(clientSecret), redirect_uris: redirectUris,
+      const data = JSON.stringify({ client_secret_hash: clientSecret ? hashToken(clientSecret) : null,
+        token_endpoint_auth_method: authMethod, redirect_uris: redirectUris,
         client_name: clientName || null, authorized_account: authorizedAccount?.toLowerCase() ?? null });
       await sql`INSERT INTO oauth_clients (client_id, data) VALUES (${clientId}, ${data}::jsonb)`;
     },
 
     /** PUB-6: copies an already-registered public client into this tenant's own table. Only the secret's hash is
      * ever known here, never the secret itself. Idempotent; a changed redirect list or secret overwrites. */
-    async mirrorOAuthClient({ clientId, secretHash, redirectUris, clientName, authorizedAccount }) {
-      if (!clientId || !/^[a-f0-9]{64}$/.test(String(secretHash)) || !Array.isArray(redirectUris) || !redirectUris.length ||
+    async mirrorOAuthClient({ clientId, secretHash, authMethod = 'client_secret_post', redirectUris, clientName, authorizedAccount }) {
+      if (!clientId || !['none', 'client_secret_post'].includes(authMethod) || !/^[a-f0-9]{64}$/.test(String(secretHash)) || !Array.isArray(redirectUris) || !redirectUris.length ||
           (authorizedAccount !== null && (typeof authorizedAccount !== 'string' || !/^[A-Za-z0-9-]{1,39}$/.test(authorizedAccount))))
         throw new TypeError('Invalid OAuth client mirror.');
-      const data = JSON.stringify({ client_secret_hash: secretHash, redirect_uris: redirectUris,
+      const data = JSON.stringify({ client_secret_hash: secretHash,
+        token_endpoint_auth_method: authMethod, redirect_uris: redirectUris,
         client_name: clientName || null, authorized_account: authorizedAccount?.toLowerCase() ?? null });
       await sql`INSERT INTO oauth_clients (client_id, data) VALUES (${clientId}, ${data}::jsonb)
         ON CONFLICT (client_id) DO UPDATE SET data = EXCLUDED.data`;

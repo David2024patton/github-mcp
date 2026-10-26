@@ -20,7 +20,7 @@ export function secretsMatch(supplied, expected) {
 export function verifyPkce(verifier, challenge, method = 'S256') {
   if (method !== 'S256' || typeof challenge !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(challenge)) return false;
   if (typeof verifier !== 'string' || !/^[A-Za-z0-9~._-]{43,128}$/.test(verifier)) return false;
-  return secretsMatch(createHash('sha256').update(verifier).digest('base64url'), challenge);
+  return timingSafeEqual(Buffer.from(createHash('sha256').update(verifier).digest('base64url')), Buffer.from(challenge));
 }
 export function validRedirectUri(value) {
   try {

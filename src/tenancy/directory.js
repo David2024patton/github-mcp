@@ -282,9 +282,12 @@ export function createTenantDirectory(sql) {
         client_id TEXT PRIMARY KEY CHECK (client_id ~ '^pcl_[A-Za-z0-9_-]{32,64}$'),
         secret_hash TEXT NOT NULL,
         redirect_uris TEXT[] NOT NULL CHECK (cardinality(redirect_uris) BETWEEN 1 AND 8),
+        auth_method TEXT NOT NULL DEFAULT 'client_secret_post' CHECK (auth_method IN ('none', 'client_secret_post')),
         client_name TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
+      // Additive for already-deployed stores: existing confidential clients retain their method.
+      await sql`ALTER TABLE gh_public_clients ADD COLUMN IF NOT EXISTS auth_method TEXT NOT NULL DEFAULT 'client_secret_post'`;
       await sql`CREATE TABLE IF NOT EXISTS gh_public_flows (
         state_hash TEXT PRIMARY KEY,
         stage TEXT NOT NULL CHECK (stage IN ('signin','install','god')),
@@ -928,14 +931,14 @@ export function createTenantDirectory(sql) {
 
     // ---- PUB-6 public simple-connect (dark; see src/tenancy/public-connect.js) ----
     /** Returns false when the configured client cap is already reached. */
-    async createPublicClient({ clientId, secretHash, redirectUris, clientName = null, maxClients }) {
+    async createPublicClient({ clientId, secretHash, authMethod = 'client_secret_post', redirectUris, clientName = null, maxClients }) {
       if (!/^pcl_[A-Za-z0-9_-]{32,64}$/.test(String(clientId)) ||
-          !/^[a-f0-9]{64}$/.test(String(secretHash)) ||
+          !/^[a-f0-9]{64}$/.test(String(secretHash)) || !['none', 'client_secret_post'].includes(authMethod) ||
           !Array.isArray(redirectUris) || redirectUris.length < 1 || redirectUris.length > 8 ||
           !Number.isSafeInteger(maxClients) || maxClients < 1)
         throw new TypeError('Invalid public client registration.');
-      const rows = await sql`INSERT INTO gh_public_clients (client_id,secret_hash,redirect_uris,client_name)
-        SELECT ${clientId},${secretHash},${redirectUris}::text[],${clientName}
+      const rows = await sql`INSERT INTO gh_public_clients (client_id,secret_hash,redirect_uris,auth_method,client_name)
+        SELECT ${clientId},${secretHash},${redirectUris}::text[],${authMethod},${clientName}
         WHERE (SELECT count(*) FROM gh_public_clients) < ${maxClients}
         RETURNING client_id`;
       return rows.length === 1;
@@ -959,11 +962,11 @@ export function createTenantDirectory(sql) {
     },
     async getPublicClient(clientId) {
       if (!/^pcl_[A-Za-z0-9_-]{32,64}$/.test(String(clientId))) return null;
-      const rows = await sql`SELECT client_id,secret_hash,redirect_uris,client_name
+      const rows = await sql`SELECT client_id,secret_hash,redirect_uris,auth_method,client_name
         FROM gh_public_clients WHERE client_id=${clientId}`;
       const r = rows[0];
       return r ? { clientId: r.client_id, secretHash: r.secret_hash,
-        redirectUris: r.redirect_uris, clientName: r.client_name } : null;
+        redirectUris: r.redirect_uris, authMethod: r.auth_method, clientName: r.client_name } : null;
     },
     /** Emergency lever: removing a public client stops every future token for it. */
     async deletePublicClient(clientId) {
@@ -1132,6 +1135,14 @@ export function createTenantDirectory(sql) {
       await sql`INSERT INTO gh_public_clients (client_id, secret_hash, redirect_uris, client_name)
         VALUES (${clientId}, ${secretHash}, ${[redirectUri]}::text[], ${String(name).slice(0, 100)})
         ON CONFLICT (client_id) DO UPDATE SET redirect_uris = EXCLUDED.redirect_uris`;
+    },
+    /** Reserved nonsecret public Muse client: fixed verified Meta callback, no owner credential. */
+    async ensureMusePublicClient(clientId, redirectUri, secretHash) {
+      if (!/^pcl_[A-Za-z0-9_-]{32,64}$/.test(clientId) || !/^https:\/\/agent\.meta\.ai\/api\/hatch\/oauth\/callback$/.test(redirectUri) ||
+          !/^[a-f0-9]{64}$/.test(secretHash)) throw new TypeError('Invalid Muse registration.');
+      await sql`INSERT INTO gh_public_clients (client_id, secret_hash, redirect_uris, auth_method, client_name)
+        VALUES (${clientId}, ${secretHash}, ${[redirectUri]}::text[], 'none', 'Meta Muse')
+        ON CONFLICT (client_id) DO NOTHING`;
     },
     /** Deletes one public person's tenant completely (see gh_forget_public_tenant). False when it does not exist. */
     async forgetPublicTenant(tenantId) {

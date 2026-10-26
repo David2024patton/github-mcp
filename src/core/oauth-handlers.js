@@ -19,7 +19,8 @@ export function createOAuthHandlers({ db, env = process.env, policy, scopesSuppo
   }
   // resourceUrl is supplied only by trusted service composition after resolving the token's tenant.
   const urls = () => { const origin = publicOrigin(env); return { origin, resource: resourceUrl ?? origin + '/api/mcp' }; };
-  const validateResource = (value) => value === urls().resource;
+  // A missing resource defaults to this single canonical MCP audience. Explicit other targets fail.
+  const validateResource = (value) => value === undefined || value === urls().resource;
 
   async function register(req, res) {
     if (!only(res, req, ['POST'])) return;
@@ -29,15 +30,16 @@ export function createOAuthHandlers({ db, env = process.env, policy, scopesSuppo
       !p.redirect_uris.every((x) => typeof x === 'string' && validRedirectUri(x)) || new Set(p.redirect_uris).size !== p.redirect_uris.length) {
       return bad(res, 400, 'invalid_client_metadata', 'One to eight valid, distinct redirect URIs required');
     }
-    if (p.token_endpoint_auth_method && p.token_endpoint_auth_method !== 'client_secret_post') {
-      return bad(res, 400, 'invalid_client_metadata', 'Only client_secret_post is supported');
+    if (p.token_endpoint_auth_method && !['client_secret_post', 'none'].includes(p.token_endpoint_auth_method)) {
+      return bad(res, 400, 'invalid_client_metadata', 'Supported methods: client_secret_post and none');
     }
     const id = randomToken(24);
-    const secret = randomToken(32);
-    await db.createOAuthClient({ clientId: id, clientSecret: secret, redirectUris: p.redirect_uris, clientName: str(p.client_name).slice(0, 100) });
+    const authMethod = p.token_endpoint_auth_method ?? 'client_secret_post';
+    const secret = authMethod === 'none' ? null : randomToken(32);
+    await db.createOAuthClient({ clientId: id, clientSecret: secret, authMethod, redirectUris: p.redirect_uris, clientName: str(p.client_name).slice(0, 100) });
     return send(res, 201, {
-      client_id: id, client_secret: secret, client_secret_expires_at: 0, redirect_uris: p.redirect_uris,
-      token_endpoint_auth_method: 'client_secret_post', grant_types: ['authorization_code', 'refresh_token'], response_types: ['code']
+      client_id: id, ...(secret ? { client_secret: secret, client_secret_expires_at: 0 } : {}), redirect_uris: p.redirect_uris,
+      token_endpoint_auth_method: authMethod, grant_types: ['authorization_code', 'refresh_token'], response_types: ['code']
     });
   }
 
@@ -45,6 +47,7 @@ export function createOAuthHandlers({ db, env = process.env, policy, scopesSuppo
     if (!only(res, req, ['GET', 'POST'])) return;
     let p;
     try { p = paramsOf(req); } catch { return bad(res, 400, 'invalid_request', 'Malformed authorization request'); }
+    if (p.resource === undefined) p = { ...p, resource: urls().resource };
     const client = await db.getOAuthClient(str(p.client_id));
     if (!client || !client.redirect_uris?.includes(p.redirect_uri) || !validRedirectUri(p.redirect_uri)) {
       return bad(res, 400, 'invalid_request', 'Unknown client or redirect address');
@@ -85,7 +88,10 @@ export function createOAuthHandlers({ db, env = process.env, policy, scopesSuppo
     try { p = paramsOf(req); } catch { return bad(res, 400, 'invalid_request', 'Malformed token request'); }
     if (!validateResource(p.resource)) return bad(res, 400, 'invalid_target', 'Token resource must be this MCP');
     const client = await db.getOAuthClient(str(p.client_id));
-    if (!client || typeof p.client_secret !== 'string' || !p.client_secret || !secretsMatch(hashToken(p.client_secret), client.client_secret_hash)) {
+    // The registration decides the auth method; requests cannot downgrade confidential clients.
+    const publicClient = client?.token_endpoint_auth_method === 'none';
+    if (!client || (publicClient ? p.client_secret !== undefined && p.client_secret !== ''
+      : !(typeof p.client_secret === 'string' && p.client_secret && secretsMatch(hashToken(p.client_secret), client.client_secret_hash)))) {
       return bad(res, 401, 'invalid_client', 'Client credentials rejected');
     }
     if (p.grant_type === 'authorization_code') {
@@ -124,7 +130,7 @@ export function createOAuthHandlers({ db, env = process.env, policy, scopesSuppo
       registration_endpoint: origin + '/api/oauth/register', response_types_supported: ['code'],
       grant_types_supported: ['authorization_code', 'refresh_token'], code_challenge_methods_supported: ['S256'],
       authorization_response_iss_parameter_supported: true,
-      token_endpoint_auth_methods_supported: ['client_secret_post'],
+      token_endpoint_auth_methods_supported: ['client_secret_post', 'none'],
       ...(scopesSupported?{scopes_supported:scopesSupported}:{})
     });
   }
