@@ -78,6 +78,10 @@ describe('bounded file secret pattern review', () => {
     expect(found.findings.map(x => x.line)).toEqual([1, 2, 3, 4]);
     expect(JSON.stringify(found)).not.toContain(fake);
     expect(JSON.stringify(found)).not.toContain('xoxb-');
+    const stateless = 'ghs_FAKE' + 'a-_'.repeat(15) + '.' + 'b-_'.repeat(100) + '.' + 'c-_'.repeat(60);
+    const statelessResult = detectCredentialPatterns('token=' + stateless, 'stateless.js');
+    expect(statelessResult.findings).toMatchObject([{ path: 'stateless.js', line: 1, rule: 'github_oauth_or_app_token' }]);
+    expect(JSON.stringify(statelessResult)).not.toContain(stateless);
     expect(detectCredentialPatterns('console.log("safe");', 'ok.js').findings).toEqual([]);
     expect(detectCredentialPatterns(source, 'src/file.js', 2).capped).toBe(true);
   });
