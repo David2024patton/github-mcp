@@ -385,7 +385,7 @@ Card(s): H-3.
 | `github_deploykey_add` | Add a deploy key (public key only; write access is access-widening and production) | C·A·Prod* | F | I | O | F | H-3 built #194 |
 | `github_deploykey_delete` | Remove a deploy key | C·Prod | C | I | O | F | H-3 built #194 |
 
-## Security features and alerts; Actions settings (`github_security_*, github_actions_*settings`) — 9
+## Security features and alerts; Actions settings (`github_security_*, github_actions_*settings`) — 10
 
 Card(s): H-4.
 
@@ -394,6 +394,7 @@ Card(s): H-4.
 | `github_security_get_settings` | Read verified repo security features including AI detection, non-provider patterns, delegated dismissal/bypass, private reporting and dedicated Dependabot enabled/paused state | — | F | I | O,B | R | H-4 built #195/#196/#224 |
 | `github_security_set_feature` | Enable/disable all provider-supported repo security switches: direct security_and_analysis PATCH, Dependabot PUT/DELETE and private-reporting PUT/DELETE, with paid/private notices, bypass access consent and exact independent readback | C·$*·Prod | F | I | O | F | H-4 built #195/#196/#224 |
 | `github_security_list_alerts` | Dependabot, code scanning or secret scanning alerts for a repo or org (kind chosen by argument) | — | C | I | O,B,Op | R | H-4 built #195/#196/#224 |
+| `github_security_scan_files` | Inspect up to 12 chosen GitHub-hosted files for common secret patterns; redacted locations only, not GitHub's full proprietary scan or local uncommitted changes | — | N | I | B,O,Op | R | PAR-2 |
 | `github_security_get_alert` | One alert in plain words (secret scanning: the secret itself is never returned) | — | F | I | O,B | R | H-4 built #195/#196/#224 |
 | `github_security_update_alert` | Dismiss, resolve or reopen an alert with a reason | C·Prod | C | I | O,B | E | H-4 built #195/#196/#224 |
 | `github_security_list_advisories` | Repository security advisories, or global advisories by package | — | C | I | O,B | R | H-4 built #195/#196/#224 |
@@ -518,7 +519,7 @@ O-1 source correction PR #257: user-profile links in both guided entrypoints der
 | `github_admin_check_setting` | Verify supported organization 2FA directly; unsupported settings explicitly require manual confirmation | — | N | I,U | O | R | O-1 built #197/#224 |
 | `github_admin_review_security` | Review bounded enrolled organization access and security findings without misclassifying denied reads as passing | — | N | I,U | O | R | O-1 built #197/#224 |
 
-## Moderation and organization planning objects (`github_comment_*, github_org_issue_*`) — 16
+## Moderation and organization planning objects (`github_comment_*, github_org_issue_*`) — 18
 
 Card(s): Y-5. Acts on text written by other people, so hiding and deleting always ask first and previews quote the text as untrusted data. GraphQL tools reuse the reviewed Y-2 write specs. Issue types and fields are organization-wide: every change asks first and deletes need the exact name and have no undo. Select-field options keep their ids unless named in `removeOptions`.
 
@@ -532,8 +533,10 @@ Card(s): Y-5. Acts on text written by other people, so hiding and deleting alway
 | `github_issue_delete` | Permanently delete an issue (admin only; number typed twice; no undo) | C·D·Prod | N | I | Op,O | F | Y-5 |
 | `github_discussion_manage` | Close, reopen, edit or delete a discussion, or mark an answer | C·D·Prod* | N | I | Op,O | F | Y-5 |
 | `github_issue_link_branch` | Create a branch linked to an issue or unlink one | C | N | I | Op,O | F | Y-5 |
+| `github_org_list_issue_types` | List a connected organization's issue types with IDs, descriptions, colors and enabled flags; bounded | — | N | I | B,O,Op | R | PAR-2 |
 | `github_org_issue_type_save` | Create or edit an organization issue type | C | N | I | O | F | Y-5 |
 | `github_org_issue_type_delete` | Delete an organization issue type (name typed; no undo) | C·D·Prod | N | I | O | F | Y-5 |
+| `github_org_list_issue_fields` | List connected organization issue fields, types, visibility and select options; bounded | — | N | I | B,O,Op | R | PAR-2 |
 | `github_org_issue_field_save` | Create or edit an organization issue field; select options keep their ids | C | N | I | O | F | Y-5 |
 | `github_org_issue_field_delete` | Delete an organization issue field and its values (name typed; no undo) | C·D·Prod | N | I | O | F | Y-5 |
 | `github_issue_set_fields` | Set organization issue field values on an issue | P·M | N | I | Op,O | F | Y-5 |
@@ -849,7 +852,7 @@ Card(s): PAR-1. Code Quality findings come from GitHub's own analysis (not marke
 
 ## Totals
 
-**Totals:** 471 tools: 465 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 474 tools: 468 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 158, everyday adds 83
 (everyday lists 240), full adds 113 (full lists 396). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
@@ -876,7 +879,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Branch protection and rulesets | 9 |
 | Webhooks | 8 |
 | Collaborators and deploy keys | 7 |
-| Security features and alerts; Actions settings | 9 |
+| Security features and alerts; Actions settings | 10 |
 | Owner: organization and members | 12 |
 | Owner: teams and roles | 9 |
 | Owner: billing, budgets, Copilot and Codespaces | 14 |
@@ -884,7 +887,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Owner: personal account | 14 |
 | Owner: notifications and gists | 7 |
 | Owner and administration: guided settings | 3 |
-| Moderation and organization planning objects | 16 |
+| Moderation and organization planning objects | 18 |
 | Self-hosted runners and Actions administration | 12 |
 | Security writes | 12 |
 | Background jobs, archives and autofix | 8 |
@@ -900,7 +903,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | GitHub Enterprise | 13 |
 | Master-token families: Copilot Spaces, Classroom, Marketplace and more | 17 |
 | Code quality and GitHub help | 4 |
-| **Total** | **471** |
+| **Total** | **474** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 
