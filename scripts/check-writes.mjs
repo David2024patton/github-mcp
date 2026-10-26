@@ -4,8 +4,10 @@
 // and Profile cells and the tool's own declarations must say the same thing. Every registered tool needs a catalog row.
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+// URL.pathname keeps the "/C:/" prefix on Windows, so path.resolve doubles the drive letter; fileURLToPath is right on every OS.
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Reads every tool row of the catalog: `{ name, safety, cred, profile, card }`. */
 export function parseCatalog(text) {

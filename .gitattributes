@@ -1,0 +1,7 @@
+# Why: the repo stores LF, but a Windows checkout with core.autocrlf rewrites text files to CRLF and the
+# tests hash/compare raw file bytes, so tests/unit/vendor.test.js, tests/unit/god-6-app-only.test.js,
+# tests/unit/check-core-imports.test.js and four check:session assertions fail on line endings alone.
+* text=auto eol=lf
+
+# Why: keep git from touching image bytes even though text=auto is content-sniffed.
+*.png binary
