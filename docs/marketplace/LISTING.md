@@ -15,7 +15,7 @@ It is free. A fair daily allowance applies to every person (see the limits page)
 
 **Features**
 - Works with Claude, ChatGPT, Claude Code, Cursor and VS Code.
-- Read-only mode and previews before changes.
+- Read-only mode blocks all changes; changes touching production, access, notifications or spend come back for preview and confirmation first.
 - Repositories, files, branches, pull requests, reviews, issues and Actions.
 - One address to paste; no software to install.
 - Disconnect and delete your data any time.

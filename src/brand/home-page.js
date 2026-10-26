@@ -20,7 +20,7 @@ export function renderHome(origin = 'https://github.robinsonaisystems.com') {
 <h1>Let your AI assistant work with your GitHub, safely</h1>
 <p>${h(BRAND.product)} connects Claude, ChatGPT and other AI apps to your GitHub account. You sign in with GitHub and choose what the assistant may do.</p>
 <ul><li>Read and manage repositories, files, branches, pull requests, issues and Actions.</li>
-<li>Read-only mode blocks all changes. Changes touching production, access, notifications or spend always come back for a preview and confirmation first; other small changes go through in one step — unless your app previews first, with dryRun on every write tool.</li>
+<li>Read-only mode blocks all changes. Changes touching production, access, notifications or spend always come back for a preview and confirmation first; other small changes go through in one step, unless your app previews first with dryRun on every write tool.</li>
 <li>Free. You can disconnect and delete your data at any time.</li></ul>
 <p><small>Not affiliated with or endorsed by GitHub.</small></p>
 <section id="connect"><h2>Connect your AI app</h2><p>Paste this address into your AI app when it asks for a server or connector address:</p>
