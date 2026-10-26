@@ -385,7 +385,7 @@ Card(s): H-3.
 | `github_deploykey_add` | Add a deploy key (public key only; write access is access-widening and production) | C·A·Prod* | F | I | O | F | H-3 built #194 |
 | `github_deploykey_delete` | Remove a deploy key | C·Prod | C | I | O | F | H-3 built #194 |
 
-## Security features and alerts; Actions settings (`github_security_*, github_actions_*settings`) — 9
+## Security features and alerts; Actions settings (`github_security_*, github_actions_*settings`) — 10
 
 Card(s): H-4.
 
@@ -519,7 +519,7 @@ O-1 source correction PR #257: user-profile links in both guided entrypoints der
 | `github_admin_check_setting` | Verify supported organization 2FA directly; unsupported settings explicitly require manual confirmation | — | N | I,U | O | R | O-1 built #197/#224 |
 | `github_admin_review_security` | Review bounded enrolled organization access and security findings without misclassifying denied reads as passing | — | N | I,U | O | R | O-1 built #197/#224 |
 
-## Moderation and organization planning objects (`github_comment_*, github_org_issue_*`) — 16
+## Moderation and organization planning objects (`github_comment_*, github_org_issue_*`) — 18
 
 Card(s): Y-5. Acts on text written by other people, so hiding and deleting always ask first and previews quote the text as untrusted data. GraphQL tools reuse the reviewed Y-2 write specs. Issue types and fields are organization-wide: every change asks first and deletes need the exact name and have no undo. Select-field options keep their ids unless named in `removeOptions`.
 
@@ -852,7 +852,7 @@ Card(s): PAR-1. Code Quality findings come from GitHub's own analysis (not marke
 
 ## Totals
 
-**Totals:** 471 tools: 465 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 474 tools: 468 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 158, everyday adds 83
 (everyday lists 240), full adds 113 (full lists 396). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
@@ -879,7 +879,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Branch protection and rulesets | 9 |
 | Webhooks | 8 |
 | Collaborators and deploy keys | 7 |
-| Security features and alerts; Actions settings | 9 |
+| Security features and alerts; Actions settings | 10 |
 | Owner: organization and members | 12 |
 | Owner: teams and roles | 9 |
 | Owner: billing, budgets, Copilot and Codespaces | 14 |
@@ -887,7 +887,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | Owner: personal account | 14 |
 | Owner: notifications and gists | 7 |
 | Owner and administration: guided settings | 3 |
-| Moderation and organization planning objects | 16 |
+| Moderation and organization planning objects | 18 |
 | Self-hosted runners and Actions administration | 12 |
 | Security writes | 12 |
 | Background jobs, archives and autofix | 8 |
@@ -903,7 +903,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | GitHub Enterprise | 13 |
 | Master-token families: Copilot Spaces, Classroom, Marketplace and more | 17 |
 | Code quality and GitHub help | 4 |
-| **Total** | **471** |
+| **Total** | **474** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 
