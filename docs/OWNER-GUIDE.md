@@ -1,5 +1,7 @@
 # Owner guide — what you can ask for
 
+**Fast everyday workflow (C-4, source awaiting merge and scheduled release):** already-authorized routine changes can be requested in a single call without an automatic preview round trip. Ask for a preview if you want one; the server still requests confirmation for risk-sensitive actions. `github_batch` processes up to 10 read-only operations with at most 3 independent reads in flight and returns answers in your original order; changes are never included in read batches. All access, spending, branch and replay safeguards remain in place.
+
 **Everyday development shortcut (C-3, available after the normal daily live release):** the compact connector puts common repository, file, branch, commit, PR, CI and review-reading tools directly in the agent's initial tool list. Agents can call these tools without first searching for their names and loading schemas. This changes visibility only, not the permission/safety checks. Specialist tools remain searchable and the separate Hub interface stays lazy.
 
 Plain-English things to say to Claude once each part is built. Each line names the batch that delivered it; all of these are built now (live acceptance varies per line; see STATUS). This file is updated as features ship. Anything that touches your real `main` branches, releases,
