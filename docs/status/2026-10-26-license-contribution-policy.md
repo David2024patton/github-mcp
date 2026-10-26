@@ -1,0 +1,7 @@
+# LIC-1: licensing-status and controlled outside contributions (2026-10-26)
+
+Owner requested a license policy for a contributor and continuing help without automatic merges. The repo had no root LICENSE or CONTRIBUTING file. This change records the current default proprietary/all-rights-reserved copyright status; it **does not choose MIT/Apache-2.0/GPL**, grant third-party redistribution, or claim other authors' material. Contributions require individual review, tests, and explicit merge through the repo's green exact-head PR conveyor.
+
+Repo visibility remains PUBLIC. The user separately requested an evaluation of private conversion, but no authorization to change visibility, spend or collaborator access was given. GitHub account readback: org plan Free, October to date 36,527 Linux minutes org-wide, $0 paid and $0 overage prevention budget; private Free allowance 2,000 minutes per month. David's public fork would remain public and detached, and he currently has no direct collaborator access. Converting without a low-volume CI budget and new contributor access could block required checks.
+
+Testing: documentation-only change; required exact-head CI/release-policy and review must pass before any merge. No production, billing, permission or live release change was made.

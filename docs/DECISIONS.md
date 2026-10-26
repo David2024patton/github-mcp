@@ -1,3 +1,7 @@
+## 2026-10-26 — licensing status and independent contribution decisions
+
+Owner asked for a clearly stated policy so outside contributors can continue submitting PRs without automatic adoption. The existing absence of an open-source license means default rights remain reserved. LICENSE documents that position, preserving third-party rights and granting no new software reuse license. CONTRIBUTING explains owner-controlled, tested review. A genuinely new open-source or commercial license would require a separate owner decision. Evaluation of private visibility does not approve switching it or changing collaborator access and Actions budgets.
+
 ## 2026-10-23 — finish plan written (batch FIN), not built yet
 
 Chris asked for every remaining piece to be designed and planned so a lesser model (Sol 5.6, light/medium effort) can
