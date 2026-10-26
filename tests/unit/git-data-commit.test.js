@@ -106,11 +106,11 @@ describe('Git Data binary commits', () => {
     const permitted = await makeWorld({ accounts: ['Robinson-AI-Systems'], advanceClockOnSleep: true });
     arrange(permitted.gh);
     const input = { ...args, repo: 'github-mcp', branch: 'ai/fix-binary', confirm: true };
-    const added = await run(permitted, input);
+    const added = parse(await doorsFor(definition)[1].call(permitted, input));
     expect(added.status).toBe('applied');
     const main = await makeWorld({ accounts: ['Robinson-AI-Systems'], mode: 'production', advanceClockOnSleep: true });
     arrange(main.gh);
-    const refused = await run(main, { ...input, branch: 'main' });
+    const refused = parse(await doorsFor(definition)[1].call(main, { ...input, branch: 'main' }));
     expect(refused.status).toBe('refused_by_guard');
     expect(refused.refusedBy).toContain('protected');
     expect(main.gh.calls.filter(c => c.method === 'POST' || c.method === 'PATCH')).toHaveLength(0);
