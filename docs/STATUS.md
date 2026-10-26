@@ -1,5 +1,6 @@
 > Older entries (before 2026-10-20) are in `docs/archive/STATUS-before-2026-10-20.md`. New notes go in `docs/status/`.
 
+
 ## 2026-10-22 — CAP-4 closed, CAP-5 planned, owner checklist extended
 
 CAP-3 and CAP-4 marked MERGED in the index (#274, #277, #281). CAP-4 closeout with dispositions in its card; backlog in ROADMAP. CAP-5 card written (capability report + scratch-org acceptance through the saved connection). Owner checklist gains connection and enterprise rows. AGENTS.md now tells agents to run `BASE_SHA=... npm run check` as CI does. Docs only.

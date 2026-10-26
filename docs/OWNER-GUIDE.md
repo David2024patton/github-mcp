@@ -214,3 +214,9 @@ An enrolled private client can ask **github_check_permissions** for a *specific 
 
 
 **Using the added permission:** Once the protected private-member form records a verified K grant, run `github_notify_list` for that same connected account to read its personal notifications. The adapter decrypts the K credential only inside the server and verifies the exact allowed GitHub GET at request time. An independently enrolled P classic token permits an exact `github_api_read` of `GET /orgs/{org}/packages` for the same registered organization, although ordinary App clients may already read package metadata without one. Neither private K nor P can authorize marking notifications read, deleting/restoring packages, changing permissions, GraphQL, repository-scoped passes or any other route. Those actions need separately reviewed, properly gated authority. An expired, revoked, reallowlisted, overwritten or foreign-person token fails closed, with a new protected enrollment required where applicable. Provider/device tests remain pending; do not infer live access or a successful automatic ChatGPT callback from source-level proof alone.
+
+## Connect Meta Muse or Muse Code
+
+For **Muse Code**, open `https://github.robinsonaisystems.com`, find **Meta Muse Code** and copy the settings JSON into your Muse Code `mcp_servers` settings. Run `muse mcp login github-robinson` and sign in with GitHub in the browser, then `/mcp` to verify the available tools.
+
+For the **Muse personal assistant**, the same page has a ready-to-paste custom connector request; Muse's consumer connector builder is different from Muse Code's native MCP support. A working consumer custom connector still requires a real Muse acceptance check; this service is not approved or listed in Meta's catalog. Do not paste GitHub tokens or passwords into the chat. Every app uses the same account permission and safety controls.

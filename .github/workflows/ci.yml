@@ -162,21 +162,19 @@ jobs:
       - if: steps.scope.outputs.code == 'true'
         run: npm ci
       # Chromium: the runner's own Google Chrome (nothing to download). WebKit: Playwright's build plus its system libraries.
-      # A slow or stuck install fails within 6 minutes and leaves its last output as an annotation on the check.
+      # A slow or stuck install fails after one bounded attempt and leaves its last output as an annotation.
       - name: Install the WebKit engine
         if: steps.scope.outputs.code == 'true'
-        timeout-minutes: 8
-        # Usually under a minute. Ubuntu's package mirror is sometimes very slow, so one stuck attempt is cut off and retried
-        # (the retry reuses what was already downloaded). A real failure still fails the job, with its output as an annotation.
+        timeout-minutes: 6
+        # The runner's mirror can take over 210 s. Do not retry an apt installation killed by a timeout:
+        # its surviving apt-get child holds dpkg's lock, making the next attempt fail before tests execute.
+        # Give one bounded 5-minute attempt and retain the real browser suite, never skip WebKit.
         run: |
           start=$(date +%s)
-          for attempt in 1 2; do
-            if timeout 210 npx playwright install --with-deps webkit > /tmp/pw-install.log 2>&1; then
-              echo "::notice title=WebKit install::attempt $attempt took $(( $(date +%s) - start )) seconds"
-              exit 0
-            fi
-            echo "::warning title=WebKit install attempt $attempt::$(tail -c 400 /tmp/pw-install.log | tr '\n\r' '  ')"
-          done
+          if timeout 300 npx playwright install --with-deps webkit > /tmp/pw-install.log 2>&1; then
+            echo "::notice title=WebKit install::completed in $(( $(date +%s) - start )) seconds"
+            exit 0
+          fi
           echo "::error title=WebKit install failed::$(tail -c 900 /tmp/pw-install.log | tr '\n\r' '  ')"
           exit 1
       - if: steps.scope.outputs.code == 'true'
