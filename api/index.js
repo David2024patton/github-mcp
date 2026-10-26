@@ -31,6 +31,9 @@ export default function handler(req, res) {
     return res.status(200).send(iconBytes(Number(icon)));
   }
   res.setHeader('Cache-Control', 'no-store');
+  // The JSON and home-page answers below bypass send() from src/core/http.js, so they must set
+  // nosniff themselves exactly the way send() does for every other page.
+  res.setHeader('X-Content-Type-Options', 'nosniff');
   // People opening the address in a browser get the home page; programs (health checks, scripts) keep the plain JSON.
   if (/\btext\/html\b/.test(String(req.headers?.accept ?? ''))) {
     res.setHeader('Content-Security-Policy', HOME_CSP);
