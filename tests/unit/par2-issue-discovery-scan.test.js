@@ -108,6 +108,23 @@ describe('bounded file secret pattern review', () => {
     expect(w.gh.invalid).toEqual([]);
     expect(w.gh.calls.filter(c => c.method !== 'GET')).toHaveLength(0);
   });
+  it('skips unreadable and binary files without treating their absence as clean', async () => {
+    const binary = await makeWorld({ profile: 'read_only' });
+    binary.gh.when('GET /repos/{owner}/{repo}/contents/{path}')
+      .reply(200, contents('binary.bin', '\\x00' + 'not-text'));
+    const out = await run(binary, 'github_security_scan_files',
+      { owner: ORG, repo: 'example-repo', paths: ['binary.bin'] });
+    expect(out.body).toMatchObject({ complete: false, scanned_files: 0,
+      skipped: [{ path: 'binary.bin', reason: 'binary_or_invalid_text' }] });
+    const missing = await makeWorld({ profile: 'read_only' });
+    missing.gh.when('GET /repos/{owner}/{repo}/contents/{path}')
+      .reply(404, { message: 'Not Found' });
+    const notFound = await run(missing, 'github_security_scan_files',
+      { owner: ORG, repo: 'example-repo', paths: ['missing.txt'] });
+    expect(notFound.body).toMatchObject({ complete: false, scanned_files: 0,
+      skipped: [{ path: 'missing.txt', reason: 'missing_or_not_accessible' }] });
+    expect(JSON.stringify(notFound.body)).not.toContain('clean');
+  });
   it('reports incomplete scans, rejects unsafe paths, binary or oversized content and cross-account access', async () => {
     const w = await makeWorld({ profile: 'read_only' });
     w.gh.when('GET /repos/{owner}/{repo}/contents/{path}').reply(200, () =>
