@@ -394,6 +394,7 @@ Card(s): H-4.
 | `github_security_get_settings` | Read verified repo security features including AI detection, non-provider patterns, delegated dismissal/bypass, private reporting and dedicated Dependabot enabled/paused state | — | F | I | O,B | R | H-4 built #195/#196/#224 |
 | `github_security_set_feature` | Enable/disable all provider-supported repo security switches: direct security_and_analysis PATCH, Dependabot PUT/DELETE and private-reporting PUT/DELETE, with paid/private notices, bypass access consent and exact independent readback | C·$*·Prod | F | I | O | F | H-4 built #195/#196/#224 |
 | `github_security_list_alerts` | Dependabot, code scanning or secret scanning alerts for a repo or org (kind chosen by argument) | — | C | I | O,B,Op | R | H-4 built #195/#196/#224 |
+| `github_security_scan_files` | Inspect up to 12 chosen GitHub-hosted files for common secret patterns; redacted locations only, not GitHub's full proprietary scan or local uncommitted changes | — | N | I | B,O,Op | R | PAR-2 |
 | `github_security_get_alert` | One alert in plain words (secret scanning: the secret itself is never returned) | — | F | I | O,B | R | H-4 built #195/#196/#224 |
 | `github_security_update_alert` | Dismiss, resolve or reopen an alert with a reason | C·Prod | C | I | O,B | E | H-4 built #195/#196/#224 |
 | `github_security_list_advisories` | Repository security advisories, or global advisories by package | — | C | I | O,B | R | H-4 built #195/#196/#224 |
@@ -532,8 +533,10 @@ Card(s): Y-5. Acts on text written by other people, so hiding and deleting alway
 | `github_issue_delete` | Permanently delete an issue (admin only; number typed twice; no undo) | C·D·Prod | N | I | Op,O | F | Y-5 |
 | `github_discussion_manage` | Close, reopen, edit or delete a discussion, or mark an answer | C·D·Prod* | N | I | Op,O | F | Y-5 |
 | `github_issue_link_branch` | Create a branch linked to an issue or unlink one | C | N | I | Op,O | F | Y-5 |
+| `github_org_list_issue_types` | List a connected organization's issue types with IDs, descriptions, colors and enabled flags; bounded | — | N | I | B,O,Op | R | PAR-2 |
 | `github_org_issue_type_save` | Create or edit an organization issue type | C | N | I | O | F | Y-5 |
 | `github_org_issue_type_delete` | Delete an organization issue type (name typed; no undo) | C·D·Prod | N | I | O | F | Y-5 |
+| `github_org_list_issue_fields` | List connected organization issue fields, types, visibility and select options; bounded | — | N | I | B,O,Op | R | PAR-2 |
 | `github_org_issue_field_save` | Create or edit an organization issue field; select options keep their ids | C | N | I | O | F | Y-5 |
 | `github_org_issue_field_delete` | Delete an organization issue field and its values (name typed; no undo) | C·D·Prod | N | I | O | F | Y-5 |
 | `github_issue_set_fields` | Set organization issue field values on an issue | P·M | N | I | Op,O | F | Y-5 |
