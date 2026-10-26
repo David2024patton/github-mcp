@@ -37,6 +37,7 @@ import { bareOctokit } from '../github/client.js';
 import { hashToken, randomToken, validRedirectUri } from '../core/oauth.js';
 import { publicOrigin } from '../core/http.js';
 import { isPublicClientId, publicAuthCode, parsePublicCode } from './public-code.js';
+import { MUSE_PUBLIC_CLIENT_ID, MUSE_REDIRECT_URI } from './muse-client.js';
 import { createMarketplaceStore } from '../marketplace/store.js';
 import { accountFromResource, marketplaceAccount } from '../marketplace/resource.js';
 import { marketplaceEnabled, verifyMarketplacePurchase } from '../marketplace/lifecycle.js';
@@ -113,7 +114,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const origin = active();
     if (!isPublicClientId(p.client_id) || [FORGET_CLIENT, MANAGE_CLIENT].includes(p.client_id) || p.response_type !== 'code' ||
         p.code_challenge_method !== 'S256' || !CHALLENGE.test(String(p.code_challenge ?? '')) ||
-        !(p.resource === origin + '/api/mcp' || (marketplaceEnabled(env) && accountFromResource(p.resource, env))) ||
+        !((p.resource === undefined || p.resource === origin + '/api/mcp') || (marketplaceEnabled(env) && accountFromResource(p.resource, env))) ||
         typeof p.redirect_uri !== 'string' || !validRedirectUri(p.redirect_uri) ||
         (p.state !== undefined && (typeof p.state !== 'string' || p.state.length > 256)) ||
         (p.scope !== undefined && !(typeof p.scope === 'string' && p.scope.split(/\s+/).filter(Boolean).every((x) => ADVERTISED_SCOPES.includes(x))))) throw refused('r3');
@@ -131,17 +132,19 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
     const uris = body?.redirect_uris;
     if (!Array.isArray(uris) || uris.length < 1 || uris.length > 8 || new Set(uris).size !== uris.length ||
         !uris.every((u) => typeof u === 'string' && validRedirectUri(u)) ||
-        (body.token_endpoint_auth_method && body.token_endpoint_auth_method !== 'client_secret_post'))
+        (body.token_endpoint_auth_method && !['client_secret_post', 'none'].includes(body.token_endpoint_auth_method)))
       throw new PublicConnectError('invalid_client_metadata', 'One to eight valid, distinct redirect URIs are required.');
     // PUB-5 B: unused app registrations (no token in 30 days) are cleaned away as new ones arrive, at most 50 at a time.
-    await directory().deleteStalePublicClients({ days: 30, limit: 50, keep: [FORGET_CLIENT, MANAGE_CLIENT] }).catch(() => {});
-    const clientId = 'pcl_' + random(24), secret = randomToken(32);
+    await directory().deleteStalePublicClients({ days: 30, limit: 50, keep: [FORGET_CLIENT, MANAGE_CLIENT, MUSE_PUBLIC_CLIENT_ID] }).catch(() => {});
+    const clientId = 'pcl_' + random(24), authMethod = body.token_endpoint_auth_method ?? 'client_secret_post';
+    const secret = authMethod === 'none' ? null : randomToken(32);
     const name = typeof body.client_name === 'string' ? body.client_name.slice(0, 100) : null;
-    const stored = await directory().createPublicClient({ clientId, secretHash: hashToken(secret), redirectUris: uris,
+    // Keep a hashed unusable placeholder for public clients: the existing schema never stores plaintext.
+    const stored = await directory().createPublicClient({ clientId, secretHash: hashToken(secret ?? randomToken(32)), authMethod, redirectUris: uris,
       clientName: name, maxClients: limits.maxClients });
     if (!stored) throw new PublicConnectError('capacity', 'New connections are paused for now. Please try again later.');
-    return Object.freeze({ client_id: clientId, client_secret: secret, client_secret_expires_at: 0, redirect_uris: [...uris],
-      token_endpoint_auth_method: 'client_secret_post', grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'] });
+    return Object.freeze({ client_id: clientId, ...(secret ? {client_secret: secret, client_secret_expires_at: 0} : {}), redirect_uris: [...uris],
+      token_endpoint_auth_method: authMethod, grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'] });
   }
 
   const perClient = (clientId) => ([FORGET_CLIENT, MANAGE_CLIENT].includes(clientId) ? limits.maxOpenPerBuiltIn : limits.maxOpenPerClient);
@@ -178,6 +181,9 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
   /** The app opened our sign-in address. Checked, then straight on to GitHub: no page, no cookie. */
   async function begin(p) {
     active(); await ensureSchema(); checkAuthorizeRequest(p);
+    // Muse's Android custom-connector form may require an ID without using RFC 7591.
+    // Reserve one fixed public ID for Meta's exact callback; it grants no user authority.
+    if (p.client_id === MUSE_PUBLIC_CLIENT_ID) await directory().ensureMusePublicClient(MUSE_PUBLIC_CLIENT_ID, MUSE_REDIRECT_URI, hashToken(randomToken(32)));
     const client = await loadClient(p.client_id, p.redirect_uri);
     await directory().purgeExpiredPublicFlows(client.clientId);
     return await openStep({ client, flow: { redirectUri: p.redirect_uri, clientState: p.state, codeChallenge: p.code_challenge,
@@ -359,7 +365,7 @@ export function createPublicConnect({ env = process.env, fetchImpl = fetch, root
       const made = await connect({ data, principal, chosen, marketplaceAccountId:flow.marketplaceAccountId });
       metricSql = made.sql;
       await admitTenantOAuth(made.sql, flow.clientId);
-      await made.db.mirrorOAuthClient({ clientId: client.clientId, secretHash: client.secretHash, redirectUris: client.redirectUris,
+      await made.db.mirrorOAuthClient({ clientId: client.clientId, secretHash: client.secretHash, authMethod: client.authMethod, redirectUris: client.redirectUris,
         clientName: client.clientName, authorizedAccount: null });
       const handle = await openHandle({ clientId: flow.clientId, redirectUri: flow.redirectUri, clientState: flow.clientState,
         codeChallenge: flow.codeChallenge, accountLogin: made.logins.join(','), allowChanges: true, purpose: 'approve',
