@@ -147,3 +147,7 @@ Owner requested compatibility with Meta Muse and an updated `github.robinsonaisy
 ## 2026-10-26 — MUSE-2: Public Muse OAuth onboarding (in review)
 
 Extend the PUB-6 tenant-authenticated public connector with OAuth public-client (`none`) registration, S256 PKCE without a shared secret, canonical audience default only when `resource` is absent, and confidential `client_secret_post` compatibility. Support the Android Muse form's static *public* Client ID bound to the observed Meta callback; all users still sign in with their own GitHub account. See `docs/pr-cards/MUSE-2.md` and `docs/status/2026-10-26-muse-2.md`. Completion requires real Postgres/unit/browser CI and independent Muse app acceptance; no Meta listing is claimed.
+
+## 2026-10-26 — PAR-2, Muse-reported missing parity (approved, PR in progress)
+
+The owner asked for dedicated readers for org issue types and issue fields and on-demand secret checks. The read endpoints exist already and are used by write tools; this adds discoverable bounded reads. The official GitHub MCP's `run_secret_scanning` is **remote-service only**, not in the public REST API. Our server-side file scanner covers selected already-hosted GitHub files with redacted, bounded common-token patterns. It cannot scan local/uncommitted edits, replace GitHub Secret Protection, provide GitHub's private detection coverage or create GitHub alerts; no new paid provider settings. See `docs/pr-cards/PAR-2.md` and `docs/status/2026-10-26-par-2.md`.
