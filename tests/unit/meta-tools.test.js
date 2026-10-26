@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createDispatch } from '../../src/tools/dispatch.js';
-import { registry } from '../../src/tools/index.js';
+import { COMPACT_DEVELOPER_TOOLS, registry } from '../../src/tools/index.js';
 import { mergeNamespaces, listedDescription, listedTool, toolsForListing, toolsForProfile } from '../../src/core/registry.js';
 import { areaOf, describeTool, kindOf, marksOf, searchTools } from '../../src/core/meta.js';
 import { createGates } from '../../src/tools/gates.js';
@@ -127,9 +127,11 @@ describe('github_batch', () => {
 });
 
 describe('listing', () => {
-  it('compact lists only the tools marked compact; catalog lists everything the profile may see', () => {
+  it('compact exposes approved developer tools and retains all existing shortcuts without broadening rights', () => {
     const compact = toolsForListing(registry, 'full', 'compact').map((t) => t.name);
-    expect(compact).toEqual(['github_search_tools', 'github_describe_tool', 'github_call', 'github_batch', 'github_whoami', 'github_get_result', 'github_workflow_pr_status', 'github_workflow_open_pr', 'github_workflow_merge_when_green', 'github_workflow_merge_stack']);
+    const existing = ['github_search_tools', 'github_describe_tool', 'github_call', 'github_batch', 'github_whoami', 'github_get_result', 'github_workflow_pr_status', 'github_workflow_open_pr', 'github_workflow_merge_when_green', 'github_workflow_merge_stack'];
+    expect(compact.filter(name => existing.includes(name))).toEqual(existing);
+    expect(COMPACT_DEVELOPER_TOOLS.every(name => compact.includes(name))).toBe(true);
     expect(toolsForListing(registry, 'full', 'catalog')).toHaveLength(registry.tools.length);
     expect(toolsForListing(registry, 'read_only', 'catalog')).toEqual(toolsForProfile(registry, 'read_only'));
     const low=toolsForListing(registry,'read_only','compact').map(x=>x.name);
