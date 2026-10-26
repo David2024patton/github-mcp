@@ -1,5 +1,7 @@
 # Chris's checklist — only the things that need you
 
+**Owner decision pending — private `github-mcp` (2026-10-26).** No change may be made until Chris explicitly approves the conversion after checking that GitHub Team or higher is needed to retain private branch protections, a GitHub Actions usage estimate against the account's paid-plan included allowance and the current $0 overage cap, and a plan to grant David2024patton authorized access to the new private repo. His existing public fork would remain public. Documentation of the current licensing status is separate.
+
 Everything an AI agent can do, test or verify on your behalf, it does. This page lists the **only** things that
 strictly need you (your sign-in, your device, your money or your decision). None of them blocks development; agents
 build and merge without waiting. Do them whenever you are ready, top to bottom. Tick the box and add the date.
