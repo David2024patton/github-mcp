@@ -111,7 +111,7 @@ describe('bounded file secret pattern review', () => {
   it('skips unreadable and binary files without treating their absence as clean', async () => {
     const binary = await makeWorld({ profile: 'read_only' });
     binary.gh.when('GET /repos/{owner}/{repo}/contents/{path}')
-      .reply(200, contents('binary.bin', '\\x00' + 'not-text'));
+      .reply(200, contents('binary.bin', String.fromCharCode(0) + 'not-text'));
     const out = await run(binary, 'github_security_scan_files',
       { owner: ORG, repo: 'example-repo', paths: ['binary.bin'] });
     expect(out.body).toMatchObject({ complete: false, scanned_files: 0,
