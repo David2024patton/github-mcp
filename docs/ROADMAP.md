@@ -143,3 +143,7 @@ update branch, universal tools).
 ## Owner-authorized 2026-10-26 — Meta Muse support (MUSE-1)
 
 Owner requested compatibility with Meta Muse and an updated `github.robinsonaisystems.com` homepage. Work plan and acceptance: `docs/pr-cards/MUSE-1.md`. Existing standard MCP and independent OAuth provide the Muse Code connection; the consumer Muse custom-connector builder is a distinct platform flow that needs real-client acceptance before claiming it works. No directory submission, manual deployment, or production permission change is authorized by this request. Any future Meta Connector Platform application, verified consumer-Muse connection, or provider-specific adapter should be separately evidenced and approved if needed.
+
+## 2026-10-26 — MUSE-2: Public Muse OAuth onboarding (in review)
+
+Extend the PUB-6 tenant-authenticated public connector with OAuth public-client (`none`) registration, S256 PKCE without a shared secret, canonical audience default only when `resource` is absent, and confidential `client_secret_post` compatibility. Support the Android Muse form's static *public* Client ID bound to the observed Meta callback; all users still sign in with their own GitHub account. See `docs/pr-cards/MUSE-2.md` and `docs/status/2026-10-26-muse-2.md`. Completion requires real Postgres/unit/browser CI and independent Muse app acceptance; no Meta listing is claimed.
