@@ -1,7 +1,3 @@
-## 2026-10-26 — PAR-2 org issue discovery + on-demand selected-file checks in review
-
-Owner-requested Muse parity: dedicated per-organization issue-type/field list reads and a bounded redacting scanner for chosen GitHub-hosted files. Official GitHub remote MCP secret scanning is a separate service unavailable via REST; we do not claim feature-equivalence for local staged/uncommitted edits. Plan: `docs/pr-cards/PAR-2.md`; full checkpoint: `docs/status/2026-10-26-par-2.md`. Source and synthetic tests are committed to a feature branch; exact-head CI, review, merge and production deployment pending. No real credentials scanned and no production writes made.
-
 ## 2026-10-26 — MUSE-2 public Muse onboarding under implementation
 
 See `docs/status/2026-10-26-muse-2.md`: public secretless OAuth client registration, Android Muse fallback Client ID, canonical-audience compatibility and per-person GitHub authorization are being implemented in a review branch. No user-facing Muse acceptance or production deployment is claimed by the branch.
