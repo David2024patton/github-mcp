@@ -38,7 +38,7 @@ describe('the starting list (IN-08)', () => {
 describe('pr-only', () => {
   const server = repo('github-mcp');
   it('allows the pull-request routine away from production', () => {
-    for (const name of ['github_branch_create', 'github_content_put_file', 'github_pr_create', 'github_review_create', 'github_issue_comment', 'github_check_create_run', 'github_actions_rerun']) {
+    for (const name of ['github_branch_create', 'github_content_put_file', 'github_content_commit_git_data', 'github_pr_create', 'github_review_create', 'github_issue_comment', 'github_check_create_run', 'github_actions_rerun']) {
       expect(verdict(name, server)).toBeNull();
     }
   });
@@ -112,6 +112,7 @@ describe('project ownership', () => {
       before: {from:'feature',sha:SHA,defaultBranch:'main',defaultBranchSha:SHA} }).refuse)
       .toContain('sandbox-publish.yml');
     expect(ownershipVerdict({ profile, name: 'github_content_push_files', target: t('transfer/2026-10') })).toBeNull();
+    expect(ownershipVerdict({ profile, name: 'github_content_commit_git_data', target: t('transfer/2026-10') })).toBeNull();
     for (const name of ['github_git_update_ref', 'github_branch_delete', 'github_branch_rename', 'github_pr_merge']) {
       expect(ownershipVerdict({ profile, name, target: t('transfer/2026-10') }).refuse).toContain('sandbox-publish.yml');
     }

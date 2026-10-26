@@ -1,3 +1,7 @@
+## 2026-10-26 — PAR-3 binary-safe Git commits (#413)
+
+The GitHub MCP adds a guarded `github_content_commit_git_data` command: write up to 12 binary/text files or deletions on a named branch through actual Git blobs, a tree and a single commit whose parent is the observed branch head; move the branch without force. Canonical base64 preserves PDF bytes; branch races cannot discard other commits. Production branches and protected `pr-only` repos retain the original safety gates. The source PR includes full dispatcher, binary, negative/race and write-contract tests. The reviewed code passed all required CI jobs on source head `434bed1c` and had its only inline review issue addressed and resolved. The exact final documentation head must likewise pass both required gates before merge. **No live deployment or real Muse binary upload acceptance is claimed.** CI-start gaps and application-specific historical scanners/browser shards are separate, recorded in `docs/pr-cards/PAR-3.md`.
+
 ## 2026-10-26 — MUSE-2 public Muse onboarding under implementation
 
 See `docs/status/2026-10-26-muse-2.md`: public secretless OAuth client registration, Android Muse fallback Client ID, canonical-audience compatibility and per-person GitHub authorization are being implemented in a review branch. No user-facing Muse acceptance or production deployment is claimed by the branch.

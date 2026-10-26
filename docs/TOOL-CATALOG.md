@@ -90,7 +90,7 @@ Card(s): D-1.
 | `github_repo_set_custom_properties` | Set custom property values on a repository | P | N | I | O | F | D-1 built #29 |
 | `github_repo_star` | Star or unstar a repository as Chris (uses your master token when added) | P | C | U | Op | E | D-1 built #29 |
 
-## Files, commits and git data (`github_content_*, github_commit_*, github_git_*`) — 16
+## Files, commits and git data (`github_content_*, github_commit_*, github_git_*`) — 17
 
 Card(s): D-2.
 
@@ -100,6 +100,7 @@ Card(s): D-2.
 | `github_content_get_tree` | Whole-repo file list at a ref (recursive tree), filtered by a glob | — | C | I | B | R | D-2 built #30 |
 | `github_content_put_file` | Create or update one file with a commit (checks the file's current version first) | P·Prod* | F | I | B | E | D-2 built #32 |
 | `github_content_delete_file` | Delete one file with a commit | C·Prod* | C | I | B | E | D-2 built #32 |
+| `github_content_commit_git_data` | Commit binary PDFs and text through Git blobs, base tree, exact-parent commit and non-force branch advance (up to 2 MB) | P·Prod* | N | I | B | E | PAR-3 |
 | `github_content_push_files` | Commit several file changes at once on a branch, signed by GitHub (GraphQL `createCommitOnBranch`, expected head checked) | P·Prod* | N | I | B | E | D-2 built #32 |
 | `github_content_edit_files` | Edit files by find-and-replace (text must match exactly once unless `all`) and commit on a branch, signed by GitHub; sends only the changed text | P·Prod* | N | I | B | E | D-2 follow-up built |
 | `github_content_get_archive_link` | Safe queryless archive URL or GitHub page when signed redirect withheld (all detail modes) | — | N | I | B | R | D-2 built #30 |
@@ -852,7 +853,7 @@ Card(s): PAR-1. Code Quality findings come from GitHub's own analysis (not marke
 
 ## Totals
 
-**Totals:** 474 tools: 468 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+**Totals:** 475 tools: 469 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
 dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 158, everyday adds 83
 (everyday lists 240), full adds 113 (full lists 396). In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
@@ -862,7 +863,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | --- | --- |
 | Server about itself | 23 |
 | Repositories | 22 |
-| Files, commits and git data | 16 |
+| Files, commits and git data | 17 |
 | Branches and tags | 9 |
 | Pull requests | 15 |
 | Reviews and review threads | 10 |
@@ -903,7 +904,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | GitHub Enterprise | 13 |
 | Master-token families: Copilot Spaces, Classroom, Marketplace and more | 17 |
 | Code quality and GitHub help | 4 |
-| **Total** | **474** |
+| **Total** | **475** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 
