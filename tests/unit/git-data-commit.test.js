@@ -49,7 +49,8 @@ describe('Git Data binary commits', () => {
     expect(tree.body).toMatchObject({ base_tree: C,
       tree: [{ path: 'forms/official.pdf', sha: D, mode: '100644', type: 'blob' }] });
     expect(commit.body).toMatchObject({ tree: E, parents: [A] });
-    expect(ref.body).toMatchObject({ ref: 'heads/docs/pdf', sha: B, force: false });
+    expect(ref.params.ref).toBe('heads/docs/pdf');
+    expect(ref.body).toMatchObject({ sha: B, force: false });
     expect(w.gh.invalid).toEqual([]);
   });
   it('refuses a stale exact head before creating blobs or commits', async () => {
