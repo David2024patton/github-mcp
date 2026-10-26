@@ -3,6 +3,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('@neondatabase/serverless', async () => { const h = await import('./harness.js'); return { neon: () => h.fakeNeon() }; });
 import { mkdirSync } from 'node:fs';
+import { MUSE_PUBLIC_CLIENT_ID } from '../../src/tenancy/muse-client.js';
 import { PROFILES, ORIGIN, appFinishes, appStartsSignIn, browserFor, startWorld } from './setup.js';
 
 let world;
@@ -40,7 +41,11 @@ describe('home page', () => {
       });
       const museRequest = await b.page.locator('#muse-connector-request').textContent();
       expect(museRequest).toContain(ORIGIN + '/api/mcp');
-      expect(museRequest).toContain('OAuth sign-in in the browser');
+      expect(museRequest).toContain('OAuth authorization code with S256 PKCE');
+      expect(museRequest).toContain(MUSE_PUBLIC_CLIENT_ID);
+      expect(await b.page.locator('#muse-client-id').textContent()).toBe(MUSE_PUBLIC_CLIENT_ID);
+      expect(await b.page.locator('#muse-address').textContent()).toBe(ORIGIN + '/api/mcp');
+      expect(text).toContain('Client Secret: leave blank.');
       expect(museRequest).not.toMatch(/Bearer\s+|ghp_|github_pat_|client_secret/i);
       expect(text).toContain('muse mcp login github-robinson');
       expect(text).toContain('muse mcp logout github-robinson');
