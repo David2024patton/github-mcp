@@ -42,6 +42,10 @@
       "destination": "/api/well-known/oauth-protected-resource"
     },
     {
+      "source": "/.well-known/security.txt",
+      "destination": "/api/security-txt"
+    },
+    {
       "source": "/brand/icon-256.png",
       "destination": "/api/index?brand_icon=256"
     },

@@ -4,18 +4,18 @@ Free plan only. Nothing here says or suggests that people should leave GitHub; i
 
 **Name:** Robinson MCP for GitHub
 
-**Short description (≤ 120 characters):** Let your AI assistant work with your GitHub safely, with previews and read-only mode.
+**Short description (≤ 120 characters):** Let your AI assistant work with your GitHub safely, with read-only mode and safeguards for sensitive changes.
 
 **Long description:**
 Robinson MCP for GitHub connects AI assistants such as Claude and ChatGPT to your GitHub account. You sign in with GitHub, choose what the assistant may do, and approve the connection. Your assistant can then read and manage repositories, files, branches, pull requests, issues and Actions for you.
 
-You stay in control. A read-only choice lets an assistant look but never change anything. Changes show a preview first. Your GitHub sign-in details are never given to the assistant. You can disconnect, and delete everything we hold about you, at any time on the My connection page.
+You stay in control. A read-only choice lets an assistant look but never change anything. Sensitive changes require preview and confirmation; routine permitted changes can be applied directly. Your GitHub sign-in details are never given to the assistant. You can disconnect, and delete everything we hold about you, at any time on the My connection page.
 
 It is free. A fair daily allowance applies to every person (see the limits page). Robinson MCP for GitHub is made by Robinson AI Systems and is not affiliated with or endorsed by GitHub.
 
 **Features**
 - Works with Claude, ChatGPT, Claude Code, Cursor and VS Code.
-- Read-only mode and previews before changes.
+- Read-only mode blocks every change; changes involving production, access, notifications or spending require preview and confirmation.
 - Repositories, files, branches, pull requests, reviews, issues and Actions.
 - One address to paste; no software to install.
 - Disconnect and delete your data any time.

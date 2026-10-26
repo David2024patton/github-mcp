@@ -1,0 +1,5 @@
+# Store text with LF for consistent test fixtures, including on Windows checkouts.
+* text=auto eol=lf
+
+# Do not rewrite bytes in binary brand images.
+*.png binary
