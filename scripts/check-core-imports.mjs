@@ -31,7 +31,10 @@ export function findCoreImportViolations(root) {
         const target = path.resolve(path.dirname(file), spec);
         bad = forbiddenDirs.some((dir) => target === dir || target.startsWith(dir + path.sep));
       }
-      if (bad) violations.push({ file: path.relative(root, file), specifier: spec });
+      // Report repo-relative POSIX paths: path.relative yields backslashes on Windows, and both
+      // the human message and the test compare against 'src/core/x.js'. On POSIX split/join is a
+      // no-op, so CI output is byte-identical.
+      if (bad) violations.push({ file: path.relative(root, file).split(path.sep).join('/'), specifier: spec });
     }
   }
   return { files: files.length, violations };
