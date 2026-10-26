@@ -53,8 +53,23 @@ describe('GOD-4 account export and machines', () => {
     w.gh.when('GET /user/migrations/{migration_id}/archive').reply(302, null, { location: 'https://example.test/signed' });
     expect((await exp.handlers.github_account_export_status({}, w.ctx)).exports).toHaveLength(1);
     const link = (await exp.handlers.github_account_export_link({ migrationId: 7 }, w.ctx));
-    expect(link).toMatchObject({ sensitive: true, link: 'https://example.test/signed' });
+    expect(link).toMatchObject({ sensitive: true, link: null, sensitive_redirect_omitted: true,
+      github_web_url: 'https://github.com/settings' });
     expect(w.gh.calls.some((c) => String(c.url ?? '').includes('example.test'))).toBe(false);
+  });
+  it('never returns a signed account export redirect, including detail:full', async () => {
+    for (const detail of [undefined, 'full']) {
+      const w = await makeWorld({ profile: 'full', mode: 'production' });
+      await withMaster(w);
+      const secret = 'opaque-export-bearer-1234567890';
+      w.gh.when('GET /user/migrations/{migration_id}').reply(200, M(7, 'exported'));
+      w.gh.when('GET /user/migrations/{migration_id}/archive').reply(302, null, {
+        location: 'https://api.github.com/user/migrations/7/archive?sig=' + secret
+      });
+      const result = await exp.handlers.github_account_export_link({ migrationId: 7, ...(detail ? { detail } : {}) }, w.ctx);
+      expect(result).toMatchObject({ link: null, sensitive_redirect_omitted: true });
+      expect(JSON.stringify(result)).not.toContain(secret);
+    }
   });
   it('link says not ready before the export finishes', async () => {
     const w = await makeWorld({ profile: 'full', mode: 'production' });

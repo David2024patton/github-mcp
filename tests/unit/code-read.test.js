@@ -81,6 +81,24 @@ describe('content reads (D-2)', () => {
     const { body } = await run(w, 'github_content_get_archive_link', { ...R, ref: 'main' });
     expect(body.url).toBe('https://codeload.github.com/example-org/hello/legacy.tar.gz/main');
   });
+  it('omits signed archive redirects even with full detail or field selection', async () => {
+    for (const extra of [{}, { detail: 'full' }, { fields: ['url', 'sensitive_redirect_omitted'] }]) {
+      const w = await world();
+      const secret = 'signed-only-in-github-redirect-12345';
+      w.gh.when('GET /repos/{owner}/{repo}/tarball/{ref}').reply(302, '', {
+        location: 'https://codeload.github.com/example-org/hello/legacy.tar.gz/main?access_token=' + secret + '#secret'
+      });
+      const { result, body } = await run(w, 'github_content_get_archive_link', { ...R, ref: 'main', ...extra });
+      if (result.isError) {
+        expect(JSON.stringify(result)).not.toContain(secret);
+      } else {
+        expect(body).toMatchObject({ url: null, sensitive_redirect_omitted: true });
+        if (!extra.fields) expect(body.github_web_url).toBe('https://github.com/example-org/hello');
+        else expect(body.github_web_url).toBeUndefined();
+        expect(JSON.stringify(result)).not.toContain(secret);
+      }
+    }
+  });
   describe('codeowners', () => {
     it('turns each problem into line, column, kind and a plain fix', async () => {
       const w = await world();

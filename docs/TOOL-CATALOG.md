@@ -102,7 +102,7 @@ Card(s): D-2.
 | `github_content_delete_file` | Delete one file with a commit | C·Prod* | C | I | B | E | D-2 built #32 |
 | `github_content_push_files` | Commit several file changes at once on a branch, signed by GitHub (GraphQL `createCommitOnBranch`, expected head checked) | P·Prod* | N | I | B | E | D-2 built #32 |
 | `github_content_edit_files` | Edit files by find-and-replace (text must match exactly once unless `all`) and commit on a branch, signed by GitHub; sends only the changed text | P·Prod* | N | I | B | E | D-2 follow-up built |
-| `github_content_get_archive_link` | Short-lived download link for a tarball or zipball of a ref | — | N | I | B | R | D-2 built #30 |
+| `github_content_get_archive_link` | Safe queryless archive URL or GitHub page when signed redirect withheld (all detail modes) | — | N | I | B | R | D-2 built #30 |
 | `github_content_check_codeowners` | Problems GitHub found in a CODEOWNERS file on a branch (bad lines, unknown users or teams), in plain words | — | C | I | B,O | R | D-2 built #30 |
 | `github_commit_list` | Commits on a branch or path, by author or date | — | C | I | B,Op | R | D-2 built #30 |
 | `github_commit_get` | One commit: message, author, files changed with stats (patch capped) | — | C | I | B,Op | R | D-2 built #30 |
@@ -253,7 +253,7 @@ Card(s): G-2.
 | `github_check_update_run` | Update or complete a check run | P | C | I | B | E | G-2 built #43 |
 | `github_status_create` | Set a commit status (pending/success/failure/error) with a context | P | C | I | B | E | G-2 built #43 |
 | `github_artifact_list` | Artifacts of a run or repository with size and expiry | — | C | I | B | R | G-2 built #42 |
-| `github_artifact_get_link` | Short-lived download link for an artifact (bytes never pass through chat) | — | F | I | B | R | G-2 built #42 |
+| `github_artifact_get_link` | Artifact metadata and safe GitHub navigation; signed links never pass through chat | — | F | I | B | R | G-2 built #42 |
 | `github_artifact_delete` | Delete an artifact | C·D | C | I | Op | E | G-2 built #43 |
 | `github_cache_list` | Actions caches and total cache usage for a repository | — | N | I | B,Op | R | G-2 built #42 |
 | `github_cache_delete` | Delete caches by key or ID | C | N | I | B | E | G-2 built #43 |
@@ -489,7 +489,7 @@ Card(s): O-6. Source built in PR #204 with verified user-auth principal, real pr
 | `github_account_respond_invitation` | Accept or decline a repository invitation (uses your master token when added) | C·Prod·A* | N | U | O | F | O-6 built #204 |
 | `github_account_set_status` | Set or clear your profile status: emoji, message (80 characters), expiry and busy indicator; read back field by field (uses your master token when added) | C | N | U | O | F | Y-1 built #227 |
 | `github_account_export_status` | Your account exports: one export's state, or the recent list (uses your master token when added) | — | N | U | B,O | R | GOD-4 |
-| `github_account_export_link` | Short-lived private download address of a finished export; the archive is not downloaded here (uses your master token when added) | — | N | U | B,O | R | GOD-4 |
+| `github_account_export_link` | Account export metadata and safe GitHub navigation; signed redirect withheld, no archive bytes | — | N | U | B,O | R | GOD-4 |
 | `github_account_export_start` | Start exporting your own repositories to an archive; never locks repositories (uses your master token when added) | C·Prod | N | U | B,O | F | GOD-4 |
 | `github_account_export_delete` | Delete a finished export archive from GitHub; cannot be undone (uses your master token when added) | C·D·Prod | N | U | B,O | F | GOD-4 |
 

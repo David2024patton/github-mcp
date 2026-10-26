@@ -59,7 +59,9 @@ describe('check, artifact and cache read tools (G-2)', () => {
     w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}').reply(200, { id: 8, name: 'build', size_in_bytes: 10, expired: false });
     w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}').reply(302, '', { location: 'https://pipelines.actions.githubusercontent.com/x?sig=1' });
     const { body } = await run(w, 'github_artifact_get_link', { ...R, artifactId: 8 });
-    expect(body).toMatchObject({ name: 'build', url: expect.stringContaining('githubusercontent.com') });
+    expect(body).toMatchObject({ name: 'build', url: null, sensitive_redirect_omitted: true,
+      github_web_url: 'https://github.com/example-org/hello/actions' });
+    expect(JSON.stringify(body)).not.toContain('sig=1');
     w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}').reply(200, { id: 8, name: 'build', expired: true, expires_at: '2026-10-01' });
     expect((await run(w, 'github_artifact_get_link', { ...R, artifactId: 8 })).result.isError).toBe(true);
     w.gh.when('GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts').reply(200, { total_count: 1, artifacts: [{ id: 8, name: 'build', size_in_bytes: 10, expired: false }] });
@@ -67,6 +69,20 @@ describe('check, artifact and cache read tools (G-2)', () => {
     expect(w.gh.invalid).toEqual([]);
   });
 
+  it('never exposes signed artifact bearer values under any response mode', async () => {
+    for (const extras of [{}, { detail: 'full' }, { fields: ['url', 'github_web_url'] }]) {
+      const w = await makeWorld({ profile: 'read_only' });
+      const secret = 'signed-artifact-link-very-private-987';
+      w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}').reply(200,
+        { id: 8, name: 'build', size_in_bytes: 10, expired: false });
+      w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}').reply(302, '', {
+        location: 'https://pipelines.actions.githubusercontent.com/x/blobstorage?sig=' + secret
+      });
+      const { result, body } = await run(w, 'github_artifact_get_link', { ...R, artifactId: 8, ...extras });
+      expect(JSON.stringify(result)).not.toContain(secret);
+      if (!result.isError) expect(body.url).toBeNull();
+    }
+  });
   it('cache list shows total usage and each cache', async () => {
     const w = await makeWorld({ profile: 'read_only' });
     w.gh.when('GET /repos/{owner}/{repo}/actions/cache/usage').reply(200, { full_name: 'example-org/hello', active_caches_size_in_bytes: 2048, active_caches_count: 2 });

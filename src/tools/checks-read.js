@@ -3,6 +3,7 @@
 import { ciState } from '../github/ci-state.js';
 import { defineRead } from './define-read.js';
 import { plain, readerFor } from './github-read.js';
+import { githubDownloadPage, safeGithubDownloadRedirect } from './safe-download-link.js';
 
 const OWNER = { type: 'string', maxLength: 39, description: 'GitHub account (default: the connection\'s default account)' };
 const REPO = { type: 'string', minLength: 1, maxLength: 100 };
@@ -79,7 +80,7 @@ export const artifactGetLink = defineRead({
   name: 'github_artifact_get_link', area: 'artifact', audience: ['B'],
   description: 'A short-lived download link for an artifact (the link, never the file).',
   properties: { owner: OWNER, repo: REPO, artifactId: { type: 'integer', minimum: 1 } }, required: ['repo', 'artifactId'],
-  guidance: 'The link expires within about a minute and may carry a temporary access code. Use it at once; do not store or share it.',
+  guidance: 'Temporary artifact download redirects can contain bearer credentials. Signed and unverified locations never appear in AI results; use the GitHub Actions page instead.',
   handler: (args, ctx) => plain(async () => {
     const { owner, octokit } = await readerFor(args, ctx);
     const p = { owner, repo: args.repo, artifact_id: args.artifactId };
@@ -88,7 +89,9 @@ export const artifactGetLink = defineRead({
     const response = await octokit.request('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}', { ...p, archive_format: 'zip', request: { redirect: 'manual' } });
     const url = response.headers?.location;
     if (!url) throw new TypeError('GitHub did not return a download link for that artifact.');
-    return { id: artifact.id, name: artifact.name, size_in_bytes: artifact.size_in_bytes, url, expires: 'within about one minute' };
+    const safe = safeGithubDownloadRedirect(url, githubDownloadPage(owner, args.repo, 'actions'));
+    return { id: artifact.id, name: artifact.name, size_in_bytes: artifact.size_in_bytes,
+      ...safe, expires: safe.url ? 'within about one minute' : null };
   })
 });
 
