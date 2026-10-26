@@ -69,7 +69,7 @@ describe('bounded file secret pattern review', () => {
     const fake = 'ghp_' + 'A'.repeat(35);
     const source = [
       'const token = "' + fake + '";',
-      '-----BEGIN PRIVATE KEY-----',
+      '-----BEGIN ' + 'PRIVATE KEY-----',
       'AWS_SECRET_ACCESS_KEY=' + 'a'.repeat(40),
       'xoxb-' + 'A'.repeat(24),
       'ordinary code, no secret'
