@@ -102,6 +102,19 @@ describe('Git Data binary commits', () => {
     expect(JSON.stringify(out)).toMatch(/no effect/i);
     expect(w.gh.calls.some(c => c.route === 'POST /repos/{owner}/{repo}/git/commits')).toBe(false);
   });
+  it('allows a protected pr-only repository feature branch, but forbids a default-branch bypass', async () => {
+    const permitted = await makeWorld({ accounts: ['Robinson-AI-Systems'], advanceClockOnSleep: true });
+    arrange(permitted.gh);
+    const input = { ...args, repo: 'github-mcp', branch: 'ai/fix-binary', confirm: true };
+    const added = await run(permitted, input);
+    expect(added.status).toBe('applied');
+    const main = await makeWorld({ accounts: ['Robinson-AI-Systems'], mode: 'production', advanceClockOnSleep: true });
+    arrange(main.gh);
+    const refused = await run(main, { ...input, branch: 'main' });
+    expect(refused.status).toBe('refused_by_guard');
+    expect(refused.refusedBy).toContain('protected');
+    expect(main.gh.calls.filter(c => c.method === 'POST' || c.method === 'PATCH')).toHaveLength(0);
+  });
   it('uses null tree SHA for deletion and does not upload a blob', async () => {
     const w = await makeWorld({ advanceClockOnSleep: true });
     arrange(w.gh);
