@@ -5,14 +5,49 @@ import { getDb } from '../runtime.js';
 import { isTenantRoutedCredential } from '../tenancy/routed-credential.js';
 import { privateTenantToken } from '../tenancy/oauth-token.js';
 import { paramsOf, send } from '../core/http.js';
+import { clientIp } from '../core/oauth.js';
+import { createIpRateLimiter } from '../core/ip-rate-limit.js';
 import privateTenantAuthorize from '../../api/tenant/oauth/authorize.js';
 import { isPublicClientId } from '../tenancy/public-code.js';
 import { publicConnectEnabled } from '../tenancy/public-connect.js';
 import { publicApprove, publicAuthorize, publicForget, publicLimits, publicManage, publicTrust, publicMoved, publicRegister } from '../tenancy/public-http.js';
 
-/** Runs one OAuth handler. Any failure answers 503 with no detail (never SQL, tokens, passphrases or stack text). */
+// Defaults below: 30 registrations and 60 token requests a minute per IP.
+const registerRate = createIpRateLimiter({ limit: 30, windowMs: 60_000 });
+const tokenRate = createIpRateLimiter({ limit: 60, windowMs: 60_000 });
+const MAX_REGISTER_BODY_BYTES = 64 * 1024;
+
+const rateLimited = (limiter, req, res) => {
+  const verdict = limiter.check(clientIp(req));
+  if (verdict.allowed) return false;
+  res.setHeader('Retry-After', String(verdict.retryAfterSeconds));
+  send(res, 429, { error: 'slow_down', error_description: 'Too many requests; try again after the Retry-After delay' });
+  return true;
+};
+
+
+/** Runs one OAuth handler. Any failure answers 503 with no detail (never SQL, tokens, passphrases or stack text).
+ * Malformed request bodies are refused with 400 before this catch-all can see them (see the guards below). */
 export async function handleOAuth(which, req, res, { db, env = process.env, consentFactory } = {}) {
   try {
+    // The unauthenticated endpoints are brute-force and abuse targets, so each IP (read with the
+    // same trusted-header helper the admin login uses) gets a fixed budget: 30 registrations and
+    // 60 token requests a minute. In-memory and per-instance, hence best-effort on serverless
+    // (see ip-rate-limit.js for why nothing DB-backed in this repo fits per-IP throttling).
+    if (which === 'register' && req.method === 'POST') {
+      if (rateLimited(registerRate, req, res)) return;
+      // Oversized bodies are refused before any parsing: the actual string bytes when the body
+      // is still raw, otherwise the declared length (serverless platforms pre-parse JSON bodies).
+      const declared = Number(req.headers?.['content-length']);
+      const raw = typeof req.body === 'string' ? Buffer.byteLength(req.body) : 0;
+      if (raw > MAX_REGISTER_BODY_BYTES || (Number.isFinite(declared) && declared > MAX_REGISTER_BODY_BYTES)) {
+        return send(res, 413, { error: 'too_large', error_description: 'Registration body exceeds 64 KB' });
+      }
+      // Unparseable JSON is the client's fault, not an outage: answer it here so a SyntaxError
+      // from paramsOf can never fall through to the 503 catch-all below.
+      try { paramsOf(req); } catch { return send(res, 400, { error: 'invalid_request', error_description: 'Malformed registration body' }); }
+    }
+    if (which === 'token' && req.method === 'POST' && rateLimited(tokenRate, req, res)) return;
     // PUB-6 (dark): while GITHUB_PUBLIC_CONNECT is on, registration creates public clients (pcl_), never owner clients.
     if (which === 'register' && publicConnectEnabled(env)) return await publicRegister(req, res, { env });
     if (which === 'authorize' && ['GET','POST'].includes(req.method)) {
