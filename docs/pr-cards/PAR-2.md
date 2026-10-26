@@ -2,6 +2,14 @@
 
 **Owner authorization:** 2026-10-26 request from Muse comparison. **Outcome:** a connected GitHub user can discover their organization's issue types and issue fields using dedicated bounded read tools, and can request a no-secrets-returned review of selected GitHub-hosted repository files for high-confidence credential patterns, without creating alerts or changing files. Ship together as an MCP usability/parity bundle; extend PAR-1.
 
+## Drift check
+
+| Expected prior state | Verified in source | Implementation |
+| --- | --- | --- |
+| No standalone org issue type/field readers | `org-planning.js` uses the GETs internally only for writes | Expose bounded read-only tools with connected-org checks |
+| Alerts exist but no file-triggered secret review | `security-read.js` reads stored alerts only | Bounded, redacted selected-file scanner; no unsupported GitHub remote API claims |
+| Catalog was 471 tools, PAR-2 unindexed | Registry and checker output | Add PAR-2 to work index and reconcile 474 catalog tools |
+
 ## Acceptance criteria
 
 - [ ] `github_org_list_issue_types` and `github_org_list_issue_fields` use the exact REST GET endpoints on the connected organization, reject personal/foreign orgs, report plan/permission errors plainly, and project only bounded metadata with explicit partial/truncation indicators.
