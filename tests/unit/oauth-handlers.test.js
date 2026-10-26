@@ -178,6 +178,18 @@ describe('authorize page', () => {
     expect(claudePage.body).toContain('<option value="catalog" selected>');
   });
 
+  it('preserves a missing resource as the canonical MCP audience through browser form submission', async () => {
+    const { h } = await fixture();
+    const client = await register(h);
+    const page = await call(h.authorize, request('GET', form(client, { resource: undefined })));
+    expect(page.statusCode).toBe(200);
+    expect(page.body).toContain('name="resource" value="' + resource + '"');
+    const posted = await call(h.authorize, request('POST', form(client, {
+      resource, passphrase: baseEnv.ADMIN_PASSPHRASE
+    })));
+    expect(posted.statusCode).toBe(302);
+  });
+
   it('offers production only on the production deployment and only when some account has it turned on', async () => {
     for (const [env, accounts, expected] of [
       [baseEnv, ACCOUNTS, false],
