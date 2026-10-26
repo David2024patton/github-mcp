@@ -62,7 +62,9 @@ export const FORGET_CLIENT = 'pcl_forget_my_data_built_in_page_0000000';
 export const MANAGE_CLIENT = 'pcl_my_connection_built_in_page_00000000';
 export const MANAGE_PATH = '/connection';
 // Claude asks for the permission names this server advertises in its discovery document; sign-in gives no extra power for them.
-const ADVERTISED_SCOPES = ['github.notifications.read'];
+// These OAuth scope labels are client-compatibility hints, NOT permission grants:
+// the tenant profile, GitHub installation and write confirmation remain authoritative.
+const ADVERTISED_SCOPES = ['github.notifications.read', 'mcp:read', 'mcp:write'];
 // `why` is an internal label for the server log only (never shown to the person, never a secret).
 const refused = (why = '') => Object.assign(new PublicConnectError('refused', 'GitHub could not verify this sign-in. Start again from your app.'), { why });
 const busy = () => new PublicConnectError('capacity', 'Too many people are connecting right now. Please try again in a few minutes.');
