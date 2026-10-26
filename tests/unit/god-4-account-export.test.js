@@ -1,5 +1,7 @@
 // GOD-4 C (+B): account export tools and the codespace machines read.
 import { describe, expect, it } from 'vitest';
+import { createDispatch } from '../../src/tools/dispatch.js';
+import { registry } from '../../src/tools/index.js';
 import { runWriteContract, makeWorld, parse } from '../../test/helpers/write-contract.js';
 import * as exp from '../../src/tools/account-export.js';
 import * as billing from '../../src/tools/billing-read.js';
@@ -72,5 +74,45 @@ describe('GOD-4 account export and machines', () => {
     expect(w.gh.calls.find((c) => c.route === 'GET /user/codespaces/{codespace_name}/machines').headers.authorization).toContain('ghp_FAKEmaster');
     expect(w.gh.invalid).toEqual([]);
     expect(billing.codespaceMachines.tool.inputSchema.properties.codespaceName.pattern).toBe('^[A-Za-z0-9-]{1,90}$');
+  });
+});
+
+describe('GOD-4 account export link: the signed query stays out by default', () => {
+  const archiveWorld = async (location) => {
+    const w = await makeWorld({ profile: 'full', mode: 'production' });
+    await withMaster(w);
+    w.gh.when('GET /user/migrations/{migration_id}').reply(200, M(7, 'exported'));
+    w.gh.when('GET /user/migrations/{migration_id}/archive').reply(302, null, { location });
+    return w;
+  };
+  it('keeps the signed query out of the default link and says how to get it back', async () => {
+    const bare = 'https://example.test/export/archive.zip';
+    const w = await archiveWorld(`${bare}?token=opaque-signed-value`);
+    const link = await exp.handlers.github_account_export_link({ migrationId: 7 }, w.ctx);
+    expect(link).toMatchObject({ sensitive: true, signed: true, link: bare });
+    expect(link.note).toContain('detail: "full"');
+    expect(JSON.stringify(link)).not.toContain('opaque-signed-value');
+  });
+  it('returns the complete signed link when detail is full', async () => {
+    const signed = 'https://example.test/export/archive.zip?token=opaque-signed-value';
+    const w = await archiveWorld(signed);
+    expect(await exp.handlers.github_account_export_link({ migrationId: 7, detail: 'full' }, w.ctx)).toMatchObject({ signed: true, link: signed });
+  });
+  it('leaves a link with no query untouched in both modes', async () => {
+    const bare = 'https://example.test/export/archive.zip';
+    for (const detail of [undefined, 'full']) {
+      const w = await archiveWorld(bare);
+      expect(await exp.handlers.github_account_export_link({ migrationId: 7, ...(detail ? { detail } : {}) }, w.ctx)).toMatchObject({ signed: false, link: bare });
+    }
+  });
+  it('still hides a credential-shaped access code, even with detail full (through the dispatcher)', async () => {
+    const token = `ghp_FAKE${'x'.repeat(32)}`;
+    const w = await archiveWorld(`https://example.test/export/archive.zip?token=${token}`);
+    const dispatch = createDispatch({ credentials: w.credentials, gates: [], fetch: w.gh.fetch, now: w.ctx.now, sleep: async () => {} });
+    const result = await dispatch({ registry, name: 'github_account_export_link', args: { migrationId: 7, detail: 'full' }, connection: w.connection, db: w.db });
+    expect(result.isError).toBeFalsy();
+    const body = result.structuredContent ?? parse(result);
+    expect(body.link).toContain('[hidden]');
+    expect(JSON.stringify(body)).not.toContain(token);
   });
 });

@@ -67,6 +67,46 @@ describe('check, artifact and cache read tools (G-2)', () => {
     expect(w.gh.invalid).toEqual([]);
   });
 
+  it('artifact link keeps a signed query out of the default answer', async () => {
+    const w = await makeWorld({ profile: 'read_only' });
+    const bare = 'https://pipelines.actions.githubusercontent.com/x/blobstorage';
+    w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}').reply(200, { id: 8, name: 'build', size_in_bytes: 10, expired: false });
+    w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}').reply(302, '', { location: `${bare}?sv=2024-01-01&sig=opaque-signed-value` });
+    const { body } = await run(w, 'github_artifact_get_link', { ...R, artifactId: 8 });
+    expect(body.url).toBe(bare);
+    expect(body.signed).toBe(true);
+    expect(body.note).toContain('detail: "full"');
+    expect(JSON.stringify(body)).not.toContain('opaque-signed-value');
+  });
+  it('returns the complete signed artifact link when detail is full', async () => {
+    const w = await makeWorld({ profile: 'read_only' });
+    const signed = 'https://pipelines.actions.githubusercontent.com/x/blobstorage?sv=2024-01-01&sig=opaque-signed-value';
+    w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}').reply(200, { id: 8, name: 'build', size_in_bytes: 10, expired: false });
+    w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}').reply(302, '', { location: signed });
+    const { body } = await run(w, 'github_artifact_get_link', { ...R, artifactId: 8, detail: 'full' });
+    expect(body.url).toBe(signed);
+  });
+  it('leaves an artifact link with no query untouched in both modes', async () => {
+    const bare = 'https://pipelines.actions.githubusercontent.com/x/blobstorage';
+    for (const detail of [undefined, 'full']) {
+      const w = await makeWorld({ profile: 'read_only' });
+      w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}').reply(200, { id: 8, name: 'build', size_in_bytes: 10, expired: false });
+      w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}').reply(302, '', { location: bare });
+      const { body } = await run(w, 'github_artifact_get_link', { ...R, artifactId: 8, ...(detail ? { detail } : {}) });
+      expect(body.url).toBe(bare);
+      expect(body.signed).toBe(false);
+    }
+  });
+  it('still hides a credential-shaped access code in an artifact link, even with detail full', async () => {
+    const w = await makeWorld({ profile: 'read_only' });
+    const token = `ghp_FAKE${'x'.repeat(32)}`;
+    w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}').reply(200, { id: 8, name: 'build', size_in_bytes: 10, expired: false });
+    w.gh.when('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}').reply(302, '', { location: `https://pipelines.actions.githubusercontent.com/x/blobstorage?token=${token}` });
+    const { body } = await run(w, 'github_artifact_get_link', { ...R, artifactId: 8, detail: 'full' });
+    expect(body.url).toContain('[hidden]');
+    expect(JSON.stringify(body)).not.toContain(token);
+  });
+
   it('cache list shows total usage and each cache', async () => {
     const w = await makeWorld({ profile: 'read_only' });
     w.gh.when('GET /repos/{owner}/{repo}/actions/cache/usage').reply(200, { full_name: 'example-org/hello', active_caches_size_in_bytes: 2048, active_caches_count: 2 });

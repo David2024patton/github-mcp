@@ -1,7 +1,7 @@
 // Checks, artifacts and caches, read side (G-2 part 1). CI state is the shared helper of Batch E exposed as a tool. Artifact bytes never
 // pass through a tool: only a short-lived link does.
 import { ciState } from '../github/ci-state.js';
-import { defineRead } from './define-read.js';
+import { defineRead, DETAIL_PROPERTY } from './define-read.js';
 import { plain, readerFor } from './github-read.js';
 
 const OWNER = { type: 'string', maxLength: 39, description: 'GitHub account (default: the connection\'s default account)' };
@@ -75,11 +75,11 @@ export const artifactList = defineRead({
   })
 });
 
-export const artifactGetLink = defineRead({
+const artifactGetLinkBase = defineRead({
   name: 'github_artifact_get_link', area: 'artifact', audience: ['B'],
   description: 'A short-lived download link for an artifact (the link, never the file).',
   properties: { owner: OWNER, repo: REPO, artifactId: { type: 'integer', minimum: 1 } }, required: ['repo', 'artifactId'],
-  guidance: 'The link expires within about a minute and may carry a temporary access code. Use it at once; do not store or share it.',
+  guidance: 'The link expires within about a minute and may carry a temporary access code. By default only the bare address comes back (signed: true means an access code was left out); ask again with detail: "full" for the complete signed link. Use it at once; do not store or share it.',
   handler: (args, ctx) => plain(async () => {
     const { owner, octokit } = await readerFor(args, ctx);
     const p = { owner, repo: args.repo, artifact_id: args.artifactId };
@@ -88,9 +88,21 @@ export const artifactGetLink = defineRead({
     const response = await octokit.request('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}', { ...p, archive_format: 'zip', request: { redirect: 'manual' } });
     const url = response.headers?.location;
     if (!url) throw new TypeError('GitHub did not return a download link for that artifact.');
-    return { id: artifact.id, name: artifact.name, size_in_bytes: artifact.size_in_bytes, url, expires: 'within about one minute' };
+    // The signed query GitHub appends for a private repository is an opaque token no redaction shape recognises, so it is cut here
+    // and only handed back whole when the person asks for detail: 'full'.
+    const signed = /[?#]/.test(url);
+    const full = args.detail === 'full';
+    return { id: artifact.id, name: artifact.name, size_in_bytes: artifact.size_in_bytes, url: full ? url : url.split(/[?#]/)[0], signed, expires: 'within about one minute',
+      ...(signed && !full ? { note: 'The link carries a temporary access code, so its query string and fragment were left out. Ask again with detail: "full" for the complete signed link.' } : {}) };
   })
 });
+// The read layer adds `detail` only beside a summary mapper, and this tool has none: the handler above is its own summary (the bare
+// address plus a signed marker), so the layer's own `detail` property is added to the schema here instead.
+export const artifactGetLink = {
+  ...artifactGetLinkBase,
+  tool: { ...artifactGetLinkBase.tool, inputSchema: { ...artifactGetLinkBase.tool.inputSchema,
+    properties: { ...artifactGetLinkBase.tool.inputSchema.properties, detail: DETAIL_PROPERTY } } }
+};
 
 export const cacheList = defineRead({
   name: 'github_cache_list', area: 'cache', audience: ['B', 'Op'],

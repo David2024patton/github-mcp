@@ -2,7 +2,7 @@
 // when added (else the App user sign-in). The archive holds private data: the link tool only returns GitHub's short-lived
 // download address and never fetches or relays the archive. Repositories are never locked.
 import { defineGithubWrite } from './define-github-write.js';
-import { defineRead } from './define-read.js';
+import { defineRead, DETAIL_PROPERTY } from './define-read.js';
 import { missing, octo, refusal } from './github-write.js';
 import { plain } from './github-read.js';
 import { personalCred } from '../github/personal-cred.js';
@@ -54,11 +54,11 @@ const exportStatus = defineRead({
   })
 });
 
-const exportLink = defineRead({
+const exportLinkBase = defineRead({
   name: 'github_account_export_link', area: 'account', audience: ['B', 'O'],
   description: 'The short-lived private download address of a finished account export. The archive is NOT downloaded here.',
   properties: { migrationId: ID }, required: ['migrationId'],
-  guidance: 'The address gives access to private data: show it only to the account owner, never post it anywhere.',
+  guidance: 'The address gives access to private data: show it only to the account owner, never post it anywhere. The address may carry a temporary access code: by default only the bare address comes back (signed: true means an access code was left out); ask again with detail: "full" for the complete signed link.',
   handler: (args, ctx) => plain(async () => {
     const gh = await client(ctx);
     const m = (await gh.request('GET /user/migrations/{migration_id}', { migration_id: args.migrationId })).data;
@@ -66,9 +66,22 @@ const exportLink = defineRead({
     const response = await gh.request('GET /user/migrations/{migration_id}/archive', { migration_id: args.migrationId, request: { redirect: 'manual' } });
     const url = response.headers?.location;
     if (!url) throw new TypeError('GitHub did not return a download address for that export.');
-    return { id: m.id, state: m.state, sensitive: true, link: url, note: 'Private, short-lived address to your account data. This server did not download the archive.' };
+    // A private export archive redirects to blob storage with a signed query: an opaque token no redaction shape recognises, so it
+    // is cut here and only handed back whole when the person asks for detail: 'full'.
+    const signed = /[?#]/.test(url);
+    const full = args.detail === 'full';
+    return { id: m.id, state: m.state, sensitive: true, signed, link: full ? url : url.split(/[?#]/)[0],
+      note: signed && !full ? 'Private, short-lived address to your account data. The link carries a temporary access code, so its query string and fragment were left out. Ask again with detail: "full" for the complete signed link. This server did not download the archive.'
+        : 'Private, short-lived address to your account data. This server did not download the archive.' };
   })
 });
+// The read layer adds `detail` only beside a summary mapper, and this tool has none: the handler above is its own summary (the bare
+// address plus a signed marker), so the layer's own `detail` property is added to the schema here instead.
+const exportLink = {
+  ...exportLinkBase,
+  tool: { ...exportLinkBase.tool, inputSchema: { ...exportLinkBase.tool.inputSchema,
+    properties: { ...exportLinkBase.tool.inputSchema.properties, detail: DETAIL_PROPERTY } } }
+};
 
 const exportDelete = defineGithubWrite({
   name: 'github_account_export_delete', area: 'account', audience: ['B', 'O'],
