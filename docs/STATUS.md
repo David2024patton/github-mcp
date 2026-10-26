@@ -1,9 +1,5 @@
 > Older entries (before 2026-10-20) are in `docs/archive/STATUS-before-2026-10-20.md`. New notes go in `docs/status/`.
 
-## 2026-10-26 — Meta Muse interoperability and homepage (MUSE-1)
-
-Owner asked to support Meta Muse and to update the public service website. MUSE-1 plans independent standard-MCP support for Muse Code and a non-misleading custom-connector route for the Muse personal assistant. Source + browser tests are in a feature branch; exact-head CI, Meta real-client acceptance and the scheduled `live` release remain independent proof gates. No Meta submission, customer token, production write or manual deployment.
-
 
 ## 2026-10-22 — CAP-4 closed, CAP-5 planned, owner checklist extended
 

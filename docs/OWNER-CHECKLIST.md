@@ -170,3 +170,8 @@ Implementation is approved and the publication hold is lifted. Remaining private
       push changes with git, use GitHub's command-line tool and get pull-request notifications. This connector cannot do
       those (it lives in the conversation, not on the agent's computer). Agents should use this connector for GitHub tools;
       the official one stays for git.
+
+## Added 2026-10-26 — Meta Muse real-client acceptance (optional; not a development gate)
+
+- [ ] **Meta Muse personal assistant:** After the MUSE-1 homepage reaches the live site, open `https://github.robinsonaisystems.com`, copy the Meta Muse custom-connector request into your Muse conversation, and allow the browser GitHub sign-in. Ask Muse to list your available GitHub tools and read your connected account (no write). If Muse cannot create an MCP connector, report the exact message; that platform limitation does not block Muse Code or other MCP clients. Never paste GitHub tokens or passwords into Muse.
+- [ ] **Muse Code, only if you use it:** Add the homepage's JSON to your Muse Code settings, run `muse mcp login github-robinson`, sign in with GitHub in your browser, and use `/mcp` to verify tools; report the result.
