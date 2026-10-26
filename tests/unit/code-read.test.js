@@ -81,6 +81,41 @@ describe('content reads (D-2)', () => {
     const { body } = await run(w, 'github_content_get_archive_link', { ...R, ref: 'main' });
     expect(body.url).toBe('https://codeload.github.com/example-org/hello/legacy.tar.gz/main');
   });
+  it('keeps the signed query and fragment out of the default archive link', async () => {
+    const w = await world();
+    const bare = 'https://codeload.github.com/example-org/hello/legacy.tar.gz/main';
+    w.gh.when('GET /repos/{owner}/{repo}/tarball/{ref}').reply(302, '', { location: `${bare}?token=opaque-signed-value#section` });
+    const { body } = await run(w, 'github_content_get_archive_link', { ...R, ref: 'main' });
+    expect(body.url).toBe(bare);
+    expect(body.signed).toBe(true);
+    expect(body.note).toContain('detail: "full"');
+    expect(JSON.stringify(body)).not.toContain('opaque-signed-value');
+  });
+  it('returns the complete signed archive link when detail is full', async () => {
+    const w = await world();
+    const signed = 'https://codeload.github.com/example-org/hello/legacy.tar.gz/main?token=opaque-signed-value';
+    w.gh.when('GET /repos/{owner}/{repo}/tarball/{ref}').reply(302, '', { location: signed });
+    const { body } = await run(w, 'github_content_get_archive_link', { ...R, ref: 'main', detail: 'full' });
+    expect(body.url).toBe(signed);
+  });
+  it('leaves an archive link with no query untouched in both modes', async () => {
+    const bare = 'https://codeload.github.com/example-org/hello/legacy.tar.gz/main';
+    for (const detail of [undefined, 'full']) {
+      const w = await world();
+      w.gh.when('GET /repos/{owner}/{repo}/tarball/{ref}').reply(302, '', { location: bare });
+      const { body } = await run(w, 'github_content_get_archive_link', { ...R, ref: 'main', ...(detail ? { detail } : {}) });
+      expect(body.url).toBe(bare);
+      expect(body.signed).toBe(false);
+    }
+  });
+  it('still hides a credential-shaped access code, even with detail full', async () => {
+    const w = await world();
+    const token = `ghp_FAKE${'x'.repeat(32)}`;
+    w.gh.when('GET /repos/{owner}/{repo}/tarball/{ref}').reply(302, '', { location: `https://codeload.github.com/example-org/hello/legacy.tar.gz/main?token=${token}` });
+    const { body } = await run(w, 'github_content_get_archive_link', { ...R, ref: 'main', detail: 'full' });
+    expect(body.url).toContain('[hidden]');
+    expect(JSON.stringify(body)).not.toContain(token);
+  });
   describe('codeowners', () => {
     it('turns each problem into line, column, kind and a plain fix', async () => {
       const w = await world();

@@ -1,7 +1,7 @@
 // Files, commits and git data, read side (D-2 part 1). Big answers are bounded here (a file's text, a tree, a patch) and then again by the
 // result rules (C-1): nothing is returned whole when it is large. Reads only.
 import { listAll } from '../github/client.js';
-import { defineRead } from './define-read.js';
+import { defineRead, DETAIL_PROPERTY } from './define-read.js';
 import { globToRegExp } from './production-guard.js';
 import { plain, readerFor } from './github-read.js';
 
@@ -80,12 +80,12 @@ export const contentGetTree = defineRead({
   })
 });
 
-export const contentGetArchiveLink = defineRead({
+const archiveLink = defineRead({
   name: 'github_content_get_archive_link', area: 'content', audience: ['B'],
   description: 'A short-lived download link for a tarball or zipball of a ref (the link itself, not the file).',
   properties: { owner: OWNER, repo: REPO, ref: { ...REF, description: 'Branch, tag or commit (default: the default branch)' }, format: { type: 'string', enum: ['tarball', 'zipball'], description: 'Default tarball' } },
   required: ['repo'],
-  guidance: 'The link expires within about a minute and may carry a temporary access code for private repositories. Use it at once; do not store or share it.',
+  guidance: 'The link expires within about a minute and may carry a temporary access code for private repositories. By default only the bare address comes back (signed: true means an access code was left out); ask again with detail: "full" for the complete signed link. Use it at once; do not store or share it.',
   handler: (args, ctx) => plain(async () => {
     const { owner, octokit } = await readerFor(args, ctx);
     const ref = args.ref ?? (await octokit.request('GET /repos/{owner}/{repo}', { owner, repo: args.repo })).data.default_branch;
@@ -93,9 +93,21 @@ export const contentGetArchiveLink = defineRead({
     const response = await octokit.request(route, { owner, repo: args.repo, ref, request: { redirect: 'manual' } });
     const url = response.headers?.location;
     if (!url) throw new TypeError('GitHub did not return a download link for that ref.');
-    return { ref, format: args.format ?? 'tarball', url, expires: 'within about one minute' };
+    // The signed query GitHub appends for a private repository is an opaque token no redaction shape recognises, so it is cut here
+    // and only handed back whole when the person asks for detail: 'full'.
+    const signed = /[?#]/.test(url);
+    const full = args.detail === 'full';
+    return { ref, format: args.format ?? 'tarball', url: full ? url : url.split(/[?#]/)[0], signed, expires: 'within about one minute',
+      ...(signed && !full ? { note: 'The link carries a temporary access code, so its query string and fragment were left out. Ask again with detail: "full" for the complete signed link.' } : {}) };
   })
 });
+// The read layer adds `detail` only beside a summary mapper, and this tool has none: the handler above is its own summary (the bare
+// address plus a signed marker), so the layer's own `detail` property is added to the schema here instead.
+export const contentGetArchiveLink = {
+  ...archiveLink,
+  tool: { ...archiveLink.tool, inputSchema: { ...archiveLink.tool.inputSchema,
+    properties: { ...archiveLink.tool.inputSchema.properties, detail: DETAIL_PROPERTY } } }
+};
 
 const FIXES = [
   [/unknown owner|owner.*not found|no such user/i, 'The name is not a GitHub user or team that can be an owner here. Check the spelling, or that the person has access to the repository.'],
