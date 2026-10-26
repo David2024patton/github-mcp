@@ -10,6 +10,7 @@ const args = { repo: 'hello', branch: 'main', message: 'Add the official form',
 const definition = { tool: gitData.tools[0], handler: gitData.handlers.github_content_commit_git_data };
 function arrange(gh, mismatch = false) {
   gh.when('GET /repos/{owner}/{repo}').reply(200, { default_branch: 'main' });
+  gh.when('GET /repos/{owner}/{repo}/rules/branches/{branch}').reply(200, []);
   gh.when('GET /repos/{owner}/{repo}/branches/{branch}').replySequence([
     { status: 200, body: { protected: false, commit: { sha: A } } },
     { status: 200, body: { protected: false, commit: { sha: mismatch ? A : B } } }
@@ -81,5 +82,34 @@ describe('Git Data binary commits', () => {
       files: [{ path: 'large.bin', content: 'a'.repeat(1_500_001) }] });
     expect(JSON.stringify(out)).toMatch(/limit|large|size/i);
     expect(w.gh.calls).toHaveLength(0);
+  });
+  it('does not advance a branch if the remote ref moved while building the commit', async () => {
+    const w = await makeWorld({ advanceClockOnSleep: true });
+    arrange(w.gh);
+    w.gh.when('PATCH /repos/{owner}/{repo}/git/refs/{ref}')
+      .reply(422, { message: 'Update is not a fast forward' });
+    const out = await run(w, { ...args, branch: 'dev', confirm: true });
+    expect(out.status).not.toBe('applied');
+    expect(w.gh.calls.filter(c => c.route === 'POST /repos/{owner}/{repo}/git/commits')).toHaveLength(1);
+    expect(w.gh.calls.filter(c => c.route === 'PATCH /repos/{owner}/{repo}/git/refs/{ref}')).toHaveLength(1);
+  });
+  it('refuses a tree that would produce no change, without creating a commit', async () => {
+    const w = await makeWorld({ advanceClockOnSleep: true });
+    arrange(w.gh);
+    w.gh.when('POST /repos/{owner}/{repo}/git/trees').reply(201, { sha: C });
+    const out = await run(w, { ...args, branch: 'dev', confirm: true });
+    expect(JSON.stringify(out)).toMatch(/no effect/i);
+    expect(w.gh.calls.some(c => c.route === 'POST /repos/{owner}/{repo}/git/commits')).toBe(false);
+  });
+  it('uses null tree SHA for deletion and does not upload a blob', async () => {
+    const w = await makeWorld({ advanceClockOnSleep: true });
+    arrange(w.gh);
+    const out = await run(w, { ...args, branch: 'dev',
+      files: [{ path: 'old.txt', delete: true }], confirm: true });
+    expect(out.status).toBe('applied');
+    expect(w.gh.calls.some(c => c.route === 'POST /repos/{owner}/{repo}/git/blobs')).toBe(false);
+    const tree = w.gh.calls.find(c => c.route === 'POST /repos/{owner}/{repo}/git/trees');
+    expect(tree.body.tree).toEqual([{ path: 'old.txt', mode: '100644', type: 'blob', sha: null }]);
+    expect(w.gh.invalid).toEqual([]);
   });
 });

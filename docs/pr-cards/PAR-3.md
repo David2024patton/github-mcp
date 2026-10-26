@@ -2,6 +2,14 @@
 
 **Owner authorization:** 2026-10-26 feedback from real-world MCP use. This card records the MCP-side outcome. **No edits to Appliance Desk or its CI** in this card.
 
+## Drift check
+
+| Expectation on main | Verified before editing | Outcome |
+| --- | --- | --- |
+| Text-only multi-file writer | `src/tools/code-write.js` accepts UTF-8 only | Add dedicated Git Data binary path without replacing existing safe writer |
+| No dedicated binary git object tool | 474-tool catalog and registry | Register and test `github_content_commit_git_data` |
+| CI-run absence reported by users | PR status tool already checks exact SHA | Observe exact-head CI before any event/dispatch redesign; no invented provider race |
+
 ## Starting facts
 - `github_content_push_files` already calls GitHub's GraphQL `createCommitOnBranch` with `expectedHeadOid`: it makes a real, parented Git commit, not a disconnected upload. Do not relabel this as broken or blame it for uninvestigated PR conflicts.
 - The existing content tools accept UTF-8 text only; a binary IRS form cannot use them. The REST Git Data API can create binary blobs, a tree and a single commit with its parent set to the exact observed branch head.
