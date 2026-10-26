@@ -31,7 +31,7 @@ export function findCoreImportViolations(root) {
         const target = path.resolve(path.dirname(file), spec);
         bad = forbiddenDirs.some((dir) => target === dir || target.startsWith(dir + path.sep));
       }
-      if (bad) violations.push({ file: path.relative(root, file), specifier: spec });
+      if (bad) violations.push({ file: path.relative(root, file).split(path.sep).join('/'), specifier: spec });
     }
   }
   return { files: files.length, violations };

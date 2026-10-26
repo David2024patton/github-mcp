@@ -557,3 +557,7 @@ refusal of a paid action on cost grounds for end users. Users still get the hone
 before a paid or unknown-price action, and a cap or pass limit a user chooses for themselves still works. Usage limits for
 free users (calls per day, changes per hour) are about running cost to the service, not user spending, and stay as built;
 what free users get after monetization is undecided and is not a task. Nobody adds a default spend cap without a new owner decision.
+
+## 2026-10-26 — external contributor suggestions are maintainer-owned
+
+Owner authorized independent assessment and adoption of David2024patton's PRs, including writing corrections ourselves and closing incorporated or declined suggestions with courtesy. Original fork branches are not trusted automatically or responsible for repairs. CONTRIB-1 adopts #402 honest-preview wording, #403 Windows portability and LF handling, and #404 nosniff plus RFC 9116 security.txt. The proposed two-year HSTS includeSubDomains is NOT adopted without complete TLS host inventory. CI, merge and scheduled live release gates remain unchanged; security-sensitive #399, #400, #401 and #405 need separate behavior-first review and tested fixes.

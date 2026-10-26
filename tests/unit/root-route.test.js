@@ -20,6 +20,7 @@ describe('public informational root route', () => {
     const body = json(result);
     expect(result.statusCode).toBe(200);
     expect(result.headers['Cache-Control']).toBe('no-store');
+    expect(result.headers['X-Content-Type-Options']).toBe('nosniff');
     expect(body).toMatchObject({
       name: 'Robinson GitHub MCP', status: 'service-online',
       connected_provider: 'not_assessed', custom_mcp_acceptance: 'not_assessed',
@@ -40,6 +41,21 @@ describe('public informational root route', () => {
     expect(publicInfo('malformed')).toMatchObject({deployed_source_sha: null});
     expect(publicInfo('ghp_FAKE_not_a_sha')).toMatchObject({deployed_source_sha: null});
   });
+  it('keeps honest preview wording on the home page', async () => {
+    const result = await call(handler, request('GET', {}, { accept: 'text/html' }));
+    expect(result.statusCode).toBe(200);
+    expect(result.body).toContain('Read-only mode prevents all changes.');
+    expect(result.body).toContain('Sensitive changes involving production');
+    expect(result.body).not.toContain('preview before anything changes');
+    expect(result.headers['X-Content-Type-Options']).toBe('nosniff');
+  });
+
+  it('publishes the security.txt route without an unverified HSTS includeSubDomains header', () => {
+    expect(rewrites).toContainEqual({source: '/.well-known/security.txt', destination: '/api/security-txt'});
+    const config = JSON.parse(readFileSync(new URL('../../vercel.json', import.meta.url), 'utf8'));
+    expect(JSON.stringify(config.headers ?? [])).not.toMatch(/includeSubDomains/);
+  });
+
   it('serves /favicon.ico from the existing 64px brand icon route', () => {
     expect(rewrites).toContainEqual({source: '/favicon.ico', destination: '/api/index?brand_icon=64'});
   });
