@@ -134,7 +134,7 @@ jobs:
     # Real browsers (Chromium as an Android phone and desktop, WebKit as an iPhone) walk the whole sign-in and the
     # "My connection" page against the real server code, a fake GitHub and a fake app. No network service is contacted.
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     services:
       postgres:
         image: postgres:17.11-bookworm
@@ -165,13 +165,13 @@ jobs:
       # A slow or stuck install fails after one bounded attempt and leaves its last output as an annotation.
       - name: Install the WebKit engine
         if: steps.scope.outputs.code == 'true'
-        timeout-minutes: 10
+        timeout-minutes: 6
         # The runner's mirror can take over 210 s. Do not retry an apt installation killed by a timeout:
         # its surviving apt-get child holds dpkg's lock, making the next attempt fail before tests execute.
-        # Give one bounded 9-minute attempt and retain the real browser suite, never skip WebKit.
+        # Give one bounded 5-minute attempt and retain the real browser suite, never skip WebKit.
         run: |
           start=$(date +%s)
-          if timeout 540 npx playwright install --with-deps webkit > /tmp/pw-install.log 2>&1; then
+          if timeout 300 npx playwright install --with-deps webkit > /tmp/pw-install.log 2>&1; then
             echo "::notice title=WebKit install::completed in $(( $(date +%s) - start )) seconds"
             exit 0
           fi
