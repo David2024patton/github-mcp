@@ -47,6 +47,7 @@ export function createOAuthHandlers({ db, env = process.env, policy, scopesSuppo
     if (!only(res, req, ['GET', 'POST'])) return;
     let p;
     try { p = paramsOf(req); } catch { return bad(res, 400, 'invalid_request', 'Malformed authorization request'); }
+    if (p.resource === undefined) p = { ...p, resource: urls().resource };
     const client = await db.getOAuthClient(str(p.client_id));
     if (!client || !client.redirect_uris?.includes(p.redirect_uri) || !validRedirectUri(p.redirect_uri)) {
       return bad(res, 400, 'invalid_request', 'Unknown client or redirect address');
