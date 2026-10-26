@@ -15,7 +15,7 @@ export function marksOf(tool) {
   if (d.accessWidening) marks.push('changes who has access');
   if (d.notifies) marks.push('may notify people');
   if (d.spend) marks.push('SPENDS MONEY');
-  marks.push(d.confirm === 'always' ? 'always asks first' : 'preview first (dryRun)');
+  marks.push(d.confirm === 'always' ? 'always asks first' : 'safe writes run once; dryRun optional');
   return marks;
 }
 
@@ -51,7 +51,7 @@ export function describeTool(tool) {
   return {
     name: tool.name, kind: kindOf(tool), area: areaOf(tool), audience: (tool.audience ?? ['B', 'O', 'Op']).map((a) => AUDIENCES[a] ?? a), description: tool.description,
     ...(tool.guidance ? { guidance: tool.guidance } : {}), safety: marksOf(tool),
-    ...(tool.writes ? { profiles: tool.profiles, how_to_change: 'Call with dryRun: true to preview, read the preview, then call again with confirm: true.' } : {}),
+    ...(tool.writes ? { profiles: tool.profiles, how_to_change: 'For an already-authorized routine change, call once without dryRun or confirm. Use dryRun: true only for an optional preview. If the server returns needs_confirmation, review its preview and obtain the required approval before retrying with confirm: true.' } : {}),
     arguments: tool.inputSchema
   };
 }

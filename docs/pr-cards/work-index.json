@@ -401,6 +401,21 @@
       "pr": [415]
     },
     {
+      "id": "C-4",
+      "title": "Fast routine write guidance and safe concurrent read batches",
+      "batch": "C",
+      "design": "docs/designs/BATCH-C.md",
+      "dependencies": ["C-3"],
+      "card": "docs/pr-cards/C-4.md",
+      "status": "MERGED",
+      "migration": "none",
+      "budget": 450,
+      "units": ["C-4"],
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": [416]
+    },
+    {
       "id": "D-1",
       "title": "Repositories",
       "batch": "D",

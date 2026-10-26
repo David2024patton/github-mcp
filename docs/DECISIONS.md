@@ -1,3 +1,7 @@
+## 2026-10-26 — fastest safe everyday gateway by design
+
+Owner approved optimizing standard agent workflows at the MCP server, rather than depending on each agent's sophistication. C-4 corrects search/describe guidance to prefer one-call already-authorized routine writes; any operation the server marks risk-sensitive continues to request confirmation and enforce every existing write guard. Independent read-only batch entries are scheduled three at a time, never changes, with original result order and existing authorization/pace/output rules. No paid infrastructure, weakened branch rules, production write authorization or change to the normal release schedule follows from this decision. Improvements will be benchmarked on real clients separately; no claimed cross-industry record without evidence.
+
 ## 2026-10-26 — owner-approved fast first view for repository-working agents
 
 Chris requested common developer operations directly in the initial compact MCP listing so agents need not repeatedly search for basic tools. C-3 curates existing tool names for repository and file reads, branch creation, text/binary commits, PR work, review threads and CI without loading the entire catalog. The 5,000-token budget, profile authorization, guarded writes, lazy RTC Hub access and scheduled release policy remain. This does not permit confirmation bypasses or broader access.

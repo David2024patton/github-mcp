@@ -22,7 +22,7 @@ describe('github_search_tools', () => {
     const w = await world();
     const r = data(await w.run('github_search_tools', { query: 'default account' }));
     expect(r.tools[0]).toMatchObject({ name: 'github_set_default_account', kind: 'change', area: 'server' });
-    expect(r.tools[0].safety).toContain('preview first (dryRun)');
+    expect(r.tools[0].safety).toContain('safe writes run once; dryRun optional');
     const prod = data(await w.run('github_search_tools', { query: 'production' })).tools.map((t) => t.name);
     expect(prod).toContain('github_enable_production');
   });
@@ -53,7 +53,9 @@ describe('github_describe_tool', () => {
     const write = data(await w.run('github_describe_tool', { name: 'github_revoke_connection' }));
     expect(write).toMatchObject({ kind: 'change', profiles: ['full'] });
     expect(write.safety).toContain('always asks first');
-    expect(write.how_to_change).toContain('dryRun');
+    expect(write.how_to_change).toContain('call once without dryRun or confirm');
+    expect(write.how_to_change).toContain('needs_confirmation');
+    expect(write.how_to_change).toContain('obtain the required approval');
   });
   it('does not describe a tool the profile cannot see, or one that does not exist', async () => {
     const low = await world('read_only');
@@ -116,6 +118,46 @@ describe('github_batch', () => {
     expect((await w.run('github_batch', { calls: [] })).isError).toBe(true);
     expect((await w.run('github_batch', { calls: Array.from({ length: 11 }, () => ({ name: 'github_whoami' })) })).isError).toBe(true);
   });
+  it('runs at most three independent reads at once and keeps original order and individual errors', async () => {
+    const w = await world();
+    let active = 0;
+    let peak = 0;
+    const read = defineRead({
+      name: 'github_t_fast_read', description: 'A bounded synthetic read.',
+      properties: { index: { type: 'integer', minimum: 0 } }, required: ['index'],
+      handler: async ({ index }) => {
+        active += 1;
+        peak = Math.max(peak, active);
+        await new Promise(resolve => setTimeout(resolve, 5 + (index % 3) * 5));
+        active -= 1;
+        if (index === 4) throw new TypeError('Synthetic item failed.');
+        return { index };
+      }
+    });
+    const reg = mergeNamespaces([meta, { tools: [read.tool], handlers: { [read.tool.name]: read.handler } }]);
+    const calls = Array.from({ length: 10 }, (_, index) => ({ name: read.tool.name, args: { index } }));
+    const result = data(await w.run('github_batch', { calls }, reg));
+    expect(peak).toBe(3);
+    expect(active).toBe(0);
+    expect(result.count).toBe(10);
+    for (let index = 0; index < 10; index++) {
+      expect(result.results[index].name).toBe(read.tool.name);
+      if (index === 4) expect(result.results[index]).toMatchObject({ ok: false });
+      else expect(result.results[index]).toMatchObject({ ok: true, result: { index } });
+    }
+  });
+
+  it('refuses a mixed read/write batch before starting any read', async () => {
+    const w = await world();
+    let readCount = 0;
+    const read = defineRead({ name: 'github_t_bounded_read', description: 'Synthetic side-effect counter for denied batches.',
+      handler: async () => { readCount += 1; return { ok: true }; } });
+    const reg = mergeNamespaces([meta, { tools: [read.tool], handlers: { [read.tool.name]: read.handler } }]);
+    const denied = await w.run('github_batch', { calls: [{ name: read.tool.name }, { name: 'github_call' }] }, reg);
+    expect(denied.isError).toBe(true);
+    expect(readCount).toBe(0);
+  });
+
   it('keeps a combined result that is too big behind a handle', async () => {
     const w = await world();
     const bigRead = defineRead({ name: 'github_t_big', description: 'Big.', handler: async () => ({ text: 'word '.repeat(1500), list: Array.from({ length: 30 }, (_, i) => ({ i, note: 'n'.repeat(100) })) }) });
@@ -158,6 +200,7 @@ describe('the finding helpers', () => {
     expect(areaOf({ name: 'github_pr_merge', area: 'custom' })).toBe('custom');
     expect(kindOf(meta.tools.find((t) => t.name === 'github_call'))).toBe('runner');
     expect(marksOf(sampleSeat.tool)).toContain('SPENDS MONEY');
+    expect(marksOf(sampleLabel.tool)).toContain('safe writes run once; dryRun optional');
     expect(marksOf({ name: 'x', writes: true, declarations: { production: 'when-target', accessWidening: true, notifies: true, confirm: 'always' } })).toEqual(['production when the target is', 'changes who has access', 'may notify people', 'always asks first']);
     expect(describeTool(sampleSeat.tool).arguments).toBe(sampleSeat.tool.inputSchema);
     expect(searchTools([sampleSeat.tool, sampleLabel.tool], { query: 'copilot seats' }).map((t) => t.name)).toEqual(['github_sample_seat']);
