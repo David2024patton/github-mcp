@@ -38,11 +38,19 @@ async function batchHandler(args, ctx) {
   const calls = args.calls;
   const notReads = calls.filter((c) => { const t = callable(ctx, c.name); return !t || t.writes === true || t.annotations?.readOnlyHint !== true; });
   if (notReads.length) throw new TypeError(`github_batch runs read tools only. Not a read tool you can use: ${notReads.map((c) => String(c.name).slice(0, 60)).join(', ')}. Use github_call for a change.`);
+  // Bounded waves avoid N serialized remote reads without overwhelming GitHub or the
+  // shared database. Each call still re-enters the normal dispatcher, authorization
+  // and redaction path. Promise.all preserves request order inside each wave.
   const results = [];
-  for (const call of calls) {
-    const r = await ctx.callTool(call.name, call.args ?? {});
-    if(r._meta?.['mcp/www_authenticate'])throw new OptionalConsentRequired(r);
-    results.push(r.isError ? { name: call.name, ok: false, error: r.content?.[0]?.text ?? 'The call failed.' } : { name: call.name, ok: true, result: r.structuredContent ?? null });
+  for (let offset = 0; offset < calls.length; offset += 3) {
+    const wave = await Promise.all(calls.slice(offset, offset + 3).map(async (call) => {
+      const r = await ctx.callTool(call.name, call.args ?? {});
+      if (r._meta?.['mcp/www_authenticate']) throw new OptionalConsentRequired(r);
+      return r.isError
+        ? { name: call.name, ok: false, error: r.content?.[0]?.text ?? 'The call failed.' }
+        : { name: call.name, ok: true, result: r.structuredContent ?? null };
+    }));
+    results.push(...wave);
   }
   return { count: results.length, results };
 }
