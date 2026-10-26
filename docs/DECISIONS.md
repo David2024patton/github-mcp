@@ -1,3 +1,7 @@
+## 2026-10-26 — owner-approved fast first view for repository-working agents
+
+Chris requested common developer operations directly in the initial compact MCP listing so agents need not repeatedly search for basic tools. C-3 curates existing tool names for repository and file reads, branch creation, text/binary commits, PR work, review threads and CI without loading the entire catalog. The 5,000-token budget, profile authorization, guarded writes, lazy RTC Hub access and scheduled release policy remain. This does not permit confirmation bypasses or broader access.
+
 ## 2026-10-26 — licensing status and independent contribution decisions
 
 Owner asked for a clearly stated policy so outside contributors can continue submitting PRs without automatic adoption. The existing absence of an open-source license means default rights remain reserved. LICENSE documents that position, preserving third-party rights and granting no new software reuse license. CONTRIBUTING explains owner-controlled, tested review. A genuinely new open-source or commercial license would require a separate owner decision. GitHub Free for organizations cannot enforce protected branches/rulesets on a private repository; Team or higher would be needed to retain mandatory CI enforcement. Evaluation of private visibility does not approve switching it or changing collaborator access and Actions budgets.
