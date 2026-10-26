@@ -20,7 +20,7 @@ const RULES = Object.freeze([
   { id: 'github_personal_access_token', label: 'GitHub personal access token',
     pattern: /(?:^|[^A-Za-z0-9_])(?:ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{35,})/ },
   { id: 'github_oauth_or_app_token', label: 'GitHub OAuth, refresh or App token',
-    pattern: /(?:^|[^A-Za-z0-9_])gh[ousr]_[A-Za-z0-9]{30,}/ },
+    pattern: /(?:^|[^A-Za-z0-9._-])gh[ousr]_[A-Za-z0-9._-]{36,}/ },
   { id: 'slack_api_token', label: 'Slack token',
     pattern: /(?:^|[^A-Za-z0-9_-])xox[baprs]-[A-Za-z0-9-]{20,}/ },
   { id: 'private_key', label: 'Private key block',
