@@ -1,0 +1,85 @@
+import { describe, expect, it } from 'vitest';
+import { runWriteContract, makeWorld, doorsFor, parse } from '../../test/helpers/write-contract.js';
+import * as gitData from '../../src/tools/git-data-commit.js';
+
+const A = 'a'.repeat(40), B = 'b'.repeat(40), C = 'c'.repeat(40);
+const D = 'd'.repeat(40), E = 'e'.repeat(40);
+const pdf = Buffer.from('%PDF-1.7\n' + String.fromCharCode(0, 255) + '\n%%EOF');
+const args = { repo: 'hello', branch: 'main', message: 'Add the official form',
+  files: [{ path: 'forms/official.pdf', encoding: 'base64', content: pdf.toString('base64') }] };
+const definition = { tool: gitData.tools[0], handler: gitData.handlers.github_content_commit_git_data };
+function arrange(gh, mismatch = false) {
+  gh.when('GET /repos/{owner}/{repo}').reply(200, { default_branch: 'main' });
+  gh.when('GET /repos/{owner}/{repo}/branches/{branch}').replySequence([
+    { status: 200, body: { protected: false, commit: { sha: A } } },
+    { status: 200, body: { protected: false, commit: { sha: mismatch ? A : B } } }
+  ]);
+  gh.when('GET /repos/{owner}/{repo}/git/commits/{commit_sha}').reply(200,
+    { sha: A, tree: { sha: C }, parents: [] });
+  gh.when('POST /repos/{owner}/{repo}/git/blobs').reply(201, { sha: D });
+  gh.when('POST /repos/{owner}/{repo}/git/trees').reply(201, { sha: E });
+  gh.when('POST /repos/{owner}/{repo}/git/commits').reply(201, { sha: B });
+  gh.when('PATCH /repos/{owner}/{repo}/git/refs/{ref}').reply(200,
+    { ref: 'refs/heads/main', object: { sha: B } });
+}
+runWriteContract({
+  label: 'github_content_commit_git_data (default branch)', definition,
+  args, production: true, needsConfirm: true, expectedWrites: 4,
+  advanceClockOnSleep: true,
+  arrange: (gh, outcome) => arrange(gh, outcome !== 'ok')
+});
+
+describe('Git Data binary commits', () => {
+  const run = async (w, a) => parse(await doorsFor(definition)[0].call(w, a));
+  it('preserves binary PDF bytes and supplies one exact parent with nonforced fast-forward', async () => {
+    const w = await makeWorld({ mode: 'preview', advanceClockOnSleep: true });
+    arrange(w.gh);
+    // Feature branch is not production; main remains protected by production guard.
+    w.gh.when('GET /repos/{owner}/{repo}').reply(200, { default_branch: 'main' });
+    const out = await run(w, { ...args, branch: 'docs/pdf', confirm: true, expectedHead: A });
+    expect(out.status).toBe('applied');
+    const calls = w.gh.calls;
+    const blob = calls.find(c => c.route === 'POST /repos/{owner}/{repo}/git/blobs');
+    const tree = calls.find(c => c.route === 'POST /repos/{owner}/{repo}/git/trees');
+    const commit = calls.find(c => c.route === 'POST /repos/{owner}/{repo}/git/commits');
+    const ref = calls.find(c => c.route === 'PATCH /repos/{owner}/{repo}/git/refs/{ref}');
+    expect(Buffer.from(blob.body.content, 'base64')).toEqual(pdf);
+    expect(blob.body.encoding).toBe('base64');
+    expect(tree.body).toMatchObject({ base_tree: C,
+      tree: [{ path: 'forms/official.pdf', sha: D, mode: '100644', type: 'blob' }] });
+    expect(commit.body).toMatchObject({ tree: E, parents: [A] });
+    expect(ref.body).toMatchObject({ ref: 'heads/docs/pdf', sha: B, force: false });
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('refuses a stale exact head before creating blobs or commits', async () => {
+    const w = await makeWorld();
+    arrange(w.gh);
+    const out = await run(w, { ...args, branch: 'docs/pdf', expectedHead: B, confirm: true });
+    expect(JSON.stringify(out)).toMatch(/moved since your preview/i);
+    expect(w.gh.calls.filter(c => c.method === 'POST' || c.method === 'PATCH')).toHaveLength(0);
+  });
+  it('rejects noncanonical base64, traversal, duplicate paths and inconsistent deletion', () => {
+    const good = { path: 'doc.pdf', content: pdf.toString('base64'), encoding: 'base64' };
+    expect(() => gitData.bytesOf({ ...good, content: 'a===' })).toThrow(/base64/);
+    expect(() => gitData.bytesOf({ ...good, content: 'YQ=' })).toThrow(/base64/);
+    expect(() => gitData.checkGitFiles([{ ...good, path: '../secret' }])).toThrow(/relative path/);
+    expect(() => gitData.checkGitFiles([good, good])).toThrow(/Duplicate/);
+    expect(() => gitData.bytesOf({ path: 'x', delete: true, content: 'y' })).toThrow(/deletion/);
+    expect(() => gitData.bytesOf({ path: 'x', content: 'x', mode: '120000' })).toThrow(/mode/);
+  });
+  it('accepts UTF-8 text, an empty file, executable mode and a deletion', () => {
+    expect(gitData.checkGitFiles([
+      { path: 'a.txt', content: 'hello' },
+      { path: 'empty.txt', content: '' },
+      { path: 'run.sh', content: '#!/bin/sh', mode: '100755' },
+      { path: 'gone.txt', delete: true }
+    ])).toMatchObject({ additions: 3, deletions: 1 });
+  });
+  it('rejects oversized files before any remote requests', async () => {
+    const w = await makeWorld();
+    const out = await run(w, { ...args, branch: 'dev',
+      files: [{ path: 'large.bin', content: 'a'.repeat(1_500_001) }] });
+    expect(JSON.stringify(out)).toMatch(/limit|large|size/i);
+    expect(w.gh.calls).toHaveLength(0);
+  });
+});
