@@ -1,0 +1,20 @@
+# PAR-2 — organization issue taxonomy reads and on-demand repository secret review
+
+**Owner authorization:** 2026-10-26 request from Muse comparison. **Outcome:** a connected GitHub user can discover their organization's issue types and issue fields using dedicated bounded read tools, and can request a no-secrets-returned review of selected GitHub-hosted repository files for high-confidence credential patterns, without creating alerts or changing files. Ship together as an MCP usability/parity bundle; extend PAR-1.
+
+## Acceptance criteria
+
+- [ ] `github_org_list_issue_types` and `github_org_list_issue_fields` use the exact REST GET endpoints on the connected organization, reject personal/foreign orgs, report plan/permission errors plainly, and project only bounded metadata with explicit partial/truncation indicators.
+- [ ] Read tools return IDs, type names, descriptions, enabled flags/colors, field types/visibility/select options, with no secrets or unrelated GitHub objects. Tests cover missing or wrong org, empty collection, capped responses and permission failures.
+- [ ] `github_security_scan_files` accepts only an enrolled repository + explicit paths/ref (not raw code, credentials or arbitrary URLs), obtains file content through the existing authenticated GitHub client and scans *server-side*. A finite cap limits files, bytes, time, binary/symlink/large files; all incomplete scans are clearly marked.
+- [ ] A credential detection engine recognizes bounded high-confidence token/private-key patterns; findings contain only rule, path, line and remediation — **never** original token values, snippets, file content, or logs. No repository writes, alerts, stored scan payloads or client-supplied secret strings.
+- [ ] Tests cover positive and negative synthetic fixtures, fake GitHub request shapes, cross-account rejection, invalid paths, oversize, binary and unreadable files, findings redaction and the registry/tool discoverability.
+- [ ] Update `docs/TOOL-CATALOG.md`, roadmap/status, handoff and relevant tests; required CI and release-policy are green on exact-head reviewed PR before merge. No independent production release without the release policy.
+
+## Honest boundaries
+
+GitHub's **official** `run_secret_scanning` is a remote-MCP-only feature backed by GitHub Secret Protection, with ephemeral findings. GitHub's public REST API has **no equivalent ad-hoc scanning endpoint**. Our bounded built-in pattern scanner scans only *existing selected repository files* via a GitHub App grant, not uncommitted local IDE files, and is not a replacement for GitHub's proprietary engine, full historical scan, push protection, or secret-scanning alerts. It must never claim coverage parity or declare a repository clean solely on no matches; use GitHub's official scanner for its stronger detection. No newly enabled GitHub paid features or credentials.
+
+## Implementation checkpoint
+
+Plan committed before feature changes. Tests are not yet run; all acceptance boxes remain open until exact-head CI. 
