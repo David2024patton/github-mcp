@@ -561,3 +561,7 @@ what free users get after monetization is undecided and is not a task. Nobody ad
 ## 2026-10-26 — external contributor suggestions are maintainer-owned
 
 Owner authorized independent assessment and adoption of David2024patton's PRs, including writing corrections ourselves and closing incorporated or declined suggestions with courtesy. Original fork branches are not trusted automatically or responsible for repairs. CONTRIB-1 adopts #402 honest-preview wording, #403 Windows portability and LF handling, and #404 nosniff plus RFC 9116 security.txt. The proposed two-year HSTS includeSubDomains is NOT adopted without complete TLS host inventory. CI, merge and scheduled live release gates remain unchanged; security-sensitive #399, #400, #401 and #405 need separate behavior-first review and tested fixes.
+
+## 2026-10-26 — signed download redirect URLs are never model-visible
+
+After reviewing outside PR #401 and #405, the maintainer identified a bearer leak in the current archive, artifact and account-export link tools: the redirect Location could contain secret access query parameters. Merely redacting in the default mode while offering full detail would leak the same credential. CONTRIB-2 requires sanitization inside handlers before result shaping, with an allowlisted clean public codeload URL or safe GitHub navigation page, never a bearer redirect in any detail/fields mode. Human-only authenticated transfer is separate future work, not an AI full-detail override.

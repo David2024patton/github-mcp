@@ -3,6 +3,7 @@
 import { listAll } from '../github/client.js';
 import { defineRead } from './define-read.js';
 import { globToRegExp } from './production-guard.js';
+import { githubDownloadPage, safeGithubDownloadRedirect } from './safe-download-link.js';
 import { plain, readerFor } from './github-read.js';
 
 const OWNER = { type: 'string', maxLength: 39, description: 'GitHub account (default: the connection\'s default account)' };
@@ -85,7 +86,7 @@ export const contentGetArchiveLink = defineRead({
   description: 'A short-lived download link for a tarball or zipball of a ref (the link itself, not the file).',
   properties: { owner: OWNER, repo: REPO, ref: { ...REF, description: 'Branch, tag or commit (default: the default branch)' }, format: { type: 'string', enum: ['tarball', 'zipball'], description: 'Default tarball' } },
   required: ['repo'],
-  guidance: 'The link expires within about a minute and may carry a temporary access code for private repositories. Use it at once; do not store or share it.',
+  guidance: 'A clean public archive link is provided when safe. Signed or unverified redirect addresses are withheld from all result modes; use the GitHub page shown instead.',
   handler: (args, ctx) => plain(async () => {
     const { owner, octokit } = await readerFor(args, ctx);
     const ref = args.ref ?? (await octokit.request('GET /repos/{owner}/{repo}', { owner, repo: args.repo })).data.default_branch;
@@ -93,7 +94,8 @@ export const contentGetArchiveLink = defineRead({
     const response = await octokit.request(route, { owner, repo: args.repo, ref, request: { redirect: 'manual' } });
     const url = response.headers?.location;
     if (!url) throw new TypeError('GitHub did not return a download link for that ref.');
-    return { ref, format: args.format ?? 'tarball', url, expires: 'within about one minute' };
+    const safe = safeGithubDownloadRedirect(url, githubDownloadPage(owner, args.repo));
+    return { ref, format: args.format ?? 'tarball', ...safe, expires: safe.url ? 'within about one minute' : null };
   })
 });
 

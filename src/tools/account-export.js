@@ -6,6 +6,7 @@ import { defineRead } from './define-read.js';
 import { missing, octo, refusal } from './github-write.js';
 import { plain } from './github-read.js';
 import { personalCred } from '../github/personal-cred.js';
+import { safeGithubDownloadRedirect } from './safe-download-link.js';
 
 const ID = { type: 'integer', minimum: 1 };
 const REPO_NAME = { type: 'string', minLength: 1, maxLength: 140, pattern: '^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)?$' };
@@ -58,7 +59,7 @@ const exportLink = defineRead({
   name: 'github_account_export_link', area: 'account', audience: ['B', 'O'],
   description: 'The short-lived private download address of a finished account export. The archive is NOT downloaded here.',
   properties: { migrationId: ID }, required: ['migrationId'],
-  guidance: 'The address gives access to private data: show it only to the account owner, never post it anywhere.',
+  guidance: 'Account export redirects can contain private bearer credentials. All unverified locations are withheld; sign in to GitHub to retrieve the archive.',
   handler: (args, ctx) => plain(async () => {
     const gh = await client(ctx);
     const m = (await gh.request('GET /user/migrations/{migration_id}', { migration_id: args.migrationId })).data;
@@ -66,7 +67,11 @@ const exportLink = defineRead({
     const response = await gh.request('GET /user/migrations/{migration_id}/archive', { migration_id: args.migrationId, request: { redirect: 'manual' } });
     const url = response.headers?.location;
     if (!url) throw new TypeError('GitHub did not return a download address for that export.');
-    return { id: m.id, state: m.state, sensitive: true, link: url, note: 'Private, short-lived address to your account data. This server did not download the archive.' };
+    const safe = safeGithubDownloadRedirect(url, 'https://github.com/settings');
+    return { id: m.id, state: m.state, sensitive: true, link: safe.url,
+      sensitive_redirect_omitted: safe.sensitive_redirect_omitted,
+      ...(safe.github_web_url ? { github_web_url: safe.github_web_url } : {}),
+      note: safe.note ?? 'Public archive address. This server did not download the archive.' };
   })
 });
 
