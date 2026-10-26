@@ -15,6 +15,11 @@
 2. Add `CONTRIBUTING.md` explaining that collaborators propose changes via feature branches and PRs; the owner/maintainer reviews each diff for security, correctness, tests, release cost and scope, may approve/request revisions/reject, and only an intentional accepted green PR may merge. Require contributors to have rights to their submitted material, call out third-party licenses, and avoid submitting credentials or private data. Do not silently grant access or automatic merge authority.
 3. Link both documents in README, add brief owner-facing status/decision note; perform exact-head required `ci` and `release-policy` checks. Do not make upstream private, change visibility, invite collaborators, change Actions spend cap, or release production.
 
+## Review drift and correction
+
+- GitHub review on PR #410 identified a forbidden addition to the top of `docs/STATUS.md`. Removed that shared ledger edit; retained the separate `docs/status/2026-10-26-license-contribution-policy.md` note per AGENTS.md.
+- The private-repository evaluation verified an additional decisive constraint: Free organizations cannot enforce required branch protections on private repositories. A Team-or-higher plan would be needed before the owner can preserve equivalent CI enforcement. No plan upgrade is authorized.
+
 ## Legal and release boundary
 
 This is a documentation of the pre-existing copyright default, **not** an open-source license or permission for third parties to redistribute the code. If the owner wants MIT, Apache-2.0, a custom commercial license, or a contributor agreement, obtain that separate business/legal decision before granting rights. A final PR merge still follows the repo's normal reviews and checks. Scheduled release is unaffected.

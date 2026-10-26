@@ -1,6 +1,6 @@
 ## 2026-10-26 — licensing status and independent contribution decisions
 
-Owner asked for a clearly stated policy so outside contributors can continue submitting PRs without automatic adoption. The existing absence of an open-source license means default rights remain reserved. LICENSE documents that position, preserving third-party rights and granting no new software reuse license. CONTRIBUTING explains owner-controlled, tested review. A genuinely new open-source or commercial license would require a separate owner decision. Evaluation of private visibility does not approve switching it or changing collaborator access and Actions budgets.
+Owner asked for a clearly stated policy so outside contributors can continue submitting PRs without automatic adoption. The existing absence of an open-source license means default rights remain reserved. LICENSE documents that position, preserving third-party rights and granting no new software reuse license. CONTRIBUTING explains owner-controlled, tested review. A genuinely new open-source or commercial license would require a separate owner decision. GitHub Free for organizations cannot enforce protected branches/rulesets on a private repository; Team or higher would be needed to retain mandatory CI enforcement. Evaluation of private visibility does not approve switching it or changing collaborator access and Actions budgets.
 
 ## 2026-10-23 — finish plan written (batch FIN), not built yet
 
