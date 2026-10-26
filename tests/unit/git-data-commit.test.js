@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { runWriteContract, makeWorld, doorsFor, parse } from '../../test/helpers/write-contract.js';
 import * as gitData from '../../src/tools/git-data-commit.js';
+import { createGates } from '../../src/tools/gates.js';
 
 const A = 'a'.repeat(40), B = 'b'.repeat(40), C = 'c'.repeat(40);
 const D = 'd'.repeat(40), E = 'e'.repeat(40);
@@ -103,16 +104,16 @@ describe('Git Data binary commits', () => {
     expect(w.gh.calls.some(c => c.route === 'POST /repos/{owner}/{repo}/git/commits')).toBe(false);
   });
   it('allows a protected pr-only repository feature branch, but forbids a default-branch bypass', async () => {
-    const permitted = await makeWorld({ accounts: ['Robinson-AI-Systems'], advanceClockOnSleep: true });
+    const permitted = await makeWorld({ accounts: ['Robinson-AI-Systems'], advanceClockOnSleep: true, gates: createGates() });
     arrange(permitted.gh);
     const input = { ...args, repo: 'github-mcp', branch: 'ai/fix-binary', confirm: true };
     const added = parse(await doorsFor(definition)[1].call(permitted, input));
     expect(added.status).toBe('applied');
-    const main = await makeWorld({ accounts: ['Robinson-AI-Systems'], mode: 'production', advanceClockOnSleep: true });
+    const main = await makeWorld({ accounts: ['Robinson-AI-Systems'], mode: 'preview', advanceClockOnSleep: true, gates: createGates() });
     arrange(main.gh);
     const refused = parse(await doorsFor(definition)[1].call(main, { ...input, branch: 'main' }));
     expect(refused.status).toBe('refused_by_guard');
-    expect(refused.refusedBy).toContain('protected');
+    expect(refused.refusedBy).toBe('mode'); // Default-branch production classification blocks PREVIEW before PR-only is considered.
     expect(main.gh.calls.filter(c => c.method === 'POST' || c.method === 'PATCH')).toHaveLength(0);
   });
   it('uses null tree SHA for deletion and does not upload a blob', async () => {
