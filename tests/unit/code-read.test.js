@@ -93,7 +93,8 @@ describe('content reads (D-2)', () => {
         expect(JSON.stringify(result)).not.toContain(secret);
       } else {
         expect(body).toMatchObject({ url: null, sensitive_redirect_omitted: true });
-        expect(body.github_web_url).toBe('https://github.com/example-org/hello');
+        if (!extra.fields) expect(body.github_web_url).toBe('https://github.com/example-org/hello');
+        else expect(body.github_web_url).toBeUndefined();
         expect(JSON.stringify(result)).not.toContain(secret);
       }
     }
