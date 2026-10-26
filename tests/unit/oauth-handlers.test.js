@@ -72,12 +72,83 @@ describe('connector metadata and registration', () => {
     expect(JSON.stringify(stored)).not.toContain(client.client_secret);
   });
 
+  it('registers a secretless public client and exchanges and refreshes with PKCE and no resource', async () => {
+    const { h, db } = await fixture();
+    const created = json(await call(h.register, request('POST', {
+      redirect_uris: [callback], client_name: 'Muse', token_endpoint_auth_method: 'none'
+    })));
+    expect(created.client_id).toBeTruthy();
+    expect(created.token_endpoint_auth_method).toBe('none');
+    expect(created).not.toHaveProperty('client_secret');
+    expect((await db.getOAuthClient(created.client_id)).token_endpoint_auth_method).toBe('none');
+    const requestData = form(created, { resource: undefined, scope: 'mcp:read mcp:write',
+      passphrase: baseEnv.ADMIN_PASSPHRASE });
+    expect((await call(h.authorize, request('GET', requestData))).statusCode).toBe(200);
+    const approved = await call(h.authorize, request('POST', requestData));
+    expect(approved.statusCode).toBe(302);
+    const code = new URL(approved.headers.Location).searchParams.get('code');
+    expect(code).toBeTruthy();
+    const tokenBody = { grant_type: 'authorization_code', client_id: created.client_id,
+      code, redirect_uri: callback, code_verifier: verifier };
+    const issued = await call(h.token, request('POST', tokenBody));
+    expect(issued.statusCode).toBe(200);
+    const first = json(issued);
+    expect(first.access_token).toBeTruthy();
+    const refreshed = await call(h.token, request('POST', {
+      grant_type: 'refresh_token', client_id: created.client_id, refresh_token: first.refresh_token
+    }));
+    expect(refreshed.statusCode).toBe(200);
+    expect(json(refreshed).refresh_token).not.toBe(first.refresh_token);
+    expect((await call(h.token, request('POST', {
+      grant_type: 'refresh_token', client_id: created.client_id, refresh_token: first.refresh_token
+    }))).statusCode).toBe(400);
+  });
+
+  it('keeps secretless grants bound to the exact redirect, client, PKCE and MCP audience', async () => {
+    const { h } = await fixture();
+    const create = async () => json(await call(h.register, request('POST', {
+      redirect_uris: [callback], token_endpoint_auth_method: 'none'
+    })));
+    const client = await create(), other = await create();
+    const badAudience = await call(h.authorize, request('GET', form(client, {
+      resource: 'https://foreign.example.test/api/mcp'
+    })));
+    expect(badAudience.statusCode).toBe(400);
+    const approved = await call(h.authorize, request('POST', form(client, {
+      resource: undefined, passphrase: baseEnv.ADMIN_PASSPHRASE
+    })));
+    const code = new URL(approved.headers.Location).searchParams.get('code');
+    const params = { grant_type: 'authorization_code', client_id: client.client_id, code,
+      redirect_uri: callback, code_verifier: verifier };
+    expect((await call(h.token, request('POST', { ...params, resource: 'https://foreign.example.test/api/mcp' }))).statusCode).toBe(400);
+    expect((await call(h.token, request('POST', { ...params, client_id: other.client_id }))).statusCode).toBe(400);
+    // Consuming a code for a different client does not issue access to either party.
+    expect((await call(h.token, request('POST', params))).statusCode).toBe(400);
+    const another = await call(h.authorize, request('POST', form(client, {
+      resource: undefined, passphrase: baseEnv.ADMIN_PASSPHRASE
+    })));
+    const nextCode = new URL(another.headers.Location).searchParams.get('code');
+    expect((await call(h.token, request('POST', { ...params, code: nextCode, code_verifier: 'z'.repeat(43) }))).statusCode).toBe(400);
+    expect((await call(h.token, request('POST', { ...params, code: nextCode }))).statusCode).toBe(400);
+  });
+
+  it('never treats a confidential client as public when the caller omits its secret', async () => {
+    const { h } = await fixture();
+    const client = await register(h);
+    const approved = await call(h.authorize, request('POST', form(client, { passphrase: baseEnv.ADMIN_PASSPHRASE })));
+    const code = new URL(approved.headers.Location).searchParams.get('code');
+    const body = { grant_type: 'authorization_code', client_id: client.client_id,
+      code, redirect_uri: callback, code_verifier: verifier };
+    expect((await call(h.token, request('POST', body))).statusCode).toBe(401);
+    expect((await call(h.token, request('POST', { ...body, client_secret: client.client_secret }))).statusCode).toBe(200);
+  });
+
   it('rejects insecure or duplicate redirect URIs, too many of them, and unsupported client authentication', async () => {
     const { h } = await fixture();
     const attempts = [
       { redirect_uris: ['http://evil.example.test/cb'] }, { redirect_uris: [] }, { redirect_uris: [callback, callback] },
       { redirect_uris: Array.from({ length: 9 }, (_, n) => `https://client.example.test/cb${n}`) },
-      { redirect_uris: [callback], token_endpoint_auth_method: 'none' }, {}
+      { redirect_uris: [callback], token_endpoint_auth_method: 'client_secret_basic' }, {}
     ];
     for (const body of attempts) {
       const res = await call(h.register, request('POST', body));
