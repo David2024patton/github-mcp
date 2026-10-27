@@ -8,6 +8,7 @@ import { refusal } from './github-write.js';
 import { restOperations,restOperation,validateRest,describeRest } from '../github/openapi-index.js';
 import { classifyUniversal,assertUniversalAuthority,universalPrice } from '../github/operation-classes.js';
 import { curatedTool } from '../github/hand-built-map.js';
+import { requireEnterprise } from '../github/enterprise-access.js';
 
 const OP={type:'string',minLength:2,maxLength:240,description:'Pinned operationId or METHOD /path'};
 const PARAMS={type:'object',additionalProperties:true,maxProperties:60,description:'Only OpenAPI-defined path and query parameters'};
@@ -15,6 +16,7 @@ const BODY={type:'object',additionalProperties:true,description:'JSON request bo
 const OWNER={type:'string',minLength:1,maxLength:39};
 const CRED={type:'string',enum:['I','U','P','M'],description:'I installation; U user; P enrolled package-only classic token; M your enrolled master token (only when the App cannot do it)'};
 const queryProperties={operation:OP,params:PARAMS,body:BODY,owner:OWNER,cred:CRED};
+const enterpriseRoute=(op)=>/^\/enterprises\/\{enterprise\}(?:\/|$)/.test(op.path);
 
 function ownerFor(a,c,p) {
   const names=[a.owner,p.owner,p.org,p.username,p.account].filter(v=>typeof v==='string'&&v.length);
@@ -26,6 +28,15 @@ function ownerFor(a,c,p) {
   return owner;
 }
 function scopeFor(a,c,p,op) {
+  if (enterpriseRoute(op)) {
+    const owner=c.connection.default_account;
+    if (!owner || !(c.connection.accounts??[]).some(n=>n.toLowerCase()===owner.toLowerCase()) ||
+        (a.owner && a.owner.toLowerCase()!==owner.toLowerCase()))
+      throw new TypeError('Enterprise API calls use this connection\'s exact enrolled default account.');
+    if (typeof p.enterprise!=='string' || !/^[a-z0-9][a-z0-9-]{0,59}$/.test(p.enterprise))
+      throw new TypeError('The enterprise slug must be an exact, valid GitHub enterprise identifier.');
+    return { owner, enterprise:p.enterprise,scope:'org',kind:'universal-enterprise' };
+  }
   const owner=ownerFor(a,c,p);
   const repo=p.repo;
   if(repo!==undefined && (typeof repo!=='string'||!repo.trim()))
@@ -38,6 +49,10 @@ function scopeFor(a,c,p,op) {
 function credentials(a,op) {
   if(typeof a.cred!=='undefined' && !['I','U','P','M'].includes(a.cred))
     throw new TypeError('Only enrolled I, U, M and package-only P credentials are supported.');
+  if (enterpriseRoute(op)) {
+    if (a.cred!=='M') throw new TypeError('Enterprise REST operations require explicit cred: "M" (your enrolled master token).');
+    return 'M';
+  }
   const packages=/^\/(?:orgs\/\{org\}|users\/\{username\}|user)\/packages(?:\/|$)/.test(op.path);
   // M (master token) may reach package routes too; P stays package-only.
   if ((packages && a.cred !== 'P' && a.cred !== 'M') || (a.cred === 'P' && !packages))
@@ -78,7 +93,12 @@ async function accountClient(ctx,target,cred) {
       {scope:{repositories:[target.repo]}}:{})});
 }
 async function requestFor(ctx,{target,cred,op,request}) {
-  return (await accountClient(ctx,target,cred)).request(op.route,request);
+  // A trusted master token does not by itself authorize an arbitrary enterprise.
+  // Verify current GitHub ADMIN membership and the exact scope for every call.
+  const gh=target.enterprise
+    ? await requireEnterprise(ctx,target.enterprise,{scope:op.method==='GET'?'read:enterprise':'admin:enterprise'})
+    : await accountClient(ctx,target,cred);
+  return gh.request(op.route,request);
 }
 function safeDescription(op) {
   const mark=classifyUniversal(op);
@@ -133,6 +153,11 @@ function readRouteFor(op) {
 // Baseline is obtained BEFORE the write and always scoped to the same account.
 async function baseline(ctx,chosen) {
   const {op,params,target,cred}=chosen;
+  // A no-GET enterprise mutation must never fall back to GET /orgs/{org}
+  // (the enterprise is not an installed organization). Prove admin access
+  // against the provider before proceeding, then report unconfirmed if no
+  // exact independent readback exists.
+  if (target.enterprise) await requireEnterprise(ctx,target.enterprise,{scope:'admin:enterprise'});
   const same=readRouteFor(op);
   if(same) {
     try {
@@ -143,6 +168,7 @@ async function baseline(ctx,chosen) {
       return {kind:'absent',state:null};
     }
   }
+  if(target.enterprise) return {kind:'enterprise-admin',state:{enterprise:target.enterprise}};
   if(target.repo) {
     const data=(await (await accountClient(ctx,target,cred))
       .request('GET /repos/{owner}/{repo}',{owner:target.owner,repo:target.repo})).data;
@@ -161,7 +187,7 @@ const apiWrite=defineGithubWrite({
   name:'github_api_write',area:'universal',audience:['B','O','Op'],
   description:'PRODUCTION: Execute validated non-curated REST writes with delegated billing warnings, scoped guards and confirmation.',
   properties:queryProperties,required:['operation'],
-  declarations:{production:'when-target',accessWidening:true,notifies:true,spend:true,confirm:'always',cred:'I,U,P',profiles:['full']},
+  declarations:{production:'when-target',accessWidening:true,notifies:true,spend:true,confirm:'always',cred:'I,U,P,M',profiles:['full']},
   target:(a,c)=>resolve(a,c,['POST','PUT','PATCH','DELETE'],true).target,
   read:async(a,c)=>baseline(c,resolve(a,c,['POST','PUT','PATCH','DELETE'],true)),
   price:({args:a,ctx:c})=>universalPrice(resolve(a,c,['POST','PUT','PATCH','DELETE'],true).op),

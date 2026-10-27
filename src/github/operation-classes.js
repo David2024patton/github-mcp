@@ -22,8 +22,12 @@ export function assertUniversalAuthority(op,params,body) {
   const path=op.path.toLowerCase();
   if (path.startsWith('/app/') || path==='/app' || path.startsWith('/applications/'))
     throw new TypeError('App-JWT/application management endpoints are not available through universal tools.');
-  if (path.startsWith('/enterprises/') || path.startsWith('/enterprise/'))
-    throw new TypeError('Enterprise endpoints require verified enterprise account authority; no such route is enrolled.');
+  // Enterprise routes must carry a verifiable enterprise slug; the universal
+  // dispatcher enforces the master's real admin membership before any request.
+  // Never make a local blanket ban override GitHub's verified enterprise grants.
+  if ((path.startsWith('/enterprises/') || path.startsWith('/enterprise/')) &&
+      !/^\/enterprises\/\{enterprise\}(?:\/|$)/.test(op.path))
+    throw new TypeError('Enterprise operations require a verified enterprise slug in the pinned route.');
   if (op.method==='HEAD' || op.method==='OPTIONS')
     throw new TypeError('Use a documented GET operation for a readable result.');
   if (/\/(dependabot|actions|codespaces)\/secrets(\/|$)/i.test(path) && op.method!=='GET')

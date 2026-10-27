@@ -1,5 +1,9 @@
 # ROADMAP — ideas not being built now
 
+## 2026-10-27 — PAR-4 enterprise permission parity (engineering PR)
+
+A concrete MCP-only veto was found: enterprise coding-agent policy mutations were advertised as universal REST alternatives in `src/tools/enterprise-write.js`, while `assertUniversalAuthority` rejected every `/enterprises/` route unconditionally. PAR-4 repairs only pinned `/enterprises/{enterprise}/...` routes with explicit `cred:M` and provider-verified, master-token ADMIN membership and scopes. Curated enterprise operations remain specialized; unknown-cost writes retain confirmation and user-selected caps. If GitHub has no matching GET, a provider-accepted write reports *unconfirmed* rather than inventing independent readback. Source merge, provider acceptance and daily live release are separate checkpoints (card: [PAR-4](pr-cards/PAR-4.md)).
+
 ## 2026-10-26 — Owner-authorized capability parity
 
 Owner reports the official GitHub connector merged Cortiware after approval, but Robinson GitHub MCP declined the override. **Product requirement:** when an operation succeeds with the same underlying genuine GitHub authority, our MCP must not introduce an arbitrary veto. Preserve actual GitHub/provider grants, tenant isolation, user-chosen read-only/protected-list/spending policies, exact-head and once-only protections. Reproduce future official-connector parity gaps with fake-provider tests, classify whether a refusal is from GitHub or from our own implementation, and correct unnecessary MCP-only restrictions. Prioritize code and PR workflows, explicit owner/admin overrides, security scans, GitHub Actions and access control. This request does not authorize changing Cortiware or any real production resources. C-7 corrects the empty-rule override veto and missing override support in the common PR merge workflow.

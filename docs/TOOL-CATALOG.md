@@ -664,8 +664,8 @@ Card(s): U-1, U-2.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `github_api_search` | Find REST operations by plain words: method, path, summary, and whether it reads, writes, is production, widens access, notifies people or spends | — | N | — | B,O,Op | R | U-1 built #219 |
 | `github_api_describe` | Parameters for one operation, trimmed, from GitHub's own description at the pinned version | — | N | — | B,O,Op | R | U-1 built #219 |
-| `github_api_read` | Any GET operation, with the same summaries, `fields`, size cap and handles as every other read | — | N | I,U,P | B,O,Op | R | U-1 built #219 |
-| `github_api_write` | Execute any eligible pinned non-curated REST write with delegated production consent; every unreviewed operation shows unknown future-cost exposure and enforces user/pass caps | C·$*·Prod*·A*·M* | N | I,U,P | B,O,Op | F | U-1 built #219 |
+| `github_api_read` | Any eligible pinned GET; Enterprise slug reads require explicit M and current provider-verified enterprise-admin membership | — | N | I,U,P,M | B,O,Op | R | U-1 (PAR-4) |
+| `github_api_write` | Execute eligible pinned non-curated REST writes; Enterprise slug writes require explicit M, provider-verified admin and current scope; unknown cost needs confirmation/user-cap checks | C·$*·Prod*·A*·M* | N | I,U,P,M | B,O,Op | F | U-1 (PAR-4) |
 | `github_graphql_read` | Pinned-schema validated single GraphQL query, typed variables, scoped aliases/fragments/nodes and 500-point/500,000-node cap before sending | — | N | I,U | B,O,Op | R | U-2 built #220 |
 | `github_graphql_write` | One reviewed GraphQL mutation (24 specs: pins, locks, minimize, discussions, linked branches, issue comments and delete, draft state, team review assignment; plus the legacy title and project-field shapes) with ownership proof, before/after read, always-confirmed journal and a recorded undo where one exists | C·Prod·A·M | N | I,U | B,O,Op | F | U-2 built #220 |
 
@@ -680,6 +680,7 @@ How `github_api_write` and `github_graphql_write` stay safe (`docs/designs/BATCH
   B-2/B-4. **An unlisted operation that creates, deletes, transfers, invites, enables, assigns seats or changes
   settings is treated as production + access-widening until classified** — the safe default.
 - **Hand-built tools win**: if a hand-built tool covers the operation, the universal tool refuses and names it.
+- **Enterprise permission parity (PAR-4):** only pinned `/enterprises/{enterprise}/...` routes with explicit `cred:M`, valid slug and current GitHub ADMIN membership verified through `requireEnterprise` can run. Reads require `read:enterprise`, writes `admin:enterprise`, full/PRODUCTION confirmation and the user's actual spending policy. These routes are NOT available to App-only, foreign, read-only or delegated-pass contexts. When GitHub publishes no matching GET, a 2xx write receipt remains **unconfirmed**.
 - **Never** `bypass_rules` (except GOD-6's deliberate `overrideRules` on the merge and file-write tools), never a secret value in a request (secret endpoints are refused; use `github_secret_set`), never
   a raw credential in a result.
 - **What the universal tools cannot do (Y-1, stated plainly).** They act only on accounts this connection owns (a
