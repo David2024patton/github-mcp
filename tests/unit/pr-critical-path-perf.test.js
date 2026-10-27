@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { execFileSync } from 'node:child_process';
 import { ciState } from '../../src/github/ci-state.js';
 import { inspectPr } from '../../src/tools/workflows-pr.js';
 
@@ -37,6 +38,18 @@ function provider({ rulesError = null, runsError = false, statusesError = false 
 }
 
 describe('C-5 PR/CI critical-path performance without changed security semantics', () => {
+  it('runs and records the repeatable synthetic two-workflow benchmark without provider traffic', () => {
+    const stdout = execFileSync(process.execPath, ['scripts/benchmark-pr-critical-path.mjs'], {
+      cwd: process.cwd(), encoding: 'utf8', timeout: 15000
+    });
+    const data = JSON.parse(stdout);
+    expect(data).toMatchObject({ fakeProviderLatencyMs: 25, repetitions: 5 });
+    expect(data.ci.serialControlMedianMs).toBeGreaterThan(data.ci.optimizedMedianMs);
+    expect(data.prStatus.serialControlMedianMs).toBeGreaterThan(data.prStatus.optimizedMedianMs);
+    expect(data.caveat).toMatch(/Synthetic/);
+    console.log('C-5 synthetic benchmark ' + JSON.stringify(data));
+  });
+
   it('starts exactly four independent CI provider reads at once, preserving required-check union and exact-head results', async () => {
     const p = provider();
     const value = await ciState(p.octokit, work);
