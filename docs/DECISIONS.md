@@ -1,3 +1,7 @@
+## 2026-10-26 — one guarded writer, not two copies of PR preflight
+
+Owner approved optimizing the full everyday repository lane, building speed into MCP rather than requiring individual agents to avoid redundant calls. C-6 removes W-1's duplicate outer PR open preflight only when no labels are requested; the independently validated and journaled `github_pr_create` writer stays responsible for the real account, current default branch, duplicate/moved-head safety, notification and result proof. Label writes remain staged. W-2 prepares exact-head merges with independent parallel reads (max three stack member reads) but never changes sequential guarded mutations, strict ordered validation or post-retarget CI. Measurements are synthetic and only describe scheduling until separately checked on live after daily release.
+
 ## 2026-10-26 — optimize whole-workflow critical path, not just isolated tools
 
 Owner directed measuring and optimizing common development workflows as far as possible. C-5 reduces serial GitHub reads on PR checks/status by overlapping only independent read-only evidence. It keeps exact-head/required-check union, privacy, profile, spend, authentication, unknown/failure outcomes and provider write guards untouched. The benchmark compares synthetic provider waits and does not prove production latency or industry leadership; real-client before/after data must be separately collected once released. Daily production release rules stay unchanged.
