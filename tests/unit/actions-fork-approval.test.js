@@ -17,7 +17,7 @@ function seed(gh,outcome='ok',opts={}){
   const pr=opts.pr??pull(), first=opts.first??run();
   gh.when('GET /repos/{owner}/{repo}').reply(200,opts.repo??{private:false,visibility:'public',default_branch:'main'});
   gh.when(PR).reply(200,pr);
-  if(opts.pages)gh.when(FILES).replySequence(opts.pages.map(body=>({status:200,body})));
+  if(opts.pages)gh.when(FILES).replySequence([...opts.pages,...opts.pages].map(body=>({status:200,body})));
   else gh.when(FILES).reply(200,opts.files??[{filename:'src/x.js'},{filename:'tests/unit/x.test.js'}]);
   gh.when('GET /repos/{owner}/{repo}/git/commits/{commit_sha}').reply(200,
     opts.mergeCommit??{sha:first.head_sha,parents:[{sha:'c'.repeat(40)},{sha:'d'.repeat(40)}]});

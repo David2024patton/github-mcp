@@ -915,7 +915,7 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | GitHub Enterprise | 13 |
 | Master-token families: Copilot Spaces, Classroom, Marketplace and more | 17 |
 | Code quality and GitHub help | 4 |
-| **Total** | **475** |
+| **Total** | **476** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 
