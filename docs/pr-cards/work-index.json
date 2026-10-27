@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-26",
+  "updated": "2026-10-27",
   "order": [
     "A",
     "B",
@@ -2317,15 +2317,41 @@
       "title": "Approve GitHub first-time fork PR CI with verified provider head semantics and full guard lifecycle",
       "batch": "G",
       "design": "docs/pr-cards/FORK-CI-1.md",
-      "dependencies": ["G-1"],
+      "dependencies": [
+        "G-1"
+      ],
       "card": "docs/pr-cards/FORK-CI-1.md",
       "status": "MERGED",
       "migration": "none",
       "budget": 0,
-      "units": ["FORK-CI-1"],
+      "units": [
+        "FORK-CI-1"
+      ],
       "readiness": "READY",
       "ownerInputs": [],
-      "pr": [409, 420]
+      "pr": [
+        409,
+        420
+      ]
+    },
+    {
+      "id": "PAR-4",
+      "title": "Repair authenticated GitHub Enterprise universal REST parity without MCP-only blanket veto",
+      "batch": "FIN",
+      "design": "docs/pr-cards/PAR-4.md",
+      "dependencies": [
+        "ENT-1",
+        "PAR-2"
+      ],
+      "card": "docs/pr-cards/PAR-4.md",
+      "status": "IN_PROGRESS",
+      "migration": "none",
+      "budget": 0,
+      "units": [
+        "PAR-4"
+      ],
+      "readiness": "READY",
+      "ownerInputs": []
     }
   ],
   "gatewayBoundary": {
