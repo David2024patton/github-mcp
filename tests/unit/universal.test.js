@@ -374,7 +374,7 @@ describe('PAR-4 verified enterprise authority in universal REST',()=>{
     const original=w.credentials;
     const credentials={...original,
       masterStatus:async()=>({enrolled:true,scopes}),
-      token:async (p)=>p.cred==='M'?'ghp_FAKE_PAR4_MASTER_TOKEN_123456789':original.token(p)};
+      token:async (p)=>p.cred==='M'?'fixture-master-token-value-only':original.token(p)};
     w.credentials=credentials;
     w.ctx={...w.ctx,credentials};
     w.gh.when('POST /graphql').reply(200,{data:{viewer:{enterprises:{nodes:admin?[{slug,name:'Example enterprise'}]:[]}}}});
