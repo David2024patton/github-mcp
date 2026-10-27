@@ -89,7 +89,9 @@ describe('W-1 full PR status and resumable guarded open',()=>{
         repo:'app',head:'feature-a',title:'Already sent',requestKey:'same-pr'},f.ctx));
       expect(output).toMatchObject(expected);
       expect(f.calls.map(x=>x.name)).toEqual(['github_pr_create','github_pr_get']);
-      expect(writes(f)).toHaveLength(0);
+      // The fixture counts delegated writer invocations, not provider POSTs;
+      // journal replay calls exactly one guarded writer, never a second time.
+      expect(writes(f)).toHaveLength(1);
     }
   });
   it('returns an already open PR and adds only missing labels through issue guard on separate invocation',async()=>{
