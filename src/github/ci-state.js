@@ -32,14 +32,18 @@ export async function requiredChecks(octokit, { owner, repo, branch }) {
   const errors = [];
   const notes = [];
   const add = (context, appId) => { const key = `${context}\n${appId ?? ''}`; if (!found.has(key)) found.set(key, { context, appId: appId ?? null }); };
-  const rules = await tryRead(async () => (await octokit.request('GET /repos/{owner}/{repo}/rules/branches/{branch}', { owner, repo, branch })).data);
+  // These two policy views are independent; preserve the order of their
+  // diagnostics while avoiding an extra provider round trip on every PR read.
+  const [rules, classic] = await Promise.all([
+    tryRead(async () => (await octokit.request('GET /repos/{owner}/{repo}/rules/branches/{branch}', { owner, repo, branch })).data),
+    tryRead(async () => (await octokit.request('GET /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks', { owner, repo, branch })).data)
+  ]);
   if (rules.ok) {
     for (const rule of Array.isArray(rules.data) ? rules.data : []) {
       if (rule.type === 'required_status_checks') for (const c of rule.parameters?.required_status_checks ?? []) add(c.context, c.integration_id);
     }
   } else if (rules.planLimited) notes.push(`rules are not available for this repository on its GitHub plan, so none can require checks on ${branch}`);
   else errors.push(`rules for ${branch} could not be read${rules.status ? ` (HTTP ${rules.status})` : ''}`);
-  const classic = await tryRead(async () => (await octokit.request('GET /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks', { owner, repo, branch })).data);
   if (classic.ok) {
     if (Array.isArray(classic.data.checks) && classic.data.checks.length) for (const c of classic.data.checks) add(c.context, c.app_id);
     else for (const context of classic.data.contexts ?? []) add(context, null);
@@ -63,12 +67,19 @@ const statusState = (s) => ({ success: 'success', failure: 'failure', error: 'fa
  */
 export async function ciState(octokit, { owner, repo, baseBranch, headSha }) {
   const p = { owner, repo };
-  const { required, errors, notes } = await requiredChecks(octokit, { owner, repo, branch: baseBranch });
-  let runs; let statuses;
-  try {
-    runs = await allCheckRuns(octokit, { ...p, ref: headSha });
-  } catch { return { green: null, known: false, basis: 'required', checks: [], problems: [], notes, errors: [...errors, 'the check runs at this commit could not be read'] }; }
-  try { statuses = (await octokit.request('GET /repos/{owner}/{repo}/commits/{ref}/status', { ...p, ref: headSha })).data.statuses ?? []; } catch { statuses = null; errors.push('the commit statuses could not be read'); }
+  // All four independent GitHub reads begin together. Required-check policy
+  // and check-run pagination still retain their own ordering, and no failure
+  // can turn an unknown check into green. No cached evidence is reused for merge.
+  const [policy, runsRead, statusesRead] = await Promise.all([
+    requiredChecks(octokit, { owner, repo, branch: baseBranch }),
+    tryRead(() => allCheckRuns(octokit, { ...p, ref: headSha })),
+    tryRead(async () => (await octokit.request('GET /repos/{owner}/{repo}/commits/{ref}/status', { ...p, ref: headSha })).data.statuses ?? [])
+  ]);
+  const { required, errors, notes } = policy;
+  if (!runsRead.ok) return { green: null, known: false, basis: 'required', checks: [], problems: [], notes, errors: [...errors, 'the check runs at this commit could not be read'] };
+  const runs = runsRead.data;
+  const statuses = statusesRead.ok ? statusesRead.data : null;
+  if (!statusesRead.ok) errors.push('the commit statuses could not be read');
 
   const evaluate = ({ context, appId }) => {
     const matching = runs.filter((r) => r.name === context && (appId == null || r.app?.id === appId));

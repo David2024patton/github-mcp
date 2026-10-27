@@ -51,6 +51,30 @@ describe('pull request reads (E-1a)', () => {
     expect(body).toMatchObject({ number: 7, head_sha: H, review_decision: 'APPROVED', threads: { total: 2, unresolved: 1 }, checks: { green: true, basis: 'required' } });
     expect(w.gh.invalid).toEqual([]);
   });
+  it('overlaps independent review and exact-head CI reads without bypassing the fake GitHub request validator', async () => {
+    const w = await world();
+    w.gh.when('GET /repos/{owner}/{repo}/pulls/{pull_number}').reply(200, pr());
+    threads(w.gh, [{ isResolved: false }], 'APPROVED');
+    ciRoutes(w.gh, { rules: requiredRule('ci'), runs: [run1('ci', 'completed', 'success')] });
+    let active = 0, peak = 0;
+    const fetch = async (...args) => {
+      active++;
+      peak = Math.max(peak, active);
+      try {
+        await new Promise(resolve => setTimeout(resolve, 20));
+        return await w.gh.fetch(...args);
+      } finally { active--; }
+    };
+    const dispatch = createDispatch({ credentials: w.credentials, gates: [], fetch, now: w.ctx.now,
+      sleep: async () => {} });
+    const result = await dispatch({ registry, name: 'github_pr_get', args: { ...R, number: 7 },
+      connection: w.connection, db: w.db });
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent).toMatchObject({ head_sha: H, checks: { green: true }, threads: { unresolved: 1 } });
+    expect(peak).toBeGreaterThan(1);
+    expect(active).toBe(0);
+    expect(w.gh.invalid).toEqual([]);
+  });
   it('is not green when a required check is missing or failing at the head', async () => {
     for (const [runs, expected] of [[[], 'ci: missing'], [[run1('ci', 'completed', 'failure')], 'ci: failure'], [[run1('ci', 'in_progress', null)], 'ci: pending']]) {
       const w = await world();
