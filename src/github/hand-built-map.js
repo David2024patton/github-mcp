@@ -42,6 +42,20 @@ const exact = new Map([
   ['PUT /orgs/{org}/copilot/content_exclusion', 'github_copilot_content_exclusions_set'],
   ['PUT /orgs/{org}/copilot/coding-agent/permissions/repositories/{repository_id}', 'github_copilot_agent_repo_set'],
   ['DELETE /orgs/{org}/copilot/coding-agent/permissions/repositories/{repository_id}', 'github_copilot_agent_repo_set'],
+  // PAR-4: enterprise writes with dedicated policy/scope/affected-repository
+  // guards MUST NOT enter through universal REST. Exact method and route only:
+  // global security config attach/default must run protectedInside() first.
+  ['POST /enterprises/{enterprise}/code-security/configurations', 'github_enterprise_security_config_save'],
+  ['PATCH /enterprises/{enterprise}/code-security/configurations/{configuration_id}', 'github_enterprise_security_config_save'],
+  ['DELETE /enterprises/{enterprise}/code-security/configurations/{configuration_id}', 'github_enterprise_security_config_delete'],
+  ['POST /enterprises/{enterprise}/code-security/configurations/{configuration_id}/attach', 'github_enterprise_security_config_apply'],
+  ['PUT /enterprises/{enterprise}/code-security/configurations/{configuration_id}/defaults', 'github_enterprise_security_config_apply'],
+  ['PUT /enterprises/{enterprise}/dependabot/repository-access/default-level', 'github_enterprise_dependabot_access_set'],
+  ['PATCH /enterprises/{enterprise}/dependabot/repository-access', 'github_enterprise_dependabot_access_set'],
+  ['PUT /enterprises/{enterprise}/actions/cache/retention-limit', 'github_enterprise_actions_settings_set'],
+  ['PUT /enterprises/{enterprise}/actions/cache/storage-limit', 'github_enterprise_actions_settings_set'],
+  ['POST /enterprises/{enterprise}/actions/oidc/customization/properties/repo', 'github_enterprise_actions_settings_set'],
+  ['DELETE /enterprises/{enterprise}/actions/oidc/customization/properties/repo/{custom_property_name}', 'github_enterprise_actions_settings_set'],
   // Hosted runner capacity has independently guarded create, manage, scale.
   ['POST /orgs/{org}/actions/hosted-runners', 'github_hosted_runner_create'],
   ['PATCH /orgs/{org}/actions/hosted-runners/{hosted_runner_id}', 'github_hosted_runner_manage'],
