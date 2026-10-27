@@ -1,8 +1,8 @@
 # PAR-4 — GitHub-authorized Enterprise universal REST parity
 
-**Owner authority:** 2026-10-27 completion/parity audit. **Status:** IN_PROGRESS. **Outcome:** A connected full-profile enterprise administrator with an enrolled master credential can use supported, non-curated enterprise REST operations through the universal MCP door, instead of receiving a local blanket denial. Preserve account/enterprise identity, authentic GitHub permissions, spending, tenant and protected-resource policies.
+**Owner authority:** 2026-10-27 completion/parity audit. **Status:** IN_REVIEW (#423; required CI gates before merge). **Outcome:** A connected full-profile enterprise administrator with an enrolled master credential can use supported, non-curated enterprise REST operations through the universal MCP door, instead of receiving a local blanket denial. Preserve account/enterprise identity, authentic GitHub permissions, spending, tenant and protected-resource policies.
 
-## Pre-source drift and evidence
+## Drift check (pre-source evidence)
 
 - `src/tools/enterprise-write.js` directs owners to universal REST for Copilot coding-agent policies, but `src/github/operation-classes.js` rejects every `/enterprises/` operation before examining GitHub authority.
 - `src/github/enterprise-access.js` already provides `requireEnterprise(ctx, slug, { scope })`, which checks a real enrolled master credential, `read:enterprise`/ `admin:enterprise`, and GraphQL `viewer.enterprises(membershipType: ADMIN)`. Reuse that verification.
@@ -19,4 +19,4 @@
 
 ## Verification status
 
-Plan committed separately before code changes. CI, review, provider acceptance and release not yet claimed.
+Plan committed separately at `abdceb27` before code changes. PR #423 implements the narrow Enterprise REST routing, current-auth verification, journal and tests. An initial CI run identified a parse delimiter error and missing catalog touch; both repaired in the feature branch. The next exact-head gates must pass, including the synthetic GitHub provider tests. No real provider mutation or release has occurred.
