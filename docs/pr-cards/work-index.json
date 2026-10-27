@@ -20,7 +20,8 @@
     "Y",
     "PUB",
     "CAP",
-    "FIN"
+    "FIN",
+    "SKILLS"
   ],
   "process": "Just-in-time cards from approved designs; each card runs the drift protocol and updates this index as if merged. A-1 merged (#1) at Chris's direction; A-2 merged (#7); A-3 merged (#8, #9); A-4 merged (#10); A-5 is split — A-5a merged (#11), A-5b next. Designs approved by Chris 2026-10-10 (IN-00). Owner-approved execution: adjacent small roadmap slices are grouped into cohesive outcome-sized PRs; session PR count comes only from the current owner prompt. See docs/SESSION-START.md. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain. 2026-10-18: owner-approved PRIVATE-first mobile+desktop and multi-user isolation completion expansion adds PUB-1..PUB-4 as APPROVED unfinished work and PUB-5 as BLOCKED publication gate; source/real-acceptance evidence remains separate, public Directory eligibility of an unofficial third-party connector cannot be presumed. 2026-10-23: Chris asked for the remaining work to be designed and planned (not built) so lesser models can implement it; batch FIN (GOD-2, GOD-3, ENT-1, ACC-1, GOD-4, GQL-1, GOD-5, LAUNCH-1, AUTH-1, INV-1, HARD-1) holds READY cards written in advance; order and rules in docs/designs/FINISH-PLAN.md.",
   "cards": [
@@ -2349,6 +2350,22 @@
       "budget": 0,
       "units": [
         "PAR-4"
+      ],
+      "readiness": "READY",
+      "ownerInputs": []
+    },
+    {
+      "id": "SKILLS-1",
+      "title": "Skills catalog: David Patton's skills library recognized, routed and (GitHub family) executed",
+      "batch": "SKILLS",
+      "design": "docs/designs/SKILLS-1.md",
+      "dependencies": [],
+      "card": "docs/pr-cards/SKILLS-1.md",
+      "status": "IN_PROGRESS",
+      "migration": "none",
+      "budget": 0,
+      "units": [
+        "SKILLS-1"
       ],
       "readiness": "READY",
       "ownerInputs": []

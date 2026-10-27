@@ -863,11 +863,21 @@ Card(s): PAR-1. Code Quality findings come from GitHub's own analysis (not marke
 | `github_code_quality_setup` | Turn Code Quality on or off for a repository, or change languages, runner or AI findings; read back; undo restores the previous setup | C·$*·Prod | N | I | O | F | PAR-1 built |
 | `github_docs_search` | Search GitHub's own help pages (docs.github.com): titles, links, short snippets; no credential | — | N | — | B,O,Op | R | PAR-1 built |
 
+## Skills catalog (`github_skills_*`) — 3
+
+Card(s): SKILLS-1. David Patton's skills library; recognition and routing for every cleared skill, execution for the GitHub family; ships switched off until the owner enables it.
+
+| Tool | What it does | Safety | Origin | Cred | Audience | Profile | Card |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `github_skills_search` | Search David Patton's skills catalog by task words; returns skill names, purposes and risk classes only, never skill text | — | N | — | B,O,Op | R | SKILLS-1 |
+| `github_skills_route` | Plan a task against the skills catalog: which skill fits, its risk class and, for GitHub work, the exact steps it would run; executes nothing | — | N | — | B,O,Op | R | SKILLS-1 |
+| `github_skills_execute` | Run a routed GitHub skills plan through the guarded tools, step by step, after a confirmation bound to the plan's payload hash | C (always) | N | — | B,O,Op | E | SKILLS-1 |
+
 ## Totals
 
-**Totals:** 476 tools: 470 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
-dashboard-only owner setting. By profile (lowest profile that has the tool): read_only 158, everyday adds 83
-(everyday lists 240), full adds 113 (full lists 396). In compact mode (`docs/designs/BATCH-C.md`) an agent
+**Totals:** 479 tools: 473 hand-built + 6 universal (`github_api_*`, `github_graphql_*`), plus guided settings for every
+dashboard-only owner setting. By profile (what a connection with that profile can list, counted from the
+registry): read_only 199, everyday 286, full 479. In compact mode (`docs/designs/BATCH-C.md`) an agent
 loads only about 25 tools up front (meta-tools, whoami, universal search, workflows) and reaches the rest through
 `github_search_tools` / `github_call`.
 
@@ -916,7 +926,8 @@ loads only about 25 tools up front (meta-tools, whoami, universal search, workfl
 | GitHub Enterprise | 13 |
 | Master-token families: Copilot Spaces, Classroom, Marketplace and more | 17 |
 | Code quality and GitHub help | 4 |
-| **Total** | **476** |
+| Skills catalog | 3 |
+| **Total** | **479** |
 
 <!-- #108: experimental RTC HTTPS reader bridges only server/meta read tools using existing guarded dispatch; RTC 1 certification is not claimed. -->
 

@@ -18,7 +18,7 @@ CARDS = DATA['cards']
 BY_ID = {c['id']: c for c in CARDS}
 errors = []
 
-REQUIRED_BATCHES = ['A', 'B', 'C', 'D', 'E', 'G', 'V', 'F', 'H', 'O', 'P', 'W', 'U', 'R', 'X', 'Y', 'PUB', 'CAP', 'FIN']
+REQUIRED_BATCHES = ['A', 'B', 'C', 'D', 'E', 'G', 'V', 'F', 'H', 'O', 'P', 'W', 'U', 'R', 'X', 'Y', 'PUB', 'CAP', 'FIN', 'SKILLS']
 REQUIRED_UNITS = set("""
 A-1 A-2 A-3 A-4 A-5 A-6 B-1 B-2 B-3 B-4 B-5 B-6 B-7 B-8 C-1 C-2 C-3 C-4 C-5 C-6 C-7
 D-1 D-2 D-3 E-1 E-2 E-3 G-1 G-2 G-3 G-4 G-5 G-6 V-1 V-2 V-3 V-4 V-5
@@ -28,6 +28,7 @@ Y-1 Y-2 Y-3 Y-4 Y-5 Y-6 Y-7 Y-8 Y-9
 PUB-1 PUB-2 PUB-3 PUB-4 PUB-5 PUB-6
 CAP-1 CAP-2 CAP-3 CAP-4 CAP-5
 GOD-2 GOD-3 ENT-1 ACC-1 GOD-4 GQL-1 GOD-5 LAUNCH-1 AUTH-1 INV-1 HARD-1 GOD-6 PAR-1 PAR-2 PAR-3 PAR-4 FORK-CI-1
+SKILLS-1
 """.split())
 
 if len(BY_ID) != len(CARDS):
