@@ -431,6 +431,21 @@
       "pr": [417]
     },
     {
+      "id": "C-6",
+      "title": "Fast guarded PR creation and exact-head merge conveyor",
+      "batch": "C",
+      "design": "docs/designs/BATCH-C.md",
+      "dependencies": ["C-5"],
+      "card": "docs/pr-cards/C-6.md",
+      "status": "IN_PROGRESS",
+      "migration": "none",
+      "budget": 450,
+      "units": ["C-6"],
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": []
+    },
+    {
       "id": "D-1",
       "title": "Repositories",
       "batch": "D",
