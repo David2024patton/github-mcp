@@ -60,7 +60,9 @@ function authorize(ctx){
 async function mergeOne(a,ctx){
   if(!authorize(ctx))return refuse('Merge workflows require an everyday or full connection.');
   const start=now(ctx),s=scope(a);
-  const p=await pr(ctx,s,a.number),r=await repo(ctx,s);
+  // Both observations are independently authorized. The guarded merge writer
+  // still rechecks the exact head and branch state immediately before mutation.
+  const [p,r]=await Promise.all([pr(ctx,s,a.number),repo(ctx,s)]);
   if(!r?.default_branch)return refuse('Default-branch provider evidence unavailable.');
   const why=blockers(p,a.expectedHeadSha,r.default_branch);
   if(why.length)return reply({status:'not_ready',done:false,number:a.number,
@@ -105,18 +107,25 @@ async function mergeStack(a,ctx){
   let previous=null;
   // Freshly read and validate the whole specified chain before any mutation.
   const chain=[];
-  for(let i=0;i<numbers.length;i++){
+  for(let offset=0;offset<numbers.length;offset+=3){
     if(stop(start,ctx))return reply({status:'pending',done:false,complete:chain.length,
       next:'Workflow budget expired; re-read the stack before proceeding.'});
-    const p=await pr(ctx,s,numbers[i]);
-    if(!p)return refuse('Could not read PR #'+numbers[i]+'.');
-    if(a.expectedHeadShas?.[i]&&p.head_sha!==a.expectedHeadShas[i])
-      return refuse('PR #'+p.number+' advanced since the requested head SHA.',{actual_head:p.head_sha});
-    if(p.state!=='open'&&!p.merged)return refuse('Stack includes closed unmerged PR #'+p.number+'.');
-    if(!p.merged&&previous&&!previous.merged&&p.base!==previous.head)
-      return refuse('Stack branch chain is broken between PR #'+previous.number+' and #'+p.number+'.');
-    chain.push(p);
-    previous=p;
+    // PR reads are independent, but validate in the original strict chain order
+    // before issuing any retarget/merge. Never parallelize durable writes.
+    const batch=await Promise.all(numbers.slice(offset,offset+3).map(number=>pr(ctx,s,number)));
+    for(let j=0;j<batch.length;j++){
+      const i=offset+j,p=batch[j];
+      if(stop(start,ctx))return reply({status:'pending',done:false,complete:chain.length,
+        next:'Workflow budget expired; re-read the stack before proceeding.'});
+      if(!p)return refuse('Could not read PR #'+numbers[i]+'.');
+      if(a.expectedHeadShas?.[i]&&p.head_sha!==a.expectedHeadShas[i])
+        return refuse('PR #'+p.number+' advanced since the requested head SHA.',{actual_head:p.head_sha});
+      if(p.state!=='open'&&!p.merged)return refuse('Stack includes closed unmerged PR #'+p.number+'.');
+      if(!p.merged&&previous&&!previous.merged&&p.base!==previous.head)
+        return refuse('Stack branch chain is broken between PR #'+previous.number+' and #'+p.number+'.');
+      chain.push(p);
+      previous=p;
+    }
   }
   const active=chain.findIndex(p=>!p.merged);
   if(active===-1)return reply({status:'complete',done:true,prs:numbers,next:'Every listed PR was independently observed merged.'});

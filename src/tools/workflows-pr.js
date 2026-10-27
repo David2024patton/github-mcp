@@ -75,6 +75,53 @@ async function openPr(args,ctx){
   if(!['everyday','full'].includes(ctx.connection?.profile))
     return refused('Opening PRs requires the everyday or full connection profile.');
   const start=clock(ctx),s=scope(args);
+  const requested=(args.labels??[]).map(x=>x.trim()).filter(Boolean);
+  if(new Set(requested.map(x=>x.toLowerCase())).size!==requested.length)
+    return refused('Duplicate or blank label names are not allowed.');
+  // The guarded PR writer already checks current repository/base, head branch,
+  // existing PRs, permissions, notification and idempotency, then reads back.
+  // Without labels there is no second durable action to coordinate, so do not
+  // duplicate that entire preflight in this outer workflow.
+  if(!requested.length){
+    const response=readBody(await call(ctx,'github_pr_create',{
+      ...s,head:args.head,...(args.base?{base:args.base}:{}),
+      title:args.title,body:args.body??'',draft:args.draft===true,
+      confirm:args.confirm===true,dryRun:args.dryRun===true,
+      ...(args.requestKey?{requestKey:args.requestKey+':create'}:{})
+    }));
+    const result=response?.result;
+    const verified=(response?.status==='applied'||response?.status==='replayed')
+      &&response?.done===true&&Number.isInteger(result?.number);
+    if(verified){
+      // The writer's replay journal holds HISTORICAL readback. Unlike a newly
+      // applied result, it does not re-read the PR. An old PR may now be closed,
+      // merged, or point at a different head; verify current GitHub evidence.
+      if(response.status==='replayed'){
+        const current=readBody(await call(ctx,'github_pr_get',{...s,number:result.number}));
+        const recordedSha=result.head_sha??result.head?.sha;
+        const recordedBase=result.base?.ref??result.base??null;
+        if(!current||current.number!==result.number||current.state!=='open'||current.merged||
+          current.head!==args.head.split(':').pop()||current.base!==recordedBase||
+          !/^[0-9a-f]{40}$/i.test(recordedSha??'')||current.head_sha!==recordedSha){
+          return receipt({done:false,status:'stale_replay',number:result.number,
+            guarded_tool:'github_pr_create',
+            next:'The earlier PR result is historical; re-read the current PR and head before proceeding. No second write was sent.'});
+        }
+        return receipt({done:true,status:'existing',number:current.number,
+          head_sha:current.head_sha,base:current.base,html_url:current.html_url??null,
+          guarded_tool:'github_pr_create',
+          next:'Existing open PR independently verified from the current head; inspect CI when ready.'});
+      }
+      return receipt({done:true,status:result.replayed?'existing':'pr_opened',
+        number:result.number,head_sha:result.head_sha??result.head?.sha??null,
+        base:result.base?.ref??result.base??args.base??null,
+        html_url:result.html_url??null,guarded_tool:'github_pr_create',
+        next:'PR creation or existing PR verified by the guarded writer; inspect CI when ready.'});
+    }
+    return receipt({done:false,status:'not_applied',guarded_tool:'github_pr_create',
+      underlying_status:response?.status??'unknown',
+      next:'The guarded writer did not confirm a PR. Read its result or current GitHub state; do not retry an uncertain write with a new request key.'});
+  }
   let repo;
   try{repo=readBody(await call(ctx,'github_repo_get',s));}
   catch{return refused('The repository could not be read before opening its PR.');}
@@ -83,9 +130,6 @@ async function openPr(args,ctx){
   if((args.head.includes(':')?args.head.split(':').pop():args.head)===base)
     return refused('The PR head and base must be different branches.');
   if(!within(ctx,start))return receipt({done:false,status:'pending',next:'Workflow time budget exhausted before any change.'});
-  const requested=(args.labels??[]).map(x=>x.trim()).filter(Boolean);
-  if(new Set(requested.map(x=>x.toLowerCase())).size!==requested.length)
-    return refused('Duplicate or blank label names are not allowed.');
   const head=args.head.includes(':')?args.head:(args.owner??ctx.connection.default_account)+':'+args.head;
   // The registered PR list returns normalized string head/base, not REST head.ref/base.ref.
   // Full-detail pages can be held behind an 8-KB result handle even for one PR;
