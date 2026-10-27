@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { execFileSync } from 'node:child_process';
 import { createDispatch } from '../../src/tools/dispatch.js';
 import { registry } from '../../src/tools/index.js';
 import { makeWorld } from '../../test/helpers/write-contract.js';
@@ -22,6 +23,17 @@ async function world({existing=false,unconfirmed=false}={}){
   return w;
 }
 describe('C-6 real guarded no-label PR creation lane',()=>{
+  it('benchmarks the synthetic three-stage PR lane and records measured scheduling cuts',()=>{
+    const stdout=execFileSync(process.execPath,['scripts/benchmark-pr-conveyor.mjs'],{
+      cwd:process.cwd(),encoding:'utf8',timeout:20000
+    });
+    const data=JSON.parse(stdout);
+    expect(data).toMatchObject({fakeReadMs:25,repetitions:5});
+    expect(data.rows.map(x=>x.name)).toEqual(['openPr','mergeOne','stackReadSix']);
+    for(const row of data.rows)expect(row.serialControlMedianMs).toBeGreaterThan(row.optimizedMedianMs);
+    console.log('C-6 synthetic benchmark '+JSON.stringify(data));
+  });
+
   it('creates with one guarded writer and exactly one repo/inventory read rather than duplicate outer preflights',async()=>{
     const w=await world();
     const r=await run(w,{repo:'hello',head:'feat',title:'A change'});
