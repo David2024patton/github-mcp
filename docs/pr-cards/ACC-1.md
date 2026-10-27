@@ -72,11 +72,15 @@ read OK, write refused, remove), `GITHUB-GQL1-<group>` (one representative mutat
 
 The source running at `https://github.robinsonaisystems.com` is verified READY at `12d108dc507a2ebf093fa5bbb94d812ea2d72993`. This session accounts for all 71 current ledger tasks instead of treating blocked external prerequisites as untested source. Use the saved native MCP connection and do **not** change production user accounts, protected lists, spending, live branches or actual third-party pull requests to manufacture an acceptance pass.
 
-- [ ] Preserve the 53 previously passed observations. Complete `GITHUB-GOD4-EXPORT` only if the existing disposable export's archive has independently ceased to exist; record both native API readback signals and that the export metadata may remain.
-- [ ] For the four remaining pending scenarios, record **BLOCKED** with their exact missing external prerequisite and feasible next action: user-chosen capped/read-only connection for Y-9d, independent live sign-in for HARD-1, user's Act-as-me-off/read-only grant plus scratch app-only proof for GOD-6, or owner-configured protected-list scratch fixture for override denial. Do not conflate simulated tests with provider acceptance.
-- [ ] Add accurate developer-evidence cleanup observation; independently check all 71 rows have an evidence disposition and no PENDING status. PUB-4 and PUB-6 are already MERGED; leave their audited prior outcomes untouched.
+- [x] Preserve the 53 previously passed observations. Complete `GITHUB-GOD4-EXPORT` only if the existing disposable export's archive has independently ceased to exist; record both native API readback signals and that the export metadata may remain.
+- [x] For the four remaining pending scenarios, record **BLOCKED** with their exact missing external prerequisite and feasible next action: user-chosen capped/read-only connection for Y-9d, independent live sign-in for HARD-1, user's Act-as-me-off/read-only grant plus scratch app-only proof for GOD-6, or owner-configured protected-list scratch fixture for override denial. Do not conflate simulated tests with provider acceptance.
+- [x] Add accurate developer-evidence cleanup observation; independently check all 71 rows have an evidence disposition and no PENDING status. PUB-4 and PUB-6 are already MERGED; leave their audited prior outcomes untouched.
 - [ ] Run exact-head documentation consistency checks, review, and merge through the repository's normal PR/CI gates. Do not claim ACC-1's deferred scenarios passed or request an early live release.
 
 ## Done when
-- [ ] Every ledger row is PASSED or BLOCKED with an exact external reason; no PENDING rows remain.
-- [ ] FIN rows added and run after each release; PUB-4 and PUB-6 closed in `work-index.json`.
+- [x] Every ledger row is PASSED or BLOCKED with an exact external reason; no PENDING rows remain.
+- [x] FIN rows added and run after each release; PUB-4 and PUB-6 closed in `work-index.json` (both were previously MERGED and are not misrepresented as new work).
+
+## 2026-10-26 accounting outcome
+
+Independently confirmed current custom live READY source 12d108dc507a2ebf093fa5bbb94d812ea2d72993 and the saved PRODUCTION/full MCP connection. All 71 existing acceptance rows accounted for; **54 PASSED, 17 BLOCKED with specific prerequisites, 0 PENDING**. The already-exported disposable archive is absent by two read-only observations, while its historical metadata persists. The other four pending rows are blocked on distinct real-world permissions or owner-controlled checks; no fake PASSED labels. Source-only fork-run approvals and any unreleased feature remain separate. Final PR/CI verification still required.

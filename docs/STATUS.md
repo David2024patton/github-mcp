@@ -275,7 +275,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
     "task": "Re-run exact classic branch protection read against an eligible private scratch repository, without modifying visibility or paying for an upgrade",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "BLOCKED \u2014 PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
+    "gates": "BLOCKED — PROVIDER PLAN: GitHub private-repo protected branch features require an eligible tier; scratch account remains on current plan, production OFF, spend $0",
     "dependsOn": [],
     "status": "PASSED",
     "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. With the Enterprise trial: github_protection_set on private robinson-ai-scratch/rtc-accept-ci-oct23 main (1 approving review, no force push/deletion) applied; github_protection_get read it back exactly; github_protection_remove applied with absence readback. Also earlier today on a private Pro personal repo with required checks (checks body, no 422) then removed and the repo deleted.",
@@ -287,7 +287,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "b51cda454f01720b3c638f83b9766b30eceaa9fb",
     "task": "Re-run scoped private-repository ruleset inventory when GitHub plan legitimately permits it",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "BLOCKED \u2014 PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
+    "gates": "BLOCKED — PROVIDER PLAN: private-repo governance access unavailable on current GitHub plan; no subscription change approved",
     "dependsOn": [],
     "status": "PASSED",
     "lastEvidence": "2026-10-23 08:30-09:10 MDT on live 66741a46 (Vercel READY dpl_9xRm6z1CJnfoUDxsrmTGzygs3sJB), custom service-issued MCP, PRODUCTION/full, scratch org robinson-ai-scratch on a free 30-day Enterprise trial. github_ruleset_save on private rtc-accept-ci-oct23 with enforcement evaluate (needs Enterprise) applied, then github_ruleset_delete applied. github_ruleset_list reads returned count 0 complete on private repos. Found and fixed (PR #306): ruleset read-back default-parameter mismatch.",
@@ -360,7 +360,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "674fea131e0eb0002f474bb8f529d0f619011286",
     "task": "Independently exercise new H-1 classic complete-object set and remove using isolated public scratch, including preserve-other-controls, readback and exact cleanup",
     "procedure": "docs/pr-cards/H-1.md",
-    "gates": "Source #188 merged; requires reviewed source in READY live, explicit production-enabled test credential and independent per-operation confirmation. Current live PREVIEW/production OFF: no mutation authorized. Private H-1 403 remains BLOCKED \u2014 PROVIDER PLAN.",
+    "gates": "Source #188 merged; requires reviewed source in READY live, explicit production-enabled test credential and independent per-operation confirmation. Current live PREVIEW/production OFF: no mutation authorized. Private H-1 403 remains BLOCKED — PROVIDER PLAN.",
     "dependsOn": [
       "GITHUB-H1-PUBLIC-READ"
     ],
@@ -711,7 +711,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PASSED",
     "lastEvidence": "2026-10-16 genuine connected custom GitHub Cloud MCP acceptance: production Vercel alias github-mcp-chris-projects-de6cd1bf.vercel.app independently resolved READY dpl_FfGNUDzo7vwjExCgD5YYWZZt47Rv, serving live revision a79f08643241d727b38da87b7713728baad39746; required U-1 cf09aab182c7bc6d5e80196adb03f605731201a5 verified as live ancestor (ahead 2/behind 0). Real enrolled OAuth principal PREVIEW/full, I-only robinson-ai-scratch, production OFF, spend $0. github_api_search discovered pinned GitHub REST v2026-03-10 orgs/get, github_api_describe showed GET /orgs/{org} required path only; github_api_read GET 200 returned scoped org login robinson-ai-scratch, numeric org identity 341263172, free plan, 2FA false, default repo read. Independently fetched through specialized github_org_get and confirmed same org identity, plan, 2FA, default permission. Explicit foreign org path under enrolled account refused BEFORE provider call; unknown path/query parameter refused before provider call. No mutation, production activation, spend, secret or cleanup.",
-    "nextAction": "ACCEPTED \u2014 genuine source-bearing READY custom-service pinned REST search/describe/read/negative-scope validation independently established. Any U-1 uncurated write still requires separate owner authority per GITHUB-U1-REST-WRITE."
+    "nextAction": "ACCEPTED — genuine source-bearing READY custom-service pinned REST search/describe/read/negative-scope validation independently established. Any U-1 uncurated write still requires separate owner authority per GITHUB-U1-REST-WRITE."
   },
   {
     "id": "GITHUB-U1-REST-WRITE",
@@ -811,9 +811,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [
       "GITHUB-Y9D-HOSTED-READ"
     ],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-16: PR #233 source head 395a54e passed CI/contract fakes and merged. Live release, new App permission grants and genuine provider acceptance not yet proven.",
-    "nextAction": "Full original plan/scope/cost-denial fixture and prerequisite owner-authorized write scenario remain unavailable; partial PREVIEW refusals cannot prove successful paid execution."
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-26 evening MDT, custom service-issued GitHub MCP, PRODUCTION/full, live 12d108dc507a2ebf093fa5bbb94d812ea2d72993 and Vercel READY at github.robinsonaisystems.com. The required authentic narrow, user-capped and production-off connections are not in this saved full/PRODUCTION grant. The dependent hosted runner check remains provider/plan-limited (GITHUB-Y9D-HOSTED-READ BLOCKED). Prior source tests do not substitute for the required live denial matrix. No paid or production mutation was attempted.",
+    "nextAction": "Prerequisite: owner-authorized separate read-only/narrow RTC pass and capped account configuration, plus eligible provider plan for the hosted runner subset. On new approved credentials, rerun preview/denial only; never issue paid changes."
   },
   {
     "id": "GITHUB-Y9D-OWNER-AUTH-WRITES",
@@ -946,7 +946,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PASSED",
     "lastEvidence": "2026-10-18 post-plan genuine custom PREVIEW/full on independent READY Vercel live f1397503 (dpl_C3uAZsQN2NbZAVWzREFbH2V4chxH), enrolled robinson-ai-scratch I/U, production OFF. Actual scratch private Dependabot GET refused HTTP403 because alerts disabled, with accepted named vulnerability alerts(read); code scanning GET 403 because Advanced Security not enabled, with named security events(read). Both B-5 explanations say endpoint entries are NOT proof of missing grants; advise conditional comparison, not blanket consent. Independent github_check_permissions(security) returned missing=[]/permissions_ok=true, confirming refusal is provider feature/plan not unapproved App grant. Explicit GET /user/packages using P failed local client:no_credentials (separate missing P setup, no imaginary boolean/schema-only grant). Foreign repository owner refused client:outside_scope before GitHub. No raw headers fabricated, existing synthetic boolean parser tests are distinct. Zero writes, grants, spend, OAuth resets or fixture changes.",
-    "nextAction": "ACCEPTED \u2014 genuine source-bearing provider permission-header formatter and credential/scope failure guidance validated after B-5 release, independently compared with real existing grants. Package delete/restore acceptance remains separately queued as GITHUB-G6-PACKAGE-AUTH; no further App grant is inferred."
+    "nextAction": "ACCEPTED — genuine source-bearing provider permission-header formatter and credential/scope failure guidance validated after B-5 release, independently compared with real existing grants. Package delete/restore acceptance remains separately queued as GITHUB-G6-PACKAGE-AUTH; no further App grant is inferred."
   },
   {
     "id": "GITHUB-PRIVATE-USER-PASS-SCOPE",
@@ -954,7 +954,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "requiredRevision": "3df082605de3a91f3e32affd385e88ba90df95d2",
     "status": "BLOCKED",
     "task": "On source-bearing deployed custom MCP verify repository/permission-limited private-member I and owner/member U requests refuse before user-bearer acquisition; ordinary own-user reads and authorized owner I installation downscoping still work.",
-    "procedure": "docs/pr-cards/PUB-2.md \u2014 2026-10-21 restricted private-user passes correction; tests/unit/private-user-pass-downscope.test.js for source cases.",
+    "procedure": "docs/pr-cards/PUB-2.md — 2026-10-21 restricted private-user passes correction; tests/unit/private-user-pass-downscope.test.js for source cases.",
     "gates": "Verified READY implementation ancestry; genuine already-authorized private developer fixture and service-owned grant, exact existing restricted pass and ordinary connection. No public tenant activation, new real credential, access expansion, production write or spend is inferred.",
     "dependsOn": [],
     "lastEvidence": "Superseded 2026-10-24: the private-pilot sign-in was retired on 2026-10-23 (PUB-6 rebuild); public tenants are covered by tests/db/pub-6-public-connect.test.js and tests/unit/private-user-pass-downscope.test.js. No live run needed."
@@ -1022,9 +1022,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/ACC-1.md",
     "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-24 04:40-04:50 MDT on live b555df1 (Vercel READY), custom service-issued MCP, PRODUCTION/full. Org repository refused by GitHub for a personal export (422). Disposable empty private repo christcr2012/rtc-acc1-20261024-4 created, github_account_export_start applied (id 14960475), status went pending then exported, github_account_export_link returned a short-lived private address (not opened, not stored); github_account_export_delete was accepted by GitHub but the readback could not confirm the archive is gone (reported 'unconfirmed'; status still says exported). Repo deleted. Open item: archive deletion unconfirmed; it expires on its own (about 2 days).",
-    "nextAction": "Re-check later that the export archive is really gone (github_account_export_status / link should refuse); the export, status and link steps already worked. Not a blocker."
+    "status": "PASSED",
+    "lastEvidence": "2026-10-26 evening MDT, custom service-issued GitHub MCP, PRODUCTION/full, live 12d108dc507a2ebf093fa5bbb94d812ea2d72993 and Vercel READY at github.robinsonaisystems.com. Account export status for disposable archived migration 14960475 still shows a historical 'exported' record; github_account_export_delete(dryRun=true) independently reported 'archive ... already gone' (no mutation). github_account_export_link(14960475) returned HTTP 404. This confirms prior cleanup's absence, not a new delete or leaked download URL. Original archive creation, link and fixture disposal were verified 2026-10-24.",
+    "nextAction": "No action needed; export record may persist after the archive is gone. Only retest if a new run creates a different disposable export."
   },
   {
     "id": "GITHUB-GOD4-SPACES",
@@ -1067,9 +1067,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/ACC-1.md",
     "gates": "Saved developer connection; scratch organization or disposable fixture only; no spend.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "Needs a real sign-in through the live public page (Chris's browser). Covered by DB and browser tests in CI.",
-    "nextAction": "Owner checklist: next time a new person or app signs in, confirm it works; the agent reads the refusal log."
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-26 evening MDT, custom service-issued GitHub MCP, PRODUCTION/full, live 12d108dc507a2ebf093fa5bbb94d812ea2d72993 and Vercel READY at github.robinsonaisystems.com. Saved MCP grant and browser CI prove continued connected access and synthetic sign-in coverage, not a genuinely new OAuth sign-in after the cap change. No disposable new app/client consent was performed.",
+    "nextAction": "Prerequisite: a separately authorized new first-time live app sign-in through the Approve page (owner/browser step), or an existing independent consent run with documented timestamp and exact deployment; inspect result without revoking the working connector."
   },
   {
     "id": "GITHUB-GOD6-ACT-AS",
@@ -1079,9 +1079,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/ACC-1.md",
     "gates": "Saved developer connection; scratch organization or disposable fixture named rtc-acc1-<date>-<n> only; never overrideRules on a real repository; no spend.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-24 13:15-13:30 MDT on live d96aab4 (Vercel READY), custom service-issued MCP, PRODUCTION/full. github_whoami acting_as=you; repo create, file write, branch, ruleset, PR create on rtc-acc1-20261024-god6 all returned acting_as 'christcr2012 (you)', file/branch steps 'some steps by the app'. App-only route and switch-off not run live (unit tests). Cleanup: repo deleted. PARTIAL: the main scenarios passed; the rest stays outstanding.",
-    "nextAction": "Still to observe live: an app-only call (check run) staying on the app; the Act-as-me switch turned off on My connection (owner step, needs Chris's sign-in) returning writes to the app; a read-only connection never using the person's token."
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-26 evening MDT, custom service-issued GitHub MCP, PRODUCTION/full, live 12d108dc507a2ebf093fa5bbb94d812ea2d72993 and Vercel READY at github.robinsonaisystems.com. github_whoami independently reported acting_as=you (personal master login) while connected full/PRODUCTION. Prior scratch writes were recorded on 2026-10-24; still no independently observed owner-controlled Act-as-me switch OFF, read-only account grant, or app-only check-run write on an exact owned scratch fixture. None was changed in this session.",
+    "nextAction": "Prerequisite: owner enables a disposable secondary connection to test read-only and switches Act-as-me OFF and back ON on My connection, plus an exact approved disposable scratch check-run fixture. Verify App actor independently; do not change the owner's existing working settings without approval."
   },
   {
     "id": "GITHUB-GOD6-RULE-OVERRIDE",
@@ -1091,9 +1091,9 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "docs/pr-cards/ACC-1.md",
     "gates": "Saved developer connection; scratch organization or disposable fixture named rtc-acc1-<date>-<n> only; never overrideRules on a real repository; no spend.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-24 13:15-13:30 MDT on live d96aab4 (Vercel READY), custom service-issued MCP, PRODUCTION/full, scratch only. Merge without override refused (409); override preview listed '1 required approval (0 given)'; with no bypass actor GitHub declined and PR stayed open; after granting bypass on the scratch ruleset the override merge completed (merged=true). Protected-list refusal not run live (unit tests). Cleanup: repo deleted. PARTIAL: the main scenarios passed; the rest stays outstanding.",
-    "nextAction": "Still to observe live: a repository on the protected list refusing the override (preview only, never a real override on a real repository)."
+    "status": "BLOCKED",
+    "lastEvidence": "2026-10-26 evening MDT, custom service-issued GitHub MCP, PRODUCTION/full, live 12d108dc507a2ebf093fa5bbb94d812ea2d72993 and Vercel READY at github.robinsonaisystems.com. Existing 2026-10-24 scratch PR proved normal merge denial, deliberate override preview, GitHub permission denial and later authorized bypass/merge; newly released C-7 fixes local empty-rule veto and preserves user approval. Missing protected-list denial is not inferred from tests, and no bypass was attempted against a real repository.",
+    "nextAction": "Prerequisite: an owner-created/approved disposable scratch protected-list entry (editing the protected resource list is owner-only), then a dry-run override refusal observed through the native custom MCP; remove owner-created fixture afterward."
   },
   {
     "id": "GITHUB-PUB5-HEADERS-LIMITS",
