@@ -366,6 +366,38 @@ describe('private personal package routing keeps curated mutation boundaries',()
 });
 
 
+describe('PAR-4 existing enterprise specialist operations stay behind exact stronger guards',()=>{
+  const curated=[
+    ['POST /enterprises/{enterprise}/code-security/configurations','github_enterprise_security_config_save'],
+    ['PATCH /enterprises/{enterprise}/code-security/configurations/{configuration_id}','github_enterprise_security_config_save'],
+    ['DELETE /enterprises/{enterprise}/code-security/configurations/{configuration_id}','github_enterprise_security_config_delete'],
+    ['POST /enterprises/{enterprise}/code-security/configurations/{configuration_id}/attach','github_enterprise_security_config_apply'],
+    ['PUT /enterprises/{enterprise}/code-security/configurations/{configuration_id}/defaults','github_enterprise_security_config_apply'],
+    ['PUT /enterprises/{enterprise}/dependabot/repository-access/default-level','github_enterprise_dependabot_access_set'],
+    ['PATCH /enterprises/{enterprise}/dependabot/repository-access','github_enterprise_dependabot_access_set'],
+    ['PUT /enterprises/{enterprise}/actions/cache/retention-limit','github_enterprise_actions_settings_set'],
+    ['PUT /enterprises/{enterprise}/actions/cache/storage-limit','github_enterprise_actions_settings_set'],
+    ['POST /enterprises/{enterprise}/actions/oidc/customization/properties/repo','github_enterprise_actions_settings_set'],
+    ['DELETE /enterprises/{enterprise}/actions/oidc/customization/properties/repo/{custom_property_name}','github_enterprise_actions_settings_set']
+  ];
+  it('routes every guarded enterprise write to its exact specialist, not a universal alternate',()=>{
+    for(const [operation,tool] of curated) {
+      expect(curatedTool({route:operation})).toBe(tool);
+      expect(registry.tools.some(t=>t.name===tool)).toBe(true);
+    }
+    expect(curatedTool({route:'PUT /enterprises/{enterprise}/copilot/policies/coding_agent'})).toBeNull();
+  });
+  it('cannot bypass protected-repository checks by universally attaching security config to all repositories',async()=>{
+    const w=await makeWorld({mode:'production',profile:'full'});
+    const args={operation:'POST /enterprises/{enterprise}/code-security/configurations/{configuration_id}/attach',
+      params:{enterprise:'sample-enterprise',configuration_id:7},body:{scope:'all'},cred:'M',confirm:true};
+    const out=parse(await dispatch(w,'github_api_write',args));
+    expect(out.status).toBe('refused');
+    expect(out.error).toContain('github_enterprise_security_config_apply');
+    expect(w.gh.calls).toEqual([]);
+  });
+});
+
 describe('PAR-4 verified enterprise authority in universal REST',()=>{
   const policy='PUT /enterprises/{enterprise}/copilot/policies/coding_agent';
   const slug='sample-enterprise';
