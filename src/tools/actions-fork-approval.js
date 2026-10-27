@@ -56,6 +56,13 @@ async function inspect(args,ctx,target,requirePending=false){
     deny('Incomplete file list or modified CI workflows; review and approve outside this limited tool.');
   return {pr,run};
 }
+// This tool is deliberately for ordinary check runs only. The selected run's
+// commit is immutable while the base branch can advance, so classify at the
+// run SHA (not main) and fail closed on production or unknown workflow intent.
+async function requireOrdinaryWorkflow(ctx,target,run){
+  const reason=await workflowProduction(ctx,target,{path:run.path,contentRef:run.head_sha});
+  if(reason)deny('This limited fork CI approval cannot authorize production or unverifiable workflows: '+reason);
+}
 const def=defineGithubWrite({
   name:'github_actions_approve_fork_run',area:'actions',audience:['B','Op'],
   description:'Approve one reviewed public fork PR CI run without bypassing required checks.',
@@ -73,15 +80,19 @@ const def=defineGithubWrite({
     args.repo.toLowerCase(),args.prNumber,args.runId,args.expectedHeadSha
   ])).digest('hex'),
   target:TARGET,
-  read:inspect,
-  classify:async({ctx,target,before})=>({
-    production:await workflowProduction(ctx,target,{path:before.run.path,contentRef:before.pr.base.ref})
-  }),
+  read:async(args,ctx,target)=>{
+    const before=await inspect(args,ctx,target);
+    await requireOrdinaryWorkflow(ctx,target,before.run);
+    return before;
+  },
+  // Production or unknown workflow definitions were already refused by read.
+  classify:async()=>({production:null}),
   summarize:({args,before,target})=>'Approve ordinary CI for public fork PR #'+args.prNumber+
     ' at exact head '+args.expectedHeadSha+', run '+args.runId+' ('+before.run.path+
     ') in '+slug(target.owner,target.repo)+'. Does not merge, bypass checks or deploy.',
   apply:async({args,ctx,target})=>{
-    await inspect(args,ctx,target,true); // require still-pending run at mutation time; journal replays remain possible
+    const fresh=await inspect(args,ctx,target,true); // require still-pending run at mutation time
+    await requireOrdinaryWorkflow(ctx,target,fresh.run); // immutable run revision, not mutable default branch
     return (await octo(ctx,target.owner,'U')).request('POST /repos/{owner}/{repo}/actions/runs/{run_id}/approve',
       {...ROUTE(target),run_id:args.runId});
   },

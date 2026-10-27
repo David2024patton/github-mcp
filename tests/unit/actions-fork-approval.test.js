@@ -36,7 +36,7 @@ describe('fork run identity and safety',()=>{
   async function invoke(opts={},args=R,profile='full',mode='preview'){
     const w=await makeWorld({profile,mode});seed(w.gh,'ok',opts);
     const result=parse(await api.handlers.github_actions_approve_fork_run({...args,confirm:true},w.ctx));
-    return {result,post:w.gh.calls.filter(x=>x.route===POST),invalid:w.gh.invalid};
+    return {result,post:w.gh.calls.filter(x=>x.route===POST),invalid:w.gh.invalid,calls:w.gh.calls};
   }
   it('approves a genuine synthetic PR merge SHA with the reviewed head as a parent',async()=>{
     const merged='b'.repeat(40);
@@ -44,6 +44,7 @@ describe('fork run identity and safety',()=>{
       sha:merged,parents:[{sha:'c'.repeat(40)},{sha:H}]}});
     expect(x.result.done).toBe(true);
     expect(x.post).toHaveLength(1);
+    expect(x.calls.filter(c=>c.route==='GET /repos/{owner}/{repo}/contents/{path}').every(c=>c.query.ref===merged)).toBe(true);
     expect(x.invalid).toEqual([]);
   });
   it('supports a PR with more than 100 changed files when every file is verifiable',async()=>{
@@ -80,7 +81,9 @@ describe('fork run identity and safety',()=>{
     const x=await invoke({},R,'read_only');expect(x.result.done).toBe(false);expect(x.post).toHaveLength(0);
   });
   it('refuses a workflow that declares production deployment',async()=>{
-    const x=await invoke({workflow:'jobs:\n  deploy:\n    runs-on: ubuntu-latest\n    environment: production\n'});
-    expect(x.result.done).toBe(false);expect(x.post).toHaveLength(0);
+    for(const mode of ['preview','production']){
+      const x=await invoke({workflow:'jobs:\n  deploy:\n    runs-on: ubuntu-latest\n    environment: production\n'},R,'full',mode);
+      expect(x.result.done).toBe(false);expect(x.post).toHaveLength(0);
+    }
   });
 });
