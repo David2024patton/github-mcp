@@ -95,7 +95,7 @@ describe('W-1 full PR status and resumable guarded open',()=>{
   it('refuses incomplete idempotence inventory, bad profile, duplicate labels and time budget',async()=>{
     const f=fixture({extra:{github_pr_list:{items:[],more_exist:true}}});
     expect(body(await prWorkflows.github_workflow_open_pr({
-      repo:'app',head:'feature-a',title:'x',confirm:true},f.ctx)).status).toBe('refused');
+      repo:'app',head:'feature-a',title:'x',labels:['bug'],confirm:true},f.ctx)).status).toBe('refused');
     expect(writes(f)).toHaveLength(0);
     const narrow=fixture({profile:'read_only'});
     expect(body(await prWorkflows.github_workflow_open_pr({
@@ -105,16 +105,16 @@ describe('W-1 full PR status and resumable guarded open',()=>{
       repo:'app',head:'feature-a',title:'x',labels:['a','a'],confirm:true},dup.ctx)).status).toBe('refused');
     const timeout=fixture({extra:{github_repo_get:()=>{timeout.advance(48000);return {default_branch:'main'};}}});
     expect(body(await prWorkflows.github_workflow_open_pr({
-      repo:'app',head:'feature-a',title:'x',confirm:true},timeout.ctx)).status).toBe('pending');
+      repo:'app',head:'feature-a',title:'x',labels:['bug'],confirm:true},timeout.ctx)).status).toBe('pending');
     expect(writes(timeout)).toHaveLength(0);
   });
 
   it('uses a compact normalized real-provider list and never creates a duplicate matching PR',async()=>{
-    const f=fixture({prs:{4:ready(4)},extra:{github_pr_list:{count:1,items:[
+    const f=fixture({prs:{4:ready(4,{labels:['ready']})},extra:{github_pr_list:{count:1,items:[
       {number:4,head:'feature-a',base:'main',state:'open',draft:false}
     ]}}});
     const result=body(await prWorkflows.github_workflow_open_pr({
-      repo:'app',head:'feature-a',title:'Already exists',dryRun:false,confirm:true},f.ctx));
+      repo:'app',head:'feature-a',title:'Already exists',labels:['ready'],dryRun:false,confirm:true},f.ctx));
     expect(result).toMatchObject({done:true,status:'existing',number:4});
     expect(writes(f)).toHaveLength(0);
     const listCall=f.calls.find(x=>x.name==='github_pr_list');
@@ -132,7 +132,7 @@ describe('W-1 full PR status and resumable guarded open',()=>{
     ]){
       const f=fixture({extra:{github_pr_list:listed}});
       const result=body(await prWorkflows.github_workflow_open_pr({
-        repo:'app',head:'feature-a',title:'Never duplicate',confirm:true},f.ctx));
+        repo:'app',head:'feature-a',title:'Never duplicate',labels:['ready'],confirm:true},f.ctx));
       expect(result).toMatchObject({done:false,status:'refused'});
       expect(writes(f)).toEqual([]);
     }
