@@ -47,14 +47,21 @@ export const prGet = defineRead({
       additions: pr.additions, deletions: pr.deletions, created_at: pr.created_at, updated_at: pr.updated_at, merged_at: pr.merged_at, html_url: pr.html_url,
       body: pr.body, author_association: pr.author_association
     };
-    try {
-      const data = await graphql(octokit, THREADS, { owner, name: args.repo, number: args.number });
-      const review = data.repository?.pullRequest;
-      out.review_decision = review?.reviewDecision ?? null;
-      out.threads = { total: review?.reviewThreads?.totalCount ?? 0, unresolved: (review?.reviewThreads?.nodes ?? []).filter((n) => !n.isResolved).length };
-    } catch { out.review_decision = null; out.threads = { unknown: 'The review threads could not be read.' }; }
-    if (pr.state === 'open') {
-      const ci = await ciState(octokit, { owner, repo: args.repo, baseBranch: pr.base.ref, headSha: pr.head.sha });
+    // Review and exact-head CI are independent after the authoritative PR ref
+    // was read. Await both without making a second PR/provider mutation.
+    const [review, ci] = await Promise.all([
+      (async () => {
+        try {
+          const data = await graphql(octokit, THREADS, { owner, name: args.repo, number: args.number });
+          const info = data.repository?.pullRequest;
+          return { review_decision: info?.reviewDecision ?? null,
+            threads: { total: info?.reviewThreads?.totalCount ?? 0, unresolved: (info?.reviewThreads?.nodes ?? []).filter((n) => !n.isResolved).length } };
+        } catch { return { review_decision: null, threads: { unknown: 'The review threads could not be read.' } }; }
+      })(),
+      pr.state === 'open' ? ciState(octokit, { owner, repo: args.repo, baseBranch: pr.base.ref, headSha: pr.head.sha }) : null
+    ]);
+    Object.assign(out, review);
+    if (ci) {
       out.checks = { green: ci.green, basis: ci.basis, items: ci.checks, ...(ci.problems.length ? { problems: ci.problems } : {}), ...(ci.errors.length ? { could_not_check: ci.errors } : {}), ...(ci.notes?.length ? { plan_limits: ci.notes } : {}) };
     }
     return out;

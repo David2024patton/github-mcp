@@ -34,12 +34,18 @@ function nextAction(p){
 }
 export async function inspectPr(args,ctx){
   const start=clock(ctx),base=scope(args);
-  const pr=readBody(await call(ctx,'github_pr_get',{...base,number:args.number}));
+  // Two independent guarded reads. Fetching stack membership in parallel
+  // removes a full serial provider turn from the common PR status workflow.
+  const [prReply, stackReply]=await Promise.all([
+    call(ctx,'github_pr_get',{...base,number:args.number}),
+    call(ctx,'github_pr_list_stacks',{...base,pullRequest:args.number,max:30})
+  ]);
+  const pr=readBody(prReply);
   if(!pr)return {done:false,status:'not_readable',number:args.number,
     next:'The PR or its required CI/review evidence could not be read.'};
   let position={state:'not_readable',note:'Stack membership could not be checked.'};
   if(within(ctx,start)){
-    const r=readBody(await call(ctx,'github_pr_list_stacks',{...base,pullRequest:args.number,max:30}));
+    const r=readBody(stackReply);
     if(r&&!r.next_page_possible&&r.count===0)position={state:'none'};
     else if(r&&Array.isArray(r.items)&&!r.next_page_possible){
       const matches=r.items.flatMap(s=>(s.pull_requests??[]).map((p,i)=>({
