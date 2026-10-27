@@ -76,6 +76,22 @@ describe('W-1 full PR status and resumable guarded open',()=>{
       title:'Real title',confirm:true,requestKey:'w1-open:create'});
     expect(x.done).toBe(false);
   });
+  it('refreshes journal-replayed PR evidence and refuses stale head, closed PR, or missing read without a new write',async()=>{
+    const saved={done:true,status:'replayed',result:{number:4,head:{ref:'feature-a',sha:A},base:{ref:'main'}}};
+    for(const [current,expected] of [
+      [ready(4),{done:true,status:'existing',number:4,head_sha:A}],
+      [ready(4,{head_sha:B}),{done:false,status:'stale_replay'}],
+      [ready(4,{state:'closed',merged:true}),{done:false,status:'stale_replay'}],
+      [null,{done:false,status:'stale_replay'}]
+    ]){
+      const f=fixture({prs:{4:current},extra:{github_pr_create:saved}});
+      const output=body(await prWorkflows.github_workflow_open_pr({
+        repo:'app',head:'feature-a',title:'Already sent',requestKey:'same-pr'},f.ctx));
+      expect(output).toMatchObject(expected);
+      expect(f.calls.map(x=>x.name)).toEqual(['github_pr_create','github_pr_get']);
+      expect(writes(f)).toHaveLength(0);
+    }
+  });
   it('returns an already open PR and adds only missing labels through issue guard on separate invocation',async()=>{
     const f=fixture({prs:{4:ready(4,{labels:['ready']})},extra:{
       github_pr_list:{count:1,items:[{number:4,head:'feature-a',base:'main',state:'open',draft:false}]},

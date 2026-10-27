@@ -93,7 +93,26 @@ async function openPr(args,ctx){
     const verified=(response?.status==='applied'||response?.status==='replayed')
       &&response?.done===true&&Number.isInteger(result?.number);
     if(verified){
-      return receipt({done:true,status:result.replayed||response.status==='replayed'?'existing':'pr_opened',
+      // The writer's replay journal holds HISTORICAL readback. Unlike a newly
+      // applied result, it does not re-read the PR. An old PR may now be closed,
+      // merged, or point at a different head; verify current GitHub evidence.
+      if(response.status==='replayed'){
+        const current=readBody(await call(ctx,'github_pr_get',{...s,number:result.number}));
+        const recordedSha=result.head_sha??result.head?.sha;
+        const recordedBase=result.base?.ref??result.base??null;
+        if(!current||current.number!==result.number||current.state!=='open'||current.merged||
+          current.head!==args.head.split(':').pop()||current.base!==recordedBase||
+          !/^[0-9a-f]{40}$/i.test(recordedSha??'')||current.head_sha!==recordedSha){
+          return receipt({done:false,status:'stale_replay',number:result.number,
+            guarded_tool:'github_pr_create',
+            next:'The earlier PR result is historical; re-read the current PR and head before proceeding. No second write was sent.'});
+        }
+        return receipt({done:true,status:'existing',number:current.number,
+          head_sha:current.head_sha,base:current.base,html_url:current.html_url??null,
+          guarded_tool:'github_pr_create',
+          next:'Existing open PR independently verified from the current head; inspect CI when ready.'});
+      }
+      return receipt({done:true,status:result.replayed?'existing':'pr_opened',
         number:result.number,head_sha:result.head_sha??result.head?.sha??null,
         base:result.base?.ref??result.base??args.base??null,
         html_url:result.html_url??null,guarded_tool:'github_pr_create',
