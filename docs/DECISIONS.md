@@ -1,3 +1,7 @@
+## 2026-10-26 — optimize whole-workflow critical path, not just isolated tools
+
+Owner directed measuring and optimizing common development workflows as far as possible. C-5 reduces serial GitHub reads on PR checks/status by overlapping only independent read-only evidence. It keeps exact-head/required-check union, privacy, profile, spend, authentication, unknown/failure outcomes and provider write guards untouched. The benchmark compares synthetic provider waits and does not prove production latency or industry leadership; real-client before/after data must be separately collected once released. Daily production release rules stay unchanged.
+
 ## 2026-10-26 — fastest safe everyday gateway by design
 
 Owner approved optimizing standard agent workflows at the MCP server, rather than depending on each agent's sophistication. C-4 corrects search/describe guidance to prefer one-call already-authorized routine writes; any operation the server marks risk-sensitive continues to request confirmation and enforce every existing write guard. Independent read-only batch entries are scheduled three at a time, never changes, with original result order and existing authorization/pace/output rules. No paid infrastructure, weakened branch rules, production write authorization or change to the normal release schedule follows from this decision. Improvements will be benchmarked on real clients separately; no claimed cross-industry record without evidence.
