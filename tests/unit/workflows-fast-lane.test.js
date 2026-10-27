@@ -71,19 +71,19 @@ const ctxFor=read=>({connection:{profile:'full'},now:Date.now,
   callTool:async(name,args)=>reply(await read(name,args))});
 describe('C-6 parallel exact-head merge preparation',()=>{
   it('starts independent PR/default branch reads together and still issues one guarded merge',async()=>{
-    let active=0,peak=0,mutations=0;
+    let active=0,peak=0,mutations=0,merged=false;
     const ctx=ctxFor(async(name)=>{
       if(name==='github_pr_get'||name==='github_repo_get'){
         active++;peak=Math.max(peak,active);
         await new Promise(resolve=>setTimeout(resolve,20));
-        active--;return name==='github_pr_get'?ready(4):{default_branch:'main'};
+        active--;return name==='github_pr_get'?ready(4,merged?{state:'closed',merged:true}:{}):{default_branch:'main'};
       }
-      if(name==='github_pr_merge'){mutations++;return {status:'applied'};}
+      if(name==='github_pr_merge'){mutations++;merged=true;return {status:'applied'};}
       throw new Error('Unexpected tool '+name);
     });
     const r=(await mergeWorkflows.github_workflow_merge_when_green(
       {repo:'hello',number:4,expectedHeadSha:SHA,confirm:true},ctx)).structuredContent;
-    expect(r).toMatchObject({status:'not_applied',done:false}); // no fake merge readback provided
+    expect(r).toMatchObject({status:'merged',done:true});
     expect(peak).toBe(2);
     expect(mutations).toBe(1);
   });
