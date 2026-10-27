@@ -68,6 +68,15 @@ read OK, write refused, remove), `GITHUB-GQL1-<group>` (one representative mutat
   Chris's 2026-10-23 decision to make the App public. Write that reconciliation in `docs/pr-cards/PUB-4.md`, mark
   `COMPLETE`, and leave PUB-5 BLOCKED.
 
+## 2026-10-26 released-source acceptance reconciliation (new approved session)
+
+The source running at `https://github.robinsonaisystems.com` is verified READY at `12d108dc507a2ebf093fa5bbb94d812ea2d72993`. This session accounts for all 71 current ledger tasks instead of treating blocked external prerequisites as untested source. Use the saved native MCP connection and do **not** change production user accounts, protected lists, spending, live branches or actual third-party pull requests to manufacture an acceptance pass.
+
+- [ ] Preserve the 53 previously passed observations. Complete `GITHUB-GOD4-EXPORT` only if the existing disposable export's archive has independently ceased to exist; record both native API readback signals and that the export metadata may remain.
+- [ ] For the four remaining pending scenarios, record **BLOCKED** with their exact missing external prerequisite and feasible next action: user-chosen capped/read-only connection for Y-9d, independent live sign-in for HARD-1, user's Act-as-me-off/read-only grant plus scratch app-only proof for GOD-6, or owner-configured protected-list scratch fixture for override denial. Do not conflate simulated tests with provider acceptance.
+- [ ] Add accurate developer-evidence cleanup observation; independently check all 71 rows have an evidence disposition and no PENDING status. PUB-4 and PUB-6 are already MERGED; leave their audited prior outcomes untouched.
+- [ ] Run exact-head documentation consistency checks, review, and merge through the repository's normal PR/CI gates. Do not claim ACC-1's deferred scenarios passed or request an early live release.
+
 ## Done when
 - [ ] Every ledger row is PASSED or BLOCKED with an exact external reason; no PENDING rows remain.
 - [ ] FIN rows added and run after each release; PUB-4 and PUB-6 closed in `work-index.json`.
