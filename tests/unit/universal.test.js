@@ -364,3 +364,68 @@ describe('private personal package routing keeps curated mutation boundaries',()
     expect(w.gh.calls).toHaveLength(1);expect(w.gh.invalid).toEqual([]);
   });
 });
+
+
+describe('PAR-4 verified enterprise authority in universal REST',()=>{
+  const policy='PUT /enterprises/{enterprise}/copilot/policies/coding_agent';
+  const slug='sample-enterprise';
+  const args={operation:policy,params:{enterprise:slug},body:{policy_state:'enabled'},cred:'M'};
+  function setMaster(w,{scopes=['admin:enterprise','read:enterprise'],admin=true}={}){
+    const original=w.credentials;
+    const credentials={...original,
+      masterStatus:async()=>({enrolled:true,scopes}),
+      token:async (p)=>p.cred==='M'?'ghp_FAKE_PAR4_MASTER_TOKEN_123456789':original.token(p)};
+    w.credentials=credentials;
+    w.ctx={...w.ctx,credentials};
+    w.gh.when('POST /graphql').reply(200,{data:{viewer:{enterprises:{nodes:admin?[{slug,name:'Example enterprise'}]:[]}}}});
+    w.gh.when(policy).reply(204,null);
+    return w;
+  }
+  it('does not invent an enterprise-wide veto while preserving the pinned route and master-only choice',async()=>{
+    const op=restOperation(policy);
+    expect(()=>assertUniversalAuthority(op,{enterprise:slug},{policy_state:'enabled'})).not.toThrow();
+    const w=await makeWorld({mode:'production',profile:'full'});
+    const refused=parse(await dispatch(w,'github_api_write',{...args,cred:'I',confirm:true}));
+    expect(refused.status).toBe('refused');
+    expect(w.gh.calls).toEqual([]);
+    const foreign=parse(await dispatch(w,'github_api_write',{...args,owner:'foreign-org',confirm:true}));
+    expect(foreign.status).toBe('refused');
+    expect(w.gh.calls).toEqual([]);
+  });
+  it('requires a real admin grant before the provider policy mutation',async()=>{
+    const w=setMaster(await makeWorld({mode:'production',profile:'full'}),{admin:false});
+    const out=parse(await dispatch(w,'github_api_write',{...args,confirm:true}));
+    expect(out.status).not.toBe('applied');
+    expect(w.gh.calls.some(c=>c.route===policy)).toBe(false);
+    const narrow=setMaster(await makeWorld({mode:'production',profile:'full'}),{scopes:['read:enterprise']});
+    const denied=parse(await dispatch(narrow,'github_api_write',{...args,confirm:true}));
+    expect(denied.status).not.toBe('applied');
+    expect(narrow.gh.calls.some(c=>c.route===policy)).toBe(false);
+  });
+  it('requires preview, confirmation, no-repeat journal, and honest unconfirmed 204 without GET readback',async()=>{
+    const w=setMaster(await makeWorld({mode:'production',profile:'full',advanceClockOnSleep:true}));
+    const preview=parse(await dispatch(w,'github_api_write',{...args,dryRun:true}));
+    expect(preview.status).toBe('preview');
+    expect(w.gh.calls.some(c=>c.route===policy)).toBe(false);
+    const asked=parse(await dispatch(w,'github_api_write',args));
+    expect(asked.status).toBe('needs_confirmation');
+    const applied=parse(await dispatch(w,'github_api_write',{...args,confirm:true}));
+    expect(applied).toMatchObject({status:'unconfirmed',confirmed:false});
+    expect(w.gh.calls.filter(c=>c.route===policy)).toHaveLength(1);
+    expect(w.gh.invalid).toEqual([]);
+    const retried=parse(await dispatch(w,'github_api_write',{...args,confirm:true}));
+    expect(retried.status).toBe('replayed');
+    expect(w.gh.calls.filter(c=>c.route===policy)).toHaveLength(1);
+  });
+  it('refuses the master token on read-only connections and delegated passes',async()=>{
+    const readOnly=setMaster(await makeWorld({mode:'preview',profile:'read_only'}));
+    const result=await dispatch(readOnly,'github_api_read',{operation:'GET /enterprises/{enterprise}/actions/cache/storage-limit',params:{enterprise:slug},cred:'M'});
+    expect(result.isError).toBe(true);
+    expect(readOnly.gh.calls).toEqual([]);
+    const pass=setMaster(await makeWorld({mode:'production',profile:'full'}));
+    pass.connection={...pass.connection,pass:true};
+    const denied=await dispatch(pass,'github_api_read',{operation:'GET /enterprises/{enterprise}/actions/cache/storage-limit',params:{enterprise:slug},cred:'M'});
+    expect(denied.isError).toBe(true);
+    expect(pass.gh.calls).toEqual([]);
+  });
+});
