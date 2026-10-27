@@ -31,6 +31,7 @@ export const SCHEMA_TABLES = Object.freeze([
   'known_projects',
   'result_store',
   'gh_async_jobs',
+  'skills_route_decisions',
   'secret_entry_requests',
   'dev_runs',
   'dev_run_objects',
@@ -41,6 +42,7 @@ export const SCHEMA_TABLES = Object.freeze([
 ]);
 export const RESULT_HANDLE = /^res_[A-Za-z0-9_-]{20,64}$/;
 export const JOB_ID = /^job_[0-9a-f]{16}$/;
+export const ROUTE_DECISION_ID = /^skd_[A-Za-z0-9_-]{16,80}$/;
 
 export const PROTECTED_KINDS = Object.freeze(['repo', 'installation']);
 export const PROTECTED_LEVELS = Object.freeze(['pr-only', 'locked']);
@@ -415,6 +417,21 @@ export function createDb(sql = productionSql()) {
         expires_at TIMESTAMPTZ NOT NULL
       )`;
       await sql`CREATE INDEX IF NOT EXISTS gh_async_jobs_connection_idx ON gh_async_jobs (connection_id, state)`;
+      // Skills catalog route decisions (SKILLS-1): a routed GitHub plan, bound to the connection that
+      // asked for it and to the sha256 of its exact steps, kept only until it expires or is consumed.
+      await sql`CREATE TABLE IF NOT EXISTS skills_route_decisions (
+        id TEXT PRIMARY KEY,
+        connection TEXT NOT NULL,
+        skill_id TEXT NOT NULL,
+        plan JSONB NOT NULL,
+        risk_class TEXT NOT NULL,
+        payload_sha256 TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        expires_at TIMESTAMPTZ NOT NULL,
+        consumed_at TIMESTAMPTZ,
+        result JSONB
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS skills_route_decisions_connection ON skills_route_decisions (connection, expires_at)`;
       // A secret the owner will type on the setup page (G-3): who it is for and where it goes, never the value itself.
       await sql`CREATE TABLE IF NOT EXISTS secret_entry_requests (
         id TEXT PRIMARY KEY,
@@ -532,6 +549,35 @@ export function createDb(sql = productionSql()) {
         RETURNING id, connection_id, owner, repo, kind, provider_ref, state, result_handle, detail, created_at, updated_at, last_polled_at, expires_at`;
       return rows[0] ?? null;
     },
+    /** Stores a skills route decision for one connection (SKILLS-1). Also deletes up to 100 expired decisions (no cron). */
+    async putRouteDecision({ id, connection, skillId, plan, riskClass, payloadSha256, ttlMinutes = 30 }) {
+      if (!ROUTE_DECISION_ID.test(id ?? '')) throw new TypeError('A route decision id looks like skd_ followed by letters and digits.');
+      if (typeof connection !== 'string' || !connection) throw new TypeError('A route decision belongs to a connection.');
+      if (typeof skillId !== 'string' || !skillId || typeof riskClass !== 'string' || !riskClass) throw new TypeError('A route decision needs a skill id and a risk class.');
+      if (!/^[a-f0-9]{64}$/.test(payloadSha256 ?? '')) throw new TypeError('A route decision needs the sha256 of its plan payload.');
+      if (!plan || typeof plan !== 'object' || Array.isArray(plan)) throw new TypeError('A route decision needs its plan.');
+      await sql`DELETE FROM skills_route_decisions WHERE id IN (SELECT id FROM skills_route_decisions WHERE expires_at < now() LIMIT 100)`;
+      const rows = await sql`INSERT INTO skills_route_decisions (id, connection, skill_id, plan, risk_class, payload_sha256, expires_at)
+        VALUES (${id}, ${connection}, ${skillId}, ${JSON.stringify(plan)}::jsonb, ${riskClass}, ${payloadSha256}, now() + make_interval(mins => ${ttlMinutes}))
+        RETURNING id, connection, skill_id, plan, risk_class, payload_sha256, created_at, expires_at, consumed_at, result`;
+      return rows[0];
+    },
+    /** The route decision, only for the connection it was issued to and only while it has not expired. */
+    async getRouteDecision(id, connection) {
+      if (!ROUTE_DECISION_ID.test(id ?? '') || typeof connection !== 'string' || !connection) return null;
+      const rows = await sql`SELECT id, connection, skill_id, plan, risk_class, payload_sha256, created_at, expires_at, consumed_at, result
+        FROM skills_route_decisions WHERE id = ${id} AND connection = ${connection} AND expires_at > now()`;
+      return rows[0] ?? null;
+    },
+    /** Consumes a route decision exactly once, recording its result. Null when already consumed or expired. */
+    async consumeRouteDecision(id, connection, result) {
+      if (!ROUTE_DECISION_ID.test(id ?? '') || typeof connection !== 'string' || !connection) return null;
+      const rows = await sql`UPDATE skills_route_decisions SET consumed_at = now(), result = ${JSON.stringify(result ?? null)}::jsonb
+        WHERE id = ${id} AND connection = ${connection} AND consumed_at IS NULL AND expires_at > now()
+        RETURNING *`;
+      return rows[0] ?? null;
+    },
+
     /** Marks a poll and says whether GitHub may be asked again: true at most once per `minGapSeconds`. */
     async claimJobPoll(id, connection, minGapSeconds = 10) {
       const rows = await sql`UPDATE gh_async_jobs SET last_polled_at = now()
