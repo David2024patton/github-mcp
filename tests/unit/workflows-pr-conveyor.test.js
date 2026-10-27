@@ -173,6 +173,33 @@ describe('W-2 exact-head and one-step stack conveyor',()=>{
       expect(writes(f)).toHaveLength(0);
     }
   });
+  it('offers explicit owner bypass through the same guarded writer despite red CI/reviews, but still checks identity and exact SHA',async()=>{
+    const r=registry.tools.find(t=>t.name==='github_workflow_merge_when_green');
+    expect(r.inputSchema.properties.overrideRules.type).toBe('boolean');
+    expect(r.inputSchema.properties.overrideReason.minLength).toBe(10);
+    const f=fixture({prs:{4:ready(4,{checks:{green:false},threads:{unresolved:2},
+      review_decision:'CHANGES_REQUESTED'})},extra:{
+      github_pr_merge:{status:'applied',result:{status:'pending'}}
+    }});
+    const request={repo:'app',number:4,expectedHeadSha:A,overrideRules:true,
+      overrideReason:'Owner approved the exception',confirm:true};
+    const x=body(await mergeWorkflows.github_workflow_merge_when_green(request,f.ctx));
+    expect(x).toMatchObject({done:false,status:'pending'});
+    expect(writes(f)).toHaveLength(1);
+    expect(writes(f)[0]).toMatchObject({name:'github_pr_merge',args:{
+      expectedHeadSha:A,overrideRules:true,overrideReason:'Owner approved the exception',confirm:true}});
+    const ordinary=fixture({prs:{4:ready(4,{checks:{green:false},threads:{unresolved:2}})},
+      extra:{github_pr_merge:{status:'applied'}}});
+    expect(body(await mergeWorkflows.github_workflow_merge_when_green({
+      repo:'app',number:4,expectedHeadSha:A,confirm:true},ordinary.ctx)).status).toBe('not_ready');
+    expect(writes(ordinary)).toHaveLength(0);
+    const stale=fixture({prs:{4:ready(4,{head_sha:B,checks:{green:false}})}});
+    expect(body(await mergeWorkflows.github_workflow_merge_when_green(request,stale.ctx)).status).toBe('not_ready');
+    expect(writes(stale)).toHaveLength(0);
+    const readonly=fixture({profile:'read_only'});
+    expect(body(await mergeWorkflows.github_workflow_merge_when_green(request,readonly.ctx)).status).toBe('refused');
+    expect(writes(readonly)).toHaveLength(0);
+  });
   it('delegates exact head, merge method and independent guarded confirm; verifies provider readback',async()=>{
     const f=fixture({extra:{github_pr_merge:(a,prs)=>{
       prs[4]={...prs[4],state:'closed',merged:true};
