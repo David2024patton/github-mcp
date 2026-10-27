@@ -80,9 +80,23 @@ async function mergeOne(a,ctx){
     confirm:a.confirm===true,dryRun:a.dryRun===true,
     ...(a.overrideRules===true?{overrideRules:true,overrideReason:a.overrideReason}:{}),
     ...(a.requestKey?{requestKey:a.requestKey+':'+a.number}:{})});
-  if(result?.status!=='applied')return reply({status:'not_applied',done:false,
-    guarded_tool:'github_pr_merge',underlying_status:result?.status??'unknown',
-    next:'No merge is claimed. Review the guarded tool result and exact current head.'});
+  if(result?.status!=='applied'){
+    const previewing=result?.status==='preview'||result?.status==='needs_confirmation';
+    // Never hide the guarded writer's informed-consent preview from clients
+    // of this compact workflow. The writer, not this wrapper, decides when
+    // confirmation is required, and no mutation is claimed here.
+    return reply({status:previewing?result.status:'not_applied',done:false,
+      guarded_tool:'github_pr_merge',underlying_status:result?.status??'unknown',
+      ...(typeof result?.preview==='string'?{preview:result.preview}:{}),
+      ...(typeof result?.needsConfirmation==='boolean'?{needsConfirmation:result.needsConfirmation}:{}),
+      ...(typeof result?.prompt==='string'?{prompt:result.prompt}:{}),
+      ...(typeof result?.because==='string'?{because:result.because}:{}),
+      ...(typeof result?.refusedBy==='string'?{refusedBy:result.refusedBy}:{}),
+      ...(typeof result?.error==='string'?{error:result.error}:{}),
+      ...(typeof result?.warning==='string'?{warning:result.warning}:{}),
+      next:previewing?'Read the delegated writer preview, obtain approval and call with confirm: true if authorized.':
+        'No merge is claimed. Inspect the guarded refusal or the current exact head before retrying.'});
+  }
   const after=await pr(ctx,s,a.number);
   const pending=a.overrideRules===true&&['pending','enqueued'].includes(result.result?.status);
   return reply({status:after?.merged===true?'merged':pending?'pending':'unconfirmed',
