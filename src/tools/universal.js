@@ -185,7 +185,7 @@ async function baseline(ctx,chosen) {
 function beforeFingerprint(value){return JSON.stringify(value??null);}
 const apiWrite=defineGithubWrite({
   name:'github_api_write',area:'universal',audience:['B','O','Op'],
-  description:'PRODUCTION: Execute validated non-curated REST writes with delegated billing warnings, scoped guards and confirmation.'
+  description:'PRODUCTION: Execute validated non-curated REST writes with delegated billing warnings, scoped guards and confirmation.',
   properties:queryProperties,required:['operation'],
   declarations:{production:'when-target',accessWidening:true,notifies:true,spend:true,confirm:'always',cred:'I,U,P,M',profiles:['full']},
   target:(a,c)=>resolve(a,c,['POST','PUT','PATCH','DELETE'],true).target,
