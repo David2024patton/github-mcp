@@ -102,7 +102,7 @@
       "observations": [
         "run-owned scratch protection, ruleset, release draft, test branches and topics removed or restored with independent readback",
         "old merged working branches in the product repository remain (agent environment cannot delete them); on owner checklist",
-        "2026-10-24: all acceptance fixtures (3 scratch repositories, 1 personal repository, gist, webhook, deploy key, enterprise configuration, secret, Space) deleted; export archive deletion accepted by GitHub but not readable back"
+        "2026-10-24: all acceptance fixtures (3 scratch repositories, 1 personal repository, gist, webhook, deploy key, enterprise configuration, secret, Space) deleted; export archive deletion accepted, independently verified gone on 2026-10-26 by custom MCP dry-run already-gone preview plus private link HTTP 404; historical export record remains"
       ]
     }
   ]
