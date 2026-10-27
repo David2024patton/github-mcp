@@ -401,7 +401,7 @@ describe('PAR-4 existing enterprise specialist operations stay behind exact stro
 describe('PAR-4 verified enterprise authority in universal REST',()=>{
   const policy='PUT /enterprises/{enterprise}/copilot/policies/coding_agent';
   const slug='sample-enterprise';
-  const args={operation:policy,params:{enterprise:slug},body:{policy_state:'enabled'},cred:'M'};
+  const args={operation:policy,params:{enterprise:slug},body:{policy_state:'enabled_for_selected_orgs'},cred:'M'};
   function setMaster(w,{scopes=['admin:enterprise','read:enterprise'],admin=true}={}){
     const original=w.credentials;
     const credentials={...original,
