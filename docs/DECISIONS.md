@@ -1,3 +1,7 @@
+## 2026-10-26 — First-time fork CI approval belongs to the authorized owner
+
+The owner previously approved a dedicated tool for reviewing and approving first-time contributors' *CI runs* without waiving any check or merging unreviewed code. Recover conflicted PR #409 on a fresh branch without losing tests. Treat GitHub's genuine `pull_request` run SHA semantics accurately: the run can target a synthetic merge commit with the contributor's exact reviewed SHA as a parent. Do not invent a same-SHA restriction that blocks a legitimate owner approval; check the exact PR, run identity, file changes, current pending state, write journal and personal GitHub permissions. Only eligible public-fork check runs are covered by this scoped owner-approved implementation. No approval of a specific outside contributor's code or deployment is implied.
+
 ## 2026-10-26 — Let GitHub decide an authorized person's explicit override
 
 Owner reported a Cortiware merge authorized via the official GitHub connector but blocked by our MCP. Best-effort rule discovery is explanatory, never authority to refuse a deliberate override. For an explicitly confirmed override, pass the authenticated person's actual request to GitHub; show known or unknown rules, and let GitHub independently accept/reject. Preserve exact-head safety, user-chosen authorization restrictions, journal, confirmation, and developer limits. Expose the same override via the common compact merge workflow, and treat future official-connector parity failures as MCP defects to investigate.
