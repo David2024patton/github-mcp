@@ -446,6 +446,21 @@
       "pr": [418]
     },
     {
+      "id": "C-7",
+      "title": "Provider-authorized owner override parity and no invented MCP veto",
+      "batch": "C",
+      "design": "docs/designs/BATCH-C.md",
+      "dependencies": ["C-6"],
+      "card": "docs/pr-cards/C-7.md",
+      "status": "IN_PROGRESS",
+      "migration": "none",
+      "budget": 450,
+      "units": ["C-7"],
+      "readiness": "READY",
+      "ownerInputs": [],
+      "pr": []
+    },
+    {
       "id": "D-1",
       "title": "Repositories",
       "batch": "D",
