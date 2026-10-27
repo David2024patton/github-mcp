@@ -27,7 +27,11 @@ export async function planOverride(ctx, args, { owner, repo, branch, ci = null, 
   if (!branch) return { refuse: 'Only a branch\'s rules can be skipped this way; this change has no branch.' };
   const octokit = await githubFor({ ...ctx, actor: undefined }, { owner });
   const skipped = await skippedRules(octokit, { owner, repo, branch, ci, approvals }).catch(() => ['branch rules: could not be read']);
-  return { use: skipped.length > 0, skipped, branch, login: allowed.login, reason: args.overrideReason.trim() };
+  // Local best-effort rule discovery is explanatory, not an authorization veto.
+  // GitHub can enforce rules/checks not visible in this inventory. When the
+  // owner explicitly requests an override, submit it under their own credential
+  // and let GitHub decide; never silently fall back to the regular write path.
+  return { use: true, skipped, branch, login: allowed.login, reason: args.overrideReason.trim() };
 }
 
 /** The sentence added to a preview. */
@@ -35,8 +39,9 @@ export function overrideLine(plan) {
   if (!plan) return '';
   if (plan.refuse) return `Cannot skip the rules: ${plan.refuse}`;
   if (!plan.use) return 'No rules would be skipped, so the override is not needed.';
-  const list = plan.skipped.join('; ').slice(0, 380);
-  return `Overrides on ${plan.branch}: ${list}. GitHub will record ${plan.login ?? 'you'} as skipping them. Reason: ${plan.reason}.`;
+  const list = plan.skipped.length ? plan.skipped.join('; ').slice(0, 380)
+    : 'No branch rules identified by the available reads; other checks or GitHub policies may still apply';
+  return `Requested override on ${plan.branch}: ${list}. GitHub decides whether ${plan.login ?? 'you'} may bypass; nothing is skipped without its approval. Reason: ${plan.reason}.`;
 }
 
 /** What GitHub says when it will not let this person skip the rules. */

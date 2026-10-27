@@ -19,7 +19,7 @@ async function invoke(ctx,name,args){
 }
 async function pr(ctx,s,number){return invoke(ctx,'github_pr_get',{...s,number});}
 async function repo(ctx,s){return invoke(ctx,'github_repo_get',s);}
-function blockers(p,expected,defaultBranch){
+function blockers(p,expected,defaultBranch,{override=false}={}){
   const missing=[];
   if(!p)return ['PR provider read is unavailable.'];
   if(p.state!=='open'||p.merged)missing.push('PR is not open and unmerged.');
@@ -27,11 +27,16 @@ function blockers(p,expected,defaultBranch){
   if(p.head_sha!==expected)missing.push('Expected head does not match the latest actual head.');
   if(p.base!==defaultBranch)missing.push('PR is not based on the actual default branch.');
   if(p.mergeable!==true)missing.push('GitHub did not confirm mergeability.');
-  if(p.checks?.green!==true)missing.push('Required CI checks are not proven green at this head.');
-  if(!Number.isInteger(p.threads?.unresolved))missing.push('Review threads could not be verified.');
-  else if(p.threads.unresolved>0)missing.push(p.threads.unresolved+' unresolved review threads.');
-  if(['CHANGES_REQUESTED','REVIEW_REQUIRED'].includes(p.review_decision))
-    missing.push('Review decision blocks merge.');
+  // Explicit override only skips local CI/review vetoes so the underlying
+  // guarded merge can check the person, settings, reason, exact head, and
+  // GitHub's actual decision. It never loosens the default merge path.
+  if(!override){
+    if(p.checks?.green!==true)missing.push('Required CI checks are not proven green at this head.');
+    if(!Number.isInteger(p.threads?.unresolved))missing.push('Review threads could not be verified.');
+    else if(p.threads.unresolved>0)missing.push(p.threads.unresolved+' unresolved review threads.');
+    if(['CHANGES_REQUESTED','REVIEW_REQUIRED'].includes(p.review_decision))
+      missing.push('Review decision blocks merge.');
+  }
   return missing;
 }
 async function freshAfterRetarget(p,ctx,s){
@@ -64,7 +69,7 @@ async function mergeOne(a,ctx){
   // still rechecks the exact head and branch state immediately before mutation.
   const [p,r]=await Promise.all([pr(ctx,s,a.number),repo(ctx,s)]);
   if(!r?.default_branch)return refuse('Default-branch provider evidence unavailable.');
-  const why=blockers(p,a.expectedHeadSha,r.default_branch);
+  const why=blockers(p,a.expectedHeadSha,r.default_branch,{override:a.overrideRules===true});
   if(why.length)return reply({status:'not_ready',done:false,number:a.number,
     expected_head:a.expectedHeadSha,actual_head:p?.head_sha??null,
     blockers:why,next:'Repair the listed conditions, then re-read the exact PR.'});
@@ -73,15 +78,32 @@ async function mergeOne(a,ctx){
   const result=await invoke(ctx,'github_pr_merge',{...s,number:a.number,
     expectedHeadSha:a.expectedHeadSha,method:'merge',
     confirm:a.confirm===true,dryRun:a.dryRun===true,
+    ...(a.overrideRules===true?{overrideRules:true,overrideReason:a.overrideReason}:{}),
     ...(a.requestKey?{requestKey:a.requestKey+':'+a.number}:{})});
-  if(result?.status!=='applied')return reply({status:'not_applied',done:false,
-    guarded_tool:'github_pr_merge',underlying_status:result?.status??'unknown',
-    next:'No merge is claimed. Review the guarded tool result and exact current head.'});
+  if(result?.status!=='applied'){
+    const previewing=result?.status==='preview'||result?.status==='needs_confirmation';
+    // Never hide the guarded writer's informed-consent preview from clients
+    // of this compact workflow. The writer, not this wrapper, decides when
+    // confirmation is required, and no mutation is claimed here.
+    return reply({status:previewing?result.status:'not_applied',done:false,
+      guarded_tool:'github_pr_merge',underlying_status:result?.status??'unknown',
+      ...(typeof result?.preview==='string'?{preview:result.preview}:{}),
+      ...(typeof result?.needsConfirmation==='boolean'?{needsConfirmation:result.needsConfirmation}:{}),
+      ...(typeof result?.prompt==='string'?{prompt:result.prompt}:{}),
+      ...(typeof result?.because==='string'?{because:result.because}:{}),
+      ...(typeof result?.refusedBy==='string'?{refusedBy:result.refusedBy}:{}),
+      ...(typeof result?.error==='string'?{error:result.error}:{}),
+      ...(typeof result?.warning==='string'?{warning:result.warning}:{}),
+      next:previewing?'Read the delegated writer preview, obtain approval and call with confirm: true if authorized.':
+        'No merge is claimed. Inspect the guarded refusal or the current exact head before retrying.'});
+  }
   const after=await pr(ctx,s,a.number);
-  return reply({status:after?.merged===true?'merged':'unconfirmed',
+  const pending=a.overrideRules===true&&['pending','enqueued'].includes(result.result?.status);
+  return reply({status:after?.merged===true?'merged':pending?'pending':'unconfirmed',
     done:after?.merged===true,number:a.number,
     merge_commit:result.merge_commit??null,
-    next:after?.merged===true?'Merge confirmed from a fresh independent PR read.':
+    next:after?.merged===true?'Merge confirmed from a fresh independent PR read.':pending
+      ?'GitHub accepted the request for background processing; inspect its later result before claiming the PR merged.':
       'Provider merge response was applied but fresh readback did not confirm it; inspect before retrying.'});
 }
 async function stackOrder(args,ctx,s){
@@ -170,7 +192,8 @@ const whenTool={
   name:'github_workflow_merge_when_green',area:'workflow',audience:['B'],compact:true,
   description:'Merge a PR at the expected green head and default branch, only after verified review and guarded confirmation.',
   usesRegistry:true,passthrough:true,profiles:['everyday','full'],delegatedWrites:['github_pr_merge'],
-  inputSchema:{type:'object',properties:{...common,number:NUMBER,expectedHeadSha:SHA},
+  inputSchema:{type:'object',properties:{...common,number:NUMBER,expectedHeadSha:SHA,
+    overrideRules:{type:'boolean'},overrideReason:{type:'string',minLength:10,maxLength:200}},
     required:['repo','number','expectedHeadSha'],additionalProperties:false},
   annotations:{readOnlyHint:false,destructiveHint:true,idempotentHint:false,openWorldHint:true}
 };

@@ -287,6 +287,30 @@ describe('skipping rules on purpose (14a to 14e)', () => {
     const row = (await w2.db.listChanges({ limit: 5 })).find((c) => c.tool === 'github_pr_merge');
     expect(row.summary).toMatch(/^OVERRIDE \(/);
   });
+  it('an owner-requested override reaches GitHub even when local rules discovery is empty and a CI scan is red', async () => {
+    const w = await live();
+    mergeWorld(w.gh, { state: 'blocked', rules: [], ciRuns: [{ ...run, conclusion: 'failure' }] });
+    const r = await call(w, 'github_pr_merge', override);
+    expect(r.body?.done).toBe(true);
+    const puts = w.gh.calls.filter(c => c.route === 'PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge-async');
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toMatchObject({ bypass_rules: true, sha: A });
+    expect(who(puts[0])).toBe('M');
+    expect(JSON.stringify(r.body)).toMatch(/No branch rules identified/);
+    expect(w.gh.invalid).toEqual([]);
+  });
+  it('a no-listed-rules override refused by GitHub is not retried normally or through the App', async () => {
+    const w = await live();
+    mergeWorld(w.gh, { state: 'blocked', rules: [], ciRuns: [{ ...run, conclusion: 'failure' }] });
+    w.gh.when('PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge-async')
+      .reply(403, { message: 'Bypass not allowed by branch protection rule' });
+    const r = await call(w, 'github_pr_merge', override);
+    expect(JSON.stringify(r.body ?? r.out)).toMatch(/does not let you skip the rules/);
+    const puts = w.gh.calls.filter(c => c.route.startsWith('PUT'));
+    expect(puts).toHaveLength(1);
+    expect(who(puts[0])).toBe('M');
+    expect(puts[0].body.bypass_rules).toBe(true);
+  });
   it('14b. is refused without a reason, with Act as me off, with the override switch off, and on a preview connection', async () => {
     const cases = [
       [await live({ status: { enrolled: false } }), override, /master token/],
